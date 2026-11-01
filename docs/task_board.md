@@ -125,7 +125,7 @@
   "tasks": {
     "TASK_MANAGED_PROJECT_IMPORT_20261101": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -172,107 +172,17 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-11-01T04:33:50.271144Z",
+        "updated_at": "2026-11-01T06:49:36.861183Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
           "stage": "revision",
           "status": "running",
-          "summary": "User active goal: simplify import to choose/review/open, automatic source compatibility and explicit incomplete-data files-only choice; continue same task, isolated validation only, no push/publication.",
+          "summary": "User in-scope acceptance feedback: reproduce/fix batch replan selection drift and underlying cross-volume rollback, interrupted running recovery, same-name target false success; compact source/path display and useful folded differences. Isolated data only, no push/publication.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
-          "subject": "17c6b7e94ffa25cbb252a9f1c4cd3259647b1318",
-          "summary": "Simplify import to choose, review, import and continue working. Single-project flow removes selection ceremony; compatibility/incomplete-source decisions are explicit; duplicates open the existing project and conflicts retain guarded choices. Isolated acceptance only; no real business data/source changes, push, publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/project_library_schemas.py",
-            "backend/application/project_library/service.py",
-            "backend/domain/project_library.py",
-            "backend/infrastructure/project_library/comparison.py",
-            "backend/infrastructure/project_library/files.py",
-            "backend/infrastructure/project_library/intake_layout.py",
-            "backend/infrastructure/project_library/portability.py",
-            "backend/infrastructure/project_library/restore_conflicts.py",
-            "backend/infrastructure/storage/repositories/project_library.py",
-            "docs/architecture/project_library.md",
-            "frontend/src/App.tsx",
-            "frontend/src/api/projectLibrary.ts",
-            "frontend/src/features/project-library/ProjectImportDecision.tsx",
-            "frontend/src/features/project-library/ProjectImportReviewList.tsx",
-            "frontend/src/features/project-library/ProjectImportSnapshots.test.tsx",
-            "frontend/src/features/project-library/ProjectImportSnapshots.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/project-library.css",
-            "tests/integration/test_project_library_api.py",
-            "tests/integration/test_project_library_portability.py"
-          ],
-          "validation": [
-            {
-              "name": "Backend matrix and final affected reruns",
-              "status": "passed",
-              "result": "Broad run: 184 passed and one obsolete assertion requiring keep-separate for incomplete sources failed. Updated assertion now requires a default block and explicit files-only replan, preserving identity conflict checks. Final affected rerun: 52 passed, including that case; final exact-state identity guard rerun: 4 passed. Unchanged 300-project pressure case passed in the broad run. No unresolved failure; a clean whole-185 rerun is not claimed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-simple-choice-20261101\\repeat-final.log"
-            },
-            {
-              "name": "Frontend matrix and final affected rerun",
-              "status": "passed",
-              "result": "31 files / 375 tests passed before final source-collapse/autocontinue changes. Final affected project-library/App rerun: 6 files / 110 tests passed. TypeScript tsc -b and Vite production build passed after final frontend edits.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-simple-choice-20261101\\final-ui-affected.log"
-            },
-            {
-              "name": "Final production build",
-              "status": "passed",
-              "result": "TypeScript and Vite build passed sequentially after final frontend changes.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-simple-choice-20261101\\final-build.log"
-            },
-            {
-              "name": "Isolated real UI and source integrity",
-              "status": "passed",
-              "result": "Real manual and EK200 snapshot copies plus explicit incomplete/newer fixtures exercised. Three managed projects; duplicates open verified identity; skipped conflict retains target-only file; update-only block for newer format. 58 source files and 54 previous-copy files unchanged. Restored 64 tables / 326 rows / 4 assets match, no differing tables. No invented manual/files-only LTR or Matrix. Only two ordinary imports and one snapshot restore committed in isolated DB.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-simple-choice-20261101\\ui\\workflow-integrity.json"
-            },
-            {
-              "name": "Exact standards and specification review",
-              "status": "passed",
-              "result": "Distinct same-agent review passes found no outstanding actionable issue; no independent review claim. All 21 changed paths are in approved scope.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-simple-choice-20261101\\final-review.json"
-            },
-            {
-              "name": "Safe local integration preflight",
-              "status": "passed",
-              "result": "Primary and task trees clean; master changes since merge base are board-only. Dedicated developer backend console normally stopped with Ctrl+C, no force and no restart. Own isolated UI service stopped; sources and retained artifacts preserved.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-simple-choice-20261101\\normal-stop.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current Astra agent, coherent TDD slices and local commits."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Distinct focused standards/spec review passes by the same agent, not independent."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Actual broad matrix plus final affected reruns/build and isolated UI/source-integrity acceptance; initial obsolete assertion and correction documented."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "17c6b7e94ffa25cbb252a9f1c4cd3259647b1318",
-            "primary_before": "f6f01ee7717b0b773558a06fdf3a76187b669096",
-            "integrated_head": "de4440cffd31bac42334855d12ee1a71f17fbb8e",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
