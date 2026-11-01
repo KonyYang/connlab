@@ -203,6 +203,31 @@
           }
         }
       }
+    },
+    "TASK_BASIC_INFO_RESULT_DEFAULT_20261101": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
+      "branch": "codex/basic-info-result-default-20261101",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
+        "summary": "Default Basic Information Test Result to In progress",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Change Test Result UI fallback from OK to In progress, preserving valid saved and authoritative values. Targeted mock API tests only; no real business data writes, push or publication.",
+        "scope_paths": [
+          "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
+          "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "a96b15ef819a6915e5c08a0b7d371029def89fc3",
+        "started_at": "2026-11-01T10:49:56.769932Z",
+        "updated_at": "2026-11-01T10:49:56.769932Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
