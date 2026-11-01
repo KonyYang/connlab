@@ -169,15 +169,15 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-11-01T00:08:21.369754Z",
+        "updated_at": "2026-11-01T00:14:56.469975Z",
         "checkpoint": {
+          "requires_user": false,
+          "stage": "implementation",
           "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
           "version": 1,
-          "stage": "implementation",
-          "summary": "Third slice: normalized ordinary imports now create an idempotent official-workspace path record and publish a matching manifest; no LTR registration or Matrix/test data is invented. Success-page Open Project resolves actual member project_id and goes directly to common workbench, with history/unavailable/unbound fallback, retry without reimport, and late-unmount response protection. Developer checks: 12 targeted API/portable/path checks and 57 frontend tests passed, TypeScript/build passed. Local commit saved, no integration into running primary. Remaining: audit incomplete/unknown-layout/no-LTR workbench file access and missing-information guidance, Recycle historical identity/conflict/restore behavior, whole portability regression, actual isolated UI sample smoke, exact diff review/final QA/local integration. Goal remains incomplete; no permission needed for authorized remaining work, no real-data mutation/push/publication.",
-          "schema": "connlab.sol-task-checkpoint",
           "status": "running",
-          "requires_user": false
+          "schema": "connlab.sol-task-checkpoint",
+          "summary": "Fourth slice: shared imported-identity read rule now preserves historical LTR in Recycle and includes it in restore conflicts, with registered LTR priority and no workbook writes. Project detail exposes actual library_member_id, common workbench offers Browse Files plus truthful Basic Information/Matrix guidance even for unnumbered legacy layouts, and file details return to the same workbench. Actual isolated API recycle/restore/unregistered-number/files tests passed with registry unit regressions (32); frontend page/App/layout 93 passed, typecheck/build passed. Local commit saved. Remaining: boundary/ambiguous-layout checks, complete import/portability regression including original fixture contracts, final exact-diff review, isolated real-sample browser smoke, full risk-based QA and local integration. Complete goal not yet claimed; no real-data/source mutation, push or publication."
         },
         "report": null
       }
