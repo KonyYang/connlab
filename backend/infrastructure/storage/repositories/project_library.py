@@ -5,7 +5,7 @@ from uuid import uuid4
 from pathlib import Path
 from sqlalchemy import select, or_
 from backend.domain.project_library import ProjectLibraryConflict
-from backend.infrastructure.storage.models import ProjectModel, LtrRecordModel, ProjectOfficialWorkspaceRecordModel
+from backend.infrastructure.storage.models import ProjectModel, LtrRecordModel, ProjectOfficialWorkspaceRecordModel, ProjectFolderRecordModel
 from backend.infrastructure.storage.models_project_library import ProjectLibraryMemberModel, ProjectLibraryBatchModel
 
 
@@ -71,6 +71,9 @@ class ProjectLibraryRepository:
         if row is None:
             raise ProjectLibraryConflict("The existing project is no longer available.")
         return {"registry_state": row.registry_state, "registry_revision": row.registry_revision,
+                "folder_paths": [{"folder_id": folder.folder_id, "folder_path": folder.folder_path}
+                    for folder in self.session.scalars(select(ProjectFolderRecordModel).where(ProjectFolderRecordModel.project_id == project_id)
+                        .order_by(ProjectFolderRecordModel.created_on, ProjectFolderRecordModel.folder_id))],
                 "workspace": self.workspace(project_id),
                 "numbers": [number for number in self.project_numbers() if number["project_id"] == project_id]}
 
@@ -116,15 +119,19 @@ class ProjectLibraryRepository:
         rebind_project_paths(self.session, project_id, source, target)
         self.session.commit()
 
-    def link_existing_project(self, member, project_id):
-        if self.project_context(project_id)["registry_state"] != "active":
+    def link_existing_project(self, member, project_id, business_path=None):
+        context = self.project_context(project_id)
+        if context["registry_state"] != "active":
             raise ProjectLibraryConflict("The existing project is retained history or in Trash. Resolve its registry state before takeover.")
         from backend.infrastructure.project_library.ownership import rebind_project_paths
         if any(row["project_id"] == project_id and row["member_id"] != member["member_id"] for row in self.members()):
             raise ProjectLibraryConflict("Another entry already manages this project.")
         workspace = self.workspace(project_id)
-        origin = workspace["local_workspace_path"] if workspace else member["source_path"]
-        rebind_project_paths(self.session, project_id, origin, member["folder_path"])
+        origin = workspace["local_workspace_path"] if workspace else (
+            context["folder_paths"][-1]["folder_path"] if context["folder_paths"] else member["source_path"])
+        destination = member["folder_path"] if workspace else (business_path or member["folder_path"])
+        extras = [(workspace["official_folder_path"], business_path)] if workspace and business_path else []
+        rebind_project_paths(self.session, project_id, origin, destination, extras)
         row = self.session.get(ProjectLibraryMemberModel, member["member_id"])
         row.project_id = project_id
         row.revision += 1

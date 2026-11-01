@@ -184,8 +184,30 @@ class ProjectLibraryService:
                 if status == "ready" and layout and layout["prefix"] and str(legacy_target).casefold() != target.casefold() and self.files.exists(legacy_target):
                     status, separate = "conflict", True
                     warnings.append("An existing source-named folder is not registered at the standard project location. Keep Separate receives a verified copy without changing that folder.")
+                known_project = source.get("project_id")
+                if known_project and not (target_id or new_title or reference_existing or source.get("has_portable")) and self.store.project_exists(known_project):
+                    context = self.store.project_context(known_project)
+                    if context["registry_state"] != "active":
+                        source["takeover_blocker"] = "This project is retained or in Recycle. Restore its registry state before importing a working copy."
+                    elif any(row["project_id"] == known_project for row in members):
+                        if status != "already_added":
+                            status, separate = "conflict", True
+                            warnings.append("Another entry already manages this project identity. Keep Separate retains history without creating a second working project.")
+                    else:
+                        source["existing_project_id"] = known_project
+                        source["existing_context"] = self.files.digest(context)
+                        source["existing_registry_revision"] = context["registry_revision"]
+                        old = context["workspace"]["local_workspace_path"] if context["workspace"] else (
+                            context["folder_paths"][-1]["folder_path"] if context["folder_paths"] else "unregistered")
+                        warnings.append(f"Link the existing project and retain its test data. Switch the managed folder from {old} to {target}; original files stay in place.")
+                        if context["workspace"] and (not layout or layout["prefix"]):
+                            source["takeover_blocker"] = "Select the complete existing LTR root, including Source Book, before switching its working folder."
+                        registered = {str(row["ltr_number"]).casefold() for row in context["numbers"] if row["status"] == "registered"}
+                        if registered and str(source.get("ltr_number") or "").casefold() not in registered:
+                            source["takeover_blocker"] = "The source LTR differs from this project's registered LTR. Review the identity before importing."
                 if source.get("ltr_number") and status != "already_added" and not target_id and not reference_existing and any(
                     str(item.get("ltr_number") or "").casefold() == source["ltr_number"].casefold()
+                    and not (source.get("existing_project_id") and item.get("project_id") == source["existing_project_id"])
                     for item in [*members, *numbers]
                 ):
                     status, separate = "conflict", True
@@ -217,9 +239,10 @@ class ProjectLibraryService:
                     first["status"], first["can_keep_separate"] = "conflict", True
                     first["warnings"].append("Another selected source uses the same destination. Keep Separate preserves both without overwriting either source.")
         for row in rows:
-            if row.get("boundary_problem") and row["status"] != "already_added":
+            problem = row.get("boundary_problem") or row.get("takeover_blocker")
+            if problem and row["status"] != "already_added":
                 row["status"], row["can_keep_separate"] = "conflict", False
-                row["warnings"].append(row["boundary_problem"])
+                row["warnings"].append(problem)
         plan = self.files.save_plan("intake", {"items": rows})
         keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title")
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
@@ -301,6 +324,31 @@ class ProjectLibraryService:
 
     def _receive_item(self, batch, item, index):
         source = item["source"]
+        project_id = source.get("existing_project_id") if not item["keep_separate"] else None
+        with self.files.project_lock(project_id):
+            linked = False
+            if project_id:
+                context = self.store.project_context(project_id)
+                if context["registry_state"] != "active" or context["registry_revision"] != source["existing_registry_revision"]:
+                    raise ProjectLibraryConflict("The existing project's registry state changed. Review the import again.")
+                try:
+                    member = self.store.member(item["working_member_id"])
+                except LookupError:
+                    member = None
+                if member and member["project_id"] == project_id:
+                    marker = self.files.marker(member["folder_path"]) or {}
+                    linked = (member["revision"] == 2 and member["batch_id"] == batch["batch_id"]
+                        and member["folder_path"] == item["target"] and marker.get("member_id") == member["member_id"]
+                        and marker.get("project_id") in (None, project_id) and marker.get("source_project_id") == project_id
+                        and marker.get("ltr_number") == member["ltr_number"])
+                    if not linked or context["workspace"] and context["workspace"]["local_workspace_path"] != member["folder_path"]:
+                        raise ProjectLibraryConflict("The received project changed after linking. Review its current working copy.")
+                if not linked and self.files.digest(context) != source.get("existing_context"):
+                    raise ProjectLibraryConflict("The existing project changed after preview. Review the import again.")
+            return self._receive_item_locked(batch, item, index, linked)
+
+    def _receive_item_locked(self, batch, item, index, linked):
+        source = item["source"]
         if source.get("has_portable") and not source.get("reference_existing"):
             raise ProjectLibraryConflict("Inspect and restore this project's carried test data instead of using plain intake.")
         if not self.files.source_unchanged(source):
@@ -338,6 +386,13 @@ class ProjectLibraryService:
                 member = self.store.member(member["member_id"])
             except LookupError:
                 member = self.store.add_member(member)
+            if source.get("existing_project_id") and not item["keep_separate"] and not linked:
+                project_id = source["existing_project_id"]
+                if self.files.digest(self.store.project_context(project_id)) != source["existing_context"]:
+                    raise ProjectLibraryConflict("The existing project changed while files were copied. Review the import again.")
+                self.files.locate_context(member, member["folder_path"], self.store.workspace(project_id))
+                self.store.link_existing_project(member, project_id, self.files.business_path(member))
+                member = self.store.member(member["member_id"])
             if not member["project_id"] and not item["keep_separate"] and not self.store.project_exists(member.get("source_project_id")):
                 # The final intake confirmation also establishes the lifecycle container.
                 # A retained conflict copy must still follow its reviewed takeover rules.

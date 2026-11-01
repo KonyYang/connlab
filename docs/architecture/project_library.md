@@ -24,8 +24,14 @@ explicitly authorized operation.
 
 Final ordinary intake confirmation establishes a stable Project binding as well as
 library membership. Repeated batch submissions reuse that binding. Carried stable
-project IDs are retained; an already-existing Project ID requires explicit review
-rather than creating or overwriting a project. Explicit conflict copies retain
+project IDs are retained; an already-existing unclaimed Project ID is linked by
+the same final confirmation after previewing the old and new working locations.
+Writer exclusion and an unchanged registry/folder context are required before
+copying, then checked again before rebinding only owned file paths. Existing
+project data is retained. Recycle, a different registered LTR, another managed
+entry, or an incomplete existing workspace require conflict review. Interrupted
+binding can resume only for the batch's unchanged member and destination.
+Explicit conflict copies retain
 their separate review rules. No LTR workbook registration, Matrix confirmation or
 test values are manufactured by intake.
 
@@ -137,9 +143,9 @@ Read-only retained-registry checks prevent a trashed workspace from reappearing
 through its folder entry. If those checks fail, uncertain workspace entries wait
 for retry; independently available records remain visible with a warning.
 
-Import results return to `/projects?batch=...`, scoped to that batch. Normal and
-batch-specific searches/pages persist independently across detail and import
-navigation. Old `/project-library` and `/projects?view=legacy` URLs render the
+Import results return to the full `/projects` catalog without applying a batch
+filter. Explicit older batch links remain compatible. Searches/pages persist
+across detail and import navigation. Old `/project-library` and `/projects?view=legacy` URLs render the
 same homepage; existing member detail URLs remain compatible. This is a frontend
 composition of existing read APIs, with no database/schema migration.
 
