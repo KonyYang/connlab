@@ -215,11 +215,11 @@
     },
     "TASK_GROUP_COMPLETION_DESCRIPTION_20261101": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
       "branch": "codex/group-completion-description-20261101",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "69f3fb3519e9b9460023f0e04b980b6ac09a49a2",
       "task": {
         "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
         "summary": "Compact group completion controls with saved descriptions",
@@ -248,9 +248,107 @@
         ],
         "activation_head": "af7eac5e2aa91de0c112cc1085bf202356c36dec",
         "started_at": "2026-11-01T11:39:47.748913Z",
-        "updated_at": "2026-11-01T11:39:47.748913Z",
+        "updated_at": "2026-11-01T12:02:48.722726Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
+          "subject": "bca6b7ebe4994480d6127976e81b84d31e42e6ee",
+          "summary": "Matrix Status uses compact 16px completion controls and optional per-group saved descriptions with explicit dirty Save. Description-only writes preserve completion bool/date, original Matrix evidence and Needs review; failed edits retain text, readonly and stale-context guards remain. Additive nullable column and exact legacy snapshot normalization verified in disposable databases only. No real business database/source mutation, push/publication or automatic Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/routes_project.py",
+            "backend/application/group_completion_service.py",
+            "backend/infrastructure/project_library/portability.py",
+            "backend/infrastructure/storage/database.py",
+            "backend/infrastructure/storage/group_completion_schema_migration.py",
+            "backend/infrastructure/storage/models_group_completion.py",
+            "backend/infrastructure/storage/repositories/group_completion.py",
+            "docs/architecture/group_completion.md",
+            "frontend/src/api/client.ts",
+            "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.tsx",
+            "frontend/src/workbench.css",
+            "tests/integration/test_group_completion_api.py",
+            "tests/integration/test_project_library_portability.py",
+            "tests/unit/test_group_completion_schema_migration.py"
+          ],
+          "validation": [
+            {
+              "name": "Independent planning",
+              "status": "passed",
+              "result": "Independent Planner selected nullable column on existing event family, explicit Save and preservation of original completion evidence; original snapshot signatures verified before old-column normalization. Exact fifteen-path scope implemented.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\developer-result.json"
+            },
+            {
+              "name": "Developer regression feedback",
+              "status": "passed",
+              "result": "Meaningful RED/GREEN for description-only API, old-schema migration, legacy snapshot matching and UI field. Final bounded feedback: 9 backend and15 component tests passed; no full matrix/build duplicated by Developer.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\developer-result.json"
+            },
+            {
+              "name": "Independent Standards and Spec review",
+              "status": "passed",
+              "result": "Independent Reviewer inspected exact fifteen-path committed diff and consumers; Standards0 findings, Spec0 findings. No test repetition claimed.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\review-result.json"
+            },
+            {
+              "name": "Independent final Python QA",
+              "status": "passed",
+              "result": "203 passed in359.32s. Includes group completion, description migration, database startup, library intake/portability including300projects, registry summary/management/writer guards. One existing TestClient deprecation warning.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\qa-backend.log"
+            },
+            {
+              "name": "Independent final frontend QA and build",
+              "status": "passed",
+              "result": "31files/387tests passed. TypeScript tsc-b and Vite production build passed sequentially after Vitest; no source changes after tested subject.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\qa-result.json"
+            },
+            {
+              "name": "Isolated actual browser and SQLite integrity",
+              "status": "passed",
+              "result": "Actual16x16checkbox at774x804; no blur save, explicit save/reload, unchecked stays incomplete, checking retains note, completed note edits and clear retain exact completed_at, stopped synthetic project disables checkbox/description. SQL integrityok, audit only owned test DBs/writes, own server normal shutdown. Error/retry/stale context behavior additionally covered by actual React/API tests, not falsely claimed browser faults.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\qa-ui\\integrity.json"
+            },
+            {
+              "name": "Independent Integrator preflight",
+              "status": "passed",
+              "result": "Root verified clean subject/master, exact approved scope, matching independent role evidence and board-only primary delta. Real8000 and isolated18881 remain stopped. Actual merge and post-merge verification follow this report through the sole board writer.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\integrator-preflight.json"
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "context": "Independent /root/group_description_planner, read-only executable plan and snapshot/schema risk assessment; no implementation."
+            },
+            "developer": {
+              "status": "passed",
+              "context": "Independent /root/group_description_developer; local implementation/commit and recorded RED-GREEN feedback."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Independent /root/group_description_reviewer; exact subject Standards/Spec pass, no code edits or duplicate full tests."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Independent /root/group_description_qa; complete final selected matrix/build and audited browser acceptance, no product source edits."
+            },
+            "integrator": {
+              "status": "passed",
+              "context": "Root independent integration preflight complete; no product code authored by root. Integration itself pending sole writer and post-merge verification."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "bca6b7ebe4994480d6127976e81b84d31e42e6ee",
+            "primary_before": "4a1888ff7e98e40d04ed25a392679cab7d14f8ff",
+            "integrated_head": "69f3fb3519e9b9460023f0e04b980b6ac09a49a2",
+            "recovered": false
+          }
+        }
       }
     }
   }
