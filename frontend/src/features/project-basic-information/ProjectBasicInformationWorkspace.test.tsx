@@ -402,6 +402,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     await waitFor(() =>
       expect(api.saveProjectBasicInformationDraft).toHaveBeenCalledWith("P1", {
         ...response().draft.values,
+        remarks_po: "NA",
         project_type: "Product Extension",
         test_type: "Customer Specific Testing",
         location: "Nantong",
@@ -422,6 +423,7 @@ describe("ProjectBasicInformationWorkspace", () => {
         "P1",
         {
           ...response().draft.values,
+          remarks_po: "NA",
           project_type: "Product Extension",
           test_type: "Customer Specific Testing",
           location: "Nantong",
@@ -435,6 +437,17 @@ describe("ProjectBasicInformationWorkspace", () => {
       )
     );
     expect(onBackToWorkbench).toHaveBeenCalledWith({ refreshBasicInformation: true });
+  });
+
+  it.each([[null, "NA"], ["", "NA"], ["  ", "NA"], ["PO-123", "PO-123"]])("initializes Remarks (PO) %s as %s without overwriting existing notes or saving on entry", async (value, expected) => {
+    const initial = response();
+    if (value === null) delete initial.draft.values.remarks_po;
+    else initial.draft.values.remarks_po = value;
+    api.getProjectBasicInformation.mockResolvedValue(initial);
+    render(<ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+    expect(await screen.findByLabelText("Remarks (PO)")).toHaveProperty("value", expected);
+    expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
+    expect(api.confirmProjectBasicInformation).not.toHaveBeenCalled();
   });
 
   it.each([null, "", "Choose an item."])("defaults an unset Test Result (%s) to In progress without saving on entry", async value => {

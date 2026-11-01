@@ -423,7 +423,7 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
         layout: "quarter",
       },
       { key: "test_fee", label: "Test Fee", kind: "text", layout: "quarter", placeholder: "CNY" },
-      { key: "remarks_po", label: "Remarks (PO)", kind: "textarea", layout: "quarter" },
+      { key: "remarks_po", label: "Remarks (PO)", kind: "textarea", layout: "quarter", defaultValue: "NA" },
     ],
   },
   {
@@ -469,10 +469,17 @@ export function normalizeBasicInformationFieldValues(
     panel.groups.flatMap((group) => group.fields)
   );
   fields.forEach((field) => {
+    const currentValue = normalizedValues[field.key] ?? "";
+    if (
+      (field.kind === "text" || field.kind === "textarea") &&
+      field.defaultValue !== undefined &&
+      !currentValue.trim()
+    ) {
+      normalizedValues[field.key] = field.defaultValue;
+    }
     if (!field.options?.length) {
       return;
     }
-    const currentValue = normalizedValues[field.key] ?? "";
     if (
       field.kind === "select" &&
       field.preserveUnknownOption === false &&
