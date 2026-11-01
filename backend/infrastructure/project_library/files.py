@@ -10,6 +10,7 @@ import shutil
 from uuid import uuid4
 from backend.domain.project_library import ProjectLibraryConflict, ProjectLibraryError
 from backend.infrastructure.files.generation_journal import GenerationJournal
+from backend.infrastructure.project_library.intake_layout import reception_layout, material_entries, received_material, boundary_problem
 
 NUMBER = re.compile(r"\bDL-\d{4}-\d{2}-\d{3}(?:[A-Z][A-Z0-9]*)?\b", re.I)
 SOFTWARE_MARKER = Path(".connlab") / "library.json"
@@ -215,7 +216,11 @@ class LibraryFiles:
         if source == self.settings.projects_dir or self.settings.projects_dir.is_relative_to(source):
             raise ProjectLibraryError("Choose projects below the library root, not a directory containing the library.")
         entries = inventory(source) if source.is_dir() else [{"relative_path": source.name, "directory": False, "size": source.stat().st_size, "sha256": file_hash(source)}]
-        return {**self.describe_source(source), "entries": entries, "identity": identity(source), "source_fingerprint": fingerprint(entries)}
+        inspected = {**self.describe_source(source), "entries": entries, "identity": identity(source), "source_fingerprint": fingerprint(entries)}
+        if inspected.get("ltr_number") and NUMBER.fullmatch(inspected["ltr_number"]):
+            inspected["reception_layout"] = reception_layout(inspected)
+        inspected["boundary_problem"] = boundary_problem(inspected)
+        return inspected
 
     def describe_source(self, value):
         """Describe a selectable boundary without reading its material contents."""
@@ -242,7 +247,7 @@ class LibraryFiles:
         title = NUMBER.sub("", name, count=1).strip(" _-") or name
         if number and kind == "project":
             business = [Path(path) for path in children if Path(path).name.upper().startswith(number.upper() + " ")]
-            if len(business) == 1 and (source / "Source Book").is_dir():
+            if len(business) == 1 and ((source / "Source Book").is_dir() or source.name.upper() == number.upper()):
                 title = business[0].name[len(number):].strip()
         return {"source_path": str(source), "title": title, "ltr_number": number, "kind": kind,
                 "warnings": [], "child_folders": children,
@@ -296,6 +301,8 @@ class LibraryFiles:
             return str(Path(target_member["folder_path"]) / "Imported Material" / path.name)
         if new_title:
             return str(self.settings.projects_dir / safe_name(new_title) / path.name)
+        if source.get("reception_layout"):
+            return str(self.settings.projects_dir / safe_name(source["reception_layout"]["root_name"]))
         return str(self.settings.projects_dir / safe_name(path.name))
 
     def exists(self, value):
@@ -310,10 +317,14 @@ class LibraryFiles:
         path = checked_path(target)
         if source["kind"] == "file":
             return path.is_file() and source["entries"][0]["sha256"] == file_hash(path)
-        def material(entries):
-            return [row for row in entries if row["relative_path"] not in {".connlab", ".connlab/library.json", ".connlab/manifest.json", ".connlab/portable"}
-                    and not row["relative_path"].startswith(".connlab/portable/")]
-        return path.is_dir() and material(inventory(path)) == material(source["entries"])
+        expected = received_material(source)
+        actual = material_entries(inventory(path)) if path.is_dir() else []
+        # A copied inner metadata file is transport metadata at its original location.
+        prefix = (source.get("reception_layout") or {}).get("prefix")
+        if prefix:
+            actual = [row for row in actual if row["relative_path"] == prefix or not row["relative_path"].startswith(prefix + "/")
+                      or material_entries([{**row, "relative_path": row["relative_path"][len(prefix) + 1:]}])]
+        return path.is_dir() and sorted(actual, key=lambda row: row["relative_path"]) == sorted(expected, key=lambda row: row["relative_path"])
 
     def receive(self, source, target, batch_id, item_id):
         target = checked_path(target, must_exist=False)
@@ -329,7 +340,11 @@ class LibraryFiles:
             shutil.rmtree(stage)
         origin = Path(source["source_path"])
         if source["kind"] == "project":
-            copy_verified(origin, stage, source["entries"])
+            layout = source.get("reception_layout")
+            destination = stage / layout["prefix"] if layout and layout["prefix"] else stage
+            copy_verified(origin, destination, source["entries"])
+            if layout:
+                (stage / "Source Book").mkdir(exist_ok=True)
         else:
             stage.mkdir(parents=True)
             shutil.copyfile(checked_path(origin), stage / origin.name)

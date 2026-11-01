@@ -20,6 +20,68 @@ explicitly authorized operation.
 
 ## Project library entry
 
+### Managed ordinary intake
+
+Final ordinary intake confirmation establishes a stable Project binding as well as
+library membership. Repeated batch submissions reuse that binding. Carried stable
+project IDs are retained; an already-existing unclaimed Project ID is linked by
+the same final confirmation after previewing the old and new working locations.
+Writer exclusion and an unchanged registry/folder context are required before
+copying, then checked again before rebinding only owned file paths. Existing
+project data is retained. Recycle, a different registered LTR, another managed
+entry, or an incomplete existing workspace require conflict review. Interrupted
+binding can resume only for the batch's unchanged member and destination.
+Explicit conflict copies retain
+their separate review rules. No LTR workbook registration, Matrix confirmation or
+test values are manufactured by intake.
+
+A recognized `LTR Title` business folder is copied into `Projects/LTR/LTR Title`
+with an empty root-level `Source Book`. A pure LTR root containing one matching
+business folder is received without another outer layer; an absent `Source Book`
+is created in the copy. Original files and internal material paths remain intact.
+Supplementary assignments and portable restore keep their reviewed placement rules.
+Existing source-named folders require conflict review before standard reception.
+Material equality accounts for the copied envelope, so unchanged sources remain
+duplicates while changed evidence still requires review. Other layouts retain their
+existing handling until explicitly resolved; they are not silently rearranged.
+
+Flat legacy folders with an LTR are received as a complete business subtree,
+including any old Source Book inside that subtree. A new empty root-level Source
+Book does not claim that those old workbooks were restored into execution data.
+A bare LTR folder uses an `LTR Imported files` child when no business title is known.
+Selecting only a standard materials subfolder without project identity, multiple
+same-LTR business folders, or a file occupying the canonical Source Book location
+requires boundary review. Keep Separate cannot override these boundary blockers.
+
+Registry summaries expose a historical LTR only through explicit Project membership.
+Its display kind is `imported`, with `has_registered_ltr=false` and no registered
+LTR record. A real LTR registration always wins. Imported rows use the normal
+project actions and show missing Matrix state rather than invented completion.
+
+Recognized standard imports also bind the received root, business folder and
+Source Book in the normal workspace record and publish a matching manifest.
+Existing mismatched workspace bindings require review. Ordinary successful import
+navigation reads the actual member identity before opening the workbench; retained,
+unavailable or unbound records keep their safe details entry.
+
+Project details expose the explicit `library_member_id` association. The common
+workbench uses it for Browse Files even when a legacy layout has no official-folder
+binding or LTR. Missing Basic Information and confirmed Matrix are stated without
+claiming restored data. Browsing returns to the same project. Recycle display and
+restore conflict checks use the same historical identity rule as Projects; a real
+registered LTR continues to take precedence. These reads do not register an LTR or
+mutate source materials.
+
+Imported projects without real Matrix draft steps show an empty setup state rather
+than sample test steps. Actual draft steps remain visible for review, and confirmed
+Matrix projections retain the normal execution workspace. No confirmation or test
+data is inferred from the presence of ordinary files.
+
+New portable working copies use the validated full LTR as their destination root,
+including suffixes, regardless of the transport folder's name. Existing working
+copy and recovery decisions keep their reviewed paths and protections. Unnumbered
+copies retain their transport-derived destination until their identity is resolved.
+
 ### Save location and guided import
 
 Ordinary instances reuse the active Settings **Project default save location**.
@@ -81,9 +143,9 @@ Read-only retained-registry checks prevent a trashed workspace from reappearing
 through its folder entry. If those checks fail, uncertain workspace entries wait
 for retry; independently available records remain visible with a warning.
 
-Import results return to `/projects?batch=...`, scoped to that batch. Normal and
-batch-specific searches/pages persist independently across detail and import
-navigation. Old `/project-library` and `/projects?view=legacy` URLs render the
+Import results return to the full `/projects` catalog without applying a batch
+filter. Explicit older batch links remain compatible. Searches/pages persist
+across detail and import navigation. Old `/project-library` and `/projects?view=legacy` URLs render the
 same homepage; existing member detail URLs remain compatible. This is a frontend
 composition of existing read APIs, with no database/schema migration.
 

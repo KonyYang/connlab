@@ -79,6 +79,124 @@ def test_restore_review_distinguishes_missing_snapshot_and_keeps_restore_blocked
         engine.dispose()
 
 
+def test_transport_folder_name_does_not_change_the_restored_ltr_root(tmp_path):
+    a, _, ea = app_at(tmp_path / "A")
+    b, settings, eb = app_at(tmp_path / "B")
+    try:
+        source = prepared_manual_project(a, tmp_path / "old", ltr="DL-2026-09-032A1")
+        transport = tmp_path / "Copied from another computer"
+        shutil.copytree(source["folder_path"], transport)
+        review = b.post("/api/project-library/restore-plan", json={"folder": str(transport)}).json()
+        assert review["status"] == "ready", review
+        target = settings.projects_dir / "DL-2026-09-032A1"
+        assert review["target_path"] == str(target)
+        result = confirm(b, "/api/project-library/restore", review)
+        assert Path(result["member"]["folder_path"]) == target
+        assert result["member"]["project_id"] == source["project_id"]
+        assert result["member"]["can_continue"] is True
+        assert (target / "DL-2026-09-032A1 History/result.txt").read_text(encoding="utf-8") == "source result"
+        assert b.post("/api/project-library/restore-plan", json={"folder": str(transport)}).json()["status"] == "already_added"
+    finally:
+        ea.dispose(); eb.dispose()
+
+
+@pytest.mark.parametrize("interruption", [False, True])
+def test_existing_project_is_linked_in_final_intake_with_writer_and_stale_review_protection(tmp_path, monkeypatch, interruption):
+    from backend.infrastructure.storage.models import ProjectFolderRecordModel, FileAssetModel
+    from datetime import date
+    client, settings, engine = app_at(tmp_path / "library")
+    try:
+        source = tmp_path / "DL-2026-09-032 Existing version"
+        (source / ".connlab").mkdir(parents=True)
+        (source / "result.txt").write_text("existing evidence", encoding="utf-8")
+        (source / ".connlab/manifest.json").write_text(json.dumps({"project_id": "existing-P1", "dl_number": "DL-2026-09-032"}), encoding="utf-8")
+        with Session(engine) as session:
+            session.add(ProjectModel(project_id="existing-P1", product_name="Existing", requestor="Lab", status="draft", registry_state="active"))
+            session.flush()
+            session.add(ProjectFolderRecordModel(folder_id="existing-folder", project_id="existing-P1", folder_path=str(source), created_on=date.today()))
+            session.add(FileAssetModel(asset_id="existing-asset", project_id="existing-P1", asset_type="source", path=str(source / "result.txt")))
+            session.commit()
+        def review():
+            response = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]})
+            assert response.status_code == 200, response.text
+            return response.json()
+        def receive(plan, batch_id):
+            return client.post("/api/project-library/batches", json={**{k: plan[k] for k in ("plan_id", "fingerprint")}, "selected": [str(source)], "batch_id": batch_id}).json()
+        plan = review()
+        assert plan["items"][0]["status"] == "ready", plan
+        assert "existing project" in " ".join(plan["items"][0]["warnings"]).lower()
+        with LibraryFiles(settings).project_lock("existing-P1"):
+            held = receive(plan, "a" * 32)
+            assert held["counts"]["added"] == 0
+        assert client.get("/api/project-library/members").json()["items"] == []
+        assert list(settings.projects_dir.iterdir()) == []
+        with Session(engine) as session:
+            session.get(ProjectModel, "existing-P1").registry_revision += 1
+            session.commit()
+        stale = receive(plan, "a" * 32)
+        assert stale["counts"]["added"] == 0
+        assert list(settings.projects_dir.iterdir()) == []
+        fresh = review()
+        publish = LibraryFiles.publish_workspace_metadata
+        if interruption:
+            def fail_publish(*args):
+                raise OSError("simulated interruption after binding")
+            monkeypatch.setattr(LibraryFiles, "publish_workspace_metadata", fail_publish)
+            interrupted = receive(fresh, "b" * 32)
+            assert interrupted["counts"]["added"] == 0
+            assert interrupted["counts"]["failed"] == 1
+            monkeypatch.setattr(LibraryFiles, "publish_workspace_metadata", publish)
+        added = receive(fresh, "b" * 32)
+        assert added["counts"]["added"] == 1, added
+        member = client.get("/api/project-library/members/" + added["items"][0]["member_id"]).json()
+        assert member["project_id"] == "existing-P1" and member["can_continue"]
+        business = Path(member["folder_path"]) / source.name
+        with Session(engine) as session:
+            assert session.get(ProjectModel, "existing-P1").product_name == "Existing"
+            assert session.get(ProjectFolderRecordModel, "existing-folder").folder_path == str(business)
+            assert session.get(FileAssetModel, "existing-asset").path == str(business / "result.txt")
+            assert len(list(session.scalars(select(ProjectModel)))) == 1
+        assert (business / "result.txt").read_text(encoding="utf-8") == "existing evidence"
+        assert receive(fresh, "b" * 32)["items"] == added["items"]
+        assert len(client.get("/api/project-library/members").json()["items"]) == 1
+        assert (source / "result.txt").read_text(encoding="utf-8") == "existing evidence"
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("conflict", ["recycle", "registered_ltr", "managed_identity"])
+def test_known_identity_conflicts_do_not_silently_switch_working_project(tmp_path, conflict):
+    from backend.infrastructure.storage.models import LtrRecordModel
+    client, settings, engine = app_at(tmp_path / "library")
+    source = tmp_path / "DL-2026-09-032 Other title"
+    (source / ".connlab").mkdir(parents=True)
+    (source / "result.txt").write_text("evidence", encoding="utf-8")
+    (source / ".connlab/manifest.json").write_text(json.dumps({"project_id":"known", "dl_number":"DL-2026-09-032"}), encoding="utf-8")
+    try:
+        with Session(engine) as session:
+            session.add(ProjectModel(project_id="known", product_name="Existing", requestor="Lab", status="draft", registry_state="trash" if conflict == "recycle" else "active"))
+            session.flush()
+            if conflict == "registered_ltr":
+                session.add(LtrRecordModel(ltr_id="registered", project_id="known", ltr_number="DL-2026-09-033", status="registered"))
+            session.commit()
+            if conflict == "managed_identity":
+                ProjectLibraryRepository(session).add_member({"member_id":"managed", "project_id":"known", "ltr_number":None,
+                    "title":"Already managed", "folder_path":str(tmp_path / "existing-root"), "source_path":"old",
+                    "source_project_id":"known", "revision":1, "batch_id":None, "created_at":"2026-11-01", "snapshot_fingerprint":None})
+        plan=client.post("/api/project-library/intake-plan", json={"sources":[str(source)]}).json()
+        row=plan["items"][0]
+        assert row["status"] == "conflict", row
+        assert row["can_keep_separate"] is (conflict == "managed_identity")
+        response=client.post("/api/project-library/batches", json={**{k:plan[k] for k in ("plan_id","fingerprint")}, "selected":[str(source)]}).json()
+        assert response["counts"]["added"] == 0, response
+        assert list(settings.projects_dir.iterdir()) == []
+        with Session(engine) as session:
+            assert session.get(ProjectModel,"known").product_name == "Existing"
+            assert len(list(session.scalars(select(ProjectModel)))) == 1
+    finally:
+        engine.dispose()
+
+
 def test_project_travels_without_source_database_and_preserves_report_evidence(tmp_path):
     a, settings_a, engine_a = app_at(tmp_path / "A")
     b, settings_b, engine_b = app_at(tmp_path / "B")
@@ -123,7 +241,7 @@ def test_project_travels_without_source_database_and_preserves_report_evidence(t
     assert restored["member"]["project_id"] == project_id
     assert restored["member"]["can_continue"] is True
     assert restored["member"]["snapshot_status"] == "current"
-    assert (Path(restored["member"]["folder_path"]) / "result.csv").read_text() == "P1,12.34"
+    assert (Path(restored["member"]["folder_path"]) / source.name / "result.csv").read_text() == "P1,12.34"
     restored_evidence = settings_b.data_dir / "report_authoring_assets" / sha256(project_id.encode()).hexdigest() / (content_hash + ".txt")
     assert restored_evidence.read_bytes() == content
     with Session(engine_b) as session:
@@ -583,7 +701,7 @@ def test_carried_test_data_cannot_be_bypassed_by_plain_intake_or_empty_takeover(
     assert review["blockers"]
     assert b.post(f"/api/project-library/members/{member['member_id']}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")}).status_code==409
     with Session(eb) as session:
-        assert list(session.scalars(select(ProjectModel)))==[]
+        assert list(session.scalars(select(ProjectModel.project_id))) == [member["project_id"]]
     ea.dispose();eb.dispose()
 
 
@@ -800,10 +918,11 @@ with Session(engine) as session:
     if fresh_review:
         fresh=b.post("/api/project-library/restore-plan",json={"folder":review_folder}).json()
         assert fresh["status"]=="conflict",fresh
-        scene_before = (Path(target["folder_path"])/"result.txt").read_bytes()
+        scene_file = Path(target["folder_path"]) / (source["ltr_number"] + " History") / "result.txt"
+        scene_before = scene_file.read_bytes()
         packet_before = (Path(original["folder_path"])/".connlab/portable/snapshot.json").read_bytes()
         reject_unselected_restore(b, fresh)
-        assert (Path(target["folder_path"])/"result.txt").read_bytes() == scene_before
+        assert scene_file.read_bytes() == scene_before
         assert (Path(original["folder_path"])/".connlab/portable/snapshot.json").read_bytes() == packet_before
         assert LibraryFiles(settings).pending_replacement_gate(target["project_id"])
         renewed=b.post("/api/project-library/restore-plan",json={"folder":review_folder,"resolution":"replace_working_copy"}).json()
@@ -942,9 +1061,17 @@ def test_link_existing_project_takeover_honors_writer_slot_and_stale_review(tmp_
         session.flush()
         session.add(ProjectFolderRecordModel(folder_id="existing-folder",project_id="existing-P1",folder_path=str(source),created_on=date.today()))
         session.commit()
-    plan=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
-    batch=client.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[str(source)]}).json()
-    member_id=batch["items"][0]["member_id"]
+    # A received-but-unclaimed entry from before automatic project binding.
+    received_root=settings.projects_dir/source.name
+    shutil.copytree(source,received_root)
+    with Session(engine) as session:
+        member=ProjectLibraryRepository(session).add_member({
+            "member_id":"legacy-unclaimed", "project_id":None, "ltr_number":"DL-2026-09-032",
+            "title":"Existing version", "folder_path":str(received_root), "source_path":str(source),
+            "source_project_id":"existing-P1", "revision":1, "batch_id":None,
+            "created_at":"2026-11-01T00:00:00Z", "snapshot_fingerprint":None})
+    LibraryFiles(settings).write_marker(member)
+    member_id=member["member_id"]
     review=client.get(f"/api/project-library/members/{member_id}/takeover-plan").json()
     with LibraryFiles(settings).project_lock("existing-P1"):
         response=client.post(f"/api/project-library/members/{member_id}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")})
@@ -1472,6 +1599,9 @@ def test_source_gap_descriptions_and_unrelated_history_are_not_executed_or_deref
         entry = migration_gap_entry(member["project_id"], description)
         opaque = {"kind": "unrelated_legacy_history", "version": 999, "warnings": ["must not become source-gap warnings"], "path": str(outside), "auto_sync_enabled": True}
         seal_migration_history(member["folder_path"], [entry, opaque])
+        journal_root = settings.data_dir / "project_folder_generation"
+        journal_existed = journal_root.exists()
+        journal_before = {str(path.relative_to(journal_root)): path.read_bytes() for path in journal_root.rglob("*") if path.is_file()}
         original = Path.open
         def protected(path, *args, **kwargs):
             if path == outside: raise AssertionError("A source-gap description was dereferenced")
@@ -1486,7 +1616,8 @@ def test_source_gap_descriptions_and_unrelated_history_are_not_executed_or_deref
         with Session(engine) as session:
             from sqlalchemy import text
             assert session.execute(text("SELECT COUNT(*) FROM project_public_folder_workflow_states")).scalar_one() == 0
-        assert not (settings.data_dir / "project_folder_generation").exists()
+        assert journal_root.exists() == journal_existed
+        assert {str(path.relative_to(journal_root)): path.read_bytes() for path in journal_root.rglob("*") if path.is_file()} == journal_before
     finally:
         engine.dispose()
 

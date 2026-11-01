@@ -17,6 +17,19 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
 from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
 
 
+def test_confirmed_fee_get_without_matrix_reports_not_ready() -> None:
+    from backend.application.confirmed_matrix_fee_draft_service import ConfirmedMatrixFeeDraftNotFoundError
+    app.dependency_overrides[get_confirmed_fee_version_service] = lambda: _FailingService(
+        ConfirmedMatrixFeeDraftNotFoundError("Active confirmed matrix not found.")
+    )
+    try:
+        response = TestClient(app, raise_server_exceptions=False).get("/api/projects/P1/confirmed-fee/latest")
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 404
+    assert "matrix" in response.json()["detail"].lower()
+
+
 def test_confirmed_fee_get_missing_returns_current_context() -> None:
     service = _Service(_missing_result())
     app.dependency_overrides[get_confirmed_fee_version_service] = lambda: service

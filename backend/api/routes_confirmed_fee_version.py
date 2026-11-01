@@ -19,6 +19,7 @@ from backend.application.confirmed_fee_version_service import (
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
     ConfirmedMatrixFeeTemplateBasicFillNotFoundError,
 )
+from backend.application.confirmed_matrix_fee_draft_service import ConfirmedMatrixFeeDraftNotFoundError
 from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
 
 
@@ -106,7 +107,7 @@ def get_confirmed_fee_latest(
     """Return latest Confirmed Fee authority status for one project."""
     try:
         return _to_latest_response(service.get_latest(project_id))
-    except ConfirmedMatrixFeeTemplateBasicFillNotFoundError as exc:
+    except (ConfirmedMatrixFeeTemplateBasicFillNotFoundError, ConfirmedMatrixFeeDraftNotFoundError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 

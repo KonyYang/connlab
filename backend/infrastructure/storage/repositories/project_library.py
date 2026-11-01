@@ -2,9 +2,10 @@
 from datetime import datetime, timezone, date
 import json
 from uuid import uuid4
+from pathlib import Path
 from sqlalchemy import select, or_
 from backend.domain.project_library import ProjectLibraryConflict
-from backend.infrastructure.storage.models import ProjectModel, LtrRecordModel, ProjectOfficialWorkspaceRecordModel
+from backend.infrastructure.storage.models import ProjectModel, LtrRecordModel, ProjectOfficialWorkspaceRecordModel, ProjectFolderRecordModel
 from backend.infrastructure.storage.models_project_library import ProjectLibraryMemberModel, ProjectLibraryBatchModel
 
 
@@ -70,6 +71,9 @@ class ProjectLibraryRepository:
         if row is None:
             raise ProjectLibraryConflict("The existing project is no longer available.")
         return {"registry_state": row.registry_state, "registry_revision": row.registry_revision,
+                "folder_paths": [{"folder_id": folder.folder_id, "folder_path": folder.folder_path}
+                    for folder in self.session.scalars(select(ProjectFolderRecordModel).where(ProjectFolderRecordModel.project_id == project_id)
+                        .order_by(ProjectFolderRecordModel.created_on, ProjectFolderRecordModel.folder_id))],
                 "workspace": self.workspace(project_id),
                 "numbers": [number for number in self.project_numbers() if number["project_id"] == project_id]}
 
@@ -77,12 +81,28 @@ class ProjectLibraryRepository:
         return [{"project_id": row.project_id, "ltr_number": row.ltr_number, "is_current_owner": row.is_current_owner, "status": row.status}
                 for row in self.session.scalars(select(LtrRecordModel))]
 
+    def imported_identities(self):
+        rows = self.session.execute(select(ProjectLibraryMemberModel.project_id, ProjectLibraryMemberModel.member_id, ProjectLibraryMemberModel.ltr_number,
+                                           ProjectLibraryMemberModel.title).where(ProjectLibraryMemberModel.project_id.is_not(None)))
+        return {row.project_id: {"member_id": row.member_id, "ltr_number": row.ltr_number, "title": row.title} for row in rows}
+
+    def imported_identity(self, project_id):
+        row = self.session.execute(select(ProjectLibraryMemberModel.member_id, ProjectLibraryMemberModel.ltr_number,
+                                          ProjectLibraryMemberModel.title).where(ProjectLibraryMemberModel.project_id == project_id)).first()
+        return {"member_id": row.member_id, "ltr_number": row.ltr_number, "title": row.title} if row else None
+
     def create_planning_project(self, member):
-        project_id = uuid4().hex
+        row = self.session.get(ProjectLibraryMemberModel, member["member_id"], populate_existing=True)
+        if row is None:
+            raise LookupError("Project library entry not found.")
+        if row.project_id:
+            return row.project_id
+        project_id = member.get("source_project_id") or uuid4().hex
+        if self.session.get(ProjectModel, project_id) is not None:
+            raise ProjectLibraryConflict("This project identity already exists. Review its existing project before importing.")
         self.session.add(ProjectModel(project_id=project_id, project_no=member.get("ltr_number"),
             product_name=member["title"], requestor="Imported project", status="draft",
             lifecycle_state="active", registry_state="active", registry_revision=0, created_on=date.today()))
-        row = self.session.get(ProjectLibraryMemberModel, member["member_id"])
         row.project_id = project_id
         row.revision += 1
         self.session.commit()
@@ -99,15 +119,19 @@ class ProjectLibraryRepository:
         rebind_project_paths(self.session, project_id, source, target)
         self.session.commit()
 
-    def link_existing_project(self, member, project_id):
-        if self.project_context(project_id)["registry_state"] != "active":
+    def link_existing_project(self, member, project_id, business_path=None):
+        context = self.project_context(project_id)
+        if context["registry_state"] != "active":
             raise ProjectLibraryConflict("The existing project is retained history or in Trash. Resolve its registry state before takeover.")
         from backend.infrastructure.project_library.ownership import rebind_project_paths
         if any(row["project_id"] == project_id and row["member_id"] != member["member_id"] for row in self.members()):
             raise ProjectLibraryConflict("Another entry already manages this project.")
         workspace = self.workspace(project_id)
-        origin = workspace["local_workspace_path"] if workspace else member["source_path"]
-        rebind_project_paths(self.session, project_id, origin, member["folder_path"])
+        origin = workspace["local_workspace_path"] if workspace else (
+            context["folder_paths"][-1]["folder_path"] if context["folder_paths"] else member["source_path"])
+        destination = member["folder_path"] if workspace else (business_path or member["folder_path"])
+        extras = [(workspace["official_folder_path"], business_path)] if workspace and business_path else []
+        rebind_project_paths(self.session, project_id, origin, destination, extras)
         row = self.session.get(ProjectLibraryMemberModel, member["member_id"])
         row.project_id = project_id
         row.revision += 1
@@ -116,6 +140,23 @@ class ProjectLibraryRepository:
     def workspace(self, project_id):
         row = self.session.scalar(select(ProjectOfficialWorkspaceRecordModel).where(ProjectOfficialWorkspaceRecordModel.project_id == project_id))
         return {column.name: getattr(row, column.name) for column in row.__table__.columns} if row else None
+
+    def bind_imported_workspace(self, member, business_path, template_path):
+        root = Path(member["folder_path"])
+        existing = self.workspace(member["project_id"])
+        if existing:
+            if (Path(existing["local_workspace_path"]) != root
+                    or Path(existing["official_folder_path"]) != Path(business_path)
+                    or existing["dl_number"] != member["ltr_number"]):
+                raise ProjectLibraryConflict("This project already has a different working folder. Review its location before importing.")
+            return existing
+        self.session.add(ProjectOfficialWorkspaceRecordModel(
+            workspace_id=uuid4().hex, project_id=member["project_id"], dl_number=member["ltr_number"],
+            local_workspace_path=str(root), source_book_path=str(root / "Source Book"),
+            official_folder_path=str(business_path), manifest_path=str(root / ".connlab" / "manifest.json"),
+            template_source_path=str(template_path), created_at=now()))
+        self.session.commit()
+        return self.workspace(member["project_id"])
 
     def workspaces(self):
         return [{column.name: getattr(row, column.name) for column in row.__table__.columns}

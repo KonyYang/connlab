@@ -11,6 +11,7 @@ from backend.application.project_basic_information_service import (
 from backend.application.project_identity import (
     display_identity_override_from_values,
     resolve_project_identity,
+    with_imported_project_identity,
 )
 from backend.domain import LtrRecord, Project, ProjectTemporaryContext
 
@@ -74,6 +75,7 @@ class ProjectRegistryRow:
     total_group_count: int | None = None
     estimated_completion_date: str | None = None
     group_completion_details: tuple[dict, ...] = ()
+    library_member_id: str | None = None
 
 
 class ProjectRegistryMatrixStore(Protocol):
@@ -81,6 +83,11 @@ class ProjectRegistryMatrixStore(Protocol):
 
     def list_active_project_ids(self) -> set[str]:
         """Return project ids with an active confirmed Matrix in one read."""
+
+
+class ProjectRegistryLibraryStore(Protocol):
+    def imported_identities(self) -> dict[str, dict[str, str | None]]:
+        """Read historical identifiers only through explicit project membership."""
 
 
 class ProjectRegistrySummaryService:
@@ -95,6 +102,7 @@ class ProjectRegistrySummaryService:
         basic_information_store: ProjectRegistryBasicInformationStore | None = None,
         matrix_store: ProjectRegistryMatrixStore | None = None,
         group_completion_service=None,
+        project_library_store: ProjectRegistryLibraryStore | None = None,
     ) -> None:
         """Create the service with read-only stores."""
         self._projects = project_store
@@ -103,6 +111,7 @@ class ProjectRegistrySummaryService:
         self._basic_information = basic_information_store
         self._matrices = matrix_store
         self._group_completion = group_completion_service
+        self._library = project_library_store
 
     def list_rows(self) -> list[ProjectRegistryRow]:
         """Return registry summary rows for normal projects."""
@@ -111,6 +120,7 @@ class ProjectRegistrySummaryService:
     def _rows_for(self, projects: list[Project]) -> list[ProjectRegistryRow]:
         rows: list[ProjectRegistryRow] = []
         confirmed_project_ids = self._matrices.list_active_project_ids() if self._matrices else set()
+        imported = self._library.imported_identities() if self._library else {}
         for project in projects:
             completion = self._group_completion.read(project.project_id) if self._group_completion and project.project_id in confirmed_project_ids else None
             basic_information = (
@@ -126,6 +136,7 @@ class ProjectRegistrySummaryService:
                 self._ltrs.list_by_project(project.project_id),
                 identity_override=identity_override,
             )
+            identity = with_imported_project_identity(identity, imported.get(project.project_id, {}).get("ltr_number"))
             temporary_context = (
                 self._temporary_contexts.get_by_project(project.project_id)
                 if self._temporary_contexts is not None
@@ -133,6 +144,7 @@ class ProjectRegistrySummaryService:
             )
             rows.append(
                 ProjectRegistryRow(
+                    library_member_id=imported.get(project.project_id, {}).get("member_id"),
                     completed_group_count=completion["completed_count"] if completion else None,
                     total_group_count=completion["total_count"] if completion else None,
                     estimated_completion_date=completion["estimated_completion_date"] if completion else None,

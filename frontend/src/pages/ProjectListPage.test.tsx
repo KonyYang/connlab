@@ -31,6 +31,26 @@ const listProjectRegistryRowsMock = vi.mocked(listProjectRegistryRows);
 const getProjectLifecycleMock = vi.mocked(getProjectLifecycle);
 
 describe("ProjectListPage lifecycle registry views", () => {
+  it("shows an imported project once with its historical LTR and normal workspace and recycle actions", async () => {
+    const number = "DL-2026-09-032A1", onOpenProject = vi.fn();
+    mockRows([registryRow({ project_id: "imported-id", display_project_id: number, ltr_number: number,
+      display_project_id_kind: "imported", has_registered_ltr: false, registered_ltr_number: null,
+      temporary_project_id: null, status: "draft", test_item: null, total_group_count: null })]);
+    mockLifecycle({ "imported-id": lifecycle({ project_id: "imported-id", lifecycle_state: "active", readonly: false }) });
+    vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [{ member_id: "member-import", project_id: "imported-id",
+      ltr_number: number, title: "Connector sample", folder_path: `D:/Projects/${number}`, revision: 1, batch_id: "batch-import",
+      snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: true }] });
+    render(<ProjectListPage onOpenProject={onOpenProject} />);
+    expect(await screen.findByText(number)).toBeTruthy();
+    expect(screen.getByText("Imported · Review Needed")).toBeTruthy();
+    expect(screen.getByText("Matrix needed")).toBeTruthy();
+    expect(screen.queryByText("Files Only", { exact: true, selector: "span" })).toBeNull();
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+    expect(await screen.findByRole("button", { name: `Delete project ${number}` })).toBeTruthy();
+    await userEvent.setup().click(screen.getByRole("button", { name: new RegExp(`Open Workbench.*${number}`) }));
+    expect(onOpenProject).toHaveBeenCalledWith("imported-id");
+  });
+
   it("offers import only in Projects and restores the entry after leaving Recycle", async () => {
     mockRows([]);
     const onImport = vi.fn(), user = userEvent.setup();

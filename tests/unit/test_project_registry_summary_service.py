@@ -18,6 +18,43 @@ from backend.domain import (
 )
 
 
+def test_imported_identity_is_visible_without_fabricating_ltr_registration() -> None:
+    class ImportedProjects:
+        def imported_identities(self):
+            return {"P1": {"ltr_number": "DL-2026-09-032A1", "title": "Historical connector"}}
+
+    service = ProjectRegistrySummaryService(
+        project_store=_ProjectStore([_project(project_id="P1", status=ProjectStatus.DRAFT)]),
+        ltr_store=_LtrStore({}),
+        project_library_store=ImportedProjects(),
+    )
+    row = service.list_rows()[0]
+    assert row.display_project_id == "DL-2026-09-032A1"
+    assert row.display_project_id_kind == "imported"
+    assert row.has_registered_ltr is False
+    assert row.registered_ltr_number is None
+    assert row.temporary_project_id is None
+    assert row.has_confirmed_matrix is False
+    assert row.total_group_count is None
+    assert row.estimated_completion_date is None
+
+
+def test_registered_ltr_remains_authoritative_when_imported_number_differs() -> None:
+    class ImportedProjects:
+        def imported_identities(self):
+            return {"P1": {"ltr_number": "DL-2026-09-032A1", "title": "Old title"}}
+
+    service = ProjectRegistrySummaryService(
+        project_store=_ProjectStore([_project(project_id="P1")]),
+        ltr_store=_LtrStore({"P1": [_ltr(project_id="P1", number="DL-2026-09-033", notes=None)]}),
+        project_library_store=ImportedProjects(),
+    )
+    row = service.list_rows()[0]
+    assert row.display_project_id == "DL-2026-09-033"
+    assert row.has_registered_ltr is True
+    assert row.display_project_id_kind == "registered"
+
+
 def test_registry_summary_uses_new_project_setup_fields_from_backend_notes() -> None:
     service = ProjectRegistrySummaryService(
         project_store=_ProjectStore(

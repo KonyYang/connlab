@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any
 
@@ -62,6 +62,15 @@ def resolve_project_identity(
         temporary_project_id=None if ltr_number else temporary_project_id,
         registered_ltr_number=ltr_number,
     )
+
+
+def with_imported_project_identity(identity: ProjectIdentity, historical_number: str | None) -> ProjectIdentity:
+    """Expose reviewed imported provenance without claiming a new LTR registration."""
+    number = _text(historical_number)
+    if identity.has_registered_ltr or not number:
+        return identity
+    return replace(identity, ltr_number=number, display_project_id=number,
+                   display_project_id_kind="imported", temporary_project_id=None)
 
 
 def display_identity_override_from_values(

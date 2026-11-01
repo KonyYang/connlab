@@ -45,6 +45,7 @@ export function resumeProjectFolderGeneration(projectId: string, operationId: st
 }
 
 export type Project = {
+  library_member_id?: string | null;
   project_id: string;
   registry_state?: "active" | "trash" | "history";
   registry_revision?: number;
@@ -79,7 +80,7 @@ export type ProjectRegistryRow = {
   progress: number;
   notes?: string | null;
   display_project_id: string;
-  display_project_id_kind: "registered" | "temporary";
+  display_project_id_kind: "registered" | "temporary" | "imported";
   has_registered_ltr: boolean;
   temporary_project_id?: string | null;
   registered_ltr_number?: string | null;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
+import { getLibraryMember } from "../../api/projectLibrary";
 import { getLibraryRuntime, listLibraryMembers, scanLibrarySources, startLibraryBatch, getLibraryBatch, resumeLibraryBatch, pickLibraryFolder, planPortableRestore, type LibraryRuntime, type LibraryMember, type LibraryFileAssignment, type LibraryScan, type LibraryIntakePlan, type LibraryBatch, type LibraryBatchRequest, type PortableRestorePlan, type PortableResolution } from "../../api/projectLibrary";
 import { ProjectImportResults, type ImportResultDetails } from "./ProjectImportResults";
 import { ProjectImportReviewList } from "./ProjectImportReviewList";
@@ -215,11 +216,27 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
       warnings: [...new Set([...warnings, ...member.warnings])],
     };
   }
-  function openImportedMember(memberId: string) {
+  async function openImportedMember(memberId: string) {
     const restored = snapshotResults.find(row => row.member_id === memberId)?.result;
-    // Only the completed restore result authorizes a workbench destination; an LTR match does not.
-    if (onOpenProject && restored && restored.status !== "history_kept" && !restored.member.is_history && restored.member.can_continue && restored.member.project_id) onOpenProject(restored.member.project_id);
-    else onOpenMember(memberId);
+    if (restored) {
+      if (onOpenProject && restored.status !== "history_kept" && !restored.member.is_history && restored.member.can_continue && restored.member.project_id) onOpenProject(restored.member.project_id);
+      else onOpenMember(memberId);
+      return;
+    }
+    if (!onOpenProject) { onOpenMember(memberId); return; }
+    // Resolve the completed ordinary intake's identity, never infer a project from its LTR.
+    const epoch = interactionEpoch.current;
+    setBusy(true); setError(""); setBusyMessage("Opening project…");
+    try {
+      const member = await getLibraryMember(memberId);
+      if (!live.current || epoch !== interactionEpoch.current) return;
+      if (member.project_id && member.can_continue && !member.is_history) onOpenProject(member.project_id);
+      else onOpenMember(memberId);
+    } catch (cause) {
+      if (live.current && epoch === interactionEpoch.current) setError(cause instanceof Error ? cause.message : "Could not open the imported project. Try again.");
+    } finally {
+      if (live.current && epoch === interactionEpoch.current) setBusy(false);
+    }
   }
   const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>{backLabel}</button>;
   const results = displayBatch && <ProjectImportResults batch={displayBatch} titlesBySource={Object.fromEntries([...(plan?.items ?? []), ...snapshots, ...snapshotResults].map(item => [item.source_path, item.title]))}
