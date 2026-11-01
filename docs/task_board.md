@@ -164,15 +164,15 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-10-31T23:58:42.306297Z",
+        "updated_at": "2026-11-01T00:06:14.510718Z",
         "checkpoint": {
-          "requires_user": false,
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "status": "running",
-          "stage": "implementation",
           "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
-          "summary": "Second slice implemented: recognized business folder wraps under pure full-LTR root with Source Book, complete root is not nested twice, duplicate comparison accounts for envelope, title changes keep stable root, source-named unregistered folders require conflict review. Registry reads historical LTR via explicit membership with imported display kind, never fabricates LTR registration; standard row has workbench/recycle buttons and Matrix-needed state. Developer feedback: 38 Python API/registry tests, 23 frontend tests, build passed; 3 focused portability/guard tests passed after preserving damaged-snapshot takeover protection. Local commit saved. Remaining: actual workbench folder binding, direct Open Project after ordinary intake, truthful missing-information UI, broader portability/recycle and final isolated browser QA, review and local integration. No real-data writes/push/publication."
+          "version": 1,
+          "stage": "implementation",
+          "summary": "Third slice: normalized ordinary imports now create an idempotent official-workspace path record and publish a matching manifest; no LTR registration or Matrix/test data is invented. Success-page Open Project resolves actual member project_id and goes directly to common workbench, with history/unavailable/unbound fallback, retry without reimport, and late-unmount response protection. Developer checks: 12 targeted API/portable/path checks and 57 frontend tests passed, TypeScript/build passed. Local commit saved, no integration into running primary. Remaining: audit incomplete/unknown-layout/no-LTR workbench file access and missing-information guidance, Recycle historical identity/conflict/restore behavior, whole portability regression, actual isolated UI sample smoke, exact diff review/final QA/local integration. Goal remains incomplete; no permission needed for authorized remaining work, no real-data mutation/push/publication.",
+          "schema": "connlab.sol-task-checkpoint",
+          "status": "running",
+          "requires_user": false
         },
         "report": null
       }
