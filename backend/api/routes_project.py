@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.api.dependencies import (
     get_project_lifecycle_management_service,
@@ -53,7 +53,16 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 class GroupCompletionUpdateRequest(BaseModel):
     confirmed_matrix_id: str
-    completed: bool
+    completed: bool | None = None
+    description: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def require_change(self):
+        if "completed" in self.model_fields_set and self.completed is None:
+            raise ValueError("Completed must be true or false when provided.")
+        if self.completed is None and "description" not in self.model_fields_set:
+            raise ValueError("Provide completion or a description to save.")
+        return self
 
 
 @router.get("/{project_id}/group-completion")
@@ -68,7 +77,8 @@ def get_group_completion(project_id: str, service=Depends(get_group_completion_s
 def update_group_completion(project_id: str, group_key: str, request: GroupCompletionUpdateRequest,
                             service=Depends(get_group_completion_service)):
     try:
-        return service.update(project_id, request.confirmed_matrix_id, group_key, request.completed)
+        changes = {"description": request.description} if "description" in request.model_fields_set else {}
+        return service.update(project_id, request.confirmed_matrix_id, group_key, request.completed, **changes)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

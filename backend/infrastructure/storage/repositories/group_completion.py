@@ -13,8 +13,8 @@ class GroupCompletionRepository:
             GroupCompletionEventModel.project_id == project_id
         ).order_by(GroupCompletionEventModel.recorded_at.desc(), GroupCompletionEventModel.event_id.desc())))
 
-    def save(self, project_id, group_lineage, group_key, matrix_revision, signature, completed, completed_at):
+    def save(self, project_id, group_lineage, group_key, matrix_revision, signature, completed, completed_at, description=None):
         self.session.add(GroupCompletionEventModel(event_id=uuid4().hex, project_id=project_id,
                          group_lineage=group_lineage, group_key=group_key, matrix_revision=matrix_revision, signature=signature, completed=completed,
-                         completed_at=completed_at, recorded_at=datetime.now(timezone.utc).isoformat()))
+                         completed_at=completed_at, description=description, recorded_at=datetime.now(timezone.utc).isoformat()))
         self.session.flush()

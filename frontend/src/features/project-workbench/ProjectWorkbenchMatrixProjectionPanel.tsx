@@ -6,6 +6,7 @@ import {
   getProjectLifecycle,
   updateGroupCompletion,
   type GroupCompletion,
+  type GroupCompletionUpdate,
   type ConfirmedMatrixTestRecordPreview,
 } from "../../api/client";
 import {
@@ -85,15 +86,22 @@ export function ProjectWorkbenchMatrixProjectionPanel({
   );
   function renderCompletion(item: GroupCompletion["groups"][number]): ReactElement {
     const current = epoch.current;
-    return <label key={item.group_key}><input type="checkbox" aria-label={`${item.group_label} completed`}
-      checked={item.completed} disabled={!canEdit || completionBusy} onChange={(event) => {
+    return <GroupCompletionControl key={`${projectId}:${completion?.confirmed_matrix_id}:${item.group_key}`}
+      item={item} disabled={!canEdit || completionBusy} onSave={(changes) => {
         if (!completion) return;
         setCompletionBusy(true); setCompletionError(null);
-        void updateGroupCompletion(projectId, item.group_key, completion.confirmed_matrix_id, event.target.checked)
-          .then((value) => { if (epoch.current === current) setCompletion(value); })
+        void updateGroupCompletion(projectId, item.group_key, completion.confirmed_matrix_id, changes)
+          .then((value) => {
+            if (epoch.current !== current) return;
+            if (value.confirmed_matrix_id !== completion.confirmed_matrix_id) {
+              setCompletionError("Matrix changed. Refresh the project before saving again.");
+              return;
+            }
+            setCompletion(value);
+          })
           .catch(() => { if (epoch.current === current) setCompletionError("Unable to update group completion. Refresh the project and try again."); })
           .finally(() => { if (epoch.current === current) setCompletionBusy(false); });
-      }} /> {item.needs_review ? "Review needed" : "Completed"}</label>;
+      }} />;
   }
   useEffect(() => {
     if (state !== "ready" || !viewModel || selectedTokenReference) {
@@ -110,7 +118,7 @@ export function ProjectWorkbenchMatrixProjectionPanel({
     <section className="runtime-console-matrix-projection" aria-label="Matrix Projection">
       {completionError ? <p className="error" role="alert">{completionError}</p> : null}
       {completion && viewModel && completion.confirmed_matrix_id !== viewModel.confirmedMatrixId ? <p role="alert">Matrix changed. Refresh the project to update group completion.</p> : null}
-      {completion && (!viewModel || completion.confirmed_matrix_id === viewModel.confirmedMatrixId) && completion.groups.some((item) => !viewModel?.groupColumns.some((group) => group.groupKey === item.group_key)) ? (
+      {completion && (state === "ready" || state === "empty") && (!viewModel || completion.confirmed_matrix_id === viewModel.confirmedMatrixId) && completion.groups.some((item) => !viewModel?.groupColumns.some((group) => group.groupKey === item.group_key)) ? (
         <div aria-label="Other groups">{completion.groups.filter((item) => !viewModel?.groupColumns.some((group) => group.groupKey === item.group_key)).map((item) => <div key={item.group_key}>{item.group_label}: {renderCompletion(item)}</div>)}</div>
       ) : null}
       {state === "not_ready" ? (
@@ -212,6 +220,28 @@ export function ProjectWorkbenchMatrixProjectionPanel({
       ) : null}
     </section>
   );
+}
+
+function GroupCompletionControl({item, disabled, onSave}: {
+  item: GroupCompletion["groups"][number];
+  disabled: boolean;
+  onSave: (changes: GroupCompletionUpdate) => void;
+}): ReactElement {
+  const savedDescription = item.description ?? "";
+  const [description, setDescription] = useState(savedDescription);
+  useEffect(() => setDescription(savedDescription), [savedDescription]);
+  const dirty = description !== savedDescription;
+  return <div className="runtime-console-group-completion">
+    <label className="runtime-console-group-completion-check">
+      <input type="checkbox" aria-label={`${item.group_label} completed`} checked={item.completed}
+        disabled={disabled} onChange={(event) => onSave({completed: event.target.checked, ...(dirty ? {description} : {})})} />
+      {item.needs_review ? "Review needed" : "Completed"}
+    </label>
+    <textarea aria-label={`${item.group_label} description`} placeholder="Description" rows={2} maxLength={2000}
+      value={description} disabled={disabled} onChange={(event) => setDescription(event.target.value)} />
+    {dirty ? <button type="button" aria-label={`Save ${item.group_label} description`} disabled={disabled}
+      onClick={() => onSave({description})}>Save</button> : null}
+  </div>;
 }
 
 function findFirstProjectionToken(
