@@ -434,6 +434,26 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(onBackToWorkbench).toHaveBeenCalledWith({ refreshBasicInformation: true });
   });
 
+  it.each([null, "", "Choose an item."])("defaults an unset Test Result (%s) to In progress without saving on entry", async value => {
+    const initial = response();
+    if (value === null) delete initial.draft.values.test_result;
+    else initial.draft.values.test_result = value;
+    api.getProjectBasicInformation.mockResolvedValue(initial);
+    render(<ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+    expect(await screen.findByLabelText("Test Result")).toHaveProperty("value", "In progress");
+    expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
+    expect(api.confirmProjectBasicInformation).not.toHaveBeenCalled();
+  });
+
+  it.each(["OK", "Ref", "NG", "In progress", "In-waiting"])("preserves the authoritative Test Result %s instead of applying the default", async value => {
+    const initial = response({ test_result: value }, "confirmed");
+    initial.draft = { values: { ...initial.draft.values, test_result: "" } };
+    api.getProjectBasicInformation.mockResolvedValue(initial);
+    render(<ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+    expect(await screen.findByLabelText("Test Result")).toHaveProperty("value", value);
+    expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
+  });
+
   it("defaults legacy Lab Performing values to Dongguan", async () => {
     api.getProjectBasicInformation.mockResolvedValue(
       response({ lab_performing_tests: "ConnLab" })

@@ -405,7 +405,7 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
         kind: "select",
         layout: "quarter",
         options: TEST_RESULT_OPTIONS,
-        defaultValue: "OK",
+        defaultValue: "In progress",
         preserveUnknownOption: false,
       },
       {
