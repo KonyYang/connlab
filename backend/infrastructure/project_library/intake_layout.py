@@ -2,6 +2,13 @@
 from pathlib import Path
 
 
+def files_only_layout(source):
+    path = Path(source["source_path"])
+    number = source.get("ltr_number")
+    return {"root_name": number or path.name,
+            "prefix": path.name if number and path.name != number else (number or "Imported") + " files"}
+
+
 def reception_layout(source):
     number = source.get("ltr_number")
     if source["kind"] != "project" or not number or source.get("has_portable"):

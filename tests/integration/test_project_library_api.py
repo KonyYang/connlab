@@ -62,6 +62,8 @@ def test_connlab_identity_without_snapshot_requires_explicit_files_only_choice(l
     assert (target/"evidence.txt").read_text(encoding="utf-8") == "original evidence"
     assert (source/".connlab/manifest.json").read_text(encoding="utf-8") == manifest
     assert review([{"source_path":str(source),"files_only":True}])["items"][0]["status"] == "already_added"
+    repeated=review()["items"][0]
+    assert repeated["status"] == "already_added" and repeated["source_state"] == "files_only", repeated
     import shutil
     other=tmp_path/"other-computer"/source.name
     shutil.copytree(source,other)

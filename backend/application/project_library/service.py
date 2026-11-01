@@ -97,6 +97,8 @@ class ProjectLibraryService:
             if source.get("files_only"):
                 linked = next((row for row in members if row["project_id"] == project_id), {})
                 project_id = identity.get("source_project_id") or linked.get("source_project_id") or project_id
+            elif project_id and project_id == source.get("previous_files_only_project_id"):
+                project_id = source_id
             ltr = str(identity.get("ltr_number") or identity.get("dl_number") or "").strip().casefold()
             if source_id and project_id and source_id != project_id:
                 return True
@@ -128,9 +130,15 @@ class ProjectLibraryService:
                     # Keep carried metadata inside the copied business subtree. The new
                     # files-only project must not claim the original project's identity.
                     source.update(original_project_id=source.get("project_id"), project_id=None, source_state="files_only", files_only=True)
-                    number = source.get("ltr_number")
-                    source["reception_layout"] = {"root_name": number or Path(source["source_path"]).name,
-                        "prefix": Path(source["source_path"]).name if number and Path(source["source_path"]).name != number else (number or "Imported") + " files"}
+                    source["reception_layout"] = source["files_only_layout"]
+                elif source.get("source_state") == "incomplete" and source.get("project_id"):
+                    previous = next((row for row in members if row.get("source_project_id") == source.get("project_id")
+                        and row["project_id"] and row["project_id"] != row["source_project_id"] and not row.get("is_history")), None)
+                    if previous:
+                        # This alias only recognizes unchanged files already received by
+                        # an explicit files-only choice. Changed sources still require it.
+                        source["previous_files_only_project_id"] = previous["project_id"]
+                        source["reception_layout"] = source["files_only_layout"]
                 if target_id or new_title:
                     source.pop("reception_layout", None)
                     source.pop("boundary_problem", None)
@@ -164,6 +172,8 @@ class ProjectLibraryService:
                     if matched:
                         status = "already_added"
                         existing_member_id = previous["member_id"]
+                        if previous["project_id"] == source.get("previous_files_only_project_id"):
+                            source["source_state"] = "files_only"
                         warnings.append("The same project identity and material are already received in the library.")
                     else:
                         status, separate = "conflict", True
@@ -184,6 +194,8 @@ class ProjectLibraryService:
                         if registered:
                             status = "already_added"
                             existing_member_id = registered["member_id"]
+                            if registered["project_id"] == source.get("previous_files_only_project_id"):
+                                source["source_state"] = "files_only"
                             warnings.append("The same project material is already in a registered library entry.")
                         else:
                             status, separate = "conflict", not bool(new_title)

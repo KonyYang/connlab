@@ -28,6 +28,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
   const [error, setError] = useState("");
   const [busyMessage, setBusyMessage] = useState("Checking selected folders…");
   const [manualOpen, setManualOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [setupAttempt, setSetupAttempt] = useState(0);
   const [batch, setBatch] = useState<LibraryBatch | null>(null);
   const [recoveryId, setRecoveryId] = useState("");
@@ -110,6 +111,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
   }
   function acceptReview(checked: Awaited<ReturnType<typeof reviewImportCandidates>>) {
     setManualOpen(false);
+    setMoreOpen(false);
     setPlan(checked.plan); setSnapshots(checked.snapshots);
     setSelected(readyImportPaths(checked.plan, checked.snapshots));
     const root = checked.projectsRoot;
@@ -266,7 +268,8 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
   useEffect(() => {
     if (!freshSuccess || !onOpenProject || !displayBatch || displayBatch.items.length !== 1 || (plan?.items.length ?? 0) + snapshots.length !== 1) return;
     const item = displayBatch.items[0], details = detailsBySource[item.source_path];
-    if (!item.member_id || item.status !== "added" || details?.warnings.length || details?.kind === "history") return;
+    const restored = snapshotResults.some(row => row.member_id === item.member_id);
+    if (!item.member_id || item.status !== "added" || restored && details?.warnings.length || details?.kind === "history") return;
     const key = `${displayBatch.batch_id}:${item.member_id}`;
     if (openedOutcome.current === key) return;
     openedOutcome.current = key;
@@ -298,7 +301,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
         <label>Source paths<textarea value={sources} rows={3} disabled={locked} onChange={event => changeSources(event.target.value)} placeholder="One folder or file path per line" /></label><button type="button" disabled={locked || !sourcePaths.length} onClick={() => void review()}>Check Paths</button>
       </details>
       </>}
-      {(hasReview || boundaryRoots.length > 0 || onLegacyPreview) && <details><summary>More Options</summary>
+      {(hasReview || boundaryRoots.length > 0 || onLegacyPreview) && <details open={moreOpen} onToggle={event => setMoreOpen(event.currentTarget.open)}><summary>More Options</summary>
         {hasReview && <div className="library-actions"><button type="button" disabled={locked} onClick={() => void choose()}>Add Folder</button><button type="button" disabled={locked} onClick={() => setManualOpen(true)}>Enter Paths Manually</button></div>}
         {hasReview && !manualOpen && <><p>{sourcePaths.length} {sourcePaths.length === 1 ? "location" : "locations"} selected</p><ul className="library-source-list" aria-label="Selected sources">{sourcePaths.map(path => <li key={path}><span>{path}</span><button type="button" disabled={locked} aria-label={`Remove ${path} from selection`} onClick={() => { const next = sourcePaths.filter(value => value !== path); changeSources(next.join("\n")); if (next.length) void review(next); }}>×</button></li>)}</ul>{sourcePaths.length > 1 && <button type="button" disabled={locked} onClick={() => changeSources("")}>Clear All</button>}</>}
         {boundaryRoots.length > 0 && <div><h3>Adjust Folder Selection</h3><p>Keep each project together. Change this only if the detected projects are incorrect.</p>{boundaryRoots.map(row => <div key={row.source_path} role="group" aria-label={`Project boundary ${row.title}`}><strong>{row.title}</strong><p>Import this complete folder, or choose its subfolders only when each is a separate project.</p><div className="library-actions"><button type="button" disabled={locked} onClick={() => void reviewBoundary([row.source_path])}>Import as One Project</button><button type="button" disabled={locked || !row.child_folders.length} onClick={() => void reviewBoundary(row.child_folders)}>Find Projects Inside</button></div></div>)}</div>}

@@ -43,6 +43,9 @@ explicitly choose Import Files Only. That choice creates a new project identity,
 retains the source metadata inside the copied subtree, and does not claim restored
 test data. Newer marker or snapshot versions require a ConnLab update and cannot
 use this fallback. Malformed metadata also prevents silent normal intake.
+The original software identity remains available for duplicate comparison, while
+the files-only project receives its own identity. Choosing the unchanged source
+again opens the received project; changed material still requires fresh review.
 
 Supported version-1 snapshots are verified before restore. The known earlier
 contract without group-completion events is normalized to an empty event

@@ -66,12 +66,40 @@ it("presents one project without batch selection or a repeated source editor", a
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
 });
 
+it("collapses source options again after manually checking a different project", async () => {
+  const user=userEvent.setup();
+  vi.mocked(api.planLibraryIntake).mockResolvedValue({...plan,items:[plan.items[0]]} as api.LibraryIntakePlan);
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onLegacyPreview={vi.fn()} />);
+  await enterSources(user,"D:/old/Force");
+  await user.click(screen.getByRole("button",{name:"Check Paths"}));
+  await screen.findByRole("button",{name:"Import Project",exact:true});
+  await user.click(screen.getByText("More Options"));
+  await user.click(screen.getByRole("button",{name:"Enter Paths Manually"}));
+  await user.clear(screen.getByLabelText("Source paths"));
+  await user.type(screen.getByLabelText("Source paths"),"D:/other");
+  await user.click(screen.getByRole("button",{name:"Check Paths"}));
+  await screen.findByRole("button",{name:"Import Project",exact:true});
+  expect(screen.getByText("More Options").closest("details")).toHaveProperty("open",false);
+  expect(screen.queryByRole("textbox",{name:"Source paths"})).toBeNull();
+});
+
 it("continues directly into a single imported project using its verified identity", async () => {
   const user=userEvent.setup(), open=vi.fn();
   vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old/Force");
   vi.mocked(api.planLibraryIntake).mockResolvedValue({...plan,items:[plan.items[0]]} as api.LibraryIntakePlan);
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={open} />);
   await user.click(await screen.findByRole("button",{name:"Choose Project Folders"}));
+  await user.click(await screen.findByRole("button",{name:"Import Project",exact:true}));
+  await waitFor(()=>expect(open).toHaveBeenCalledExactlyOnceWith("manual-project"));
+  expect(api.startLibraryBatch).toHaveBeenCalledTimes(1);
+});
+
+it("does not turn an already confirmed local-data link into another review step", async () => {
+  const user=userEvent.setup(), open=vi.fn();
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old/Force");
+  vi.mocked(api.planLibraryIntake).mockResolvedValue({...plan,items:[{...plan.items[0],source_state:"local_project",warnings:["Link the existing project and retain its data."]}]} as api.LibraryIntakePlan);
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={open} />);
+  await chooseFolder(user);
   await user.click(await screen.findByRole("button",{name:"Import Project",exact:true}));
   await waitFor(()=>expect(open).toHaveBeenCalledExactlyOnceWith("manual-project"));
   expect(api.startLibraryBatch).toHaveBeenCalledTimes(1);
@@ -190,6 +218,20 @@ it("reviews one saved project without bulk controls and explains its use before 
   expect(screen.queryByRole("navigation", { name: "Project review pages" })).toBeNull();
   expect(screen.getByRole("button", { name: /^(?:Import Project|Import Projects \(1\))$/ })).toHaveProperty("disabled", false);
   expect(api.restorePortableProject).not.toHaveBeenCalled();
+});
+
+it("opens a fully restored single project automatically when no source review remains", async () => {
+  const user=userEvent.setup(), open=vi.fn();
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue(savedProject.source_path);
+  vi.mocked(api.scanLibrarySources).mockResolvedValue({items:[{...savedProject,kind:"project",child_folders:[],has_portable:true}],warnings:[],truncated:false});
+  vi.mocked(api.inspectPortableProject).mockResolvedValue({...savedProject,warnings:[]});
+  vi.mocked(api.restorePortableProject).mockResolvedValue({...savedResult,warnings:[],member:{...savedResult.member,warnings:[]}});
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={open} />);
+  await chooseFolder(user);
+  await user.click(await screen.findByRole("button",{name:"Import Project",exact:true}));
+  await waitFor(()=>expect(open).toHaveBeenCalledExactlyOnceWith("saved-project"));
+  expect(api.restorePortableProject).toHaveBeenCalledTimes(1);
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
 });
 
 it("uses one review count, filter and paginator for files and saved-data projects without losing selection", async () => {

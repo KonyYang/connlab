@@ -10,7 +10,7 @@ import shutil
 from uuid import uuid4
 from backend.domain.project_library import ProjectLibraryConflict, ProjectLibraryError
 from backend.infrastructure.files.generation_journal import GenerationJournal
-from backend.infrastructure.project_library.intake_layout import reception_layout, material_entries, received_material, boundary_problem
+from backend.infrastructure.project_library.intake_layout import reception_layout, files_only_layout, material_entries, received_material, boundary_problem
 
 NUMBER = re.compile(r"\bDL-\d{4}-\d{2}-\d{3}(?:[A-Z][A-Z0-9]*)?\b", re.I)
 SOFTWARE_MARKER = Path(".connlab") / "library.json"
@@ -220,6 +220,8 @@ class LibraryFiles:
         if inspected.get("ltr_number") and NUMBER.fullmatch(inspected["ltr_number"]):
             inspected["reception_layout"] = reception_layout(inspected)
         inspected["boundary_problem"] = boundary_problem(inspected)
+        if inspected["kind"] == "project":
+            inspected["files_only_layout"] = files_only_layout(inspected)
         return inspected
 
     def describe_source(self, value):

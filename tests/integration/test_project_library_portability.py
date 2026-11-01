@@ -1276,8 +1276,11 @@ def test_same_material_cannot_hide_known_workspace_identity_when_manifest_is_mis
         source=tmp_path/"foreign-source"/root.name;shutil.copytree(root,source)
         (source/".connlab/library.json").write_text(json.dumps({"project_id":"4"*32,"ltr_number":"DL-2026-05-001"}),encoding="utf-8")
         plan=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
-        assert plan["items"][0]["status"]=="conflict" and plan["items"][0]["can_keep_separate"],plan
+        assert plan["items"][0]["status"]=="conflict" and not plan["items"][0]["can_keep_separate"],plan
+        assert plan["items"][0]["source_state"]=="incomplete"
         assert any("identity" in warning.lower() for warning in plan["items"][0]["warnings"]),plan
+        files=client.post("/api/project-library/intake-plan",json={"sources":[str(source)],"assignments":[{"source_path":str(source),"files_only":True}]}).json()
+        assert files["items"][0]["status"]=="conflict" and files["items"][0]["can_keep_separate"],files
         assert client.get("/api/project-library/members").json()["items"]==[]
 
 
