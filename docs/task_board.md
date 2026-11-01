@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
-    "tier": "standard",
-    "subject": "4f9fe9fb08fb793000f7272a1f7508b662e1d5b4",
-    "summary": "Imported projects use the standard project catalog and workbench with truthful completeness",
+    "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
+    "tier": "micro",
+    "subject": "23df9f3ae2701d83eca8db11d97c880109486892",
+    "summary": "Default Basic Information Test Result to In progress",
     "disposition": "completed",
-    "decision_ref": "User explicitly confirmed task Close. Preserve local commits, isolated copies and acceptance records. Existing no-push/no-publication restriction remains in force; local close only, --publish-close omitted.",
-    "closed_at": "2026-11-01T10:42:49.086984Z"
+    "decision_ref": "User explicitly requested closing the current Basic Information field refinements task. Preserve local commits and acceptance records; existing no-push/no-publication restriction remains. Local close only; --publish-close omitted.",
+    "closed_at": "2026-11-01T11:30:40.142659Z"
   },
   "retained_history": [
     {
@@ -129,6 +129,15 @@
       "disposition": "completed",
       "decision_ref": "User explicitly approved local close of prior task and start of full managed project import implementation; retain all commits and evidence; no push or publication.",
       "closed_at": "2026-10-31T21:21:46.655993Z"
+    },
+    {
+      "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
+      "tier": "standard",
+      "subject": "4f9fe9fb08fb793000f7272a1f7508b662e1d5b4",
+      "summary": "Imported projects use the standard project catalog and workbench with truthful completeness",
+      "disposition": "completed",
+      "decision_ref": "User explicitly confirmed task Close. Preserve local commits, isolated copies and acceptance records. Existing no-push/no-publication restriction remains in force; local close only, --publish-close omitted.",
+      "closed_at": "2026-11-01T10:42:49.086984Z"
     }
   ],
   "tasks": {
@@ -199,85 +208,6 @@
             "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
             "primary_before": "c17353e4f57090d077ccad67e21e86502461b150",
             "integrated_head": "2b3ad410dd7dceccfa1fc28e40d90e51c97158ce",
-            "recovered": false
-          }
-        }
-      }
-    },
-    "TASK_BASIC_INFO_RESULT_DEFAULT_20261101": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
-      "branch": "codex/basic-info-result-default-20261101",
-      "resources": [],
-      "integrated_head": "5bafe5379b2c1b42897fec741f05f3c7aa383705",
-      "task": {
-        "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
-        "summary": "Default Basic Information Test Result to In progress",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Change Test Result UI fallback from OK to In progress, preserving valid saved and authoritative values. Targeted mock API tests only; no real business data writes, push or publication.",
-        "scope_paths": [
-          "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
-          "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
-          "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts"
-        ],
-        "risk_reasons": [],
-        "activation_head": "a96b15ef819a6915e5c08a0b7d371029def89fc3",
-        "started_at": "2026-11-01T10:49:56.769932Z",
-        "updated_at": "2026-11-01T11:06:58.816693Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User in-scope Basic Information feedback: default missing/blank Remarks (PO) to actual editable NA, preserve existing notes, preserve CNY placeholder and Test Result defaults. No writes to real business data, push or publication.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
-          "subject": "23df9f3ae2701d83eca8db11d97c880109486892",
-          "summary": "Basic Information field refinements: unset Test Result defaults to In progress, Test Fee uses a CNY placeholder only, and missing/blank Remarks PO defaults to actual editable NA. Nonblank remarks and valid saved results remain unchanged. Defaults participate in existing save/confirm flow; opening alone does not save. No real-data modification, push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
-            "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Basic Information and App tests",
-              "status": "passed",
-              "result": "66 tests passed across 3 files. Missing/empty/whitespace remarks show NA; existing PO-123 retained. Existing complete autosave and confirmation payload assertions now explicitly include remarks_po NA. Existing Test Result and CNY placeholder protections remain covered.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-remarks-default-20261101\\final-tests.log"
-            },
-            {
-              "name": "TypeScript",
-              "status": "passed",
-              "result": "npx tsc -b completed successfully on final state.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-remarks-default-20261101\\typecheck.log"
-            },
-            {
-              "name": "Micro self-review",
-              "status": "passed",
-              "result": "Exact diff reviewed; text defaults apply only to text/textarea fields with explicitly configured defaults and blank values. Only Remarks config adds such a default. No API, backend, business DB or source-directory changes. git diff --check passed. RED captured 3 failing defaults and 1 preserved-note pass before implementation.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-remarks-default-20261101\\default-red.log"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent implementation, self-review and mock API regression tests. No independent review claimed."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "23df9f3ae2701d83eca8db11d97c880109486892",
-            "primary_before": "09d388ca25bcad8b4e4690ee56580816631c997f",
-            "integrated_head": "5bafe5379b2c1b42897fec741f05f3c7aa383705",
             "recovered": false
           }
         }
