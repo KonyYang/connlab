@@ -169,15 +169,15 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-11-01T00:29:51.257285Z",
+        "updated_at": "2026-11-01T00:40:43.241047Z",
         "checkpoint": {
-          "requires_user": false,
-          "summary": "Fifth slice: flat legacy trees (including their original Source Book) are preserved under standard LTR envelopes; partial materials folders, multiple same-LTR business folders and canonical Source Book file collisions require boundary review, forced Keep Separate cannot bypass. 9 boundary/layout tests passed. Complete affected regression first run 145 passed/5 failed; 11 targeted crash/known-project/source-gap checks pass after fixture path/baseline updates and preserving known-ID explicit takeover (not empty replacement). Real UI smoke on stopped isolated 18761 confirmed manual+unnumbered import/workbench/files, normal row buttons, historical-LTR recycle/restore same ID; 54 source and 54 prior-copy files unchanged, zero LTR/confirmed Matrix fabrication. UI artifacts managed-import-20261101/ui-smoke. Remaining actual gaps: known-existing Project ID must join one reviewed final import with writer lock/stale-context guards and correct root-to-business path mapping; remove misleading default Matrix preview for imported projects with no real draft, improve file button style and preview copy; portable restore standard target naming; then exact diff review, full final QA incl snapshot real-sample UI and local integration. Goal incomplete, no real-data mutations/push/publication.",
-          "version": 1,
-          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
-          "stage": "implementation",
           "schema": "connlab.sol-task-checkpoint",
-          "status": "running"
+          "stage": "implementation",
+          "requires_user": false,
+          "status": "running",
+          "summary": "Sixth slice: imported projects without real draft steps no longer display the default Visual Examination example; empty saved drafts are handled, actual saved draft steps remain, readonly guidance does not suggest edits. Browse Files uses standard secondary style and review copy explicitly adds managed Projects. Portable new working-copy destination uses validated full LTR including suffix, not transport folder basename; 5 targeted restore/replacement/history tests passed. Frontend related 137 passed and final typecheck/build passed after optional legacy draft fields were handled. Local commit saved. Main remaining implementation is existing-local-Project-ID intake as one reviewed confirmation with writer lock, stale-context guards and correct old-root/business path rebinding; detailed recovery plan in managed-import-20261101/EXISTING_ID_INTAKE_NEXT.md. Then exact-diff review, full affected QA and fresh isolated real-sample UI including snapshots, local integration only. No goal-complete claim, real-data writes, push or publication.",
+          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
+          "version": 1
         },
         "report": null
       }
