@@ -334,6 +334,35 @@ def test_group_completion_events_travel_with_project(tmp_path):
         engine_b.dispose()
 
 
+@pytest.mark.parametrize("future_area", ["snapshot", "marker"])
+def test_newer_snapshot_requires_update_without_restoring_or_downgrading(tmp_path, future_area):
+    from backend.infrastructure.project_library.portability import fingerprint
+    a, _, ea=app_at(tmp_path/"A")
+    b, settings, eb=app_at(tmp_path/"B")
+    try:
+        member=prepared_manual_project(a,tmp_path/"old")
+        folder=Path(member["folder_path"])
+        snapshot=folder/".connlab/portable/snapshot.json"
+        packet=json.loads(snapshot.read_text(encoding="utf-8"))
+        if future_area == "snapshot":
+            packet["body"]["format_version"]=2
+            packet["checksum"]=fingerprint(packet["body"])
+            snapshot.write_text(json.dumps(packet),encoding="utf-8")
+        else:
+            marker=folder/".connlab/library.json"
+            identity=json.loads(marker.read_text(encoding="utf-8"));identity["format_version"]=2
+            marker.write_text(json.dumps(identity),encoding="utf-8")
+        original=snapshot.read_bytes()
+        plan=b.post("/api/project-library/restore-plan",json={"folder":str(folder)}).json()
+        assert plan["status"]=="unavailable" and "Update ConnLab" in " ".join(plan["blockers"]),plan
+        response=b.post("/api/project-library/restore",json={k:plan[k] for k in ("plan_id","fingerprint")})
+        assert response.status_code==409
+        assert snapshot.read_bytes()==original
+        assert list(settings.projects_dir.iterdir())==[]
+    finally:
+        ea.dispose();eb.dispose()
+
+
 def test_legacy_portable_snapshot_without_group_completion_restores(tmp_path):
     from backend.infrastructure.project_library.portability import fingerprint
     a, _, engine_a = app_at(tmp_path / "A")
@@ -355,6 +384,7 @@ def test_legacy_portable_snapshot_without_group_completion_restores(tmp_path):
         assert result["member"]["project_id"] == member["project_id"]
         repeated = b.post("/api/project-library/restore-plan", json={"folder": str(folder)}).json()
         assert repeated["status"] == "already_added", repeated
+        assert repeated["existing_member_id"] == result["member"]["member_id"]
     finally:
         engine_a.dispose()
         engine_b.dispose()
@@ -383,6 +413,8 @@ def test_explicit_replacement_preserves_target_recovery_copy_and_binds_revision(
     review = b.post("/api/project-library/restore-plan", json={"folder": member_a["folder_path"]}).json()
     assert review["status"] == "conflict"
     assert "replace_working_copy" in review["resolution_options"]
+    assert "Files: 0 added, 0 changed, 1 absent from the incoming copy." in review["differences"]
+    assert "Saved project or test data differs between these copies." in review["differences"]
     reject_unselected_restore(b, review)
     assert (Path(member_b["folder_path"]) / "target-only.txt").read_text() == "retain target evidence"
     with Session(eb) as session:

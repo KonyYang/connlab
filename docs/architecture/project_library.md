@@ -20,6 +20,35 @@ explicitly authorized operation.
 
 ## Project library entry
 
+### Simple receiving flow
+
+Import Projects has one default path: choose a folder, review the detected project,
+and import. After a review the source editor collapses to the folder name and
+Change Folder. Save location comes from Settings, with a small link back to that
+setting. Manual paths, extra sources and boundary controls remain under More
+Options. A single project has no checkbox, bulk count, filter or paginator;
+batches retain one combined list and selection. Normal checks are collapsed in
+Details. Conflicts expose one explanation and direct keep/skip actions, with
+comparisons under View Differences. The backend still authorizes every choice.
+
+A successful single-project intake with no outstanding source warnings opens the
+verified Project identity directly. Results needing review remain visible before
+Open Project. Returning to Projects always uses the complete catalog.
+
+Source completeness is separate from file layout. A carried ConnLab identity
+without a snapshot is never silently treated as a restored project. When that
+identity already has local data, intake may reuse it through the existing guarded
+linking review. Otherwise the user must export from the original computer or
+explicitly choose Import Files Only. That choice creates a new project identity,
+retains the source metadata inside the copied subtree, and does not claim restored
+test data. Newer marker or snapshot versions require a ConnLab update and cannot
+use this fallback. Malformed metadata also prevents silent normal intake.
+
+Supported version-1 snapshots are verified before restore. The known earlier
+contract without group-completion events is normalized to an empty event
+collection after validating its original signature; the source envelope is never
+rewritten. Unknown contracts are not guessed or overwritten.
+
 ### Managed ordinary intake
 
 Final ordinary intake confirmation establishes a stable Project binding as well as

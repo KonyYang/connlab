@@ -31,6 +31,78 @@ def library(tmp_path):
     engine.dispose()
 
 
+@pytest.mark.parametrize("numbered", [True, False])
+def test_connlab_identity_without_snapshot_requires_explicit_files_only_choice(library, tmp_path, numbered):
+    import json
+    client, settings, _ = library
+    source = tmp_path / ("DL-2020-08-001 Old project" if numbered else "Unnumbered old project")
+    (source / ".connlab").mkdir(parents=True)
+    manifest = json.dumps({"schema_version":1, "project_id":"old-source-identity", "dl_number":"DL-2020-08-001" if numbered else None})
+    (source / ".connlab/manifest.json").write_text(manifest, encoding="utf-8")
+    (source / "evidence.txt").write_text("original evidence", encoding="utf-8")
+    def review(assignments=None):
+        return client.post("/api/project-library/intake-plan", json={"sources":[str(source)], "assignments":assignments or []}).json()
+    plan=review()
+    assert plan["items"][0]["status"] == "conflict", plan
+    assert plan["items"][0]["source_state"] == "incomplete"
+    assert not plan["items"][0]["can_keep_separate"]
+    batch=client.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[str(source)],"keep_separate":[str(source)]}).json()
+    assert batch["counts"]["added"] == 0
+    assert list(settings.projects_dir.iterdir()) == []
+    plan=review([{"source_path":str(source), "files_only":True}])
+    assert plan["items"][0]["source_state"] == "files_only"
+    assert plan["items"][0]["status"] == "ready", plan
+    batch=client.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[str(source)]}).json()
+    assert batch["counts"]["added"] == 1, batch
+    member=client.get("/api/project-library/members/"+batch["items"][0]["member_id"]).json()
+    assert member["project_id"] and member["project_id"] != "old-source-identity"
+    assert member["can_continue"] and member["snapshot_status"] == "missing"
+    target=Path(member["folder_path"])/(source.name if numbered else "Imported files")
+    assert (target/".connlab/manifest.json").read_text(encoding="utf-8") == manifest
+    assert (target/"evidence.txt").read_text(encoding="utf-8") == "original evidence"
+    assert (source/".connlab/manifest.json").read_text(encoding="utf-8") == manifest
+    assert review([{"source_path":str(source),"files_only":True}])["items"][0]["status"] == "already_added"
+    import shutil
+    other=tmp_path/"other-computer"/source.name
+    shutil.copytree(source,other)
+    changed=json.loads(manifest);changed["project_id"]="different-original-project"
+    (other/".connlab/manifest.json").write_text(json.dumps(changed),encoding="utf-8")
+    conflict=client.post("/api/project-library/intake-plan",json={"sources":[str(other)],"assignments":[{"source_path":str(other),"files_only":True}]}).json()
+    assert conflict["items"][0]["status"] == "conflict", conflict
+
+
+@pytest.mark.parametrize("known", [False, True])
+def test_newer_connlab_metadata_requires_update_even_for_files_only(library, tmp_path, known):
+    import json
+    client, settings, _ = library
+    if known:
+        seed_known_identity(settings,"future")
+    source=tmp_path/"DL-2020-08-002 New version"
+    (source/".connlab").mkdir(parents=True)
+    (source/".connlab/library.json").write_text(json.dumps({"format_version":2,"project_id":"future"}),encoding="utf-8")
+    plan=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
+    row=plan["items"][0]
+    assert row["source_state"] == "upgrade_required" and row["status"] == "conflict",row
+    assert not row["can_keep_separate"] and "Update ConnLab" in " ".join(row["warnings"])
+    plan=client.post("/api/project-library/intake-plan",json={"sources":[str(source)],"assignments":[{"source_path":str(source),"files_only":True}]}).json()
+    batch=client.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[str(source)]}).json()
+    assert batch["counts"]["added"] == 0
+    assert list(settings.projects_dir.iterdir()) == []
+
+
+@pytest.mark.parametrize("metadata", ['{', '{"project_id":{},"ltr_number":42}'])
+def test_damaged_connlab_identity_is_not_silently_classified_as_manual(library, tmp_path, metadata):
+    client, settings, _=library
+    source=tmp_path/"DL-2020-08-004 Incomplete"
+    (source/".connlab").mkdir(parents=True)
+    (source/".connlab/manifest.json").write_text(metadata,encoding="utf-8")
+    response=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]})
+    assert response.status_code==200,response.text
+    row=response.json()["items"][0]
+    assert row["source_state"]=="incomplete" and row["status"]=="conflict",row
+    assert list(settings.projects_dir.iterdir())==[]
+
+
 def test_batch_intake_browsing_title_and_daily_files_keep_identity(library, tmp_path):
     client, settings, opened = library
     source = tmp_path / "source" / "DL-2026-09-032 Old title"
@@ -436,10 +508,23 @@ def test_keep_separate_same_name_loose_files_preserves_their_extension(library,t
     assert {path.read_text() for path in files}=={"result,1","result,2"}
 
 
+def seed_known_identity(settings, *project_ids):
+    from backend.infrastructure.storage.models import ProjectModel
+    engine=create_engine(f"sqlite:///{settings.database_path}")
+    try:
+        with Session(engine) as session:
+            for project_id in project_ids:
+                session.add(ProjectModel(project_id=project_id,product_name="Known project data",requestor="Lab",status="draft"))
+            session.commit()
+    finally:
+        engine.dispose()
+
+
 @pytest.mark.parametrize("change",["project_id","ltr_number","both","same_source_reused","member_identity_only","ltr_only_metadata"])
 def test_equal_material_does_not_hide_a_different_stable_project_identity(library,tmp_path,change):
     import json
-    client,_,_=library
+    client,settings,_=library
+    seed_known_identity(settings,"3"*32,"4"*32)
     first=tmp_path/"computer-1"/"Same title"
     first.mkdir(parents=True);(first/".connlab").mkdir()
     identity={"project_id":None if change=="ltr_only_metadata" else "3"*32,"ltr_number":"DL-2026-09-001"}
@@ -480,7 +565,8 @@ def test_equal_material_does_not_hide_a_different_stable_project_identity(librar
 
 def test_same_known_identity_and_equal_material_at_another_source_remains_duplicate(library,tmp_path):
     import json,shutil
-    client,_,_=library
+    client,settings,_=library
+    seed_known_identity(settings,"3"*32,"4"*32)
     first=tmp_path/"computer-1"/"Same title"
     (first/".connlab").mkdir(parents=True)
     (first/".connlab/library.json").write_text(json.dumps({"project_id":"3"*32,"ltr_number":"DL-2026-09-001"}),encoding="utf-8")

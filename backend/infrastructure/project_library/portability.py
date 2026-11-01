@@ -189,6 +189,8 @@ class ProjectPortability:
 
     def _read_snapshot(self, folder):
         root = checked_path(folder)
+        if self.files.describe_source(root).get("source_state") == "upgrade_required":
+            raise ProjectLibraryError("Update ConnLab before importing this project. It was created with a newer format.")
         snapshot = checked_path(root / PORTABLE_FILE, must_exist=False)
         try:
             snapshot.stat()
@@ -205,6 +207,8 @@ class ProjectPortability:
         return self._validate_snapshot(body)
 
     def _validate_snapshot(self, body):
+        if type(body.get("format_version")) is int and body["format_version"] > 1:
+            raise ProjectLibraryError("Update ConnLab before importing this project. It was created with a newer format.")
         if type(body.get("format_version")) is not int or body["format_version"] != 1:
             raise ProjectLibraryError("This portable snapshot version is not supported by this ConnLab.")
         required = {"member_id", "project_id", "ltr_number", "title", "rows", "files", "assets", "source_signature", "created_at", "operation_history"}
