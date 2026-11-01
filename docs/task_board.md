@@ -146,13 +146,14 @@
         "route": "sol_direct",
         "scope": "Change only the fresh or invalid saved Projects filter default to On-going; preserve explicit saved user choices and other filters. Targeted frontend verification only; no real business data changes, push or publication.",
         "scope_paths": [
-          "frontend/src/pages/ProjectListPage.tsx",
-          "frontend/src/pages/ProjectListPage.test.tsx"
+          "frontend/src/App.test.tsx",
+          "frontend/src/pages/ProjectListPage.test.tsx",
+          "frontend/src/pages/ProjectListPage.tsx"
         ],
         "risk_reasons": [],
         "activation_head": "5f3514effa800d93578b48fdfeedc9fbddaaba77",
         "started_at": "2026-11-01T10:44:18.897851Z",
-        "updated_at": "2026-11-01T10:44:18.897851Z",
+        "updated_at": "2026-11-01T10:46:55.045806Z",
         "checkpoint": null,
         "report": null
       }
