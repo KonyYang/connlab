@@ -206,7 +206,7 @@
     },
     "TASK_BASIC_INFO_RESULT_DEFAULT_20261101": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
       "branch": "codex/basic-info-result-default-20261101",
       "resources": [],
@@ -225,63 +225,17 @@
         "risk_reasons": [],
         "activation_head": "a96b15ef819a6915e5c08a0b7d371029def89fc3",
         "started_at": "2026-11-01T10:49:56.769932Z",
-        "updated_at": "2026-11-01T11:00:18.515171Z",
+        "updated_at": "2026-11-01T11:04:52.346635Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
           "stage": "revision",
           "status": "running",
-          "summary": "User in-scope Basic Information field feedback: display CNY as gray placeholder inside empty Test Fee; never use placeholder as saved value. Preserve manual fee and Test Result behavior. Local only, no business data mutation, push or publication.",
+          "summary": "User in-scope Basic Information feedback: default missing/blank Remarks (PO) to actual editable NA, preserve existing notes, preserve CNY placeholder and Test Result defaults. No writes to real business data, push or publication.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
-          "subject": "cc7fc047e4c5048126a2df25337d2b2bd5f2de48",
-          "summary": "Basic Information UI defaults: unset Test Result uses In progress while valid saved results retain precedence. Empty Test Fee shows CNY as a native gray placeholder, never as a value. Existing save/confirm behavior is unchanged. No real business data changes, push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
-            "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
-            "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Basic Information and App regression",
-              "status": "passed",
-              "result": "62 tests passed across 3 files on final state. CNY placeholder present while fee value stays empty; existing complete autosave and confirmation payload assertions still pass. Test Result default and all valid authoritative result choices remain covered.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-test-fee-hint-20261101\\final-tests.log"
-            },
-            {
-              "name": "TypeScript",
-              "status": "passed",
-              "result": "npx tsc -b passed after final edits.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-test-fee-hint-20261101\\typecheck.log"
-            },
-            {
-              "name": "Micro self-review",
-              "status": "passed",
-              "result": "Reviewed exact diff: optional field placeholder, Test Fee config and textarea attribute only; no value assignment/handler/backend/DB changes. Uses native gray placeholder rendering. git diff --check passed. Existing form test was RED before the attribute, then GREEN with unchanged save payload assertions.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-test-fee-hint-20261101\\hint-red.log"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent implementation, self-review and mocked API verification; no independent-agent review claimed."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "cc7fc047e4c5048126a2df25337d2b2bd5f2de48",
-            "primary_before": "6d6e24daf2e401db4ab764145de0fb49b0c59a0d",
-            "integrated_head": "f4e32fe704244b39fac4a28bee75dfc97e746d90",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
