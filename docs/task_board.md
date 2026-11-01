@@ -206,11 +206,11 @@
     },
     "TASK_BASIC_INFO_RESULT_DEFAULT_20261101": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
       "branch": "codex/basic-info-result-default-20261101",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "1c6c7bb2241d71e600800ff99797c340574d47ae",
       "task": {
         "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
         "summary": "Default Basic Information Test Result to In progress",
@@ -224,9 +224,54 @@
         "risk_reasons": [],
         "activation_head": "a96b15ef819a6915e5c08a0b7d371029def89fc3",
         "started_at": "2026-11-01T10:49:56.769932Z",
-        "updated_at": "2026-11-01T10:49:56.769932Z",
+        "updated_at": "2026-11-01T10:52:09.743058Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
+          "subject": "0a078fd817af27067d150ecb3bba5de1a7fe9180",
+          "summary": "Default Basic Information Test Result fallback from OK to In progress. Preserve existing valid authoritative/saved results and the existing autosave/confirmation flow. No real project data writes, push/publication or automatic Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
+            "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx"
+          ],
+          "validation": [
+            {
+              "name": "Basic Information and App tests",
+              "status": "passed",
+              "result": "62 tests passed across 3 files. Missing, blank and placeholder values default to In progress; all five valid authoritative result options remain unchanged. Entering does not call save or confirm. RED captured three old OK fallback failures before the one-line fix.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-result-default-20261101\\final-tests.log"
+            },
+            {
+              "name": "TypeScript",
+              "status": "passed",
+              "result": "npx tsc -b completed on final state.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-result-default-20261101\\typecheck.log"
+            },
+            {
+              "name": "Micro self-review",
+              "status": "passed",
+              "result": "Exact diff reviewed: one runtime default literal plus regression cases. No API/backend/data/schema changes. git diff --check passed. Existing values take precedence over fallback; no save is triggered by default normalization on entry.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\basic-info-result-default-20261101\\default-red.log"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Current agent implementation, self-review and mock API regression validation. No independent review claimed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "0a078fd817af27067d150ecb3bba5de1a7fe9180",
+            "primary_before": "1785b30dac3efbc6b7af193a8ff011d5b852a4f4",
+            "integrated_head": "1c6c7bb2241d71e600800ff99797c340574d47ae",
+            "recovered": false
+          }
+        }
       }
     }
   }
