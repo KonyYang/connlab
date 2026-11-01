@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
-    "tier": "micro",
-    "subject": "23df9f3ae2701d83eca8db11d97c880109486892",
-    "summary": "Default Basic Information Test Result to In progress",
+    "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
+    "tier": "high_risk",
+    "subject": "bca6b7ebe4994480d6127976e81b84d31e42e6ee",
+    "summary": "Compact group completion controls with saved descriptions",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing the current Basic Information field refinements task. Preserve local commits and acceptance records; existing no-push/no-publication restriction remains. Local close only; --publish-close omitted.",
-    "closed_at": "2026-11-01T11:30:40.142659Z"
+    "decision_ref": "User explicitly requested closing the current group completion description task. Preserve local commits, consistent development database backups and acceptance records. Existing no-push/no-publication restriction persists. Local close only; --publish-close omitted. Leave authorized running development backend unchanged.",
+    "closed_at": "2026-11-01T14:02:54.674013Z"
   },
   "retained_history": [
     {
@@ -138,6 +138,15 @@
       "disposition": "completed",
       "decision_ref": "User explicitly confirmed task Close. Preserve local commits, isolated copies and acceptance records. Existing no-push/no-publication restriction remains in force; local close only, --publish-close omitted.",
       "closed_at": "2026-11-01T10:42:49.086984Z"
+    },
+    {
+      "task_id": "TASK_BASIC_INFO_RESULT_DEFAULT_20261101",
+      "tier": "micro",
+      "subject": "23df9f3ae2701d83eca8db11d97c880109486892",
+      "summary": "Default Basic Information Test Result to In progress",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing the current Basic Information field refinements task. Preserve local commits and acceptance records; existing no-push/no-publication restriction remains. Local close only; --publish-close omitted.",
+      "closed_at": "2026-11-01T11:30:40.142659Z"
     }
   ],
   "tasks": {
@@ -208,154 +217,6 @@
             "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
             "primary_before": "c17353e4f57090d077ccad67e21e86502461b150",
             "integrated_head": "2b3ad410dd7dceccfa1fc28e40d90e51c97158ce",
-            "recovered": false
-          }
-        }
-      }
-    },
-    "TASK_GROUP_COMPLETION_DESCRIPTION_20261101": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
-      "branch": "codex/group-completion-description-20261101",
-      "resources": [],
-      "integrated_head": "76bbb7b5041565c3b5dc3fc9faa671c3e9c1342b",
-      "task": {
-        "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
-        "summary": "Compact group completion controls with saved descriptions",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Shrink Matrix Status completion checkbox and add per-group free-text descriptions with explicit save. Keep notes independent from completion, Matrix signature/review status and completion timestamps. Preserve lifecycle/registry protections and old snapshot compatibility. Add only nullable description column with idempotent additive migration; test isolated databases only. No real business DB/source writes, push or publication.",
-        "scope_paths": [
-          "backend/api/routes_project.py",
-          "backend/application/group_completion_service.py",
-          "backend/infrastructure/storage/database.py",
-          "backend/infrastructure/storage/models_group_completion.py",
-          "backend/infrastructure/storage/repositories/group_completion.py",
-          "backend/infrastructure/storage/group_completion_schema_migration.py",
-          "backend/infrastructure/project_library/portability.py",
-          "frontend/src/api/client.ts",
-          "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.test.tsx",
-          "frontend/src/workbench.css",
-          "tests/integration/test_group_completion_api.py",
-          "tests/integration/test_project_library_portability.py",
-          "tests/unit/test_group_completion_schema_migration.py",
-          "docs/architecture/group_completion.md"
-        ],
-        "risk_reasons": [
-          "Additive SQLite schema migration and backwards-compatible portable snapshot data shape for persisted group descriptions."
-        ],
-        "activation_head": "af7eac5e2aa91de0c112cc1085bf202356c36dec",
-        "started_at": "2026-11-01T11:39:47.748913Z",
-        "updated_at": "2026-11-01T13:02:30.124476Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User explicitly authorized backup of the actual development database, this additive description-column upgrade and startup of8000. Rehearse on backup first; preserve all business rows, release environment and original project files. No push/publication. Activation only; product subject remains independently reviewed bca6b7e.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
-          "subject": "bca6b7ebe4994480d6127976e81b84d31e42e6ee",
-          "summary": "Compact group completion checkbox and explicitly saved descriptions implemented and independently accepted. Following explicit User authorization, backed up development business/profile/identity databases, rehearsed additive migration and ordinary init_db twice on a copy, then added only nullable description to development DB and started normal hidden8000 backend. Full original-row equality and integrity verified before/after activation. Release environment and original project folders untouched. No push/publication.",
-          "scope_ok": true,
-          "changed_paths": [],
-          "validation": [
-            {
-              "name": "Independent planning",
-              "status": "passed",
-              "result": "Independent Planner selected nullable column on existing event family, explicit Save and preservation of original completion evidence; original snapshot signatures verified before old-column normalization. Exact fifteen-path scope implemented.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\developer-result.json"
-            },
-            {
-              "name": "Developer regression feedback",
-              "status": "passed",
-              "result": "Meaningful RED/GREEN for description-only API, old-schema migration, legacy snapshot matching and UI field. Final bounded feedback: 9 backend and15 component tests passed; no full matrix/build duplicated by Developer.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\developer-result.json"
-            },
-            {
-              "name": "Independent Standards and Spec review",
-              "status": "passed",
-              "result": "Independent Reviewer inspected exact fifteen-path committed diff and consumers; Standards0 findings, Spec0 findings. No test repetition claimed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\review-result.json"
-            },
-            {
-              "name": "Independent final Python QA",
-              "status": "passed",
-              "result": "203 passed in359.32s. Includes group completion, description migration, database startup, library intake/portability including300projects, registry summary/management/writer guards. One existing TestClient deprecation warning.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\qa-backend.log"
-            },
-            {
-              "name": "Independent final frontend QA and build",
-              "status": "passed",
-              "result": "31files/387tests passed. TypeScript tsc-b and Vite production build passed sequentially after Vitest; no source changes after tested subject.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\qa-result.json"
-            },
-            {
-              "name": "Isolated actual browser and SQLite integrity",
-              "status": "passed",
-              "result": "Actual16x16checkbox at774x804; no blur save, explicit save/reload, unchecked stays incomplete, checking retains note, completed note edits and clear retain exact completed_at, stopped synthetic project disables checkbox/description. SQL integrityok, audit only owned test DBs/writes, own server normal shutdown. Error/retry/stale context behavior additionally covered by actual React/API tests, not falsely claimed browser faults.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\qa-ui\\integrity.json"
-            },
-            {
-              "name": "Independent Integrator preflight",
-              "status": "passed",
-              "result": "Root verified clean subject/master, exact approved scope, matching independent role evidence and board-only primary delta. Real8000 and isolated18881 remain stopped. Actual merge and post-merge verification follow this report through the sole board writer.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\integrator-preflight.json"
-            },
-            {
-              "name": "Activation-only revision scope",
-              "status": "passed",
-              "result": "No new product-source delta: the original independently reviewed15path change is already integrated at69f3fb35. Original scope and full QA evidence remain in the prior integrated report; current revision adds authorized runtime activation evidence only.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\final-report-integrated.json"
-            },
-            {
-              "name": "Authorized development database activation safety review",
-              "status": "passed",
-              "result": "Independent frozen helper/startup review passed Standards0/Spec0. Three SQLite consistent backups retained;73business tables and2completion events preserved through exact migration and two normal copy initializations.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\activation\\activation-review-result.json"
-            },
-            {
-              "name": "Independent actual development activation QA",
-              "status": "passed",
-              "result": "Read-only health/project/group-completion requests and post-start full database comparison passed. Nullable description available; existing rows, completion status/date/evidence unchanged; actual8000development binding verified. No real test save/toggle.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\group-completion-description-20261101\\activation\\qa-activation.json"
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "context": "Independent /root/group_description_planner, read-only executable plan and snapshot/schema risk assessment; no implementation. Independently resolved actual development paths and defined backup/full-row rehearsal gates."
-            },
-            "developer": {
-              "status": "passed",
-              "context": "Independent /root/group_description_developer; local implementation/commit and recorded RED-GREEN feedback. Independent activation Developer produced immutable backup/rehearsal/apply helper; performed only consistent backup and copy rehearsal."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Independent /root/group_description_reviewer; exact subject Standards/Spec pass, no code edits or duplicate full tests. Independently reviewed frozen activation helper/startup and backup/rehearsal artifacts."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Independent /root/group_description_qa; complete final selected matrix/build and audited browser acceptance, no product source edits. Independent actual development activation QA used only read endpoints and readonly database inventory."
-            },
-            "integrator": {
-              "status": "passed",
-              "context": "Root independent integration preflight complete; no product code authored by root. Integration itself pending sole writer and post-merge verification. Root executed explicitly authorized reviewed additive development migration and hidden normal8000startup after backup gates; verified unchanged product tree."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "bca6b7ebe4994480d6127976e81b84d31e42e6ee",
-            "primary_before": "76bbb7b5041565c3b5dc3fc9faa671c3e9c1342b",
-            "integrated_head": "76bbb7b5041565c3b5dc3fc9faa671c3e9c1342b",
             "recovered": false
           }
         }
