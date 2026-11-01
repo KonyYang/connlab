@@ -139,6 +139,7 @@
         "scope_paths": [
           "backend/api/dependencies.py",
           "backend/api/project_library_schemas.py",
+          "backend/api/routes_confirmed_fee_version.py",
           "backend/api/routes_project.py",
           "backend/api/routes_project_library.py",
           "backend/application/project_identity.py",
@@ -161,6 +162,7 @@
           "frontend/src/pages/ProjectListPage.tsx",
           "frontend/src/pages/ProjectWorkbenchPage.test.tsx",
           "frontend/src/pages/ProjectWorkbenchPage.tsx",
+          "tests/integration/test_confirmed_fee_version_api.py",
           "tests/integration/test_project_library_api.py",
           "tests/integration/test_project_library_portability.py",
           "tests/integration/test_project_registry_management_api.py",
@@ -169,7 +171,7 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-11-01T00:40:43.241047Z",
+        "updated_at": "2026-11-01T00:56:25.656154Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "stage": "implementation",
