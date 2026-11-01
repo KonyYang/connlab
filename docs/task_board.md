@@ -212,6 +212,46 @@
           }
         }
       }
+    },
+    "TASK_GROUP_COMPLETION_DESCRIPTION_20261101": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
+      "branch": "codex/group-completion-description-20261101",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
+        "summary": "Compact group completion controls with saved descriptions",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Shrink Matrix Status completion checkbox and add per-group free-text descriptions with explicit save. Keep notes independent from completion, Matrix signature/review status and completion timestamps. Preserve lifecycle/registry protections and old snapshot compatibility. Add only nullable description column with idempotent additive migration; test isolated databases only. No real business DB/source writes, push or publication.",
+        "scope_paths": [
+          "backend/api/routes_project.py",
+          "backend/application/group_completion_service.py",
+          "backend/infrastructure/storage/database.py",
+          "backend/infrastructure/storage/models_group_completion.py",
+          "backend/infrastructure/storage/repositories/group_completion.py",
+          "backend/infrastructure/storage/group_completion_schema_migration.py",
+          "backend/infrastructure/project_library/portability.py",
+          "frontend/src/api/client.ts",
+          "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.test.tsx",
+          "frontend/src/workbench.css",
+          "tests/integration/test_group_completion_api.py",
+          "tests/integration/test_project_library_portability.py",
+          "tests/unit/test_group_completion_schema_migration.py",
+          "docs/architecture/group_completion.md"
+        ],
+        "risk_reasons": [
+          "Additive SQLite schema migration and backwards-compatible portable snapshot data shape for persisted group descriptions."
+        ],
+        "activation_head": "af7eac5e2aa91de0c112cc1085bf202356c36dec",
+        "started_at": "2026-11-01T11:39:47.748913Z",
+        "updated_at": "2026-11-01T11:39:47.748913Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
