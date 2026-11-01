@@ -2,6 +2,7 @@
 from datetime import datetime, timezone, date
 import json
 from uuid import uuid4
+from pathlib import Path
 from sqlalchemy import select, or_
 from backend.domain.project_library import ProjectLibraryConflict
 from backend.infrastructure.storage.models import ProjectModel, LtrRecordModel, ProjectOfficialWorkspaceRecordModel
@@ -127,6 +128,23 @@ class ProjectLibraryRepository:
     def workspace(self, project_id):
         row = self.session.scalar(select(ProjectOfficialWorkspaceRecordModel).where(ProjectOfficialWorkspaceRecordModel.project_id == project_id))
         return {column.name: getattr(row, column.name) for column in row.__table__.columns} if row else None
+
+    def bind_imported_workspace(self, member, business_path, template_path):
+        root = Path(member["folder_path"])
+        existing = self.workspace(member["project_id"])
+        if existing:
+            if (Path(existing["local_workspace_path"]) != root
+                    or Path(existing["official_folder_path"]) != Path(business_path)
+                    or existing["dl_number"] != member["ltr_number"]):
+                raise ProjectLibraryConflict("This project already has a different working folder. Review its location before importing.")
+            return existing
+        self.session.add(ProjectOfficialWorkspaceRecordModel(
+            workspace_id=uuid4().hex, project_id=member["project_id"], dl_number=member["ltr_number"],
+            local_workspace_path=str(root), source_book_path=str(root / "Source Book"),
+            official_folder_path=str(business_path), manifest_path=str(root / ".connlab" / "manifest.json"),
+            template_source_path=str(template_path), created_at=now()))
+        self.session.commit()
+        return self.workspace(member["project_id"])
 
     def workspaces(self):
         return [{column.name: getattr(row, column.name) for column in row.__table__.columns}

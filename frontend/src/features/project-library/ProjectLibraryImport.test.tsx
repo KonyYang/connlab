@@ -5,7 +5,7 @@ import { ProjectLibraryImport } from "./ProjectLibraryImport";
 import * as api from "../../api/projectLibrary";
 
 vi.mock("../../api/projectLibrary", () => ({
-  getLibraryRuntime: vi.fn(), scanLibrarySources: vi.fn(), planLibraryIntake: vi.fn(), listLibraryMembers: vi.fn(),
+  getLibraryRuntime: vi.fn(), getLibraryMember: vi.fn(), scanLibrarySources: vi.fn(), planLibraryIntake: vi.fn(), listLibraryMembers: vi.fn(),
   startLibraryBatch: vi.fn(), getLibraryBatch: vi.fn(), resumeLibraryBatch: vi.fn(),
   pickLibraryFolder: vi.fn(), inspectPortableProject: vi.fn(), planPortableRestore: vi.fn(), restorePortableProject: vi.fn(),
   saveLibraryDestination: vi.fn(), openLibraryDestination: vi.fn(), pickLibraryDestination: vi.fn(),
@@ -16,6 +16,9 @@ const plan = {
     { source_path: "D:/old/Cable", target_path: "D:/managed/Cable", title: "Cable test", ltr_number: "DL-2026-07-013A", status: "conflict", warnings: ["Another project uses this LTR."], can_keep_separate: true },
   ],
 };
+const manualMember: api.LibraryMember = { member_id: "member-1", project_id: "manual-project", ltr_number: plan.items[0].ltr_number,
+  title: "Force test", folder_path: "D:/managed/projects/DL-2021-01-030A1", revision: 2, batch_id: "batch-1",
+  snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: true };
 
 async function enterSources(user: ReturnType<typeof userEvent.setup>, value: string) {
   const editor = await screen.findByLabelText("Source paths");
@@ -28,6 +31,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   localStorage.clear();
   vi.mocked(api.getLibraryRuntime).mockResolvedValue({ library_root: "D:/managed", projects_root: "D:/managed/projects", data_root: "D:/managed/data", database_path: "D:/managed/data/connlab.sqlite3", configured: true, format_version: 1 });
+  vi.mocked(api.getLibraryMember).mockResolvedValue(manualMember);
   vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: plan.items.map(row => ({ source_path: row.source_path, title: row.title, ltr_number: row.ltr_number, kind: "project", warnings: [], child_folders: [] })), warnings: [], truncated: false });
   vi.mocked(api.planLibraryIntake).mockResolvedValue(plan as api.LibraryIntakePlan);
   vi.mocked(api.startLibraryBatch).mockResolvedValue({ batch_id: "batch-1", status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [{ source_path: "D:/old/Force", status: "added", message: "Added", member_id: "member-1" }] });
@@ -174,7 +178,7 @@ it.each(["files", "restored", "history"] as const)("explains the next step after
   await user.click(await screen.findByRole("button", { name: "Confirm Import (1)" }));
   const results = await screen.findByRole("region", { name: "Import results" });
   expect(within(results).getByText(kind === "files" ? "Project files imported." : kind === "history" ? "Historical copy saved for browsing." : "Project and saved test data restored.")).toBeTruthy();
-  expect(within(results).getByText(kind === "files" ? /choose Continue Testing/ : kind === "history" ? /current working project is unchanged/ : /review its data and continue testing/)).toBeTruthy();
+  expect(within(results).getByText(kind === "files" ? /complete missing project information/ : kind === "history" ? /current working project is unchanged/ : /review its data and continue testing/)).toBeTruthy();
   expect(within(results).getByRole("heading", { name: `${candidate.ltr_number} ${candidate.title}` })).toBeTruthy();
   if (isSaved) {
     const issues = within(results).getByText("1 item needs review").closest("details")!;
@@ -184,8 +188,8 @@ it.each(["files", "restored", "history"] as const)("explains the next step after
   const open = within(results).getByRole("button", { name: `Open ${candidate.title}` });
   expect(open.textContent).toBe("Open Project");
   await user.click(open);
-  if (kind === "restored") {
-    expect(onOpenProject).toHaveBeenCalledWith("saved-project");
+  if (kind !== "history") {
+    await waitFor(() => expect(onOpenProject).toHaveBeenCalledWith(kind === "restored" ? "saved-project" : "manual-project"));
     expect(onOpenMember).not.toHaveBeenCalled();
   } else {
     expect(onOpenMember).toHaveBeenCalledWith(isSaved ? "saved-member" : "member-1");
@@ -209,6 +213,49 @@ it.each([
   await user.click(await screen.findByRole("button", { name: "Open Snapshot project" }));
   expect(onOpenMember).toHaveBeenCalledWith("saved-member");
   expect(onOpenProject).not.toHaveBeenCalled();
+});
+
+it.each([{ can_continue: false }, { project_id: null }, { is_history: true }])("opens details when an ordinary import is not eligible for workbench navigation: %j", async override => {
+  const user = userEvent.setup(), onOpenProject = vi.fn(), onOpenMember = vi.fn();
+  vi.mocked(api.getLibraryMember).mockResolvedValue({ ...manualMember, ...override });
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old");
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} onOpenProject={onOpenProject} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
+  await user.click(await screen.findByRole("button", { name: "Confirm Import (1)" }));
+  await user.click(await screen.findByRole("button", { name: "Open Force test" }));
+  await waitFor(() => expect(onOpenMember).toHaveBeenCalledWith("member-1"));
+  expect(onOpenProject).not.toHaveBeenCalled();
+});
+
+it("keeps the imported result available when resolving its workspace fails, then retries without importing again", async () => {
+  const user = userEvent.setup(), onOpenProject = vi.fn();
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old");
+  vi.mocked(api.getLibraryMember).mockRejectedValueOnce(new Error("Project lookup unavailable"));
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={onOpenProject} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
+  await user.click(await screen.findByRole("button", { name: "Confirm Import (1)" }));
+  await user.click(await screen.findByRole("button", { name: "Open Force test" }));
+  expect(await screen.findByText("Project lookup unavailable")).toBeTruthy();
+  expect(onOpenProject).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Open Force test" }));
+  await waitFor(() => expect(onOpenProject).toHaveBeenCalledWith("manual-project"));
+  expect(api.startLibraryBatch).toHaveBeenCalledTimes(1);
+});
+
+it("ignores a late workspace lookup after leaving the import page", async () => {
+  const user = userEvent.setup(), onOpenProject = vi.fn(), onOpenMember = vi.fn();
+  let resolve!: (member: api.LibraryMember) => void;
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old");
+  vi.mocked(api.getLibraryMember).mockImplementation(() => new Promise(done => { resolve = done; }));
+  const view = render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} onOpenProject={onOpenProject} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
+  await user.click(await screen.findByRole("button", { name: "Confirm Import (1)" }));
+  await user.click(await screen.findByRole("button", { name: "Open Force test" }));
+  expect(screen.getByRole("button", { name: "Open Force test" })).toHaveProperty("disabled", true);
+  view.unmount();
+  await act(async () => { resolve(manualMember); });
+  expect(onOpenProject).not.toHaveBeenCalled();
+  expect(onOpenMember).not.toHaveBeenCalled();
 });
 
 it("does not offer destination controls when Settings already supplies the location", async () => {

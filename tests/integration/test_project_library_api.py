@@ -100,6 +100,7 @@ def test_confirmed_manual_import_is_managed_without_a_second_takeover(library, t
 
 @pytest.mark.parametrize("selection", ["business", "root", "root_without_source_book"])
 def test_import_receives_standard_ltr_root_without_changing_original_material(library, tmp_path, selection):
+    import json
     client, settings, _ = library
     number = "DL-2026-09-032A1"
     name = number + " Manual connector"
@@ -122,6 +123,11 @@ def test_import_receives_standard_ltr_root_without_changing_original_material(li
     assert target == settings.projects_dir / number
     assert (target / "Source Book").is_dir()
     assert (target / name / "Photos/evidence.txt").read_text(encoding="utf-8") == "original evidence"
+    manifest = json.loads((target / ".connlab/manifest.json").read_text(encoding="utf-8"))
+    assert manifest["project_id"] == member["project_id"]
+    assert Path(manifest["local_workspace_path"]) == target
+    assert Path(manifest["official_project_folder_path"]) == target / name
+    assert Path(manifest["source_book_path"]) == target / "Source Book"
     if selection == "root":
         assert (target / "Source Book/original.xlsx").read_bytes() == b"original workbook"
     else:

@@ -338,6 +338,9 @@ class ProjectLibraryService:
                 # A retained conflict copy must still follow its reviewed takeover rules.
                 self.store.create_planning_project(member)
                 member = self.store.member(member["member_id"])
+            if source.get("reception_layout") and member["project_id"] and not item["keep_separate"]:
+                workspace = self.store.bind_imported_workspace(member, self.files.business_path(member), self.settings.templates_dir)
+                self.files.publish_workspace_metadata(member["folder_path"], workspace)
             self.files.write_marker(member)
         item.update(status="added", message="Received and verified. Original source files remain unchanged.", member_id=member["member_id"])
 

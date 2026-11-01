@@ -4,7 +4,7 @@ import type { LibraryBatch } from "../../api/projectLibrary";
 export type ImportOutcomeKind = "files" | "restored" | "history" | "existing_files";
 export type ImportResultDetails = { ltrNumber: string | null; kind?: ImportOutcomeKind; warnings: string[] };
 const guidance: Record<ImportOutcomeKind, { summary: string; next: string }> = {
-  files: { summary: "Project files imported.", next: "Open the project to browse files, or choose Continue Testing to complete project information and Matrix setup." },
+  files: { summary: "Project files imported.", next: "Open the project to review files and complete missing project information and Matrix setup before testing." },
   restored: { summary: "Project and saved test data restored.", next: "Open the project to review its data and continue testing." },
   history: { summary: "Historical copy saved for browsing.", next: "Open the project to browse this copy. The current working project is unchanged." },
   existing_files: { summary: "Files added to the existing project.", next: "Open the project to review the added files. Existing test data stays unchanged." },
