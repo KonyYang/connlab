@@ -337,6 +337,9 @@ describe("ProjectBasicInformationWorkspace", () => {
         (option) => option.value
       )
     ).toEqual(["Send Back to Requestor", "Scrap", "Keep in the Lab"]);
+    const testFeeInput = screen.getByLabelText("Test Fee");
+    expect(testFeeInput).toHaveProperty("placeholder", "CNY");
+    expect(testFeeInput).toHaveProperty("value", "");
     const testResultSelect = screen.getByLabelText("Test Result");
     expect(testResultSelect.tagName).toBe("SELECT");
     expect(

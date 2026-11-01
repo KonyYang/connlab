@@ -291,6 +291,7 @@ function BasicInformationField({
           aria-label={field.label}
           disabled={readOnly}
           rows={1}
+          placeholder={field.placeholder}
           value={value}
           onChange={(event) => onChange(field.key, event.target.value)}
         />
