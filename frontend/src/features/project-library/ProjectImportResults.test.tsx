@@ -40,8 +40,8 @@ describe("ProjectImportResults", () => {
     expect(items.map(item => item.source_path)).toEqual(Array.from({ length: 25 }, (_, i) => `D:/old/Project ${i + 1}`));
   });
 
-  it("resumes only on request and locks result actions while the request is pending", async () => {
-    const callbacks = props({ ...batch, status: "interrupted" });
+  it.each(["interrupted", "running"] as const)("resumes a recovered %s batch only on request and locks while pending", async status => {
+    const callbacks = props({ ...batch, status });
     const { rerender } = render(<ProjectImportResults {...callbacks} />);
     expect(callbacks.onResume).not.toHaveBeenCalled();
     await userEvent.setup().click(screen.getByRole("button", { name: "Resume Batch" }));

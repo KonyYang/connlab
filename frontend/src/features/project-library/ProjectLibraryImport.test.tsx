@@ -123,6 +123,27 @@ it("requires an explicit files-only choice for a ConnLab project without saved d
   expect(screen.getByText("Only files will be imported. Existing ConnLab test data will not be restored.")).toBeTruthy();
 });
 
+it.each([false, true])("keeps batch choices consistent after files-only replanning (changed=%s)", async changed => {
+  const user = userEvent.setup();
+  const first = { ...plan.items[1], review_fingerprint: "unchanged-A" };
+  const second = { ...plan.items[0], source_state: "incomplete", status: "conflict" as const, review_fingerprint: "original-B" };
+  const nextFirst = { ...first, review_fingerprint: changed ? "changed-A" : "unchanged-A" };
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old");
+  vi.mocked(api.planLibraryIntake).mockResolvedValueOnce({ ...plan, items: [first, second] } as api.LibraryIntakePlan)
+    .mockResolvedValue({ ...plan, plan_id: "rechecked", items: [nextFirst, { ...second, source_state: "files_only", status: "ready", review_fingerprint: "files-B" }] } as api.LibraryIntakePlan);
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+  await chooseFolder(user);
+  await user.click(await screen.findByRole("button", { name: "Keep Another Copy" }));
+  await user.click(screen.getByRole("button", { name: "Import Files Only" }));
+  await screen.findByRole("button", { name: changed ? "Import Projects (1)" : "Import Projects (2)" });
+  expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", !changed);
+  if (changed) expect(screen.queryByText("Keep another copy. The existing project stays unchanged.")).toBeNull();
+  await user.click(screen.getByRole("button", { name: changed ? "Import Projects (1)" : "Import Projects (2)" }));
+  await waitFor(() => expect(api.startLibraryBatch).toHaveBeenCalledWith(expect.objectContaining({
+    selected: changed ? [second.source_path] : [first.source_path, second.source_path], keep_separate: changed ? [] : [first.source_path],
+  })));
+});
+
 it("offers one direct conflict decision without a disabled single-project checkbox", async () => {
   const user=userEvent.setup();
   vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old/Cable");
@@ -152,7 +173,8 @@ it("uses one selection per project and one final confirmation, then returns with
   await user.click(screen.getByRole("checkbox", { name: "Select Cable test" }));
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
   const confirmation = screen.getByRole("region", { name: "Confirm import selection" });
-  expect(confirmation.textContent).toContain("D:/managed/projects");
+  expect(confirmation.textContent).toContain("Will copy to projects. Original files stay in place.");
+  expect(within(confirmation).getByTitle("D:/managed/projects")).toBeTruthy();
   expect(screen.queryByRole("dialog", { name: "Confirm Import" })).toBeNull();
   await user.click(within(confirmation).getByRole("button", { name: /^(?:Import Project|Import Projects \(1\))$/ }));
   await user.click(await screen.findByRole("button", { name: "View Projects" }));
@@ -171,7 +193,8 @@ it("checks selected folders automatically and copies nothing before the final co
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
   await screen.findByRole("button", { name: /^Import Projects?(?: \(\d+\))?$/ });
   const confirmation = screen.getByRole("region", { name: "Confirm import selection" });
-  expect(confirmation.textContent).toContain("D:/managed/projects");
+  expect(confirmation.textContent).toContain("Will copy to projects. Original files stay in place.");
+  expect(within(confirmation).getByTitle("D:/managed/projects")).toBeTruthy();
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
   await user.click(screen.getByRole("button", { name: "Back to Projects" }));
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
@@ -185,7 +208,8 @@ it("uses the server-reviewed location in confirmation when Settings changed afte
   await chooseFolder(user);
   await screen.findByRole("button", { name: /^(?:Import Project|Import Projects \(1\))$/ });
   const confirmation = screen.getByRole("region", { name: "Confirm import selection" });
-  expect(confirmation.textContent).toContain("D:/Current Save Location");
+  expect(confirmation.textContent).toContain("Will copy to Current Save Location.");
+  expect(within(confirmation).getByTitle("D:/Current Save Location")).toBeTruthy();
   expect(confirmation.textContent).not.toContain("D:/managed/projects");
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
 });
@@ -846,9 +870,9 @@ describe("ProjectLibraryImport", () => {
     expect(await screen.findByText("Import complete.")).toBeTruthy();
   });
 
-  it("recovers an interrupted batch after reopening and resumes only on explicit request", async () => {
+  it.each(["interrupted", "running"] as const)("recovers a %s batch after reopening and resumes only on explicit request", async status => {
     localStorage.setItem("connlab.projectLibrary.lastBatch:D:/managed/projects", "previous-batch");
-    vi.mocked(api.getLibraryBatch).mockResolvedValue({ batch_id: "previous-batch", status: "interrupted", counts: { added: 0, already_added: 0, review: 0, failed: 1 }, items: [{ source_path: "D:/old/Force", status: "failed", message: "Copy interrupted.", member_id: null }] });
+    vi.mocked(api.getLibraryBatch).mockResolvedValue({ batch_id: "previous-batch", status, counts: { added: 0, already_added: 0, review: 0, failed: 1 }, items: [{ source_path: "D:/old/Force", status: "failed", message: "Copy interrupted.", member_id: null }] });
     vi.mocked(api.resumeLibraryBatch).mockResolvedValue({ batch_id: "previous-batch", status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [{ source_path: "D:/old/Force", status: "added", message: "Added", member_id: "member-1" }] });
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
     await screen.findByText("Copy interrupted.");

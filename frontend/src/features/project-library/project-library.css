@@ -76,7 +76,12 @@
 }
 
 .library-source-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; overflow-wrap: anywhere; }
-.library-source-summary > span { min-width: 0; }
+.library-source-summary > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.library-source-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; }
+.library-source-panel .library-source-summary { flex: 1 1 260px; min-width: 0; }
+.library-source-panel > details[open] { flex-basis: 100%; }
+.library-source-panel > details > summary { color: var(--color-ink-muted); font-size: .875rem; }
+.library-source-panel > [role="alert"], .library-source-panel > [role="status"] { flex-basis: 100%; }
 .project-library button.library-text-action { border: 0; background: transparent; padding: 4px; color: var(--color-primary); text-decoration: underline; }
 .library-save-summary { color: var(--color-ink-muted); font-size: .875rem; margin-bottom: 0; }
 .library-import-project { display: grid; gap: 12px; min-width: 0; }

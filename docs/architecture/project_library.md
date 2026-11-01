@@ -31,6 +31,24 @@ batches retain one combined list and selection. Normal checks are collapsed in
 Details. Conflicts expose one explanation and direct keep/skip actions, with
 comparisons under View Differences. The backend still authorizes every choice.
 
+Each ordinary review row carries a stable fingerprint of its reviewed source and
+destination context. Files-only replanning retains selection/keep-copy decisions
+only for unchanged rows; changed rows lose both selection and the old decision.
+The source strip truncates long names, with full paths in folded options. The
+final copy sentence uses the save-folder name rather than repeating a long path.
+
+Running and interrupted batches expose an explicit Resume action; the existing
+OS-owned library lock rejects a concurrent writer. Resume verifies copied material
+and ownership before registration. Supplementary files require the batch's own
+durable receipt, not just their parent project's marker. Cross-volume moves use
+a verified destination-side staged copy and durable transfer receipt before
+removing the original. Copy/promotion interruptions can retry; occupied or changed
+destinations preserve both locations. No real project migration is implied.
+
+Folded comparisons name changed/added/absent files (bounded lists) and recognized
+project, Matrix, test-result and scheduling record families. They compare saved
+content, not row order, and do not perform a field-level merge.
+
 A successful single-project intake with no outstanding source warnings opens the
 verified Project identity directly. Results needing review remain visible before
 Open Project. Returning to Projects always uses the complete catalog.

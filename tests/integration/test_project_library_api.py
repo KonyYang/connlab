@@ -311,7 +311,7 @@ def test_loose_files_require_explicit_assignment_and_group_into_one_project(libr
 
 def test_interrupted_after_copy_can_resume_using_known_batch_identity(library, tmp_path, monkeypatch):
     from backend.infrastructure.project_library.files import LibraryFiles
-    client, _, _ = library
+    client, settings, _ = library
     source = tmp_path / "DL-2026-09-032 Interruption"
     source.mkdir()
     (source / "measurement.txt").write_text("retain me", encoding="utf-8")
@@ -329,10 +329,98 @@ def test_interrupted_after_copy_can_resume_using_known_batch_identity(library, t
     observed = client.get("/api/project-library/batches/" + payload["batch_id"])
     assert observed.status_code == 200
     assert observed.json()["status"] == "running"
+    with LibraryFiles(settings).lock():
+        busy = client.post("/api/project-library/batches/" + payload["batch_id"] + "/resume")
+        assert busy.status_code == 409
+    assert client.get("/api/project-library/batches/" + payload["batch_id"]).json() == observed.json()
     resumed = client.post("/api/project-library/batches/" + payload["batch_id"] + "/resume")
     assert resumed.status_code == 200, resumed.text
     assert resumed.json()["counts"]["added"] == 1
     assert len(client.get("/api/project-library/members").json()["items"]) == 1
+
+
+def test_interrupted_supplement_uses_its_verified_batch_receipt_on_resume(library, tmp_path, monkeypatch):
+    client, _, _ = library
+    folder = tmp_path / "DL-2026-09-032 Original"
+    folder.mkdir()
+    (folder / "original.txt").write_text("original", encoding="utf-8")
+    batch, _ = receive(client, [folder])
+    member_id = batch["items"][0]["member_id"]
+    source = tmp_path / "measurement.csv"
+    source.write_text("reviewed result", encoding="utf-8")
+    plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)], "assignments": [{"source_path": str(source), "target_member_id": member_id}]}).json()
+    payload = {**{key: plan[key] for key in ("plan_id", "fingerprint")}, "selected": [str(source)], "batch_id": "4" * 32}
+    original = LibraryFiles.receive
+    def crash(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        raise RuntimeError("simulated process interruption")
+    with monkeypatch.context() as patch:
+        patch.setattr(LibraryFiles, "receive", crash)
+        with pytest.raises(RuntimeError, match="simulated"):
+            client.post("/api/project-library/batches", json=payload)
+    resumed = client.post("/api/project-library/batches/" + payload["batch_id"] + "/resume").json()
+    assert resumed["counts"]["added"] == 1, resumed
+    assert Path(plan["items"][0]["target_path"]).read_text(encoding="utf-8") == "reviewed result"
+    assert len(client.get("/api/project-library/members").json()["items"]) == 1
+
+
+def test_replan_tokens_stay_stable_only_while_reviewed_material_is_unchanged(library, tmp_path):
+    client, _, _ = library
+    source = tmp_path / "DL-2026-09-032 Material"
+    source.mkdir()
+    evidence = source / "measurement.txt"
+    evidence.write_text("first", encoding="utf-8")
+    def token():
+        review = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+        return review["items"][0]["review_fingerprint"]
+    first = token()
+    assert token() == first
+    evidence.write_text("changed", encoding="utf-8")
+    assert token() != first
+
+
+def test_same_name_supplement_appearing_after_review_is_not_reported_as_received(library, tmp_path):
+    client, _, _ = library
+    folder = tmp_path / "DL-2026-09-032 Original"
+    folder.mkdir()
+    (folder / "original.txt").write_text("original", encoding="utf-8")
+    batch, _ = receive(client, [folder])
+    member_id = batch["items"][0]["member_id"]
+    source = tmp_path / "measurement.csv"
+    source.write_text("reviewed result", encoding="utf-8")
+    review = client.post("/api/project-library/intake-plan", json={"sources": [str(source)], "assignments": [{"source_path": str(source), "target_member_id": member_id}]}).json()
+    target = Path(review["items"][0]["target_path"])
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("unrelated result arrived later", encoding="utf-8")
+    result = client.post("/api/project-library/batches", json={**{key: review[key] for key in ("plan_id", "fingerprint")}, "selected": [str(source)]}).json()
+    assert result["counts"]["added"] == 0, result
+    assert result["counts"]["failed"] == 1
+    assert target.read_text(encoding="utf-8") == "unrelated result arrived later"
+    assert source.read_text(encoding="utf-8") == "reviewed result"
+
+
+def test_resume_does_not_register_changed_copied_material(library, tmp_path, monkeypatch):
+    client, _, _ = library
+    source = tmp_path / "DL-2026-09-032 Interrupted"
+    source.mkdir()
+    (source / "measurement.txt").write_text("reviewed result", encoding="utf-8")
+    plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    request = {**{key: plan[key] for key in ("plan_id", "fingerprint")}, "selected": [str(source)], "batch_id": "3" * 32}
+    original = LibraryFiles.receive
+    def crash(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        raise RuntimeError("simulated process interruption")
+    with monkeypatch.context() as patch:
+        patch.setattr(LibraryFiles, "receive", crash)
+        with pytest.raises(RuntimeError, match="simulated"):
+            client.post("/api/project-library/batches", json=request)
+    target = Path(plan["items"][0]["target_path"]) / source.name / "measurement.txt"
+    target.write_text("changed after interruption", encoding="utf-8")
+    result = client.post("/api/project-library/batches/" + request["batch_id"] + "/resume").json()
+    assert result["counts"]["added"] == 0, result
+    assert result["counts"]["failed"] == 1
+    assert client.get("/api/project-library/members").json()["items"] == []
+    assert target.read_text(encoding="utf-8") == "changed after interruption"
 
 
 def test_source_change_after_review_is_not_registered(library, tmp_path):
