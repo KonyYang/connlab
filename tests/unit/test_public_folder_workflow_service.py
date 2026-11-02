@@ -13,6 +13,7 @@ from backend.application.public_folder_workflow_service import (
     PublicFolderWorkflowExecuteCommand,
     PublicFolderWorkflowService,
     PublicFolderWorkflowState,
+    PublicFolderWorkflowFileRecord,
 )
 from backend.application.public_folder_year_resolver import PublicFolderYearResolver
 from backend.domain import Project, ProjectStatus
@@ -38,6 +39,52 @@ def test_context_reports_existing_local_official_folder_as_available(tmp_path: P
     context = service.context("P1")
 
     assert context.local_official_folder_available is True
+
+
+def test_public_paths_use_company_directory_names(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path)
+    context = service.context("P1")
+    assert context.public_open_path == paths["public"] / "Open projects" / "2026" / paths["local"].name
+    assert context.public_closed_path == paths["public"] / "Close projects" / "2026" / paths["local"].name
+
+
+def test_legacy_path_record_never_authorizes_replacing_new_target(tmp_path: Path) -> None:
+    service, repository, paths = _service(tmp_path)
+    local = paths["local"] / "file.txt"
+    local.write_text("new version", encoding="utf-8")
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name / "file.txt"
+    target.parent.mkdir(parents=True)
+    target.write_text("old version", encoding="utf-8")
+    fingerprint = PublicFolderWorkflowGateway().fingerprint(target)
+    repository.save_file(PublicFolderWorkflowFileRecord(
+        project_id="P1", relative_path=Path("file.txt"),
+        public_path=paths["public"] / "Open" / "2026" / paths["local"].name / "file.txt",
+        local_fingerprint=fingerprint, public_fingerprint=fingerprint,
+        updated_at="2026-01-01", operation_id="legacy",
+    ))
+    preview = service.preview_sync("P1")
+    assert preview.status == "conflict"
+    with pytest.raises(PublicFolderWorkflowConflictError):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True))
+    assert target.read_text(encoding="utf-8") == "old version"
+
+
+def test_sync_leaves_legacy_directories_untouched(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path)
+    local = paths["local"] / "file.txt"
+    local.write_text("current", encoding="utf-8")
+    old_open = paths["public"] / "Open" / "2026" / paths["local"].name
+    old_closed = paths["public"] / "Closed" / "2026" / paths["local"].name
+    for folder in (old_open, old_closed):
+        folder.mkdir(parents=True)
+        (folder / "file.txt").write_text("legacy", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    assert (paths["public"] / "Open projects" / "2026" / paths["local"].name / "file.txt").read_text(encoding="utf-8") == "current"
+    assert (old_open / "file.txt").read_text(encoding="utf-8") == "legacy"
+    assert (old_closed / "file.txt").read_text(encoding="utf-8") == "legacy"
 
 
 def test_context_keeps_recorded_missing_local_official_folder_unavailable(tmp_path: Path) -> None:
@@ -66,7 +113,7 @@ def test_sync_execute_copies_to_open_and_records_operation(tmp_path: Path) -> No
         ),
     )
 
-    copied = paths["public"] / "Open" / "2026" / paths["local"].name / "Submitted Material" / "app.docx"
+    copied = paths["public"] / "Open projects" / "2026" / paths["local"].name / "Submitted Material" / "app.docx"
     assert result.status == "completed"
     assert copied.read_text(encoding="utf-8") == "v1"
     assert repository.operations[-1].operation_type == "sync"
@@ -77,7 +124,7 @@ def test_execute_rejects_stale_preview_hash(tmp_path: Path) -> None:
     service, _repository, paths = _service(tmp_path)
     (paths["local"] / "file.txt").write_text("v1", encoding="utf-8")
     preview = service.preview_sync("P1")
-    target = paths["public"] / "Open" / "2026" / paths["local"].name / "file.txt"
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name / "file.txt"
     target.parent.mkdir(parents=True)
     target.write_text("human", encoding="utf-8")
 
@@ -115,7 +162,7 @@ def test_submit_moves_open_to_closed_and_locks_sync(tmp_path: Path) -> None:
         ),
     )
 
-    closed_file = paths["public"] / "Closed" / "2026" / paths["local"].name / "file.txt"
+    closed_file = paths["public"] / "Close projects" / "2026" / paths["local"].name / "file.txt"
     assert closed_file.read_text(encoding="utf-8") == "v1"
     assert repository.get_state("P1").sync_locked is True
     assert "Sync is locked after Submit." in service.preview_sync("P1").blockers
@@ -133,8 +180,8 @@ def test_submit_preview_blocks_unmanaged_public_open_file(tmp_path: Path) -> Non
             confirm_directory_creation=True,
         ),
     )
-    open_folder = paths["public"] / "Open" / "2026" / paths["local"].name
-    closed_folder = paths["public"] / "Closed" / "2026" / paths["local"].name
+    open_folder = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    closed_folder = paths["public"] / "Close projects" / "2026" / paths["local"].name
     unmanaged = open_folder / "human-extra.txt"
     unmanaged.write_text("outside ConnLab", encoding="utf-8")
 
@@ -173,8 +220,8 @@ def test_submit_execute_rejects_stale_preview_when_unmanaged_file_appears(tmp_pa
     )
     submit = service.preview_submit("P1")
     assert submit.status == "ready"
-    open_folder = paths["public"] / "Open" / "2026" / paths["local"].name
-    closed_folder = paths["public"] / "Closed" / "2026" / paths["local"].name
+    open_folder = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    closed_folder = paths["public"] / "Close projects" / "2026" / paths["local"].name
     (open_folder / "human-extra.txt").write_text("outside ConnLab", encoding="utf-8")
 
     with pytest.raises(PublicFolderWorkflowConflictError, match="stale"):
@@ -193,7 +240,7 @@ def test_submit_execute_rejects_stale_preview_when_unmanaged_file_appears(tmp_pa
 
 def test_pull_copies_closed_to_local_history_without_overwriting_current(tmp_path: Path) -> None:
     service, _repository, paths = _service(tmp_path)
-    closed = paths["public"] / "Closed" / "2026" / paths["local"].name
+    closed = paths["public"] / "Close projects" / "2026" / paths["local"].name
     closed.mkdir(parents=True)
     (closed / "approved.txt").write_text("approved", encoding="utf-8")
     (paths["local"] / "current.txt").write_text("current", encoding="utf-8")

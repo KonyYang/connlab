@@ -690,7 +690,7 @@ class PublicFolderWorkflowService:
         public_fingerprint = self._gateway.fingerprint(public_path)
         if public_fingerprint == local_fingerprint:
             return _file_item(relative, local_path, public_path, "skip", "current", "Public Open file is current.")
-        if previous is None:
+        if previous is None or previous.public_path.resolve() != public_path.resolve():
             return _file_item(relative, local_path, public_path, "conflict", "conflict", "Public Open file is not managed by ConnLab.")
         if public_fingerprint != previous.public_fingerprint:
             return _file_item(relative, local_path, public_path, "conflict", "conflict", "Public Open file changed outside ConnLab.")
