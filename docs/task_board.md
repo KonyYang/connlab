@@ -253,6 +253,39 @@
           }
         }
       }
+    },
+    "TASK_PUBLIC_EXISTING_DIRS_20261103": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-preexisting-dirs\\connlab",
+      "branch": "codex/public-preexisting-dirs-20261103",
+      "resources": [
+        "public-folder"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PUBLIC_EXISTING_DIRS_20261103",
+        "summary": "Require existing public root and year directories",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Operation-specific existing public parent and year checks; confirm project child creation; preserve year resolution and partial sync",
+        "scope_paths": [
+          "backend/application/public_folder_path_resolver.py",
+          "backend/application/public_folder_workflow_service.py",
+          "backend/infrastructure/files/public_folder_workflow_gateway.py",
+          "tests/unit/test_public_folder_workflow_service.py",
+          "tests/unit/test_public_folder_workflow_gateway.py",
+          "tests/integration/test_public_folder_workflow_api.py"
+        ],
+        "risk_reasons": [
+          "Public-drive filesystem mutation and concurrent directory changes"
+        ],
+        "activation_head": "c0a5d264e940e68693bf3cfbef6110e9ca160327",
+        "started_at": "2026-11-02T23:30:13.051894Z",
+        "updated_at": "2026-11-02T23:30:13.051894Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
