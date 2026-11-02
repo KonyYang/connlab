@@ -31,6 +31,82 @@ def library(tmp_path):
     engine.dispose()
 
 
+def test_single_project_check_keeps_ltr_root_whole_and_does_not_expand_parent(library, tmp_path):
+    client, settings, _ = library
+    parent = tmp_path / "old-projects"
+    project = parent / "DL-2026-09-032"
+    business = project / "DL-2026-09-032 Connector qualification"
+    business.mkdir(parents=True)
+    (project / "Source Book").mkdir()
+    (business / "test.txt").write_text("original", encoding="utf-8")
+    checked = client.post("/api/project-library/scan", json={"roots": [str(project)], "single_project": True})
+    assert checked.status_code == 200, checked.text
+    assert checked.json()["selection_issue"] is None
+    assert [item["source_path"] for item in checked.json()["items"]] == [str(project)]
+    assert checked.json()["items"][0]["ltr_number"] == "DL-2026-09-032"
+    parent_check = client.post("/api/project-library/scan", json={"roots": [str(parent)], "single_project": True}).json()
+    assert parent_check["selection_issue"] == "choose_project"
+    assert parent_check["items"] == []
+    partial = client.post("/api/project-library/scan", json={"roots": [str(project / "Source Book")], "single_project": True}).json()
+    assert partial["selection_issue"] == "partial_project"
+    assert not list(settings.projects_dir.iterdir())
+    # Existing batch callers still discover the project inside a parent.
+    batch = client.post("/api/project-library/scan", json={"roots": [str(parent)]}).json()
+    assert [item["source_path"] for item in batch["items"]] == [str(project)]
+
+
+def test_single_project_missing_ltr_is_reviewed_then_imported_without_renaming_source(library, tmp_path):
+    client, settings, _ = library
+    source = tmp_path / "Manual connector test"
+    source.mkdir()
+    (source / "original.txt").write_text("keep this", encoding="utf-8")
+    check = client.post("/api/project-library/scan", json={"roots": [str(source)], "single_project": True}).json()
+    assert check["selection_issue"] == "needs_ltr"
+    assert not list(settings.projects_dir.iterdir())
+    request = {"sources": [str(source)], "assignments": [{"source_path": str(source), "ltr_number": "DL-2026-09-032A1"}]}
+    response = client.post("/api/project-library/intake-plan", json=request)
+    assert response.status_code == 200, response.text
+    plan = response.json()
+    assert plan["items"][0]["ltr_number"] == "DL-2026-09-032A1"
+    assert plan["items"][0]["status"] == "ready"
+    assert not list(settings.projects_dir.iterdir())
+    confirmed = client.post("/api/project-library/batches", json={"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"], "selected": [str(source)]})
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["counts"]["added"] == 1, confirmed.text
+    member = client.get("/api/project-library/members").json()["items"][0]
+    assert member["ltr_number"] == "DL-2026-09-032A1"
+    assert member["project_id"] and member["can_continue"]
+    copied = settings.projects_dir / "DL-2026-09-032A1" / source.name / "original.txt"
+    assert copied.read_text(encoding="utf-8") == "keep this"
+    assert sorted(path.name for path in source.iterdir()) == ["original.txt"]
+    repeated = client.post("/api/project-library/intake-plan", json=request).json()
+    assert repeated["items"][0]["status"] == "already_added"
+    other = tmp_path / "Another manual folder"
+    other.mkdir()
+    (other / "different.txt").write_text("another test", encoding="utf-8")
+    conflict = client.post("/api/project-library/intake-plan", json={"sources": [str(other)], "assignments": [{"source_path": str(other), "ltr_number": "DL-2026-09-032A1"}]}).json()
+    assert conflict["items"][0]["status"] == "conflict"
+    assert len(client.get("/api/project-library/members").json()["items"]) == 1
+
+
+def test_single_project_uses_carried_identity_and_does_not_allow_ltr_override(library, tmp_path):
+    import json
+    client, _, _ = library
+    source = tmp_path / "collection" / "Renamed project"
+    (source / ".connlab").mkdir(parents=True)
+    (source / ".connlab" / "manifest.json").write_text(json.dumps({"project_id": "other-computer", "ltr_number": "DL-2026-09-032"}), encoding="utf-8")
+    check = client.post("/api/project-library/scan", json={"roots": [str(source)], "single_project": True}).json()
+    assert check["selection_issue"] is None
+    assert check["items"][0]["ltr_number"] == "DL-2026-09-032"
+    assert check["items"][0]["source_state"] == "incomplete"
+    rejected = client.post("/api/project-library/intake-plan", json={"sources": [str(source)], "assignments": [{"source_path": str(source), "ltr_number": "DL-2026-09-033"}]}).json()
+    assert rejected["items"][0]["status"] == "unavailable"
+    parent_check = client.post("/api/project-library/scan", json={"roots": [str(source.parent)], "single_project": True}).json()
+    assert parent_check["selection_issue"] == "choose_project"
+    override_parent = client.post("/api/project-library/intake-plan", json={"sources": [str(source.parent)], "assignments": [{"source_path": str(source.parent), "ltr_number": "DL-2026-09-033"}]}).json()
+    assert override_parent["items"][0]["status"] == "unavailable"
+
+
 @pytest.mark.parametrize("numbered", [True, False])
 def test_connlab_identity_without_snapshot_requires_explicit_files_only_choice(library, tmp_path, numbered):
     import json

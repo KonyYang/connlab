@@ -267,12 +267,19 @@ class LibraryFiles:
         root = self.settings.library_root / "Backups" / "Project Recovery" if self.settings.library_root else self.root / "recovery"
         return checked_path(root, must_exist=False)
 
-    def inspect_source(self, value):
+    def inspect_source(self, value, *, ltr_number=None):
         source = checked_path(value)
         if source == self.settings.projects_dir or self.settings.projects_dir.is_relative_to(source):
             raise ProjectLibraryError("Choose projects below the library root, not a directory containing the library.")
         entries = inventory(source) if source.is_dir() else [{"relative_path": source.name, "directory": False, "size": source.stat().st_size, "sha256": file_hash(source)}]
         inspected = {**self.describe_source(source), "entries": entries, "identity": identity(source), "source_fingerprint": fingerprint(entries)}
+        if ltr_number is not None:
+            number = ltr_number.strip().upper()
+            if not NUMBER.fullmatch(number):
+                raise ProjectLibraryError("Enter a complete LTR number, for example DL-2026-09-032.")
+            if inspected["kind"] != "project" or inspected.get("ltr_number") or inspected.get("source_state") != "manual" or self.scan_single_project(value)["selection_issue"] != "needs_ltr":
+                raise ProjectLibraryError("Only an unidentified complete manual project can be assigned an LTR. Existing project identity cannot be changed during import.")
+            inspected.update(ltr_number=number, provided_ltr_number=number)
         if inspected.get("ltr_number") and NUMBER.fullmatch(inspected["ltr_number"]):
             inspected["reception_layout"] = reception_layout(inspected)
         inspected["boundary_problem"] = boundary_problem(inspected)
@@ -328,6 +335,28 @@ class LibraryFiles:
                 "project_id": marker.get("project_id") or marker.get("source_project_id"), "has_portable": has_portable and not newer_version,
                 "source_project_id": marker.get("source_project_id"),
                 "source_state": source_state}
+
+    def scan_single_project(self, value):
+        """Check the chosen boundary; never recursively discover or hash other projects."""
+        row = self.describe_source(value)
+        result = {"items": [], "boundary_roots": [], "warnings": [], "truncated": False, "selection_issue": None}
+        if row["kind"] != "project":
+            result.update(selection_issue="choose_project", warnings=["Choose a complete project folder, not an individual file."])
+            return result
+        problem = boundary_problem(row)
+        if problem:
+            result.update(selection_issue="partial_project", warnings=[problem])
+            return result
+        if not row.get("ltr_number") and row.get("source_state") == "manual":
+            if any(NUMBER.search(Path(child).name) or (Path(child) / SOFTWARE_MARKER).is_file()
+                   or (Path(child) / ".connlab" / "manifest.json").is_file()
+                   or (Path(child) / PORTABLE_FILE).is_file() for child in row["child_folders"]):
+                result.update(selection_issue="choose_project", warnings=["This folder contains project folders. Choose the one project you want to import."])
+                return result
+            result["selection_issue"] = "needs_ltr"
+        keys = ("source_path", "title", "ltr_number", "kind", "warnings", "child_folders", "has_portable", "source_state")
+        result["items"] = [{key: row[key] for key in keys}]
+        return result
 
     def scan(self, roots):
         items, warnings, seen = [], [], set()

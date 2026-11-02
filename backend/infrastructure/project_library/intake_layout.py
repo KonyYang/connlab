@@ -24,6 +24,8 @@ def reception_layout(source):
         return {"root_name": number, "prefix": number + " Imported files"}
     if path.name.upper().startswith(number.upper() + " "):
         return {"root_name": number, "prefix": path.name}
+    if source.get("provided_ltr_number"):
+        return {"root_name": number, "prefix": path.name}
     return None
 
 

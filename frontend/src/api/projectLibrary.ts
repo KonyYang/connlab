@@ -7,8 +7,8 @@ const post = <T,>(path: string, body: unknown, signal?: AbortSignal) => requestJ
 export type LibraryRuntime = { library_root: string; projects_root: string; data_root: string; database_path: string; configured: boolean; format_version: number; destination_editable?: boolean; location_error?: string | null };
 export type LibraryMember = { member_id: string; project_id: string | null; ltr_number: string | null; title: string; folder_path: string; revision: number; batch_id: string | null; snapshot_status: "missing" | "current" | "stale" | "unavailable" | "not_checked"; snapshot_created_at: string | null; warnings: string[]; can_continue: boolean; is_history?: boolean };
 export type LibraryCandidate = { source_state?: string; source_path: string; title: string; ltr_number: string | null; kind: "project" | "file"; warnings: string[]; child_folders: string[]; has_portable?: boolean };
-export type LibraryScan = { items: LibraryCandidate[]; boundary_roots?: LibraryCandidate[]; warnings: string[]; truncated: boolean };
-export type LibraryFileAssignment = { source_path: string; target_member_id?: string; new_project_title?: string; files_only?: boolean };
+export type LibraryScan = { items: LibraryCandidate[]; boundary_roots?: LibraryCandidate[]; warnings: string[]; truncated: boolean; selection_issue?: "choose_project" | "partial_project" | "needs_ltr" | null };
+export type LibraryFileAssignment = { source_path: string; target_member_id?: string; new_project_title?: string; files_only?: boolean; ltr_number?: string };
 export type LibraryIntakeItem = { review_fingerprint?: string | null; source_state?: string; differences?: string[]; source_path: string; target_path: string; title: string; ltr_number: string | null; status: "ready" | "conflict" | "already_added" | "unavailable"; warnings: string[]; can_keep_separate: boolean; existing_member_id?: string | null; target_member_id?: string | null; new_project_title?: string | null };
 export type LibraryIntakePlan = { plan_id: string; fingerprint: string; items: LibraryIntakeItem[]; warnings: string[]; projects_root?: string | null };
 export type LibraryBatch = { batch_id: string; status: "completed" | "interrupted" | "running"; counts: { added: number; already_added: number; review: number; failed: number }; items: { source_path: string; status: string; message: string; member_id: string | null }[] };
@@ -27,7 +27,7 @@ export const openLibraryDestination = () => post<{ status: string; message: stri
 export const pickLibraryDestination = async () => (await pickExternalResourcePath("project_output_root")).path;
 export const listLibraryMembers = (query = "", batchId = "", signal?: AbortSignal) => requestJson<{ items: LibraryMember[] }>(`${BASE}/members?${new URLSearchParams({ q: query, batch_id: batchId })}`, { signal });
 export const getLibraryMember = (id: string, signal?: AbortSignal) => requestJson<LibraryMember>(memberPath(id), { signal });
-export const scanLibrarySources = (roots: string[], signal?: AbortSignal) => post<LibraryScan>(`${BASE}/scan`, { roots }, signal);
+export const scanLibrarySources = (roots: string[], signal?: AbortSignal, singleProject = false) => post<LibraryScan>(`${BASE}/scan`, { roots, ...(singleProject ? { single_project: true } : {}) }, signal);
 export const planLibraryIntake = (sources: string[], signal?: AbortSignal, assignments?: LibraryFileAssignment[]) => post<LibraryIntakePlan>(`${BASE}/intake-plan`, { sources, ...(assignments ? { assignments } : {}) }, signal);
 export const startLibraryBatch = (selection: LibraryBatchRequest) => post<LibraryBatch>(`${BASE}/batches`, selection);
 export const getLibraryBatch = (id: string, signal?: AbortSignal) => requestJson<LibraryBatch>(`${BASE}/batches/${encodeURIComponent(id)}`, { signal });

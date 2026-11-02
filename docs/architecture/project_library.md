@@ -356,17 +356,17 @@ reporting a partially applied copy as complete.
 
 The intended operator sequence is:
 
-1. In Projects, choose **Import Projects**, select one project folder or a parent
-   containing several projects, then **Preview Projects**. The target directory
-   is shown before copying; original folders and files stay in place. Check
-   project boundaries, loose-file assignments and conflicts; **Import Selected (N)**
-   and **Confirm Import** receive the selected copies. A single-project preview
-   omits bulk selection/filter controls, and a single page omits pagination.
-   Changing sources or starting a new preview resets the preview filter. For manual
-   layouts, expand **Check Project Boundaries**: **Use This Folder** previews the
-   selected root as one project; **Use Subfolders as Projects** previews its child
-   folders as separate projects. These explicit choices do not run discovery
-   again or copy files before confirmation.
+1. In Projects, choose **Import Projects**, then **Choose Project Folder**.
+   The default UI checks exactly one complete project boundary, never recursively
+   expands a parent into a batch, and replaces rather than appends a new selection.
+   An LTR root and an LTR-prefixed business folder are valid inputs. Parent folders,
+   individual files and known project subfolders receive contextual guidance.
+   Identity metadata is read before asking for an LTR. Only an unidentified manual
+   project can receive a user-supplied existing LTR; existing ConnLab identity cannot
+   be overridden. The reviewed number, layout and conflicts are bound into the
+   ordinary intake plan. A single **Confirm Import** performs the copy; preview
+   alone does not copy or register the project. Destination remains the Settings
+   **Project default save location**. Original files and folders are preserved.
 2. In **Projects**, search by LTR or title, open the project details and use **Open Folder** for ordinary
    Windows file work. **Manage** provides file refresh, **Edit Title** and
    **Locate Folder** when a directory was moved or renamed.
@@ -374,17 +374,20 @@ The intended operator sequence is:
    Project Workbench. Receiving documents alone does not confirm test authority.
 4. Before changing computers, use **Prepare to Take** and **Confirm Snapshot**.
    Check that the saved data is current, then copy the complete project root.
-5. On the other computer, expand **Other Import Methods**, use **Restore Project
-   Data**, **Inspect
-   Project**, **Review Restore** and **Confirm Restore**. Resolve an offered
-   conflict explicitly. Review any missing dependencies before continuing tests.
+5. On the other computer, choose the complete project root through the same import
+   entry. Saved ConnLab data automatically takes the existing restoration path.
+   Resolve an offered conflict explicitly and review missing dependencies. A missing
+   snapshot is never silently treated as a successful data restoration; newer formats
+   remain blocked. Files-only intake still requires an explicit choice where offered.
 
-**Other Import Methods** also retains **Link Existing Folders** for in-place
-registration. Restoring saved ConnLab data is distinct from copying ordinary
-project folders; neither method bypasses its final confirmation or conflict checks.
-After a fresh completed import without failed or review items, the source chooser
-and other methods are hidden so **View Imported Projects** is the primary action,
-with **Import More** starting a clean selection. Errors and unfinished/review results
+**More Options** retains **Link Folders Without Copying** for in-place registration.
+Backend batch discovery/intake and recovered batch results remain compatible; the
+default chooser does not expose batch selection, boundary-splitting or loose-file
+assignment controls. Restoring saved data and receiving ordinary files preserve
+their existing independent protections. A successful eligible single project opens
+its verified workspace; a retained/ineligible project opens details. **Import More**
+starts a clean selection; returning to Projects does not add an import-batch filter.
+Errors and unfinished/review results
 remain visible. Reopening with a successful saved batch keeps the fresh chooser
 available and puts the previous result under **Last Import**.
 

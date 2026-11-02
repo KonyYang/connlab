@@ -72,7 +72,7 @@ def members(q: str = Query("", max_length=4096), batch_id: str | None = None, se
 
 @router.post("/scan", response_model=ScanResponse)
 def scan(request: RootsRequest, service=Depends(get_project_library_service)):
-    return checked(lambda: service.scan(request.roots))
+    return checked(lambda: service.scan(request.roots, single_project=request.single_project))
 
 
 @router.post("/intake-plan", response_model=IntakePlanResponse)

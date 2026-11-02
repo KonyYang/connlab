@@ -27,13 +27,13 @@ it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project
   window.history.replaceState({}, "", path);
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Import Projects" })).toBeTruthy();
-  expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
   expect(screen.getByTestId("active-area").textContent).toBe("projects");
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe("/projects");
   await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
   expect(window.location.pathname).toBe("/projects/import");
-  expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
 });
 
 it("returns from imported files to the same workbench", async () => {
@@ -105,7 +105,7 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
   await user.click(screen.getByRole("button", { name: "Import Projects" }));
   expect(window.location.pathname).toBe("/projects/import");
-  expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
 });
 
 it("keeps old folder-linking links accessible and returns to the common import flow", async () => {

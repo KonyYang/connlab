@@ -42,7 +42,11 @@ class ProjectLibraryService:
             return {"status": result.status, "message": result.message}
         return {"status": "opened", "message": "Opened the import save location."}
 
-    def scan(self, roots):
+    def scan(self, roots, *, single_project=False):
+        if single_project:
+            if len(roots) != 1:
+                raise ProjectLibraryError("Choose one complete project folder at a time.")
+            return self.files.scan_single_project(roots[0])
         return self.files.scan(roots)
 
     def members(self, query="", batch_id=None):
@@ -123,7 +127,12 @@ class ProjectLibraryService:
             if target_id and new_title:
                 raise ProjectLibraryError("Choose an existing project or a new project title, not both.")
             try:
-                source = self.files.inspect_source(value)
+                if assignment.get("ltr_number") is not None:
+                    if target_id or new_title or assignment.get("files_only"):
+                        raise ProjectLibraryError("An LTR can only be supplied for a new unidentified manual project.")
+                    source = self.files.inspect_source(value, ltr_number=assignment["ltr_number"])
+                else:
+                    source = self.files.inspect_source(value)
                 if assignment.get("files_only"):
                     if source.get("source_state") != "incomplete":
                         raise ProjectLibraryConflict("Only a ConnLab folder missing its snapshot can use files-only import. Check this source again.")
