@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ProjectFolderRequiredFormsPreview } from "../../api/client";
+import type { ProjectFolderRequiredFormsPreview, PublicFolderWorkflowResult } from "../../api/client";
 import {
   deriveProjectFolderTasks,
   selectCurrentProjectFolderTaskKey,
@@ -8,6 +8,23 @@ import {
 import type { WorkbenchVersionStatus } from "./projectWorkbenchVersionSelectors";
 
 describe("deriveProjectFolderTasks", () => {
+  it("lists every uploaded, unchanged and conflict file in a partial sync result", () => {
+    const item = (relative_path: string, action: string, status: string) => ({
+      relative_path, action, status, kind: "file", local_path: null, public_path: null, message: null,
+    });
+    const result = {
+      project_id: "project-1", operation_id: "op", operation_type: "sync", status: "partial",
+      counts: { add: 2, conflict: 1 }, errors: [], preview: {},
+      items: [item("a.txt", "add", "completed"), item("b.txt", "add", "completed"),
+        item("c.txt", "skip", "current"), item("d.txt", "conflict", "conflict")],
+    } as PublicFolderWorkflowResult;
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(), publicFolderWorkflowResults: { sync: result, submit: null, pull: null },
+    });
+    expect(tasks[1].detailMessages).toEqual(expect.arrayContaining([
+      "Uploaded a.txt", "Uploaded b.txt", "Unchanged c.txt", "Skipped d.txt: Conflict",
+    ]));
+  });
   it("returns the quiet four-operation Folder Actions model", () => {
     const tasks = deriveProjectFolderTasks(readyInput());
 

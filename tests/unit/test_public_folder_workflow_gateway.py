@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 import pytest
 
@@ -23,6 +24,24 @@ def test_gateway_copy_new_file_does_not_overwrite_existing_target(tmp_path: Path
         gateway.copy_new_file(source, target)
 
     assert target.read_text(encoding="utf-8") == "human"
+
+
+def test_failed_copy_retains_destination_for_review(tmp_path: Path, monkeypatch) -> None:
+    gateway = PublicFolderWorkflowGateway()
+    source = tmp_path / "source.txt"
+    target = tmp_path / "public" / "target.txt"
+    source.write_text("source", encoding="utf-8")
+    target.parent.mkdir()
+    original = shutil.copyfileobj
+    def fail_destination_copy(source_handle, target_handle, *args, **kwargs):
+        if isinstance(target_handle.name, int):
+            target_handle.write(b"partial")
+            raise OSError("simulated write error")
+        return original(source_handle, target_handle, *args, **kwargs)
+    monkeypatch.setattr(shutil, "copyfileobj", fail_destination_copy)
+    with pytest.raises(PublicFolderWorkflowTargetChangedError, match="Review it manually"):
+        gateway.copy_new_file(source, target)
+    assert target.read_bytes() == b"partial"
 
 
 def test_gateway_replace_managed_file_requires_expected_fingerprint(tmp_path: Path) -> None:

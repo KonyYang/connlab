@@ -36,7 +36,7 @@ class PublicFolderWorkflowGateway:
         """Create a preview-listed directory."""
         target.mkdir(parents=True, exist_ok=True)
 
-    def copy_new_file(self, source: Path, target: Path) -> None:
+    def copy_new_file(self, source: Path, target: Path, *, expected_source_fingerprint: str | None = None) -> None:
         """Copy a file only when the target is still missing."""
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
@@ -45,6 +45,8 @@ class PublicFolderWorkflowGateway:
             )
         temporary = self._copy_to_temporary(source, target)
         try:
+            if expected_source_fingerprint is not None and self.fingerprint(temporary) != expected_source_fingerprint:
+                raise PublicFolderWorkflowTargetChangedError(f"Local file changed during copy: {source}")
             self._place_new_file_without_overwrite(temporary, target)
         finally:
             if temporary.exists():
@@ -56,6 +58,7 @@ class PublicFolderWorkflowGateway:
         target: Path,
         *,
         expected_public_fingerprint: str | None,
+        expected_source_fingerprint: str | None = None,
     ) -> None:
         """Replace a managed public file after verifying the expected fingerprint."""
         if expected_public_fingerprint is None:
@@ -72,6 +75,10 @@ class PublicFolderWorkflowGateway:
             )
         temporary = self._copy_to_temporary(source, target)
         try:
+            if expected_source_fingerprint is not None and self.fingerprint(temporary) != expected_source_fingerprint:
+                raise PublicFolderWorkflowTargetChangedError(f"Local file changed during copy: {source}")
+            if not target.is_file() or self.fingerprint(target) != expected_public_fingerprint:
+                raise PublicFolderWorkflowTargetChangedError(f"Public folder file changed during staging: {target}")
             os.replace(temporary, target)
         finally:
             if temporary.exists():
@@ -144,7 +151,7 @@ class PublicFolderWorkflowGateway:
             with temporary.open("rb") as source_handle, os.fdopen(descriptor, "wb") as target_handle:
                 shutil.copyfileobj(source_handle, target_handle)
             shutil.copystat(temporary, target)
-        except Exception:
-            if target.exists():
-                target.unlink()
-            raise
+        except Exception as exc:
+            raise PublicFolderWorkflowTargetChangedError(
+                f"Copy failed; the destination may be incomplete or changed. Review it manually: {target}"
+            ) from exc

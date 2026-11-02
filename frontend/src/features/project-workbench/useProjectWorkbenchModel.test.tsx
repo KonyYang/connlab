@@ -347,6 +347,48 @@ describe("useProjectWorkbenchModel", () => {
     expect(result.current.publicFolderWorkflowMessage).toBe("Submit completed.");
   });
 
+  it("allows a partial sync only after explicit existing-folder confirmation and allows cancel", async () => {
+    apiMocks.previewPublicFolderWorkflowSync.mockResolvedValue(publicFolderWorkflowPreview("sync", {
+      status: "partial", conflicts: ["conflict"], required_confirmations: ["confirm_existing_public_folder"],
+    }));
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+    await act(async () => { await result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBe("sync");
+    act(() => result.current.onCancelPublicFolderWorkflowOperation("sync"));
+    expect(apiMocks.executePublicFolderWorkflowSync).not.toHaveBeenCalled();
+    await act(async () => { await result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    await act(async () => { await result.current.onConfirmPublicFolderWorkflowOperation("sync"); });
+    expect(apiMocks.executePublicFolderWorkflowSync).toHaveBeenCalledWith("project-1", expect.objectContaining({ confirmed: true, confirm_existing_public_folder: true }));
+  });
+
+  it("reports a partial sync without claiming all files completed", async () => {
+    apiMocks.previewPublicFolderWorkflowSync.mockResolvedValue(publicFolderWorkflowPreview("sync", { status: "partial", conflicts: ["Conflict"] }));
+    apiMocks.executePublicFolderWorkflowSync.mockResolvedValue({ ...publicFolderWorkflowResult("sync"), status: "partial", counts: { add: 1, conflict: 1 }, items: [{ kind: "file", relative_path: "conflict.txt", local_path: null, public_path: null, action: "conflict", status: "conflict", message: "Manual review" }] });
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+    await act(async () => { await result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    await act(async () => { await result.current.onConfirmPublicFolderWorkflowOperation("sync"); });
+    expect(result.current.publicFolderWorkflowMessage).toContain("Partial sync");
+    expect(result.current.publicFolderWorkflowResults.sync?.counts.conflict).toBe(1);
+    expect(result.current.publicFolderWorkflowResults.sync?.items?.[0].relative_path).toBe("conflict.txt");
+  });
+
+  it("ignores a late sync preview after switching projects", async () => {
+    let resolvePreview!: (value: ReturnType<typeof publicFolderWorkflowPreview>) => void;
+    apiMocks.previewPublicFolderWorkflowSync.mockImplementationOnce(() => new Promise((resolve) => { resolvePreview = resolve; }));
+    const { result, rerender } = renderHook(({ id }) => useProjectWorkbenchModel(id), { initialProps: { id: "project-1" } });
+    await waitFor(() => expect(result.current.project?.project_id).toBe("project-1"));
+    let pending!: Promise<void>;
+    act(() => { pending = result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    apiMocks.getProject.mockResolvedValue({ project_id: "project-2", product_name: "Second", requestor: "Lab", status: "active" });
+    rerender({ id: "project-2" });
+    await waitFor(() => expect(result.current.project?.project_id).toBe("project-2"));
+    await act(async () => { resolvePreview(publicFolderWorkflowPreview("sync")); await pending; });
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBeNull();
+    expect(result.current.publicFolderWorkflowPreviews.sync).toBeNull();
+  });
+
   it("does not execute when a workflow preview reports conflicts", async () => {
     apiMocks.previewPublicFolderWorkflowSubmit.mockResolvedValueOnce(
       publicFolderWorkflowPreview("submit", {

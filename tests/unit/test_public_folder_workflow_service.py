@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import json
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from backend.application.official_project_folder_check_service import OfficialFo
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.application.public_folder_path_resolver import PublicFolderPathError, PublicFolderPathResolver
 from backend.application.public_folder_workflow_service import (
+    PublicFolderWorkflowBlockedError,
     PublicFolderWorkflowConflictError,
     PublicFolderWorkflowExecuteCommand,
     PublicFolderWorkflowService,
@@ -118,6 +120,148 @@ def test_sync_execute_copies_to_open_and_records_operation(tmp_path: Path) -> No
     assert copied.read_text(encoding="utf-8") == "v1"
     assert repository.operations[-1].operation_type == "sync"
     assert repository.get_file("P1", Path("Submitted Material/app.docx")) is not None
+
+
+def test_partial_sync_skips_conflict_and_preserves_colleague_files(tmp_path: Path) -> None:
+    service, repository, paths = _service(tmp_path)
+    (paths["local"] / "conflict.txt").write_text("local", encoding="utf-8")
+    (paths["local"] / "new.txt").write_text("new", encoding="utf-8")
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    target.mkdir(parents=True)
+    (target / "conflict.txt").write_text("colleague", encoding="utf-8")
+    (target / "extra.txt").write_text("extra", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    assert preview.status == "partial"
+    assert "confirm_existing_public_folder" in preview.required_confirmations
+    with pytest.raises(PublicFolderWorkflowBlockedError):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True))
+    assert not (target / "new.txt").exists()
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True, confirm_existing_public_folder=True))
+    assert result.status == "partial"
+    assert result.counts["add"] == 1
+    assert result.counts["conflict"] == 1
+    assert (target / "new.txt").read_text(encoding="utf-8") == "new"
+    assert (target / "conflict.txt").read_text(encoding="utf-8") == "colleague"
+    assert (target / "extra.txt").read_text(encoding="utf-8") == "extra"
+    assert repository.get_file("P1", Path("conflict.txt")) is None
+
+
+def test_conflicting_directory_skips_entire_subtree_but_copies_other_files(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "blocked").mkdir()
+    (paths["local"] / "blocked" / "nested.txt").write_text("nested", encoding="utf-8")
+    (paths["local"] / "good.txt").write_text("good", encoding="utf-8")
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    target.mkdir(parents=True)
+    (target / "blocked").write_text("colleague", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True, confirm_existing_public_folder=True))
+    assert result.status == "partial"
+    assert (target / "blocked").read_text(encoding="utf-8") == "colleague"
+    assert (target / "good.txt").read_text(encoding="utf-8") == "good"
+    assert any(item.relative_path == Path("blocked/nested.txt") and item.status == "conflict" for item in result.items)
+
+
+def test_preview_rejects_file_content_changes_even_if_action_is_unchanged(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path)
+    source = paths["local"] / "new.txt"
+    source.write_text("first", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    source.write_text("changed", encoding="utf-8")
+    with pytest.raises(PublicFolderWorkflowConflictError, match="stale"):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True))
+    assert not (paths["public"] / "Open projects" / "2026" / paths["local"].name / "new.txt").exists()
+
+
+def test_managed_existing_file_update_is_skipped_without_overwriting(tmp_path: Path) -> None:
+    service, repository, paths = _service(tmp_path)
+    source = paths["local"] / "old.txt"
+    source.write_text("first", encoding="utf-8")
+    first = service.preview_sync("P1")
+    service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=first.preview_hash, confirmed=True, confirm_directory_creation=True))
+    source.write_text("updated", encoding="utf-8")
+    (paths["local"] / "new.txt").write_text("new", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True))
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    assert result.status == "partial"
+    assert (target / "old.txt").read_text(encoding="utf-8") == "first"
+    assert (target / "new.txt").read_text(encoding="utf-8") == "new"
+    assert any(item.relative_path == Path("old.txt") and "manual review" in item.message for item in result.items)
+    assert repository.operations[-1].counts == result.counts
+    audit = json.loads(repository.operations[-1].metadata_json)
+    assert any(item["relative_path"] == "old.txt" and item["status"] == "conflict" for item in audit["result_items"])
+
+
+def test_empty_conflicting_directory_is_reported(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "empty").mkdir()
+    (paths["local"] / "new.txt").write_text("new", encoding="utf-8")
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    target.mkdir(parents=True)
+    (target / "empty").write_text("colleague", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True, confirm_existing_public_folder=True))
+    assert result.status == "partial"
+    assert result.counts["directory_conflict"] == 1
+    assert any(item.relative_path == Path("empty") and item.kind == "directory" and item.status == "conflict" for item in result.items)
+
+
+def test_no_successful_files_is_failed_even_when_directories_created(tmp_path: Path, monkeypatch) -> None:
+    service, repository, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("local", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    def fail_copy(*args, **kwargs):
+        raise FileExistsError("Target appeared during copy")
+    monkeypatch.setattr(PublicFolderWorkflowGateway, "copy_new_file", fail_copy)
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True))
+    assert result.status == "failed"
+    assert result.counts["add"] == 0
+    assert result.counts["conflict"] == 1
+    assert repository.operations[-1].counts == result.counts
+    assert any("Target appeared" in item.message for item in result.items)
+
+
+def test_new_target_appearing_during_sync_is_skipped_and_other_files_continue(tmp_path: Path, monkeypatch) -> None:
+    service, repository, paths = _service(tmp_path)
+    (paths["local"] / "a.txt").write_text("local a", encoding="utf-8")
+    (paths["local"] / "b.txt").write_text("local b", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    original = PublicFolderWorkflowGateway.copy_new_file
+    def competing_copy(gateway, source, target, **kwargs):
+        if source.name == "a.txt":
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("colleague a", encoding="utf-8")
+        return original(gateway, source, target, **kwargs)
+    monkeypatch.setattr(PublicFolderWorkflowGateway, "copy_new_file", competing_copy)
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True))
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    assert result.status == "partial"
+    assert result.counts["add"] == 1 and result.counts["conflict"] == 1
+    assert (target / "a.txt").read_text(encoding="utf-8") == "colleague a"
+    assert (target / "b.txt").read_text(encoding="utf-8") == "local b"
+    assert repository.operations[-1].counts == result.counts
+
+
+def test_completed_copy_is_reported_if_post_sync_refresh_fails(tmp_path: Path, monkeypatch) -> None:
+    service, repository, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    original = PublicFolderWorkflowGateway.list_files
+    calls = 0
+    def fail_refresh(gateway, root):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("network unavailable")
+        return original(gateway, root)
+    monkeypatch.setattr(PublicFolderWorkflowGateway, "list_files", fail_refresh)
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True))
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name / "file.txt"
+    assert target.read_text(encoding="utf-8") == "data"
+    assert result.status == "partial" and result.counts["add"] == 1
+    assert any("Unable to refresh" in error for error in result.errors)
+    assert repository.operations[-1].counts == result.counts
 
 
 def test_execute_rejects_stale_preview_hash(tmp_path: Path) -> None:
@@ -259,6 +403,118 @@ def test_pull_copies_closed_to_local_history_without_overwriting_current(tmp_pat
     assert (paths["local"] / "current.txt").read_text(encoding="utf-8") == "current"
     assert preview.target_path is not None
     assert (preview.target_path / "approved.txt").read_text(encoding="utf-8") == "approved"
+
+
+def test_sync_rejects_project_folder_created_after_execute_preview(tmp_path: Path, monkeypatch) -> None:
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("local data", encoding="utf-8")
+    parent = paths["public"] / "Open projects" / "2026"
+    parent.mkdir(parents=True)
+    (paths["public"] / "Closed projects" / "2026").mkdir(parents=True)
+    preview = service.preview_sync("P1")
+    original = service.preview_sync
+    target = parent / paths["local"].name
+
+    def race(project_id):
+        fresh = original(project_id)
+        target.mkdir()
+        (target / "colleague.txt").write_text("colleague", encoding="utf-8")
+        return fresh
+
+    monkeypatch.setattr(service, "preview_sync", race)
+    with pytest.raises(PublicFolderWorkflowConflictError, match="appeared"):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+        ))
+    assert sorted(path.name for path in target.iterdir()) == ["colleague.txt"]
+
+
+def test_existing_project_folder_replaced_after_preview_is_stale(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "new.txt").write_text("local", encoding="utf-8")
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    target.mkdir(parents=True)
+    (target / "existing.txt").write_text("same", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    target.rename(target.with_name("other-folder"))
+    target.mkdir()
+    (target / "existing.txt").write_text("same", encoding="utf-8")
+    with pytest.raises(PublicFolderWorkflowConflictError):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+            confirm_existing_public_folder=True,
+        ))
+    assert not (target / "new.txt").exists()
+
+
+def test_sync_skips_files_if_project_folder_identity_changes(tmp_path: Path, monkeypatch) -> None:
+    import backend.application.public_folder_workflow_service as workflow
+
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("local data", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    original = workflow._directory_identity
+    calls = 0
+
+    def changed_identity(path):
+        nonlocal calls
+        calls += 1
+        identity = original(path)
+        return identity if calls == 1 else (identity[0], identity[1] + 1)
+
+    monkeypatch.setattr(workflow, "_directory_identity", changed_identity)
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    assert result.status == "failed"
+    assert not (paths["public"] / "Open projects" / "2026" / paths["local"].name / "file.txt").exists()
+    assert any("identity changed" in error for error in result.errors)
+
+
+def test_sync_reports_partial_when_identity_becomes_unavailable_after_one_copy(tmp_path: Path, monkeypatch) -> None:
+    import backend.application.public_folder_workflow_service as workflow
+
+    service, repository, paths = _service(tmp_path)
+    for name in ("a.txt", "b.txt"):
+        (paths["local"] / name).write_text(name, encoding="utf-8")
+    preview = service.preview_sync("P1")
+    original = workflow._directory_identity
+    calls = 0
+
+    def unavailable_after_first_file(path):
+        nonlocal calls
+        calls += 1
+        if calls >= 3:
+            raise PublicFolderWorkflowConflictError("Directory identity unavailable")
+        return original(path)
+
+    monkeypatch.setattr(workflow, "_directory_identity", unavailable_after_first_file)
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name
+    assert result.status == "partial"
+    assert (target / "a.txt").read_text(encoding="utf-8") == "a.txt"
+    assert not (target / "b.txt").exists()
+    assert result.counts["add"] == 1
+    assert repository.operations[-1].status == "partial"
+
+
+def test_sync_record_failure_reports_copied_file_and_preserves_it(tmp_path: Path, monkeypatch) -> None:
+    service, repository, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("local data", encoding="utf-8")
+    preview = service.preview_sync("P1")
+
+    def fail_record(_record):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(repository, "save_file", fail_record)
+    with pytest.raises(ValueError, match="was copied.*record could not be saved"):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+        ))
+    target = paths["public"] / "Open projects" / "2026" / paths["local"].name / "file.txt"
+    assert target.read_text(encoding="utf-8") == "local data"
 
 
 def _service(tmp_path: Path):

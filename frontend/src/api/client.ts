@@ -638,6 +638,7 @@ export type PublicFolderWorkflowStatus =
   | "ready"
   | "blocked"
   | "conflict"
+  | "partial"
   | "completed"
   | "failed";
 
@@ -712,6 +713,7 @@ export type PublicFolderWorkflowExecuteInput = {
   preview_hash: string;
   confirmed: boolean;
   confirm_directory_creation?: boolean;
+  confirm_existing_public_folder?: boolean;
   operator?: string | null;
 };
 
@@ -723,6 +725,7 @@ export type PublicFolderWorkflowResult = {
   counts: Record<string, number>;
   errors: string[];
   preview: PublicFolderWorkflowPreview;
+  items?: PublicFolderWorkflowItem[];
 };
 
 export type ProjectFolderOpenResponse = {
