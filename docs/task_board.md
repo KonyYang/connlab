@@ -167,7 +167,49 @@
       "closed_at": "2026-11-02T00:20:02.997114Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LTR_REMARKS_DEFAULT_20261102": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\ltr-remarks-default\\connlab",
+      "branch": "codex/ltr-remarks-default",
+      "resources": [
+        "ltr-workbook"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LTR_REMARKS_DEFAULT_20261102",
+        "summary": "Correct Remarks PO defaults for Basic Information and LTR registration",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Use N/A for empty Basic Information remarks and new or replacement LTR registration preview and workbook write; preserve existing manually entered Basic Information and later synchronization",
+        "scope_paths": [
+          "backend/application/ltr_workbook_write_preview_service.py",
+          "backend/application/ltr_readiness_service.py",
+          "backend/modules/ltr/ltr_field_catalog.py",
+          "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
+          "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+          "tests/unit/test_ltr_workbook_write_preview_service.py",
+          "tests/unit/test_ltr_readiness_service.py",
+          "tests/unit/test_ltr_field_catalog.py",
+          "tests/unit/test_specified_ltr_workbook_authority_preview_service.py",
+          "tests/unit/test_ltr_workbook_write_commit_service.py",
+          "tests/integration/test_ltr_workbook_write_commit_api.py",
+          "tests/integration/test_ltr_workbook_write_preview_api.py",
+          "tests/integration/test_ltr_workbook_basic_information_sync_api.py",
+          "tests/integration/test_new_project_completion_api.py"
+        ],
+        "risk_reasons": [
+          "LTR registration writes externally authoritative workbook; tests use disposable files only"
+        ],
+        "activation_head": "7fec426856343a5bb89574a2d994be97da2f73b9",
+        "started_at": "2026-11-02T10:23:29.096694Z",
+        "updated_at": "2026-11-02T10:23:29.096694Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
