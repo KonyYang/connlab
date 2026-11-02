@@ -44,10 +44,207 @@ def test_context_reports_existing_local_official_folder_as_available(tmp_path: P
 
 
 def test_public_paths_use_company_directory_names(tmp_path: Path) -> None:
-    service, _, paths = _service(tmp_path)
+    service, _, paths = _service(tmp_path, existing_years=False)
     context = service.context("P1")
     assert context.public_open_path == paths["public"] / "Open projects" / "2026" / paths["local"].name
     assert context.public_closed_path == paths["public"] / "Closed projects" / "2026" / paths["local"].name
+
+
+def test_sync_requires_existing_open_year_and_reports_missing_path(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path, existing_years=False)
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    (paths["public"] / "Open projects").mkdir()
+    preview = service.preview_sync("P1")
+    missing = paths["public"] / "Open projects" / "2026"
+    assert preview.status == "blocked"
+    assert any(str(missing) in message and "create" in message.lower() for message in preview.blockers)
+    with pytest.raises(PublicFolderWorkflowBlockedError):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+        ))
+    assert not missing.exists()
+
+
+def test_sync_only_needs_open_year_and_requires_creation_confirmation(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path, existing_years=False)
+    (paths["public"] / "Open projects" / "2026").mkdir(parents=True)
+    (paths["local"] / "nested").mkdir()
+    (paths["local"] / "nested" / "file.txt").write_text("data", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    assert preview.status == "ready"
+    assert "create_missing_public_directories" in preview.required_confirmations
+    with pytest.raises(PublicFolderWorkflowBlockedError, match="Directory creation"):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True,
+        ))
+    assert not preview.public_open_path.exists()
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    assert result.status == "completed"
+    assert (preview.public_open_path / "nested" / "file.txt").read_text(encoding="utf-8") == "data"
+    assert not (paths["public"] / "Closed projects").exists()
+
+
+def test_sync_ignores_unusable_closed_location(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path, existing_years=False)
+    (paths["public"] / "Open projects" / "2026").mkdir(parents=True)
+    closed = paths["public"] / "Closed projects"
+    closed.write_text("not a directory", encoding="utf-8")
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    assert not service.context("P1").blockers
+    preview = service.preview_sync("P1")
+    assert preview.status == "ready"
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    assert result.status == "completed"
+    assert closed.read_text(encoding="utf-8") == "not a directory"
+
+
+def test_submit_requires_closed_year_but_does_not_create_it(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path, existing_years=False)
+    (paths["public"] / "Open projects" / "2026").mkdir(parents=True)
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    sync = service.preview_sync("P1")
+    service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=sync.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    closed = paths["public"] / "Closed projects"
+    preview = service.preview_submit("P1")
+    assert preview.status == "blocked"
+    assert any(str(closed) in message and "create" in message.lower() for message in preview.blockers)
+    with pytest.raises(PublicFolderWorkflowBlockedError):
+        service.execute_submit("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+        ))
+    assert not closed.exists()
+    assert (sync.public_open_path / "file.txt").exists()
+
+
+def test_missing_year_directory_after_preview_is_never_recreated(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    year = paths["public"] / "Open projects" / "2026"
+    year.rename(year.with_name("removed-year"))
+    with pytest.raises(PublicFolderWorkflowBlockedError, match="create it manually") as exc:
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+        ))
+    assert str(year) in str(exc.value)
+    assert not year.exists()
+
+
+def test_missing_year_can_be_created_manually_before_retry(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path, existing_years=False)
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    first = service.preview_sync("P1")
+    assert first.status == "blocked"
+    year = paths["public"] / "Open projects" / "2026"
+    year.mkdir(parents=True)
+    retry = service.preview_sync("P1")
+    assert retry.status == "ready"
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=retry.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    assert result.status == "completed"
+    assert (year / paths["local"].name / "file.txt").read_text(encoding="utf-8") == "data"
+
+
+def test_year_removed_after_execute_preview_reports_path_without_recreating(tmp_path: Path, monkeypatch) -> None:
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    year = paths["public"] / "Open projects" / "2026"
+    original = service.preview_sync
+    def remove_year_after_preview(project_id):
+        fresh = original(project_id)
+        year.rename(year.with_name("removed-year"))
+        return fresh
+    monkeypatch.setattr(service, "preview_sync", remove_year_after_preview)
+    with pytest.raises(PublicFolderWorkflowBlockedError, match="create it manually") as exc:
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+        ))
+    assert str(year) in str(exc.value)
+    assert not year.exists()
+
+
+def test_public_year_removed_during_file_copy_is_not_recreated(tmp_path: Path, monkeypatch) -> None:
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    original = PublicFolderWorkflowGateway.copy_new_file
+    year = paths["public"] / "Open projects" / "2026"
+    def remove_year(gateway, source, target, **kwargs):
+        year.rename(year.with_name("removed-year"))
+        return original(gateway, source, target, **kwargs)
+    monkeypatch.setattr(PublicFolderWorkflowGateway, "copy_new_file", remove_year)
+    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    assert result.status == "failed"
+    assert any(str(year) in error and "create it manually" in error for error in result.errors)
+    assert not year.exists()
+
+
+def test_closed_year_removed_during_submit_is_not_recreated(tmp_path: Path, monkeypatch) -> None:
+    service, _, paths = _service(tmp_path)
+    (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
+    sync = service.preview_sync("P1")
+    service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=sync.preview_hash, confirmed=True, confirm_directory_creation=True,
+    ))
+    preview = service.preview_submit("P1")
+    year = paths["public"] / "Closed projects" / "2026"
+    original = PublicFolderWorkflowGateway.move_directory_no_overwrite
+    def remove_year(gateway, source, target):
+        year.rename(year.with_name("removed-year"))
+        return original(gateway, source, target)
+    monkeypatch.setattr(PublicFolderWorkflowGateway, "move_directory_no_overwrite", remove_year)
+    result = service.execute_submit("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=preview.preview_hash, confirmed=True,
+    ))
+    assert result.status == "failed"
+    assert any(str(year) in error and "create it manually" in error for error in result.errors)
+    assert not year.exists()
+    assert (sync.public_open_path / "file.txt").read_text(encoding="utf-8") == "data"
+
+
+def test_public_root_name_occupied_by_file_blocks_with_path(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path, existing_years=False)
+    open_root = paths["public"] / "Open projects"
+    open_root.write_text("not a directory", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    assert preview.status == "blocked"
+    assert any(str(open_root) in message for message in preview.blockers)
+    assert open_root.read_text(encoding="utf-8") == "not a directory"
+
+
+def test_public_year_occupied_by_file_blocks_with_path(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path, existing_years=False)
+    year = paths["public"] / "Open projects" / "2026"
+    year.parent.mkdir()
+    year.write_text("not a directory", encoding="utf-8")
+    preview = service.preview_sync("P1")
+    assert preview.status == "blocked"
+    assert any(str(year) in message and "create" in message.lower() for message in preview.blockers)
+    assert year.read_text(encoding="utf-8") == "not a directory"
+
+
+def test_pull_does_not_require_open_directory(tmp_path: Path) -> None:
+    service, _, paths = _service(tmp_path, existing_years=False)
+    closed = paths["public"] / "Closed projects" / "2026" / paths["local"].name
+    closed.mkdir(parents=True)
+    (closed / "approved.txt").write_text("approved", encoding="utf-8")
+    preview = service.preview_pull("P1")
+    assert preview.status == "ready"
+    result = service.execute_pull("P1", PublicFolderWorkflowExecuteCommand(
+        preview_hash=preview.preview_hash, confirmed=True,
+    ))
+    assert result.status == "completed"
+    assert not (paths["public"] / "Open projects").exists()
 
 
 def test_legacy_path_record_never_authorizes_replacing_new_target(tmp_path: Path) -> None:
@@ -409,8 +606,6 @@ def test_sync_rejects_project_folder_created_after_execute_preview(tmp_path: Pat
     service, _, paths = _service(tmp_path)
     (paths["local"] / "file.txt").write_text("local data", encoding="utf-8")
     parent = paths["public"] / "Open projects" / "2026"
-    parent.mkdir(parents=True)
-    (paths["public"] / "Closed projects" / "2026").mkdir(parents=True)
     preview = service.preview_sync("P1")
     original = service.preview_sync
     target = parent / paths["local"].name
@@ -517,11 +712,14 @@ def test_sync_record_failure_reports_copied_file_and_preserves_it(tmp_path: Path
     assert target.read_text(encoding="utf-8") == "local data"
 
 
-def _service(tmp_path: Path):
+def _service(tmp_path: Path, *, existing_years: bool = True):
     local = tmp_path / "local" / "DL-2026-06-001 Product"
     public = tmp_path / "PublicProject"
     local.mkdir(parents=True)
     public.mkdir()
+    if existing_years:
+        (public / "Open projects" / "2026").mkdir(parents=True)
+        (public / "Closed projects" / "2026").mkdir(parents=True)
     project_repository = _Projects()
     ltr_repository = _Ltrs()
     repository = _WorkflowRepository()

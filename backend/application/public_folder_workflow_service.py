@@ -336,7 +336,7 @@ class PublicFolderWorkflowService:
         year = self._resolve_year(project_id)
         blockers = list(year.blockers)
         warnings = list(year.warnings)
-        paths = self._resolve_paths(workspace, year, blockers)
+        paths = self._resolve_paths(workspace, year, blockers, check_open=False, check_closed=False)
         local_official_folder_path = workspace.official_folder_path if workspace else None
         return PublicFolderWorkflowContext(
             project_id=project_id,
@@ -408,6 +408,8 @@ class PublicFolderWorkflowService:
         if _extra_public_files(public_open, {item.relative_path for item in items if item.kind == "file"}):
             warnings.append("Public Open folder contains extra unmanaged files.")
         required = list(base.required_confirmations)
+        if any(item.kind == "directory" and item.action == "add" for item in items):
+            required.append("create_missing_public_directories")
         has_known_target = any(
             (record := self._repository.get_file(project_id, item.relative_path)) is not None
             and item.public_path is not None and _same_path(record.public_path, item.public_path)
@@ -446,6 +448,7 @@ class PublicFolderWorkflowService:
                     outcomes.append(replace(item, action="conflict", status="conflict", message="Parent path is unavailable."))
                     continue
                 try:
+                    _require_public_directory(project_root.parent)
                     if not _safe_child(preview.public_root, target):
                         raise RuntimeError("Public folder was redirected.")
                     if target == preview.public_open_path:
@@ -457,10 +460,16 @@ class PublicFolderWorkflowService:
                         self._gateway.create_directory(target)
                 except (OSError, RuntimeError, PublicFolderWorkflowConflictError) as exc:
                     if target == preview.public_open_path:
+                        if not project_root.parent.is_dir():
+                            raise PublicFolderWorkflowBlockedError(
+                                _missing_public_directory_message(project_root.parent)
+                            ) from exc
                         raise PublicFolderWorkflowConflictError(
                             "The public project folder appeared or could not be created. "
                             "No project files were copied; preview again and verify the folder."
                         ) from exc
+                    if not project_root.parent.is_dir():
+                        exc = RuntimeError(_missing_public_directory_message(project_root.parent))
                     blocked_directories.add(target)
                     errors.append(f"{item.relative_path}: {exc}")
                     outcomes.append(replace(item, action="conflict", status="conflict", message=str(exc)))
@@ -480,6 +489,7 @@ class PublicFolderWorkflowService:
             local_path = _required_local_path(item)
             public_path = _required_public_path(item)
             try:
+                _require_public_directory(project_root.parent)
                 if root_identity is None or _directory_identity(project_root) != root_identity:
                     raise RuntimeError("Public project folder identity changed; preview again.")
                 if not _safe_child(preview.local_official_folder_path, local_path) or not _safe_child(preview.public_root, public_path):
@@ -490,6 +500,8 @@ class PublicFolderWorkflowService:
                     raise RuntimeError("Automatic replacement is unavailable; review this file manually.")
                 self._gateway.copy_new_file(local_path, public_path, expected_source_fingerprint=item.local_fingerprint)
             except (OSError, RuntimeError, PublicFolderWorkflowConflictError) as exc:
+                if not project_root.parent.is_dir():
+                    exc = RuntimeError(_missing_public_directory_message(project_root.parent))
                 errors.append(f"{item.relative_path}: {exc}")
                 outcomes.append(replace(item, action="conflict", status="conflict", message=str(exc)))
                 continue
@@ -615,7 +627,7 @@ class PublicFolderWorkflowService:
         try:
             assert preview.public_open_path is not None
             assert preview.public_closed_path is not None
-            self._gateway.create_directory(preview.public_closed_path.parent)
+            _require_public_directory(preview.public_closed_path.parent)
             self._gateway.move_directory_no_overwrite(
                 preview.public_open_path,
                 preview.public_closed_path,
@@ -628,6 +640,8 @@ class PublicFolderWorkflowService:
                 updated_at=_now(),
             )
         except (OSError, RuntimeError) as exc:
+            if preview.public_closed_path is not None and not preview.public_closed_path.parent.is_dir():
+                exc = RuntimeError(_missing_public_directory_message(preview.public_closed_path.parent))
             errors.append(str(exc))
         status = "failed" if errors else "completed"
         self._save_operation(operation_id, preview, status, command.operator, errors)
@@ -738,8 +752,13 @@ class PublicFolderWorkflowService:
             blockers.append("Create local project folder before public folder workflow.")
         if operation_type == "sync" and state.sync_locked:
             blockers.append("Sync is locked after Submit.")
-        paths = self._resolve_paths(workspace, year, blockers)
-        items = tuple(_missing_directory_item(path, paths.public_root) for path in paths.missing_directories) if paths else tuple()
+        paths = self._resolve_paths(workspace, year, blockers, check_open=operation_type != "pull", check_closed=operation_type != "sync")
+        if paths:
+            required_year = paths.open_year_path if operation_type == "sync" else paths.closed_year_path
+            for directory in (required_year.parent, required_year):
+                if not directory.is_dir():
+                    blockers.append(f"Required public directory is missing or not a folder: {directory}. Check or create it manually.")
+        items = tuple()
         return self._final_preview(
             PublicFolderWorkflowPreview(
                 project_id=project_id,
@@ -758,7 +777,7 @@ class PublicFolderWorkflowService:
                 blockers=tuple(blockers),
                 warnings=year.warnings,
                 conflicts=tuple(),
-                required_confirmations=("create_missing_public_directories",) if items else tuple(),
+                required_confirmations=tuple(),
                 counts=_counts(items),
                 preview_hash="",
                 next_action="none",
@@ -819,10 +838,10 @@ class PublicFolderWorkflowService:
     ) -> None:
         if not command.confirmed:
             raise PublicFolderWorkflowBlockedError("Operator confirmation is required.")
-        if preview.preview_hash != command.preview_hash:
-            raise PublicFolderWorkflowConflictError("Public folder preview is stale.")
         if preview.blockers:
             raise PublicFolderWorkflowBlockedError(preview.blockers[0])
+        if preview.preview_hash != command.preview_hash:
+            raise PublicFolderWorkflowConflictError("Public folder preview is stale.")
         if (preview.operation_type != "sync" and preview.conflicts) or preview.status == "conflict":
             detail = preview.conflicts[0] if preview.conflicts else "Resolve public folder conflicts."
             raise PublicFolderWorkflowConflictError(detail)
@@ -912,6 +931,9 @@ class PublicFolderWorkflowService:
         workspace: OfficialWorkspaceRecord | None,
         year: PublicFolderYearResolution,
         blockers: list[str],
+        *,
+        check_open: bool,
+        check_closed: bool,
     ) -> PublicFolderPaths | None:
         if workspace is None:
             return None
@@ -920,6 +942,8 @@ class PublicFolderWorkflowService:
                 public_root=self._public_root,
                 year=year.year,
                 project_folder_name=workspace.official_folder_path.name,
+                check_open=check_open,
+                check_closed=check_closed,
             )
         except PublicFolderPathError as exc:
             blockers.append(str(exc))
@@ -940,23 +964,20 @@ def _folder_check_blockers(preview: OfficialFolderCheckPreview) -> tuple[str, ..
     return tuple()
 
 
+def _require_public_directory(path: Path) -> None:
+    if not path.is_dir():
+        raise RuntimeError(_missing_public_directory_message(path))
+
+
+def _missing_public_directory_message(path: Path) -> str:
+    return f"Required public directory is missing or not a folder: {path}. Check or create it manually."
+
+
 def _directory_identity(path: Path) -> tuple[int, int]:
     info = path.stat(follow_symlinks=False)
     if not info.st_ino or not path.is_dir() or path.is_symlink():
         raise PublicFolderWorkflowConflictError("Cannot verify the public project folder identity; preview again.")
     return (info.st_dev, info.st_ino)
-
-
-def _missing_directory_item(path: Path, root: Path) -> PublicFolderWorkflowItem:
-    return PublicFolderWorkflowItem(
-        kind="directory",
-        relative_path=path.relative_to(root),
-        local_path=None,
-        public_path=path,
-        action="add",
-        status="ready",
-        message="Directory will be created after confirmation.",
-    )
 
 
 def _directory_item(relative: Path, public_path: Path) -> PublicFolderWorkflowItem:
