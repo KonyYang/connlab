@@ -20,7 +20,7 @@ import {
 } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import { buildProjectIdentityLine } from "../projectIdentity";
 import { getBasicInformationConfirmedBy } from "./currentUserDisplay";
-import { normalizeBasicInformationFieldValues } from "./basicInformationFieldConfig";
+import { normalizeBasicInformationFieldValues, sampleDepositionFromDisposition } from "./basicInformationFieldConfig";
 import { requiresBasicInformationConfirmation } from "./basicInformationSelectors";
 
 export type BackToWorkbenchOptions = {
@@ -194,9 +194,10 @@ export function useProjectBasicInformationModel({
         const previousSampleDeposition = previous.sample_deposition?.trim() ?? "";
         if (
           !previousSampleDeposition ||
-          previousSampleDeposition === previousDisposition
+          previousSampleDeposition === previousDisposition ||
+          previousSampleDeposition === sampleDepositionFromDisposition(previousDisposition)
         ) {
-          nextValues.sample_deposition = value;
+          nextValues.sample_deposition = sampleDepositionFromDisposition(value);
         }
       }
       return nextValues;

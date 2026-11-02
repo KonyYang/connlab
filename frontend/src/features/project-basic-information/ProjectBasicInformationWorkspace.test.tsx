@@ -408,7 +408,7 @@ describe("ProjectBasicInformationWorkspace", () => {
         location: "Nantong",
         lab_performing_tests: "Valley Green",
         condition_of_samples_when_received: "Acceptable",
-        sample_deposition: "Send Back to Requestor",
+        sample_deposition: "Send Back",
         sub_contract: "Yes",
         project_leader: "Even Yang",
       })
@@ -429,7 +429,7 @@ describe("ProjectBasicInformationWorkspace", () => {
           location: "Nantong",
           lab_performing_tests: "Valley Green",
           condition_of_samples_when_received: "Acceptable",
-          sample_deposition: "Send Back to Requestor",
+          sample_deposition: "Send Back",
           sub_contract: "Yes",
           project_leader: "Even Yang",
         },
@@ -573,6 +573,18 @@ describe("ProjectBasicInformationWorkspace", () => {
       "value",
       "Keep in the Lab"
     );
+  });
+
+  it("shortens the automatically filled return disposition and keeps it aligned", async () => {
+    const user = userEvent.setup();
+    api.getProjectBasicInformation.mockResolvedValue(response({ post_testing_disposition: "Send Back to Requestor", sample_deposition: "" }));
+    render(<ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+    const disposition = await screen.findByLabelText("Post-Testing Sample Disposition");
+    expect(screen.getByLabelText("Sample deposition")).toHaveProperty("value", "Send Back");
+    await user.selectOptions(disposition, "Keep in the Lab");
+    expect(screen.getByLabelText("Sample deposition")).toHaveProperty("value", "Keep in the Lab");
+    await user.selectOptions(disposition, "Send Back to Requestor");
+    expect(screen.getByLabelText("Sample deposition")).toHaveProperty("value", "Send Back");
   });
 
   it("displays an application-form US completion date in the date input", async () => {
