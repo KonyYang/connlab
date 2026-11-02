@@ -228,7 +228,7 @@ def _resolve_value(key: str, context: _ReadinessContext) -> tuple[str | None, st
             _bool_form_value(context.form, "subcontract_allowed"),
             _form_value(context.form, "subcontract"),
         ),
-        "remarks_po": lambda: _form_value(context.form, "additional_information"),
+        "remarks_po": lambda: ("N/A", "ltr.registration.default"),
         "phone": lambda: _form_value(context.form, "phone"),
         "requestor_email": lambda: _form_value(context.form, "email"),
         "product_description": lambda: _first_value(

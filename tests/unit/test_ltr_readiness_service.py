@@ -57,6 +57,8 @@ def test_ltr_readiness_returns_review_required_when_blockers_are_confirmed() -> 
     assert fields["dl"].state == "confirmed"
     assert fields["location"].state == "needs_review"
     assert fields["project_leader"].state == "needs_review"
+    assert fields["remarks_po"].value == "N/A"
+    assert fields["remarks_po"].source == "ltr.registration.default"
     assert fields["lab_performing_tests"].value == "DGLAB"
     assert fields["lab_performing_tests"].source == "application_form.lab"
     assert fields["lab_performing_tests"].state == "confirmed"

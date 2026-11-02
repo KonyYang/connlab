@@ -402,7 +402,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     await waitFor(() =>
       expect(api.saveProjectBasicInformationDraft).toHaveBeenCalledWith("P1", {
         ...response().draft.values,
-        remarks_po: "NA",
+        remarks_po: "N/A",
         project_type: "Product Extension",
         test_type: "Customer Specific Testing",
         location: "Nantong",
@@ -423,7 +423,7 @@ describe("ProjectBasicInformationWorkspace", () => {
         "P1",
         {
           ...response().draft.values,
-          remarks_po: "NA",
+          remarks_po: "N/A",
           project_type: "Product Extension",
           test_type: "Customer Specific Testing",
           location: "Nantong",
@@ -439,7 +439,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(onBackToWorkbench).toHaveBeenCalledWith({ refreshBasicInformation: true });
   });
 
-  it.each([[null, "NA"], ["", "NA"], ["  ", "NA"], ["PO-123", "PO-123"]])("initializes Remarks (PO) %s as %s without overwriting existing notes or saving on entry", async (value, expected) => {
+  it.each([[null, "N/A"], ["", "N/A"], ["  ", "N/A"], ["NA", "NA"], ["PO-123", "PO-123"]])("initializes Remarks (PO) %s as %s without overwriting existing notes or saving on entry", async (value, expected) => {
     const initial = response();
     if (value === null) delete initial.draft.values.remarks_po;
     else initial.draft.values.remarks_po = value;

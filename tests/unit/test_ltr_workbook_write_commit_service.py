@@ -41,6 +41,7 @@ def test_ltr_workbook_commit_auto_appends_next_base_number() -> None:
     assert result.ltr_number == "DL-2026-05-002"
     assert session.prepared_calls == [("2026", "write")]
     assert session.appended[0].dl_number == "DL-2026-05-002"
+    assert session.appended_rows[0].as_excel_row()[16] == "N/A"
     assert session.dropdown_calls == [("2026", "Nantong", None)]
     assert ltr_service.created[0].ltr_number == "DL-2026-05-002"
 
@@ -69,6 +70,7 @@ def test_ltr_workbook_commit_specified_base_replaces_existing_row() -> None:
     assert result.action == "replace_existing"
     assert result.pointer.row_number == 2
     assert session.replaced[0].dl_number == "DL-2026-05-007"
+    assert session.replaced_rows[0].as_excel_row()[16] == "N/A"
 
 
 def test_ltr_workbook_commit_associated_number_requires_base_and_appends_current_year() -> None:
@@ -142,6 +144,7 @@ def test_specified_associated_commit_appends_without_replacing_base_row() -> Non
     assert session.appended[0].dl_number == "DL-2026-05-003A"
     assert session.appended_rows[0].month == "May"
     assert session.appended_rows[0].monthly_number == 3
+    assert session.appended_rows[0].as_excel_row()[16] == "N/A"
     assert session.replaced == []
 
 
@@ -446,6 +449,8 @@ def _specified_preview_ack(session, *, ltr_number: str):
         )
     )
     assert preview.preview_ack is not None
+    assert next(item.value for item in preview.row_values if item.field_name == "remarks_po") == "PO pending"
+    assert next(item.value for item in preview.proposed_row_values if item.field_name == "remarks_po") == "N/A"
     return preview.preview_ack
 
 
@@ -523,6 +528,7 @@ class _FakeWorkbookSession:
         self.appended: list[LtrWorkbookRowPointer] = []
         self.appended_rows: list[LtrWorkbookRowData] = []
         self.replaced: list[LtrWorkbookRowPointer] = []
+        self.replaced_rows: list[LtrWorkbookRowData] = []
         self.bootstrap_calls: list[tuple[str, str, int]] = []
         self.prepared_calls: list[tuple[str, str]] = []
         self.dropdown_calls: list[tuple[str, str, int | None]] = []
@@ -562,6 +568,7 @@ class _FakeWorkbookSession:
         return pointer
 
     def write_registration_row(self, sheet_name, row_number, row_data) -> LtrWorkbookRowPointer:
+        self.replaced_rows.append(row_data)
         pointer = LtrWorkbookRowPointer(sheet_name, row_number, row_data.dl_number)
         self.replaced.append(pointer)
         return pointer

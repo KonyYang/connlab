@@ -161,8 +161,8 @@ LTR_FIELD_CATALOG: tuple[LtrFieldDefinition, ...] = (
     LtrFieldDefinition(
         key="remarks_po",
         display_label="Remarks (PO)",
-        source_paths=("application_form.additional_information",),
-        fallback_policy="Optional manual note; confirm blank-by-policy if empty.",
+        source_paths=("ltr.registration.default",),
+        fallback_policy="Registration defaults to N/A; PO notes may be entered in Basic Information.",
         severity=ReadinessSeverity.REVIEW_REQUIRED,
         placeholder_policy=None,
         operator_action="Review remarks or PO note policy.",
