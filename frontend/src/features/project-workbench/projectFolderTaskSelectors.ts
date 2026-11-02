@@ -69,6 +69,7 @@ export type ProjectFolderTaskRow = {
   confirmLabel?: string;
   cancelLabel?: string;
   detailMessages?: string[];
+  retryMissingDirectory?: boolean;
 };
 
 export type ProjectFolderTaskSelectorInput = {
@@ -226,6 +227,7 @@ function deriveWorkflowTask(
     confirmLabel: operation === "sync" && preview?.required_confirmations.includes("confirm_existing_public_folder") ? "Confirm folder and sync" : definition.confirmLabel,
     cancelLabel: "Cancel",
     detailMessages,
+    retryMissingDirectory: Boolean(preview?.blockers[0]?.startsWith("Required public directory is missing or not a folder:") && canRun),
   };
 }
 
@@ -332,12 +334,19 @@ function selectPreviewIssue(
 
 function selectPreviewDetailMessages(preview: PublicFolderWorkflowPreview): string[] {
   if (preview.operation_type === "sync") {
-    return [
+    let missingDirectoryShown = false;
+    const blockers = preview.blockers.filter((message) => {
+      if (!message.startsWith("Required public directory is missing or not a folder:")) return true;
+      if (missingDirectoryShown) return false;
+      missingDirectoryShown = true;
+      return true;
+    });
+    return [...new Set([
       ...(preview.required_confirmations.includes("confirm_existing_public_folder") ? [`Existing folder: ${preview.public_open_path}. Confirm this is the correct project before syncing.`] : []),
-      ...preview.blockers,
+      ...blockers,
       ...preview.items.filter((item) => item.status === "conflict").map((item) => `Will skip ${item.relative_path}: ${item.message ?? "Conflict"}`),
       ...preview.warnings,
-    ];
+    ])];
   }
   if (preview.status === "ready") {
     return ["Preview can be confirmed."];
@@ -374,6 +383,10 @@ function selectOperationFeedback(
   if (input.publicFolderWorkflowConfirmingOperation === operation) {
     return ["Confirm after reviewing the preview."];
   }
+  const feedback = input.publicFolderWorkflowError ?? input.publicFolderWorkflowMessage;
+  if (feedback?.startsWith("Required public directory is missing or not a folder:") && Object.values(input.publicFolderWorkflowPreviews).some(
+    (preview) => preview?.blockers.includes(feedback)
+  )) return [];
   if (input.publicFolderWorkflowError) {
     return [input.publicFolderWorkflowError];
   }

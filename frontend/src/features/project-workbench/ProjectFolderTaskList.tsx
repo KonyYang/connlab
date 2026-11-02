@@ -185,6 +185,9 @@ function FolderOperation({
         ) : null}
       </div>
       <div className="runtime-console-folder-operation-controls">
+        {task.retryMissingDirectory && task.actionTarget && !readonlyReason ? (
+          <button type="button" onClick={activateTaskAction}>Retry</button>
+        ) : null}
         {task.confirming && task.operation ? (
           <div className="runtime-console-folder-operation-confirmation">
             <button
@@ -209,6 +212,9 @@ function FolderOperation({
 }
 
 function selectPanelBlocker(tasks: ProjectFolderTaskRow[]): string | null {
-  const directBlocker = tasks.flatMap((task) => task.blockers)[0];
+  const directBlocker = tasks.flatMap((task) => task.blockers).find(
+    (message) => !message.startsWith("Required public directory is missing or not a folder:") ||
+      !tasks.some((task) => task.detailMessages?.includes(message))
+  );
   return directBlocker ?? null;
 }
