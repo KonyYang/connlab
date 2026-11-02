@@ -61,7 +61,7 @@ def test_ltr_workbook_write_preview_maps_new_project_setup_to_columns(
         "N": "Keep in the Lab",
         "O": "No",
         "P": None,
-        "Q": "PO pending",
+        "Q": "N/A",
     }
 
 
@@ -96,6 +96,7 @@ def test_ltr_workbook_write_preview_accepts_suffixed_dl_but_rejects_w_prefix(
 
     preview = service.preview_project("P1", _command(ltr_number="DL-2026-05-007A9"))
     assert preview.row_data.dl_number == "DL-2026-05-007A9"
+    assert preview.row_data.remarks_po == "N/A"
 
     with pytest.raises(LtrWorkbookWritePreviewError, match="DL-YYYY-MM-NNN"):
         service.preview_project("P1", _command(ltr_number="W123"))
@@ -219,7 +220,7 @@ class _FormStore:
                 manufacturing_site=self._manufacturing_site,
                 post_testing_disposition="Keep in the Lab",
                 subcontract_allowed=False,
-                additional_information="PO pending",
+                additional_information="Tests to be Performed\nApplicable Specifications\nT-rise test",
             )
         ]
 

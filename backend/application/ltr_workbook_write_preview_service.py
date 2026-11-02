@@ -161,7 +161,7 @@ class LtrWorkbookWritePreviewService:
             sample_deposition=_text(getattr(form, "post_testing_disposition", None)),
             sub_contract=_subcontract_value(form),
             test_fee=None,
-            remarks_po=_text(getattr(form, "additional_information", None)),
+            remarks_po="N/A",
         )
 
     def _snapshot(self) -> LtrWorkbookSnapshot | None:
