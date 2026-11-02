@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
+    "task_id": "TASK_PUBLIC_PARTIAL_SYNC_20261103",
     "tier": "high_risk",
-    "subject": "2732e17a4a683d9332c6156ed13bfae99d95c105",
-    "summary": "Correct public project folder names",
+    "subject": "0429140e295d23a064249c9ee58c1d1d05f752b8",
+    "summary": "Safely synchronize non-conflicting project files",
     "disposition": "completed",
-    "decision_ref": "User authorized local close only; no push or publication.",
-    "closed_at": "2026-11-02T23:01:39.946185Z"
+    "decision_ref": "User requested local close only; no push or publication.",
+    "closed_at": "2026-11-02T23:27:01.838552Z"
   },
   "retained_history": [
     {
@@ -183,6 +183,15 @@
       "disposition": "completed",
       "decision_ref": "用户明确要求仅本地关闭，不推送、不发布",
       "closed_at": "2026-11-02T10:32:44.622761Z"
+    },
+    {
+      "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
+      "tier": "high_risk",
+      "subject": "2732e17a4a683d9332c6156ed13bfae99d95c105",
+      "summary": "Correct public project folder names",
+      "disposition": "completed",
+      "decision_ref": "User authorized local close only; no push or publication.",
+      "closed_at": "2026-11-02T23:01:39.946185Z"
     }
   ],
   "tasks": {
@@ -242,115 +251,6 @@
             "integrated_head": "fa948595b5afa2da7c88df4c9690790389d94091",
             "recovered": false
           }
-        }
-      }
-    },
-    "TASK_PUBLIC_PARTIAL_SYNC_20261103": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-partial-sync\\connlab",
-      "branch": "codex/public-partial-sync-20261103",
-      "resources": [
-        "public-folder"
-      ],
-      "integrated_head": "3621c75fbf72ae60b605a3ebb24db4558081b780",
-      "task": {
-        "task_id": "TASK_PUBLIC_PARTIAL_SYNC_20261103",
-        "summary": "Safely synchronize non-conflicting project files",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Partial public Open projects synchronization with conflict skipping, explicit existing-folder confirmation, accurate results and preserved submit/pull protections",
-        "scope_paths": [
-          "backend/application/public_folder_workflow_service.py",
-          "backend/infrastructure/files/public_folder_workflow_gateway.py",
-          "backend/api/routes_public_folder_workflow.py",
-          "frontend/src/api/client.ts",
-          "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
-          "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
-          "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
-          "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
-          "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
-          "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
-          "tests/unit/test_public_folder_workflow_service.py",
-          "tests/unit/test_public_folder_workflow_gateway.py",
-          "tests/integration/test_public_folder_workflow_api.py"
-        ],
-        "risk_reasons": [
-          "Public-drive writes, concurrent file changes and ownership confirmation"
-        ],
-        "activation_head": "15fe1349b836f21d76e3f6e6d1cffdb62d8d5eb8",
-        "started_at": "2026-11-02T23:02:48.168269Z",
-        "updated_at": "2026-11-02T23:24:51.418738Z",
-        "checkpoint": null,
-        "report": {
-          "task_id": "TASK_PUBLIC_PARTIAL_SYNC_20261103",
-          "version": 1,
-          "changed_paths": [
-            "backend/api/routes_public_folder_workflow.py",
-            "backend/application/public_folder_workflow_service.py",
-            "backend/infrastructure/files/public_folder_workflow_gateway.py",
-            "frontend/src/api/client.ts",
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
-            "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
-            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
-            "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
-            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
-            "tests/integration/test_public_folder_workflow_api.py",
-            "tests/unit/test_public_folder_workflow_gateway.py",
-            "tests/unit/test_public_folder_workflow_service.py"
-          ],
-          "summary": "Safely upload nonconflicting files with explicit existing-folder confirmation and partial results; skip existing file updates as user chose",
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Developer TDD",
-              "result": "Reproduced original all-or-nothing failure; backend 35 and frontend 35 targeted tests passed"
-            },
-            {
-              "status": "passed",
-              "name": "Independent review",
-              "result": "Independent Reviewer standards 0 and spec 0 blockers; residual platform race and SMB directory identity limitation disclosed"
-            },
-            {
-              "status": "passed",
-              "name": "Independent QA",
-              "result": "57 backend tests, 115 frontend tests and production build passed; browser UI checked in isolated Vite fixture with mock data, not end-to-end; no real public drive used"
-            }
-          ],
-          "schema": "connlab.sol-task-report",
-          "subject": "0429140e295d23a064249c9ee58c1d1d05f752b8",
-          "roles": {
-            "integrator": {
-              "method": "independent integrator",
-              "status": "passed"
-            },
-            "qa": {
-              "method": "independent QA",
-              "status": "passed"
-            },
-            "reviewer": {
-              "method": "independent reviewer",
-              "status": "passed"
-            },
-            "planner": {
-              "method": "independent planner",
-              "status": "passed"
-            },
-            "developer": {
-              "method": "independent developer",
-              "status": "passed"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "0429140e295d23a064249c9ee58c1d1d05f752b8",
-            "primary_before": "e0879357c2d1f1a2f27bae28bb0faba531a7b18a",
-            "integrated_head": "3621c75fbf72ae60b605a3ebb24db4558081b780",
-            "recovered": false
-          },
-          "scope_ok": true
         }
       }
     }
