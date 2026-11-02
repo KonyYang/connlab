@@ -176,7 +176,34 @@
       "closed_at": "2026-11-02T10:21:08.363527Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_SAMPLE_DEPOSITION_20261102": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\sample-deposition\\connlab",
+      "branch": "codex/sample-deposition-20261102",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_SAMPLE_DEPOSITION_20261102",
+        "summary": "Shorten automatic sample deposition",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Map Send Back to Requestor to Send Back when automatically filling Sample deposition, preserve manual values",
+        "scope_paths": [
+          "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
+          "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts",
+          "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "c286b21c9b1533855cf8d9d3900978fb565f32eb",
+        "started_at": "2026-11-02T10:35:42.908317Z",
+        "updated_at": "2026-11-02T10:35:42.908317Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
