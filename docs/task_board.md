@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PROJECTS_DEFAULT_ONGOING_20261101",
-    "tier": "micro",
-    "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
-    "summary": "Default Projects view to On-going",
+    "task_id": "TASK_SINGLE_PROJECT_IMPORT_20261102",
+    "tier": "standard",
+    "subject": "e02b11e8b06d58c6cbcdb0ddc729abc708d0f187",
+    "summary": "Make Import Projects default to one complete project folder",
     "disposition": "completed",
-    "decision_ref": "User explicitly authorized local closing of accepted Projects default On-going micro task to release App.test.tsx scope for the single-project import task. Retain commits and evidence; no push/publication; --publish-close omitted.",
-    "closed_at": "2026-11-02T00:20:02.997114Z"
+    "decision_ref": "用户明确要求仅本地关闭单项目导入任务，不推送、不发布",
+    "closed_at": "2026-11-02T10:21:08.363527Z"
   },
   "retained_history": [
     {
@@ -156,146 +156,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested closing the current group completion description task. Preserve local commits, consistent development database backups and acceptance records. Existing no-push/no-publication restriction persists. Local close only; --publish-close omitted. Leave authorized running development backend unchanged.",
       "closed_at": "2026-11-01T14:02:54.674013Z"
+    },
+    {
+      "task_id": "TASK_PROJECTS_DEFAULT_ONGOING_20261101",
+      "tier": "micro",
+      "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
+      "summary": "Default Projects view to On-going",
+      "disposition": "completed",
+      "decision_ref": "User explicitly authorized local closing of accepted Projects default On-going micro task to release App.test.tsx scope for the single-project import task. Retain commits and evidence; no push/publication; --publish-close omitted.",
+      "closed_at": "2026-11-02T00:20:02.997114Z"
     }
   ],
-  "tasks": {
-    "TASK_SINGLE_PROJECT_IMPORT_20261102": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
-      "branch": "codex/single-project-import-20261102",
-      "resources": [],
-      "integrated_head": "8067c3a1c67776a814b955123f4cc5ff60f37bcc",
-      "task": {
-        "task_id": "TASK_SINGLE_PROJECT_IMPORT_20261102",
-        "summary": "Make Import Projects default to one complete project folder",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Single-project default chooser and manual path; check exact selected boundary without recursive expansion; contextual invalid-folder and missing-LTR handling. Preserve backend batch API, final reviewed confirmation, duplicate/conflict decisions, snapshot recovery protections and existing Open Project navigation. Use isolated DBs and temporary sources only; no real business DB/source mutations, push or publication.",
-        "scope_paths": [
-          "backend/api/project_library_schemas.py",
-          "backend/api/routes_project_library.py",
-          "backend/application/project_library/service.py",
-          "backend/infrastructure/project_library/files.py",
-          "backend/infrastructure/project_library/intake_layout.py",
-          "docs/architecture/project_library.md",
-          "frontend/src/App.test.tsx",
-          "frontend/src/api/projectLibrary.ts",
-          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
-          "tests/integration/test_project_library_api.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "5284b620e4ddcd641b43db54c4f33ca398bba411",
-        "started_at": "2026-11-01T23:56:22.459419Z",
-        "updated_at": "2026-11-02T00:22:20.354666Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_SINGLE_PROJECT_IMPORT_20261102",
-          "subject": "e02b11e8b06d58c6cbcdb0ddc729abc708d0f187",
-          "summary": "Default import now checks one complete project folder without recursive batch expansion, replacing rather than appending selections. Conditional parent/partial guidance, metadata-first LTR identification and bounded manual LTR input preserve identity, duplicate/conflict and snapshot guards. One final Confirm Import; eligible success enters verified workspace. Settings destination and backend batch compatibility retained. Validated only isolated intake data; no push/publication.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/project_library_schemas.py",
-            "backend/api/routes_project_library.py",
-            "backend/application/project_library/service.py",
-            "backend/infrastructure/project_library/files.py",
-            "backend/infrastructure/project_library/intake_layout.py",
-            "docs/architecture/project_library.md",
-            "frontend/src/App.test.tsx",
-            "frontend/src/api/projectLibrary.ts",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
-            "tests/integration/test_project_library_api.py"
-          ],
-          "validation": [
-            {
-              "name": "TDD and bounded development feedback",
-              "status": "passed",
-              "result": "RED/GREEN at scan API, missing-LTR/identity API and visible single-project UI seams; final targeted61tests passed. Tests for cancelled/mismatched/late/retry/recovery behavior retained; obsolete batch-entry UI cases removed because the product flow is now single-project.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\single-project-import-20261102\\qa.json"
-            },
-            {
-              "name": "Sequential Standards and Spec review",
-              "status": "passed",
-              "result": "Root separate sequential passes: Standards0/Spec0; not an independent agent review. Exact12file source/test/doc diff, boundaries, compatibility and safety checked.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\single-project-import-20261102\\review.json"
-            },
-            {
-              "name": "Final related backend QA",
-              "status": "passed",
-              "result": "159passed; API, portability including batch compatibility and isolated transfer/unit guards. Existing TestClient deprecation warning only.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\single-project-import-20261102\\backend-qa.log"
-            },
-            {
-              "name": "Final complete frontend QA",
-              "status": "passed",
-              "result": "1183passed,1skipped on reviewed exact subject. Existing unrelated test diagnostic/React act output retained in full log.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\single-project-import-20261102\\frontend-qa.log"
-            },
-            {
-              "name": "Final typecheck and production build",
-              "status": "passed",
-              "result": "tsc-b and Vite production build passed sequentially after frontend tests.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\single-project-import-20261102\\build-qa.log"
-            },
-            {
-              "name": "Isolated browser intake smoke",
-              "status": "passed",
-              "result": "706px viewport,691px document, zero preview checkboxes and one final confirmation. Parent blocked, actual copy then verified workspace, repeated import opens existing; missing-LTR same-number conflict stays blocked until explicit decision. Source hashes equal, copy count1, confirmation count1, SQLite integrityok. Actual native chooser window was not retested; its API unchanged and selection/cancel covered by component tests.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\single-project-import-20261102\\smoke-result.json"
-            },
-            {
-              "name": "Isolated browser write audit and normal cleanup",
-              "status": "passed",
-              "result": "Only owned temporary databases/directories connected/written;18882normalshutdown, own browser tab closed and viewport reset.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\single-project-import-20261102\\audit.json"
-            },
-            {
-              "name": "Safe local integration preflight",
-              "status": "passed",
-              "result": "Development8000dedicated console normally stopped with noforce; consistent readonly three-database backups and two full new-code startup rehearsals on copy preserved all original rows/schema. No real schema migration.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\single-project-import-20261102\\runtime-baseline.json"
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "context": "Root planning pass: inspect actual entry/scanner/state flows; smallest standard change, no schema migration/new dependency."
-            },
-            "developer": {
-              "status": "passed",
-              "context": "Root implementation with recorded RED/GREEN and bounded targeted feedback."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Root focused sequential Standards/Spec review, not independent agent."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Root subsequent complete selected QA/build and actual isolated browser pass on frozen subject, not independent agent."
-            },
-            "integrator": {
-              "status": "passed",
-              "context": "Root preflight verifies scope release/subject/tree/cleanliness and startup-copy equality; actual local serial merge and post-merge checks follow via sole writer."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "e02b11e8b06d58c6cbcdb0ddc729abc708d0f187",
-            "primary_before": "cca1099dd8821c569e47ef3678fd02cd5a00a8e7",
-            "integrated_head": "8067c3a1c67776a814b955123f4cc5ff60f37bcc",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
