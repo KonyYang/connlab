@@ -173,21 +173,23 @@
         "route": "sol_build_review_qa",
         "scope": "Single-project default chooser and manual path; check exact selected boundary without recursive expansion; contextual invalid-folder and missing-LTR handling. Preserve backend batch API, final reviewed confirmation, duplicate/conflict decisions, snapshot recovery protections and existing Open Project navigation. Use isolated DBs and temporary sources only; no real business DB/source mutations, push or publication.",
         "scope_paths": [
-          "frontend/src/features/project-library",
-          "frontend/src/api/projectLibrary.ts",
-          "backend/api/routes_project_library.py",
           "backend/api/project_library_schemas.py",
+          "backend/api/routes_project_library.py",
           "backend/application/project_library/service.py",
           "backend/infrastructure/project_library/files.py",
           "backend/infrastructure/project_library/intake_layout.py",
-          "tests/integration/test_project_library_api.py",
-          "tests/unit",
-          "docs/architecture"
+          "docs/architecture/project_library.md",
+          "frontend/src/App.test.tsx",
+          "frontend/src/api/projectLibrary.ts",
+          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
+          "tests/integration/test_project_library_api.py"
         ],
         "risk_reasons": [],
         "activation_head": "5284b620e4ddcd641b43db54c4f33ca398bba411",
         "started_at": "2026-11-01T23:56:22.459419Z",
-        "updated_at": "2026-11-01T23:56:22.459419Z",
+        "updated_at": "2026-11-02T00:20:06.097368Z",
         "checkpoint": null,
         "report": null
       }
