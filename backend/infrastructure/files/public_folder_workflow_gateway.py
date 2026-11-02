@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import errno
 import os
 import shutil
+import sys
 from pathlib import Path
 from uuid import uuid4
 
@@ -34,11 +36,10 @@ class PublicFolderWorkflowGateway:
 
     def create_directory(self, target: Path) -> None:
         """Create a preview-listed directory."""
-        target.mkdir(parents=True, exist_ok=True)
+        target.mkdir(exist_ok=True)
 
     def copy_new_file(self, source: Path, target: Path, *, expected_source_fingerprint: str | None = None) -> None:
         """Copy a file only when the target is still missing."""
-        target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
             raise PublicFolderWorkflowTargetChangedError(
                 f"Public folder target appeared before copy: {target}"
@@ -90,12 +91,18 @@ class PublicFolderWorkflowGateway:
             raise PublicFolderWorkflowTargetChangedError(
                 f"Public Open working copy is missing: {source}"
             )
-        target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
             raise PublicFolderWorkflowTargetChangedError(
                 f"Public Closed target already exists: {target}"
             )
-        shutil.move(str(source), str(target))
+        try:
+            _rename_directory_no_replace(source, target)
+        except OSError as exc:
+            if exc.errno == errno.EXDEV:
+                raise PublicFolderWorkflowTargetChangedError(
+                    "Cannot move between these public locations. The Open project folder remains unchanged; check the shared-drive setup."
+                ) from exc
+            raise
 
     def copy_tree_no_overwrite(self, source: Path, target: Path) -> None:
         """Copy a directory tree only when the target does not already exist."""
@@ -127,7 +134,6 @@ class PublicFolderWorkflowGateway:
         return candidate
 
     def _copy_to_temporary(self, source: Path, target: Path) -> Path:
-        target.parent.mkdir(parents=True, exist_ok=True)
         temporary = target.with_name(f".{target.name}.connlab-{uuid4().hex}.tmp")
         try:
             shutil.copy2(source, temporary)
@@ -155,3 +161,25 @@ class PublicFolderWorkflowGateway:
             raise PublicFolderWorkflowTargetChangedError(
                 f"Copy failed; the destination may be incomplete or changed. Review it manually: {target}"
             ) from exc
+
+
+def _rename_directory_no_replace(source: Path, target: Path) -> None:
+    """Move atomically without overwriting or creating a missing parent."""
+    if os.name == "nt":
+        os.rename(source, target)
+        return
+    if sys.platform.startswith("linux"):
+        import ctypes
+
+        library = ctypes.CDLL(None, use_errno=True)
+        rename = getattr(library, "renameat2", None)
+        if rename is not None:
+            rename.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
+            rename.restype = ctypes.c_int
+            if rename(-100, os.fsencode(source), -100, os.fsencode(target), 1) == 0:
+                return
+            error = ctypes.get_errno()
+            raise OSError(error, os.strerror(error), str(source), str(target))
+    raise PublicFolderWorkflowTargetChangedError(
+        "Safe directory move is unavailable on this system; the Open project folder was not changed."
+    )

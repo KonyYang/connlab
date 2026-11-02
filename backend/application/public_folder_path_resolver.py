@@ -34,12 +34,16 @@ class PublicFolderPathResolver:
         public_root: Path | None,
         year: int | None,
         project_folder_name: str,
+        check_open: bool = True,
+        check_closed: bool = True,
     ) -> PublicFolderPaths:
         """Return Open/Closed paths or raise a business-safe path error."""
         if public_root is None:
             raise PublicFolderPathError("Public Project locations is not configured.")
         if not public_root.is_dir():
-            raise PublicFolderPathError("Public Project locations must be an existing directory.")
+            raise PublicFolderPathError(
+                f"Public Project locations must be an existing directory: {public_root}. Check or create it manually."
+            )
         if year is None:
             raise PublicFolderPathError("Public folder year is unresolved.")
         name = project_folder_name.strip()
@@ -51,9 +55,15 @@ class PublicFolderPathResolver:
         closed_year = root / "Closed projects" / str(year)
         public_open = open_year / name
         public_closed = closed_year / name
-        for candidate in (open_year, closed_year, public_open, public_closed):
+        candidates = ((open_year, public_open) if check_open else ()) + (
+            (closed_year, public_closed) if check_closed else ()
+        )
+        for candidate in candidates:
             _ensure_under_root(root, candidate)
-        missing = tuple(path for path in (root / "Open projects", open_year, root / "Closed projects", closed_year) if not path.exists())
+        directories = ((open_year.parent, open_year) if check_open else ()) + (
+            (closed_year.parent, closed_year) if check_closed else ()
+        )
+        missing = tuple(path for path in directories if not path.exists())
         return PublicFolderPaths(
             public_root=root,
             public_root_class=_classify_root(root),
