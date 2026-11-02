@@ -244,6 +244,46 @@
           }
         }
       }
+    },
+    "TASK_PUBLIC_PARTIAL_SYNC_20261103": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-partial-sync\\connlab",
+      "branch": "codex/public-partial-sync-20261103",
+      "resources": [
+        "public-folder"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PUBLIC_PARTIAL_SYNC_20261103",
+        "summary": "Safely synchronize non-conflicting project files",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Partial public Open projects synchronization with conflict skipping, explicit existing-folder confirmation, accurate results and preserved submit/pull protections",
+        "scope_paths": [
+          "backend/application/public_folder_workflow_service.py",
+          "backend/infrastructure/files/public_folder_workflow_gateway.py",
+          "backend/api/routes_public_folder_workflow.py",
+          "frontend/src/api/client.ts",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+          "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+          "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+          "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
+          "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
+          "tests/unit/test_public_folder_workflow_service.py",
+          "tests/unit/test_public_folder_workflow_gateway.py",
+          "tests/integration/test_public_folder_workflow_api.py"
+        ],
+        "risk_reasons": [
+          "Public-drive writes, concurrent file changes and ownership confirmation"
+        ],
+        "activation_head": "15fe1349b836f21d76e3f6e6d1cffdb62d8d5eb8",
+        "started_at": "2026-11-02T23:02:48.168269Z",
+        "updated_at": "2026-11-02T23:02:48.168269Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
