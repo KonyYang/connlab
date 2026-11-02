@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
-    "tier": "high_risk",
-    "subject": "bca6b7ebe4994480d6127976e81b84d31e42e6ee",
-    "summary": "Compact group completion controls with saved descriptions",
+    "task_id": "TASK_PROJECTS_DEFAULT_ONGOING_20261101",
+    "tier": "micro",
+    "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
+    "summary": "Default Projects view to On-going",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing the current group completion description task. Preserve local commits, consistent development database backups and acceptance records. Existing no-push/no-publication restriction persists. Local close only; --publish-close omitted. Leave authorized running development backend unchanged.",
-    "closed_at": "2026-11-01T14:02:54.674013Z"
+    "decision_ref": "User explicitly authorized local closing of accepted Projects default On-going micro task to release App.test.tsx scope for the single-project import task. Retain commits and evidence; no push/publication; --publish-close omitted.",
+    "closed_at": "2026-11-02T00:20:02.997114Z"
   },
   "retained_history": [
     {
@@ -147,81 +147,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested closing the current Basic Information field refinements task. Preserve local commits and acceptance records; existing no-push/no-publication restriction remains. Local close only; --publish-close omitted.",
       "closed_at": "2026-11-01T11:30:40.142659Z"
+    },
+    {
+      "task_id": "TASK_GROUP_COMPLETION_DESCRIPTION_20261101",
+      "tier": "high_risk",
+      "subject": "bca6b7ebe4994480d6127976e81b84d31e42e6ee",
+      "summary": "Compact group completion controls with saved descriptions",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing the current group completion description task. Preserve local commits, consistent development database backups and acceptance records. Existing no-push/no-publication restriction persists. Local close only; --publish-close omitted. Leave authorized running development backend unchanged.",
+      "closed_at": "2026-11-01T14:02:54.674013Z"
     }
   ],
   "tasks": {
-    "TASK_PROJECTS_DEFAULT_ONGOING_20261101": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
-      "branch": "codex/project-import-entry-20261028",
-      "resources": [],
-      "integrated_head": "2b3ad410dd7dceccfa1fc28e40d90e51c97158ce",
-      "task": {
-        "task_id": "TASK_PROJECTS_DEFAULT_ONGOING_20261101",
-        "summary": "Default Projects view to On-going",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Change only the fresh or invalid saved Projects filter default to On-going; preserve explicit saved user choices and other filters. Targeted frontend verification only; no real business data changes, push or publication.",
-        "scope_paths": [
-          "frontend/src/App.test.tsx",
-          "frontend/src/pages/ProjectListPage.test.tsx",
-          "frontend/src/pages/ProjectListPage.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "5f3514effa800d93578b48fdfeedc9fbddaaba77",
-        "started_at": "2026-11-01T10:44:18.897851Z",
-        "updated_at": "2026-11-01T10:47:17.055877Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECTS_DEFAULT_ONGOING_20261101",
-          "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
-          "summary": "Projects defaults to On-going when no valid saved view exists. Preserve explicit saved view choices and all other filters. Regression tests explicitly choose All Projects when testing files-only/all-catalog behavior. No business data mutation, push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/App.test.tsx",
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "frontend/src/pages/ProjectListPage.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Projects and App targeted tests",
-              "status": "passed",
-              "result": "33 tests passed across 2 files; new default regression first failed against old All Projects default, then passed. Search, view switching, pagination, saved return context and route behavior retained.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\projects-default-ongoing-20261101\\final-tests.log"
-            },
-            {
-              "name": "TypeScript",
-              "status": "passed",
-              "result": "npx tsc -b completed successfully on final code.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\projects-default-ongoing-20261101\\typecheck.log"
-            },
-            {
-              "name": "Micro self-review",
-              "status": "passed",
-              "result": "Only runtime change is fallback selectedView all to ongoing; saved valid choices retain precedence. Test-only adaptations preserve existing assertions. Exact diff reviewed, git diff --check clean. No backend, data or filesystem behavior changes.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\projects-default-ongoing-20261101\\subject.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent implementation, self-review and targeted tests; no independent-agent review claimed."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
-            "primary_before": "c17353e4f57090d077ccad67e21e86502461b150",
-            "integrated_head": "2b3ad410dd7dceccfa1fc28e40d90e51c97158ce",
-            "recovered": false
-          }
-        }
-      }
-    },
     "TASK_SINGLE_PROJECT_IMPORT_20261102": {
       "slot": "main",
       "state": "running",
