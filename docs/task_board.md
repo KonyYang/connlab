@@ -179,11 +179,11 @@
   "tasks": {
     "TASK_SAMPLE_DEPOSITION_20261102": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\sample-deposition\\connlab",
       "branch": "codex/sample-deposition-20261102",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "fa948595b5afa2da7c88df4c9690790389d94091",
       "task": {
         "task_id": "TASK_SAMPLE_DEPOSITION_20261102",
         "summary": "Shorten automatic sample deposition",
@@ -198,9 +198,42 @@
         "risk_reasons": [],
         "activation_head": "c286b21c9b1533855cf8d9d3900978fb565f32eb",
         "started_at": "2026-11-02T10:35:42.908317Z",
-        "updated_at": "2026-11-02T10:35:42.908317Z",
+        "updated_at": "2026-11-02T10:37:26.048834Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "scope_ok": true,
+          "summary": "Automatically shorten Send Back to Requestor to Send Back while retaining manual values",
+          "task_id": "TASK_SAMPLE_DEPOSITION_20261102",
+          "changed_paths": [
+            "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+            "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
+            "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "TDD and frontend regression",
+              "result": "RED reproduced old value; 45 Basic Information tests passed after fix"
+            }
+          ],
+          "schema": "connlab.sol-task-report",
+          "subject": "8fabcd24c0aadae48e40de816a67723e7141f00f",
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "method": "same-agent implementation and exact diff review"
+            }
+          },
+          "version": 1,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "8fabcd24c0aadae48e40de816a67723e7141f00f",
+            "primary_before": "67615450e198ef6ff2db137785e7f9f208938f26",
+            "integrated_head": "fa948595b5afa2da7c88df4c9690790389d94091",
+            "recovered": false
+          }
+        }
       }
     }
   }
