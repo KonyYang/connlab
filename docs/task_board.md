@@ -212,7 +212,32 @@
       "closed_at": "2026-11-02T23:35:38.490026Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_PUBLIC_FOLDER_MESSAGE_20261103": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
+      "branch": "codex/public-folder-messages-20261103",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
+        "summary": "Clarify missing public folder guidance",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Deduplicate operation-specific missing directory messages and provide retry without mutating public files",
+        "scope_paths": [
+          "frontend/src/features/project-workbench"
+        ],
+        "risk_reasons": [],
+        "activation_head": "afc9fe83ec1f5e5cfc6a2ecbaacc846244db2343",
+        "started_at": "2026-11-02T23:52:27.892398Z",
+        "updated_at": "2026-11-02T23:52:27.892398Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
