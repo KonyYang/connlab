@@ -215,11 +215,11 @@
   "tasks": {
     "TASK_PUBLIC_FOLDER_MESSAGE_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/public-folder-messages-20261103",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "63453482b53640eeddfa90eab4f1c16dfe8c43ed",
       "task": {
         "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
         "summary": "Clarify missing public folder guidance",
@@ -232,9 +232,56 @@
         "risk_reasons": [],
         "activation_head": "afc9fe83ec1f5e5cfc6a2ecbaacc846244db2343",
         "started_at": "2026-11-02T23:52:27.892398Z",
-        "updated_at": "2026-11-02T23:52:27.892398Z",
+        "updated_at": "2026-11-02T23:56:32.635643Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "changed_paths": [
+            "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
+            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts"
+          ],
+          "version": 1,
+          "subject": "eaa48400c16d1d57076e597bc90d182250f242e4",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "eaa48400c16d1d57076e597bc90d182250f242e4",
+            "primary_before": "186c6e2c226e192214ce065c23ba12e470dcffb7",
+            "integrated_head": "63453482b53640eeddfa90eab4f1c16dfe8c43ed",
+            "recovered": false
+          },
+          "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
+          "roles": {
+            "developer": {
+              "method": "same-agent implementation",
+              "status": "passed"
+            },
+            "reviewer": {
+              "method": "same-agent focused review",
+              "status": "passed"
+            },
+            "qa": {
+              "method": "same-agent final validation",
+              "status": "passed"
+            }
+          },
+          "summary": "Deduplicate missing public directory messages and allow preview retry",
+          "scope_ok": true,
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Vitest targeted",
+              "result": "117 tests passed"
+            },
+            {
+              "status": "passed",
+              "name": "Frontend build",
+              "result": "TypeScript and Vite build passed"
+            }
+          ]
+        }
       }
     }
   }
