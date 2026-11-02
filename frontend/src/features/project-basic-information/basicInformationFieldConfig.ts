@@ -455,6 +455,10 @@ export const BASIC_INFORMATION_FIELD_PANELS: BasicInformationFieldPanel[] = [
   },
 ];
 
+export function sampleDepositionFromDisposition(value: string): string {
+  return value.trim() === "Send Back to Requestor" ? "Send Back" : value;
+}
+
 export function normalizeBasicInformationFieldValues(
   values: Record<string, string>
 ): Record<string, string> {
@@ -463,7 +467,7 @@ export function normalizeBasicInformationFieldValues(
     normalizedValues.post_testing_disposition?.trim() ?? "";
   const sampleDeposition = normalizedValues.sample_deposition?.trim() ?? "";
   if (postTestingDisposition && !sampleDeposition) {
-    normalizedValues.sample_deposition = postTestingDisposition;
+    normalizedValues.sample_deposition = sampleDepositionFromDisposition(postTestingDisposition);
   }
   const fields = BASIC_INFORMATION_FIELD_PANELS.flatMap((panel) =>
     panel.groups.flatMap((group) => group.fields)
