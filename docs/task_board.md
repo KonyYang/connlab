@@ -247,13 +247,13 @@
     },
     "TASK_PUBLIC_PARTIAL_SYNC_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-partial-sync\\connlab",
       "branch": "codex/public-partial-sync-20261103",
       "resources": [
         "public-folder"
       ],
-      "integrated_head": null,
+      "integrated_head": "3621c75fbf72ae60b605a3ebb24db4558081b780",
       "task": {
         "task_id": "TASK_PUBLIC_PARTIAL_SYNC_20261103",
         "summary": "Safely synchronize non-conflicting project files",
@@ -280,9 +280,78 @@
         ],
         "activation_head": "15fe1349b836f21d76e3f6e6d1cffdb62d8d5eb8",
         "started_at": "2026-11-02T23:02:48.168269Z",
-        "updated_at": "2026-11-02T23:02:48.168269Z",
+        "updated_at": "2026-11-02T23:24:51.418738Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "task_id": "TASK_PUBLIC_PARTIAL_SYNC_20261103",
+          "version": 1,
+          "changed_paths": [
+            "backend/api/routes_public_folder_workflow.py",
+            "backend/application/public_folder_workflow_service.py",
+            "backend/infrastructure/files/public_folder_workflow_gateway.py",
+            "frontend/src/api/client.ts",
+            "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
+            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+            "tests/integration/test_public_folder_workflow_api.py",
+            "tests/unit/test_public_folder_workflow_gateway.py",
+            "tests/unit/test_public_folder_workflow_service.py"
+          ],
+          "summary": "Safely upload nonconflicting files with explicit existing-folder confirmation and partial results; skip existing file updates as user chose",
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Developer TDD",
+              "result": "Reproduced original all-or-nothing failure; backend 35 and frontend 35 targeted tests passed"
+            },
+            {
+              "status": "passed",
+              "name": "Independent review",
+              "result": "Independent Reviewer standards 0 and spec 0 blockers; residual platform race and SMB directory identity limitation disclosed"
+            },
+            {
+              "status": "passed",
+              "name": "Independent QA",
+              "result": "57 backend tests, 115 frontend tests and production build passed; browser UI checked in isolated Vite fixture with mock data, not end-to-end; no real public drive used"
+            }
+          ],
+          "schema": "connlab.sol-task-report",
+          "subject": "0429140e295d23a064249c9ee58c1d1d05f752b8",
+          "roles": {
+            "integrator": {
+              "method": "independent integrator",
+              "status": "passed"
+            },
+            "qa": {
+              "method": "independent QA",
+              "status": "passed"
+            },
+            "reviewer": {
+              "method": "independent reviewer",
+              "status": "passed"
+            },
+            "planner": {
+              "method": "independent planner",
+              "status": "passed"
+            },
+            "developer": {
+              "method": "independent developer",
+              "status": "passed"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "0429140e295d23a064249c9ee58c1d1d05f752b8",
+            "primary_before": "e0879357c2d1f1a2f27bae28bb0faba531a7b18a",
+            "integrated_head": "3621c75fbf72ae60b605a3ebb24db4558081b780",
+            "recovered": false
+          },
+          "scope_ok": true
+        }
       }
     }
   }
