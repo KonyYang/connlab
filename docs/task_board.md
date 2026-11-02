@@ -235,6 +235,36 @@
           }
         }
       }
+    },
+    "TASK_PUBLIC_PROJECT_PATHS_20261102": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-project-paths\\connlab",
+      "branch": "codex/public-project-paths-20261102",
+      "resources": [
+        "public-folder"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
+        "summary": "Correct public project folder names",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Use Open projects and Close projects with safe path-bound sync records; no production folder migration",
+        "scope_paths": [
+          "backend/application/public_folder_path_resolver.py",
+          "backend/application/public_folder_workflow_service.py",
+          "tests/unit/test_public_folder_workflow_service.py"
+        ],
+        "risk_reasons": [
+          "Public-drive destination and overwrite protection"
+        ],
+        "activation_head": "336a1b5f4a27abe56211bfdbb84c4f7e6d488855",
+        "started_at": "2026-11-02T11:11:44.156281Z",
+        "updated_at": "2026-11-02T11:11:44.156281Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
