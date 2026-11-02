@@ -9,6 +9,18 @@ import type {
 } from "./projectFolderTaskSelectors";
 
 describe("ProjectFolderTaskList", () => {
+  it("shows all conflict details and the existing-folder confirmation", () => {
+    render(<ProjectFolderActionsSurface tasks={[{ ...tasks[1], confirming: true, operation: "sync", confirmLabel: "Confirm folder and sync", detailMessages: ["Existing folder: P1", "Skip a", "Skip b", "Skip c"] }]} />);
+    expect(screen.getByText("Existing folder: P1")).toBeTruthy();
+    expect(screen.getByText("Skip c")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Confirm folder and sync" })).toBeTruthy();
+  });
+
+  it("does not offer cancellation or a second confirmation while a write is running", () => {
+    render(<ProjectFolderActionsSurface tasks={[{ ...tasks[1], confirming: true, confirmationBusy: true, operation: "sync", confirmLabel: "Confirm folder and sync" }]} />);
+    expect((screen.getByRole("button", { name: "Confirm folder and sync" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
+  });
   it("renders the fixed folder command in the Folder Actions header and routes it", async () => {
     const user = userEvent.setup();
     const onCreateFolder = vi.fn();

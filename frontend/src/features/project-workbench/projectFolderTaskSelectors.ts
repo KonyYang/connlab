@@ -65,6 +65,7 @@ export type ProjectFolderTaskRow = {
   operation?: PublicFolderWorkflowOperationType;
   autoSync?: ProjectFolderTaskAutoSyncControl;
   confirming?: boolean;
+  confirmationBusy?: boolean;
   confirmLabel?: string;
   cancelLabel?: string;
   detailMessages?: string[];
@@ -191,9 +192,9 @@ function deriveWorkflowTask(
   const readonlyReason = input.lifecycleReadonlyReason ?? null;
   const blocker = readonlyReason ?? projectFolderBlocker ?? contextBlocker ?? issue;
   const definition = workflowDefinition(operation);
-  const canRun = !blocker && Boolean(input.publicFolderWorkflowContext) && !busy;
+  const canRun = !readonlyReason && !projectFolderBlocker && !contextBlocker && Boolean(input.publicFolderWorkflowContext) && !input.publicFolderWorkflowBusyOperation;
   const detailMessages = [
-    ...(preview ? selectPreviewDetailMessages(preview) : []),
+    ...(preview && !result ? selectPreviewDetailMessages(preview) : []),
     ...(result ? selectResultDetailMessages(result) : []),
     ...selectOperationFeedback(input, operation),
   ];
@@ -221,7 +222,8 @@ function deriveWorkflowTask(
           }
         : undefined,
     confirming,
-    confirmLabel: definition.confirmLabel,
+    confirmationBusy: Boolean(input.publicFolderWorkflowBusyOperation),
+    confirmLabel: operation === "sync" && preview?.required_confirmations.includes("confirm_existing_public_folder") ? "Confirm folder and sync" : definition.confirmLabel,
     cancelLabel: "Cancel",
     detailMessages,
   };
@@ -325,10 +327,18 @@ function selectPreviewIssue(
   if (!preview) {
     return null;
   }
-  return preview.blockers[0] ?? preview.conflicts[0] ?? null;
+  return preview.blockers[0] ?? (preview.operation_type === "sync" && preview.status === "partial" ? null : preview.conflicts[0]) ?? null;
 }
 
 function selectPreviewDetailMessages(preview: PublicFolderWorkflowPreview): string[] {
+  if (preview.operation_type === "sync") {
+    return [
+      ...(preview.required_confirmations.includes("confirm_existing_public_folder") ? [`Existing folder: ${preview.public_open_path}. Confirm this is the correct project before syncing.`] : []),
+      ...preview.blockers,
+      ...preview.items.filter((item) => item.status === "conflict").map((item) => `Will skip ${item.relative_path}: ${item.message ?? "Conflict"}`),
+      ...preview.warnings,
+    ];
+  }
   if (preview.status === "ready") {
     return ["Preview can be confirmed."];
   }
@@ -340,6 +350,14 @@ function selectPreviewDetailMessages(preview: PublicFolderWorkflowPreview): stri
 }
 
 function selectResultDetailMessages(result: PublicFolderWorkflowResult): string[] {
+  if (result.operation_type === "sync") {
+    const label = result.status === "partial" ? "Partial sync" : result.status === "failed" ? "Sync failed" : "Sync completed";
+    return [`${label}: ${result.counts.add ?? 0} files added, ${result.counts.update ?? 0} updated, ${(result.counts.conflict ?? 0) + (result.counts.directory_conflict ?? 0)} conflicts skipped.`,
+      ...(result.items ?? []).filter((item) => item.kind === "file" && item.status === "completed").map((item) => `Uploaded ${item.relative_path}`),
+      ...(result.items ?? []).filter((item) => item.kind === "file" && item.action === "skip" && item.status === "current").map((item) => `Unchanged ${item.relative_path}`),
+      ...(result.items ?? []).filter((item) => item.status === "conflict").map((item) => `Skipped ${item.relative_path}: ${item.message ?? "Conflict"}`),
+      ...result.errors];
+  }
   if (result.status === "completed") {
     return [`${operationLabel(result.operation_type)} completed.`];
   }

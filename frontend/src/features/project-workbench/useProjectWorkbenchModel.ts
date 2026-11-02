@@ -305,6 +305,8 @@ const DEFAULT_APPROVAL_INPUT_SOURCES: ApprovalInputSources = {
 
 export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchModel {
   const lifecycleEpoch = useRef(0);
+  const publicFolderRequestEpoch = useRef(0);
+  const publicFolderExecutionRef = useRef(false);
   useEffect(() => () => {lifecycleEpoch.current += 1;}, [projectId]);
   const [project, setProject] = useState<Project | null>(null);
   const [ltrs, setLtrs] = useState<LtrRecord[]>([]);
@@ -459,6 +461,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const officialWorkspaceProgressLabel = generation.progressLabel ?? legacyWorkspaceProgressLabel;
 
   useEffect(() => {
+    setPublicFolderWorkflowPreviews(createPublicFolderWorkflowOperationMap(null));
+    setPublicFolderWorkflowResults(createPublicFolderWorkflowOperationMap(null));
+    setPublicFolderWorkflowConfirmingOperation(null);
+    setPublicFolderWorkflowBusyOperation(null);
     void loadWorkbench(
       projectId,
       setProject,
@@ -914,18 +920,21 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   }
 
   async function onRefreshPublicFolderWorkflowContext(): Promise<void> {
+    const epoch = lifecycleEpoch.current;
     setPublicFolderWorkflowContextLoading(true);
     try {
       const context = await getPublicFolderWorkflowContext(projectId);
+      if (epoch !== lifecycleEpoch.current || context.project_id !== projectId) return;
       setPublicFolderWorkflowContext(context);
       setPublicFolderWorkflowContextError(null);
     } catch (err) {
+      if (epoch !== lifecycleEpoch.current) return;
       setPublicFolderWorkflowContext(null);
       setPublicFolderWorkflowContextError(
         err instanceof Error ? err.message : "Failed to load public folder workflow."
       );
     } finally {
-      setPublicFolderWorkflowContextLoading(false);
+      if (epoch === lifecycleEpoch.current) setPublicFolderWorkflowContextLoading(false);
     }
   }
 
@@ -982,12 +991,16 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   async function onPreviewPublicFolderWorkflowOperation(
     operation: PublicFolderWorkflowOperationType
   ): Promise<void> {
+    if (publicFolderExecutionRef.current) return;
+    const epoch = lifecycleEpoch.current;
+    const request = ++publicFolderRequestEpoch.current;
     setPublicFolderWorkflowBusyOperation(operation);
     setPublicFolderWorkflowConfirmingOperation(null);
     setPublicFolderWorkflowError(null);
     setPublicFolderWorkflowMessage(null);
     try {
       const preview = await previewPublicFolderWorkflowOperation(projectId, operation);
+      if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current || preview.project_id !== projectId) return;
       setPublicFolderWorkflowPreviews((previous) => ({
         ...previous,
         [operation]: preview,
@@ -997,7 +1010,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         [operation]: null,
       }));
       const issue = selectPublicFolderWorkflowPreviewIssue(preview);
-      if (preview.status !== "ready" || issue || !preview.preview_hash) {
+      if ((preview.status !== "ready" && !(operation === "sync" && preview.status === "partial")) || issue || !preview.preview_hash) {
         setPublicFolderWorkflowMessage(
           issue ?? "Preview cannot be confirmed yet."
         );
@@ -1006,6 +1019,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setPublicFolderWorkflowConfirmingOperation(operation);
       setPublicFolderWorkflowMessage("Preview can be confirmed.");
     } catch (err) {
+      if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current) return;
       setPublicFolderWorkflowPreviews((previous) => ({
         ...previous,
         [operation]: null,
@@ -1014,18 +1028,22 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         err instanceof Error ? err.message : `Failed to preview ${operation}.`
       );
     } finally {
-      setPublicFolderWorkflowBusyOperation(null);
+      if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowBusyOperation(null);
     }
   }
 
   async function onConfirmPublicFolderWorkflowOperation(
     operation: PublicFolderWorkflowOperationType
   ): Promise<void> {
+    if (publicFolderExecutionRef.current) return;
     const preview = publicFolderWorkflowPreviews[operation];
-    if (!preview?.preview_hash) {
+    if (!preview?.preview_hash || preview.project_id !== projectId || publicFolderWorkflowConfirmingOperation !== operation) {
       setPublicFolderWorkflowError("Refresh preview before confirming.");
       return;
     }
+    const epoch = lifecycleEpoch.current;
+    const request = ++publicFolderRequestEpoch.current;
+    publicFolderExecutionRef.current = true;
     setPublicFolderWorkflowBusyOperation(operation);
     setPublicFolderWorkflowError(null);
     setPublicFolderWorkflowMessage(null);
@@ -1036,8 +1054,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         confirm_directory_creation: preview.required_confirmations.includes(
           "create_missing_public_directories"
         ),
+        ...(preview.required_confirmations.includes("confirm_existing_public_folder") ? { confirm_existing_public_folder: true } : {}),
         operator: null,
       });
+      if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current || result.project_id !== projectId) return;
       setPublicFolderWorkflowResults((previous) => ({
         ...previous,
         [operation]: result,
@@ -1047,22 +1067,27 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         [operation]: result.preview,
       }));
       setPublicFolderWorkflowConfirmingOperation(null);
-      setPublicFolderWorkflowMessage(`${publicFolderWorkflowOperationLabel(operation)} completed.`);
+      setPublicFolderWorkflowMessage(result.status === "partial" ? "Partial sync: some files were skipped. Review the list below." : result.status === "failed" ? "Sync failed. Review the list below." : `${publicFolderWorkflowOperationLabel(operation)} completed.`);
       await onRefreshPublicFolderWorkflowContext();
       await onRefreshOfficialFolderCheck();
       await onRefreshPackagePreview();
     } catch (err) {
+      if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current) return;
       setPublicFolderWorkflowError(
         err instanceof Error ? err.message : `Failed to execute ${operation}.`
       );
     } finally {
-      setPublicFolderWorkflowBusyOperation(null);
+      publicFolderExecutionRef.current = false;
+      if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowBusyOperation(null);
     }
   }
 
   function onCancelPublicFolderWorkflowOperation(
     operation: PublicFolderWorkflowOperationType
   ): void {
+    if (publicFolderExecutionRef.current) return;
+    publicFolderRequestEpoch.current += 1;
+    setPublicFolderWorkflowBusyOperation(null);
     setPublicFolderWorkflowConfirmingOperation((previous) =>
       previous === operation ? null : previous
     );
@@ -1965,7 +1990,7 @@ function appendProjectFolderPath(message: string, path: string | null): string {
 function selectPublicFolderWorkflowPreviewIssue(
   preview: PublicFolderWorkflowPreview
 ): string | null {
-  return preview.blockers[0] ?? preview.conflicts[0] ?? null;
+  return preview.blockers[0] ?? (preview.operation_type === "sync" && preview.status === "partial" ? null : preview.conflicts[0]) ?? null;
 }
 
 function publicFolderWorkflowOperationLabel(

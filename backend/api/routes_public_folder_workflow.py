@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.api.dependencies import get_public_folder_workflow_service
 from backend.application.public_folder_workflow_service import (
@@ -95,6 +95,7 @@ class PublicFolderWorkflowExecuteRequest(BaseModel):
     preview_hash: str
     confirmed: bool
     confirm_directory_creation: bool = False
+    confirm_existing_public_folder: bool = False
     operator: str | None = None
 
 
@@ -128,6 +129,7 @@ class PublicFolderWorkflowResultResponse(BaseModel):
     counts: dict[str, int]
     errors: list[str]
     preview: PublicFolderWorkflowPreviewResponse
+    items: list[PublicFolderWorkflowItemResponse] = Field(default_factory=list)
 
 
 @router.get("/context", response_model=PublicFolderWorkflowContextResponse)
@@ -244,6 +246,7 @@ def _execute_command(request: PublicFolderWorkflowExecuteRequest) -> PublicFolde
         preview_hash=request.preview_hash,
         confirmed=request.confirmed,
         confirm_directory_creation=request.confirm_directory_creation,
+        confirm_existing_public_folder=request.confirm_existing_public_folder,
         operator=request.operator,
     )
 
@@ -291,6 +294,7 @@ def _result_response(result: PublicFolderWorkflowResult) -> PublicFolderWorkflow
         counts=dict(result.counts),
         errors=list(result.errors),
         preview=_preview_response(result.preview),
+        items=[_item_response(item) for item in result.items],
     )
 
 

@@ -51,6 +51,22 @@ def test_public_folder_workflow_execute_stale_preview_maps_to_409() -> None:
     assert response.json()["detail"] == "Public folder preview is stale."
 
 
+def test_public_folder_sync_api_exposes_conflicts_and_existing_folder_confirmation() -> None:
+    class PartialService(_FakeService):
+        def execute_sync(self, project_id, command):
+            assert command.confirm_existing_public_folder is True
+            item = PublicFolderWorkflowItem("file", Path("conflict.txt"), Path("local/conflict.txt"), Path("public/conflict.txt"), "conflict", "conflict", "Manual review")
+            return PublicFolderWorkflowResult(project_id, "op", "sync", "partial", {"add": 1, "conflict": 1}, (), self._preview, (item,))
+    app.dependency_overrides[get_public_folder_workflow_service] = lambda: PartialService()
+    try:
+        response = TestClient(app).post("/api/projects/P1/public-folder-workflow/sync/execute", json={"preview_hash": "hash", "confirmed": True, "confirm_existing_public_folder": True})
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["status"] == "partial"
+    assert response.json()["items"][0]["relative_path"] == "conflict.txt"
+
+
 def test_public_folder_workflow_auto_sync_api_returns_persisted_state() -> None:
     service = _FakeService(state=PublicFolderWorkflowState(project_id="P1", auto_sync_enabled=True))
     app.dependency_overrides[get_public_folder_workflow_service] = lambda: service

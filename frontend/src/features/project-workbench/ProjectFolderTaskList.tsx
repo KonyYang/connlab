@@ -178,7 +178,7 @@ function FolderOperation({
         {task.context ? <small>{task.context}</small> : null}
         {task.detailMessages && task.detailMessages.length > 0 ? (
           <ul className="runtime-console-folder-operation-details">
-            {task.detailMessages.slice(0, 2).map((message) => (
+            {task.detailMessages.map((message) => (
               <li key={message}>{message}</li>
             ))}
           </ul>
@@ -189,12 +189,14 @@ function FolderOperation({
           <div className="runtime-console-folder-operation-confirmation">
             <button
               type="button"
+              disabled={task.confirmationBusy}
               onClick={() => onTaskConfirm?.(task.operation as PublicFolderWorkflowOperationType)}
             >
               {task.confirmLabel ?? "Confirm"}
             </button>
             <button
               type="button"
+              disabled={task.confirmationBusy}
               onClick={() => onTaskCancel?.(task.operation as PublicFolderWorkflowOperationType)}
             >
               {task.cancelLabel ?? "Cancel"}

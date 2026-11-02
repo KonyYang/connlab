@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -78,7 +80,7 @@ class PublicFolderWorkflowGatewayPort(Protocol):
     def create_directory(self, target: Path) -> None:
         """Create a directory."""
 
-    def copy_new_file(self, source: Path, target: Path) -> None:
+    def copy_new_file(self, source: Path, target: Path, *, expected_source_fingerprint: str | None = None) -> None:
         """Copy a new file without overwrite."""
 
     def replace_managed_file(
@@ -87,6 +89,7 @@ class PublicFolderWorkflowGatewayPort(Protocol):
         target: Path,
         *,
         expected_public_fingerprint: str | None,
+        expected_source_fingerprint: str | None = None,
     ) -> None:
         """Replace a managed file after fingerprint validation."""
 
@@ -208,6 +211,8 @@ class PublicFolderWorkflowItem:
     action: str
     status: str
     message: str
+    local_fingerprint: str | None = None
+    public_fingerprint: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,6 +241,7 @@ class PublicFolderWorkflowPreview:
     next_action: str
     auto_sync_enabled: bool
     sync_locked: bool
+    public_open_identity: tuple[int, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,6 +273,7 @@ class PublicFolderWorkflowExecuteCommand:
     confirmed: bool
     confirm_directory_creation: bool = False
     operator: str | None = None
+    confirm_existing_public_folder: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -287,6 +294,7 @@ class PublicFolderWorkflowResult:
     counts: dict[str, int]
     errors: tuple[str, ...]
     preview: PublicFolderWorkflowPreview
+    items: tuple[PublicFolderWorkflowItem, ...] = ()
 
 
 class PublicFolderWorkflowService:
@@ -378,17 +386,38 @@ class PublicFolderWorkflowService:
         items = list(base.items)
         local_root = base.local_official_folder_path
         public_open = base.public_open_path
+        if not public_open.exists():
+            items.append(_directory_item(Path("."), public_open))
         for directory in self._gateway.list_directories(local_root):
             relative = directory.relative_to(local_root)
-            items.append(_directory_item(relative, public_open / relative))
+            if not _safe_child(local_root, directory) or not _safe_child(base.public_root, public_open / relative):
+                items.append(PublicFolderWorkflowItem("directory", relative, directory, public_open / relative, "conflict", "conflict", "Redirected folder cannot be synchronized."))
+            else:
+                items.append(_directory_item(relative, public_open / relative))
+        blocked_directories = {item.relative_path for item in items if item.kind == "directory" and item.status == "conflict"}
         for local_file in self._gateway.list_files(local_root):
             relative = local_file.relative_to(local_root)
-            items.append(self._sync_file_item(project_id, relative, local_file, public_open / relative))
+            if not _safe_child(local_root, local_file) or not _safe_child(base.public_root, public_open / relative):
+                items.append(_file_item(relative, local_file, public_open / relative, "conflict", "conflict", "Redirected file cannot be synchronized."))
+            elif any(parent == relative or parent in relative.parents for parent in blocked_directories):
+                items.append(_file_item(relative, local_file, public_open / relative, "conflict", "conflict", "Parent path is not a directory."))
+            else:
+                items.append(self._sync_file_item(project_id, relative, local_file, public_open / relative))
 
         warnings = list(base.warnings)
         if _extra_public_files(public_open, {item.relative_path for item in items if item.kind == "file"}):
             warnings.append("Public Open folder contains extra unmanaged files.")
-        return self._final_preview(replace(base, items=tuple(items), warnings=tuple(warnings)))
+        required = list(base.required_confirmations)
+        has_known_target = any(
+            (record := self._repository.get_file(project_id, item.relative_path)) is not None
+            and item.public_path is not None and _same_path(record.public_path, item.public_path)
+            and item.public_path.is_file() and self._gateway.fingerprint(item.public_path) == record.public_fingerprint
+            for item in items if item.kind == "file"
+        )
+        if public_open.is_dir() and not has_known_target:
+            required.append("confirm_existing_public_folder")
+        identity = _directory_identity(public_open) if public_open.is_dir() else None
+        return self._final_preview(replace(base, items=tuple(items), warnings=tuple(warnings), required_confirmations=tuple(required), public_open_identity=identity))
 
     def execute_sync(
         self,
@@ -400,60 +429,124 @@ class PublicFolderWorkflowService:
         self._validate_execute_preview(preview, command)
         operation_id = uuid4().hex
         errors: list[str] = []
-        for item in preview.items:
+        outcomes: list[PublicFolderWorkflowItem] = []
+        project_root = preview.public_open_path
+        assert project_root is not None
+        root_needs_creation = any(item.public_path == project_root and item.action == "add" for item in preview.items)
+        root_identity = None if root_needs_creation else preview.public_open_identity
+        if not root_needs_creation and (root_identity is None or _directory_identity(project_root) != root_identity):
+            raise PublicFolderWorkflowConflictError("Public project folder identity changed; preview again.")
+        blocked_directories = {item.public_path for item in preview.items if item.kind == "directory" and item.status == "conflict" and item.public_path is not None}
+        for item in sorted(preview.items, key=lambda entry: len(entry.public_path.parts) if entry.public_path else 0):
+            if item.kind != "directory":
+                continue
             if item.kind == "directory" and item.action == "add":
-                self._gateway.create_directory(_required_public_path(item))
+                target = _required_public_path(item)
+                if any(parent == target or parent in target.parents for parent in blocked_directories):
+                    outcomes.append(replace(item, action="conflict", status="conflict", message="Parent path is unavailable."))
+                    continue
+                try:
+                    if not _safe_child(preview.public_root, target):
+                        raise RuntimeError("Public folder was redirected.")
+                    if target == preview.public_open_path:
+                        target.mkdir(exist_ok=False)
+                        root_identity = _directory_identity(target)
+                    else:
+                        if project_root in target.parents and (root_identity is None or _directory_identity(project_root) != root_identity):
+                            raise RuntimeError("Public project folder identity changed; preview again.")
+                        self._gateway.create_directory(target)
+                except (OSError, RuntimeError, PublicFolderWorkflowConflictError) as exc:
+                    if target == preview.public_open_path:
+                        raise PublicFolderWorkflowConflictError(
+                            "The public project folder appeared or could not be created. "
+                            "No project files were copied; preview again and verify the folder."
+                        ) from exc
+                    blocked_directories.add(target)
+                    errors.append(f"{item.relative_path}: {exc}")
+                    outcomes.append(replace(item, action="conflict", status="conflict", message=str(exc)))
+                    continue
+                outcomes.append(replace(item, status="completed"))
+            elif item.status == "conflict":
+                outcomes.append(item)
         for item in preview.items:
-            if item.kind != "file" or item.action not in {"add", "update"}:
+            if item.kind != "file":
+                continue
+            if item.action not in {"add", "update"}:
+                outcomes.append(item)
+                continue
+            if any(parent == item.public_path or parent in item.public_path.parents for parent in blocked_directories if item.public_path is not None):
+                outcomes.append(replace(item, action="conflict", status="conflict", message="Parent path is unavailable."))
                 continue
             local_path = _required_local_path(item)
             public_path = _required_public_path(item)
-            previous = self._repository.get_file(project_id, item.relative_path)
             try:
-                if item.action == "add":
-                    self._gateway.copy_new_file(local_path, public_path)
-                else:
-                    self._gateway.replace_managed_file(
-                        local_path,
-                        public_path,
-                        expected_public_fingerprint=(
-                            previous.public_fingerprint if previous else None
-                        ),
+                if root_identity is None or _directory_identity(project_root) != root_identity:
+                    raise RuntimeError("Public project folder identity changed; preview again.")
+                if not _safe_child(preview.local_official_folder_path, local_path) or not _safe_child(preview.public_root, public_path):
+                    raise RuntimeError("File path was redirected.")
+                if self._gateway.fingerprint(local_path) != item.local_fingerprint:
+                    raise RuntimeError("Local file changed after preview.")
+                if item.action != "add":
+                    raise RuntimeError("Automatic replacement is unavailable; review this file manually.")
+                self._gateway.copy_new_file(local_path, public_path, expected_source_fingerprint=item.local_fingerprint)
+            except (OSError, RuntimeError, PublicFolderWorkflowConflictError) as exc:
+                errors.append(f"{item.relative_path}: {exc}")
+                outcomes.append(replace(item, action="conflict", status="conflict", message=str(exc)))
+                continue
+            try:
+                self._repository.save_file(
+                    PublicFolderWorkflowFileRecord(
+                        project_id=project_id,
+                        relative_path=item.relative_path,
+                        public_path=public_path,
+                        local_fingerprint=item.local_fingerprint or "",
+                        public_fingerprint=item.local_fingerprint or "",
+                        updated_at=_now(),
+                        operation_id=operation_id,
                     )
-            except (OSError, RuntimeError) as exc:
-                errors.append(str(exc))
-                break
-            self._repository.save_file(
-                PublicFolderWorkflowFileRecord(
-                    project_id=project_id,
-                    relative_path=item.relative_path,
-                    public_path=public_path,
-                    local_fingerprint=self._gateway.fingerprint(local_path),
-                    public_fingerprint=self._gateway.fingerprint(public_path),
-                    updated_at=_now(),
-                    operation_id=operation_id,
                 )
-            )
-        status = "failed" if errors else "completed"
-        self._save_operation(operation_id, preview, status, command.operator, errors)
-        if not errors:
-            state = self._repository.get_state(project_id)
-            self._repository.save_state(
-                replace(
-                    state,
-                    last_sync_operation_id=operation_id,
-                    created_at=state.created_at or _now(),
-                    updated_at=_now(),
+            except Exception as exc:
+                raise PublicFolderWorkflowError(
+                    f"File {item.relative_path} was copied to the public folder, but its sync record could not be saved. "
+                    "The file was left in place; other files may also have been copied. Review the public folder before retrying."
+                ) from exc
+            outcomes.append(replace(item, status="completed"))
+        file_outcomes = [item for item in outcomes if item.kind == "file"]
+        successful = any(item.status == "completed" for item in (file_outcomes or outcomes))
+        has_conflict = bool(errors) or any(item.status == "conflict" for item in outcomes)
+        status = ("partial" if successful else "failed") if has_conflict else "completed"
+        try:
+            refreshed_preview = self.preview_sync(project_id)
+        except (OSError, RuntimeError, PublicFolderWorkflowConflictError) as exc:
+            errors.append(f"Unable to refresh public folder after sync: {exc}")
+            status = "partial" if successful else "failed"
+            refreshed_preview = replace(preview, warnings=preview.warnings + ("Public folder could not be refreshed; check the connection.",))
+        try:
+            self._save_operation(operation_id, preview, status, command.operator, errors, outcomes=tuple(outcomes))
+            if status == "completed":
+                state = self._repository.get_state(project_id)
+                self._repository.save_state(
+                    replace(
+                        state,
+                        last_sync_operation_id=operation_id,
+                        created_at=state.created_at or _now(),
+                        updated_at=_now(),
+                    )
                 )
-            )
+        except Exception as exc:
+            raise PublicFolderWorkflowError(
+                "Sync files may have been copied, but the sync operation record could not be saved. "
+                "Files were left in place; review the public folder before retrying."
+            ) from exc
         return PublicFolderWorkflowResult(
             project_id=project_id,
             operation_id=operation_id,
             operation_type="sync",
             status=status,
-            counts=dict(preview.counts),
+            counts=_sync_outcome_counts(tuple(outcomes)),
             errors=tuple(errors),
-            preview=self.preview_sync(project_id),
+            preview=refreshed_preview,
+            items=tuple(outcomes),
         )
 
     def preview_submit(self, project_id: str) -> PublicFolderWorkflowPreview:
@@ -684,17 +777,17 @@ class PublicFolderWorkflowService:
         local_fingerprint = self._gateway.fingerprint(local_path)
         previous = self._repository.get_file(project_id, relative)
         if not public_path.exists():
-            return _file_item(relative, local_path, public_path, "add", "ready", "Will be copied to public Open.")
+            return replace(_file_item(relative, local_path, public_path, "add", "ready", "Will be copied to public Open."), local_fingerprint=local_fingerprint)
         if not public_path.is_file():
             return _file_item(relative, local_path, public_path, "conflict", "conflict", "Public Open path is not a file.")
         public_fingerprint = self._gateway.fingerprint(public_path)
         if public_fingerprint == local_fingerprint:
-            return _file_item(relative, local_path, public_path, "skip", "current", "Public Open file is current.")
-        if previous is None or previous.public_path.resolve() != public_path.resolve():
-            return _file_item(relative, local_path, public_path, "conflict", "conflict", "Public Open file is not managed by ConnLab.")
+            return replace(_file_item(relative, local_path, public_path, "skip", "current", "Public Open file is current."), local_fingerprint=local_fingerprint, public_fingerprint=public_fingerprint)
+        if previous is None or not _same_path(previous.public_path, public_path):
+            return replace(_file_item(relative, local_path, public_path, "conflict", "conflict", "Public Open file is not managed by ConnLab."), local_fingerprint=local_fingerprint, public_fingerprint=public_fingerprint)
         if public_fingerprint != previous.public_fingerprint:
-            return _file_item(relative, local_path, public_path, "conflict", "conflict", "Public Open file changed outside ConnLab.")
-        return _file_item(relative, local_path, public_path, "update", "ready", "Managed public Open file will be updated.")
+            return replace(_file_item(relative, local_path, public_path, "conflict", "conflict", "Public Open file changed outside ConnLab."), local_fingerprint=local_fingerprint, public_fingerprint=public_fingerprint)
+        return replace(_file_item(relative, local_path, public_path, "conflict", "conflict", "Public file update requires manual review; automatic replacement is unavailable."), local_fingerprint=local_fingerprint, public_fingerprint=public_fingerprint)
 
     def _unmanaged_public_open_submit_items(
         self,
@@ -730,9 +823,11 @@ class PublicFolderWorkflowService:
             raise PublicFolderWorkflowConflictError("Public folder preview is stale.")
         if preview.blockers:
             raise PublicFolderWorkflowBlockedError(preview.blockers[0])
-        if preview.conflicts or preview.status == "conflict":
+        if (preview.operation_type != "sync" and preview.conflicts) or preview.status == "conflict":
             detail = preview.conflicts[0] if preview.conflicts else "Resolve public folder conflicts."
             raise PublicFolderWorkflowConflictError(detail)
+        if "confirm_existing_public_folder" in preview.required_confirmations and not command.confirm_existing_public_folder:
+            raise PublicFolderWorkflowBlockedError("Confirm the existing public project folder before syncing.")
         if any(item.action == "add" and item.kind == "directory" for item in preview.items):
             if not command.confirm_directory_creation:
                 raise PublicFolderWorkflowBlockedError("Directory creation confirmation is required.")
@@ -744,6 +839,8 @@ class PublicFolderWorkflowService:
         status: str,
         operator: str | None,
         errors: list[str],
+        *,
+        outcomes: tuple[PublicFolderWorkflowItem, ...] | None = None,
     ) -> None:
         now = _now()
         self._repository.save_operation(
@@ -765,11 +862,12 @@ class PublicFolderWorkflowService:
                 public_open_path=preview.public_open_path,
                 public_closed_path=preview.public_closed_path,
                 target_path=preview.target_path,
-                counts=dict(preview.counts),
+                counts=_sync_outcome_counts(outcomes) if outcomes is not None else dict(preview.counts),
                 blockers=preview.blockers,
                 warnings=preview.warnings,
                 conflicts=tuple(preview.conflicts) + tuple(errors),
                 snapshot_json=json.dumps(_preview_snapshot(preview), sort_keys=True),
+                metadata_json=json.dumps({"result_items": [_result_item_snapshot(item) for item in outcomes]}, sort_keys=True) if outcomes is not None else None,
             )
         )
 
@@ -780,6 +878,9 @@ class PublicFolderWorkflowService:
         if preview.blockers:
             status = "blocked"
             next_action = "none"
+        elif conflicts and preview.operation_type == "sync" and any(item.action in {"add", "update"} and item.kind == "file" for item in items):
+            status = "partial"
+            next_action = "sync"
         elif conflicts:
             status = "conflict"
             next_action = "none"
@@ -839,6 +940,13 @@ def _folder_check_blockers(preview: OfficialFolderCheckPreview) -> tuple[str, ..
     return tuple()
 
 
+def _directory_identity(path: Path) -> tuple[int, int]:
+    info = path.stat(follow_symlinks=False)
+    if not info.st_ino or not path.is_dir() or path.is_symlink():
+        raise PublicFolderWorkflowConflictError("Cannot verify the public project folder identity; preview again.")
+    return (info.st_dev, info.st_ino)
+
+
 def _missing_directory_item(path: Path, root: Path) -> PublicFolderWorkflowItem:
     return PublicFolderWorkflowItem(
         kind="directory",
@@ -857,6 +965,30 @@ def _directory_item(relative: Path, public_path: Path) -> PublicFolderWorkflowIt
     if public_path.is_dir():
         return PublicFolderWorkflowItem("directory", relative, None, public_path, "skip", "current", "Directory already exists.")
     return PublicFolderWorkflowItem("directory", relative, None, public_path, "conflict", "conflict", "Public Open path is a file, expected directory.")
+
+
+def _safe_child(root: Path | None, candidate: Path) -> bool:
+    if root is None:
+        return False
+    try:
+        relative = candidate.relative_to(root)
+        candidate.resolve().relative_to(root.resolve())
+        current = root
+        for part in relative.parts:
+            current = current / part
+            try:
+                info = os.lstat(current)
+            except FileNotFoundError:
+                continue
+            if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400):
+                return False
+        return True
+    except (ValueError, OSError, RuntimeError):
+        return False
+
+
+def _same_path(first: Path, second: Path) -> bool:
+    return os.path.normcase(os.path.abspath(first)) == os.path.normcase(os.path.abspath(second))
 
 
 def _file_item(
@@ -887,6 +1019,17 @@ def _counts(items: tuple[PublicFolderWorkflowItem, ...]) -> dict[str, int]:
     return counts
 
 
+def _sync_outcome_counts(items: tuple[PublicFolderWorkflowItem, ...]) -> dict[str, int]:
+    counts = _counts(tuple(item for item in items if item.kind == "file"))
+    counts["directory_conflict"] = sum(item.kind == "directory" and item.status == "conflict" for item in items)
+    counts["directory_add"] = sum(item.kind == "directory" and item.status == "completed" for item in items)
+    return counts
+
+
+def _result_item_snapshot(item: PublicFolderWorkflowItem) -> dict[str, object]:
+    return {"kind": item.kind, "relative_path": item.relative_path.as_posix(), "action": item.action, "status": item.status, "message": item.message}
+
+
 def _preview_hash(preview: PublicFolderWorkflowPreview) -> str:
     payload = _preview_snapshot(preview)
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
@@ -902,6 +1045,7 @@ def _preview_snapshot(preview: PublicFolderWorkflowPreview) -> dict[str, object]
         "year_source": preview.year_source,
         "local_official_folder_path": _path(preview.local_official_folder_path),
         "public_open_path": _path(preview.public_open_path),
+        "public_open_identity": preview.public_open_identity,
         "public_closed_path": _path(preview.public_closed_path),
         "target_path": _path(preview.target_path),
         "items": [
@@ -913,6 +1057,8 @@ def _preview_snapshot(preview: PublicFolderWorkflowPreview) -> dict[str, object]
                 "action": item.action,
                 "status": item.status,
                 "message": item.message,
+                "local_fingerprint": item.local_fingerprint,
+                "public_fingerprint": item.public_fingerprint,
             }
             for item in preview.items
         ],
