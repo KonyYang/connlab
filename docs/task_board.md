@@ -238,7 +238,7 @@
     },
     "TASK_PUBLIC_PROJECT_PATHS_20261102": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-project-paths\\connlab",
       "branch": "codex/public-project-paths-20261102",
       "resources": [
@@ -261,63 +261,17 @@
         ],
         "activation_head": "336a1b5f4a27abe56211bfdbb84c4f7e6d488855",
         "started_at": "2026-11-02T11:11:44.156281Z",
-        "updated_at": "2026-11-02T11:18:59.778434Z",
-        "checkpoint": null,
-        "report": {
-          "changed_paths": [
-            "backend/application/public_folder_path_resolver.py",
-            "backend/application/public_folder_workflow_service.py",
-            "tests/unit/test_public_folder_workflow_service.py"
-          ],
-          "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
-          "summary": "Correct public folder paths and bind managed updates to the original destination; preserve existing directories",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "7b76c48921a4e4b947ee217314592a51cf4cbf9b",
-            "primary_before": "a3a463dc8c1db890ab4551a87153828c0ff92903",
-            "integrated_head": "d439b9c26d9cef1e0dd71d5bc6be5371ec4dfbc9",
-            "recovered": false
-          },
-          "subject": "7b76c48921a4e4b947ee217314592a51cf4cbf9b",
-          "schema": "connlab.sol-task-report",
-          "roles": {
-            "qa": {
-              "status": "passed",
-              "method": "independent QA on frozen subject"
-            },
-            "planner": {
-              "status": "passed",
-              "method": "independent planner"
-            },
-            "integrator": {
-              "status": "passed",
-              "method": "independent verification of clean primary and branch, exact paths, base and diff"
-            },
-            "developer": {
-              "status": "passed",
-              "method": "independent developer"
-            },
-            "reviewer": {
-              "status": "passed",
-              "method": "independent standards and specification review; no blocking findings"
-            }
-          },
+        "updated_at": "2026-11-02T12:21:45.331462Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
-          "scope_ok": true,
-          "validation": [
-            {
-              "name": "Development TDD",
-              "status": "passed",
-              "result": "Red/green for directory names and cross-path managed record authorization; 12 related tests passed"
-            },
-            {
-              "name": "Independent QA",
-              "status": "passed",
-              "result": "66 related unit and integration tests passed in temporary directories; existing Starlette deprecation warnings; no real public drive accessed"
-            }
-          ]
-        }
+          "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
+          "stage": "revision",
+          "status": "running",
+          "summary": "用户更正为 Closed projects；仅修正目录名称",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
