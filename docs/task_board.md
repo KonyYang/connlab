@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_SAMPLE_DEPOSITION_20261102",
-    "tier": "micro",
-    "subject": "8fabcd24c0aadae48e40de816a67723e7141f00f",
-    "summary": "Shorten automatic sample deposition",
+    "task_id": "TASK_PUBLIC_EXISTING_DIRS_20261103",
+    "tier": "high_risk",
+    "subject": "f3248ad35b3ffc8b35b81699742af9764ce20f3d",
+    "summary": "Require existing public root and year directories",
     "disposition": "completed",
     "decision_ref": "User requested local close only; no push or publication.",
-    "closed_at": "2026-11-02T23:35:38.490026Z"
+    "closed_at": "2026-11-02T23:42:25.372915Z"
   },
   "retained_history": [
     {
@@ -201,104 +201,18 @@
       "disposition": "completed",
       "decision_ref": "User requested local close only; no push or publication.",
       "closed_at": "2026-11-02T23:27:01.838552Z"
+    },
+    {
+      "task_id": "TASK_SAMPLE_DEPOSITION_20261102",
+      "tier": "micro",
+      "subject": "8fabcd24c0aadae48e40de816a67723e7141f00f",
+      "summary": "Shorten automatic sample deposition",
+      "disposition": "completed",
+      "decision_ref": "User requested local close only; no push or publication.",
+      "closed_at": "2026-11-02T23:35:38.490026Z"
     }
   ],
-  "tasks": {
-    "TASK_PUBLIC_EXISTING_DIRS_20261103": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-preexisting-dirs\\connlab",
-      "branch": "codex/public-preexisting-dirs-20261103",
-      "resources": [
-        "public-folder"
-      ],
-      "integrated_head": "550b1c79ff5f0d4b72f964553f2f71c142c94270",
-      "task": {
-        "task_id": "TASK_PUBLIC_EXISTING_DIRS_20261103",
-        "summary": "Require existing public root and year directories",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Operation-specific existing public parent and year checks; confirm project child creation; preserve year resolution and partial sync",
-        "scope_paths": [
-          "backend/application/public_folder_path_resolver.py",
-          "backend/application/public_folder_workflow_service.py",
-          "backend/infrastructure/files/public_folder_workflow_gateway.py",
-          "tests/unit/test_public_folder_workflow_service.py",
-          "tests/unit/test_public_folder_workflow_gateway.py",
-          "tests/integration/test_public_folder_workflow_api.py"
-        ],
-        "risk_reasons": [
-          "Public-drive filesystem mutation and concurrent directory changes"
-        ],
-        "activation_head": "c0a5d264e940e68693bf3cfbef6110e9ca160327",
-        "started_at": "2026-11-02T23:30:13.051894Z",
-        "updated_at": "2026-11-02T23:41:14.318860Z",
-        "checkpoint": null,
-        "report": {
-          "validation": [
-            {
-              "result": "TDD red/green; 50 targeted tests passed including no-replace target race.",
-              "status": "passed",
-              "name": "Developer regression"
-            },
-            {
-              "result": "75 isolated unit, API and migration tests passed; one existing Starlette deprecation warning; no real public drive access.",
-              "status": "passed",
-              "name": "Independent QA"
-            },
-            {
-              "result": "Standards and specification review found no blocking findings; cross-device and unsupported safe rename fail closed; real company SMB not tested.",
-              "status": "passed",
-              "name": "Independent review"
-            }
-          ],
-          "scope_ok": true,
-          "summary": "Require operation-specific existing public root and year directories, keep confirmed project directory creation, and preserve safe no-overwrite moves",
-          "version": 1,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "f3248ad35b3ffc8b35b81699742af9764ce20f3d",
-            "primary_before": "073f7a2ab46d6aef87f2ff63e39072a466c2ee2c",
-            "integrated_head": "550b1c79ff5f0d4b72f964553f2f71c142c94270",
-            "recovered": false
-          },
-          "task_id": "TASK_PUBLIC_EXISTING_DIRS_20261103",
-          "subject": "f3248ad35b3ffc8b35b81699742af9764ce20f3d",
-          "changed_paths": [
-            "backend/application/public_folder_path_resolver.py",
-            "backend/application/public_folder_workflow_service.py",
-            "backend/infrastructure/files/public_folder_workflow_gateway.py",
-            "tests/unit/test_public_folder_workflow_gateway.py",
-            "tests/unit/test_public_folder_workflow_service.py"
-          ],
-          "schema": "connlab.sol-task-report",
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "method": "independent reviewer"
-            },
-            "integrator": {
-              "status": "passed",
-              "method": "independent integrator verified clean trees, baseline, scope, and board"
-            },
-            "planner": {
-              "status": "passed",
-              "method": "independent planner"
-            },
-            "developer": {
-              "status": "passed",
-              "method": "independent developer"
-            },
-            "qa": {
-              "status": "passed",
-              "method": "independent QA"
-            }
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
