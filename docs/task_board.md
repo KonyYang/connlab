@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LTR_REMARKS_DEFAULT_20261102",
+    "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
     "tier": "high_risk",
-    "subject": "dba951276d3da39cdda78039804087bb95e53c3d",
-    "summary": "Correct Remarks PO defaults for Basic Information and LTR registration",
+    "subject": "2732e17a4a683d9332c6156ed13bfae99d95c105",
+    "summary": "Correct public project folder names",
     "disposition": "completed",
-    "decision_ref": "用户明确要求仅本地关闭，不推送、不发布",
-    "closed_at": "2026-11-02T10:32:44.622761Z"
+    "decision_ref": "User authorized local close only; no push or publication.",
+    "closed_at": "2026-11-02T23:01:39.946185Z"
   },
   "retained_history": [
     {
@@ -174,6 +174,15 @@
       "disposition": "completed",
       "decision_ref": "用户明确要求仅本地关闭单项目导入任务，不推送、不发布",
       "closed_at": "2026-11-02T10:21:08.363527Z"
+    },
+    {
+      "task_id": "TASK_LTR_REMARKS_DEFAULT_20261102",
+      "tier": "high_risk",
+      "subject": "dba951276d3da39cdda78039804087bb95e53c3d",
+      "summary": "Correct Remarks PO defaults for Basic Information and LTR registration",
+      "disposition": "completed",
+      "decision_ref": "用户明确要求仅本地关闭，不推送、不发布",
+      "closed_at": "2026-11-02T10:32:44.622761Z"
     }
   ],
   "tasks": {
@@ -231,97 +240,6 @@
             "subject": "8fabcd24c0aadae48e40de816a67723e7141f00f",
             "primary_before": "67615450e198ef6ff2db137785e7f9f208938f26",
             "integrated_head": "fa948595b5afa2da7c88df4c9690790389d94091",
-            "recovered": false
-          }
-        }
-      }
-    },
-    "TASK_PUBLIC_PROJECT_PATHS_20261102": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-project-paths\\connlab",
-      "branch": "codex/public-project-paths-20261102",
-      "resources": [
-        "public-folder"
-      ],
-      "integrated_head": "42e4ea852aa3ad74023ae7f81d86c9816641e328",
-      "task": {
-        "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
-        "summary": "Correct public project folder names",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Use Open projects and Close projects with safe path-bound sync records; no production folder migration",
-        "scope_paths": [
-          "backend/application/public_folder_path_resolver.py",
-          "backend/application/public_folder_workflow_service.py",
-          "tests/unit/test_public_folder_workflow_service.py"
-        ],
-        "risk_reasons": [
-          "Public-drive destination and overwrite protection"
-        ],
-        "activation_head": "336a1b5f4a27abe56211bfdbb84c4f7e6d488855",
-        "started_at": "2026-11-02T11:11:44.156281Z",
-        "updated_at": "2026-11-02T12:26:04.001981Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
-          "stage": "revision",
-          "status": "running",
-          "summary": "用户更正为 Closed projects；仅修正目录名称",
-          "requires_user": false
-        },
-        "report": {
-          "changed_paths": [
-            "backend/application/public_folder_path_resolver.py",
-            "tests/unit/test_public_folder_workflow_service.py"
-          ],
-          "schema": "connlab.sol-task-report",
-          "summary": "Correct public folder paths to Open projects and Closed projects; preserve path-bound sync safety and existing directories",
-          "validation": [
-            {
-              "result": "66 related unit and integration tests passed in temporary directories; no real public drive accessed",
-              "name": "Revision independent QA",
-              "status": "passed"
-            },
-            {
-              "result": "Reviewer reported no blocking findings",
-              "name": "Revision independent review",
-              "status": "passed"
-            }
-          ],
-          "version": 1,
-          "subject": "2732e17a4a683d9332c6156ed13bfae99d95c105",
-          "task_id": "TASK_PUBLIC_PROJECT_PATHS_20261102",
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "method": "developer revision"
-            },
-            "reviewer": {
-              "status": "passed",
-              "method": "independent reviewer revision"
-            },
-            "planner": {
-              "status": "passed",
-              "method": "independent planner original task; user directly corrected closed folder name"
-            },
-            "qa": {
-              "status": "passed",
-              "method": "independent QA on revision subject"
-            },
-            "integrator": {
-              "status": "passed",
-              "method": "independent verification of clean primary and branch, exact revision scope, merge base and diff"
-            }
-          },
-          "scope_ok": true,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "2732e17a4a683d9332c6156ed13bfae99d95c105",
-            "primary_before": "a4d9c0e381c229ddf674a5177512c5b51d4b601d",
-            "integrated_head": "42e4ea852aa3ad74023ae7f81d86c9816641e328",
             "recovered": false
           }
         }
