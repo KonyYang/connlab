@@ -48,12 +48,12 @@ class PublicFolderPathResolver:
 
         root = public_root.resolve()
         open_year = root / "Open projects" / str(year)
-        closed_year = root / "Close projects" / str(year)
+        closed_year = root / "Closed projects" / str(year)
         public_open = open_year / name
         public_closed = closed_year / name
         for candidate in (open_year, closed_year, public_open, public_closed):
             _ensure_under_root(root, candidate)
-        missing = tuple(path for path in (root / "Open projects", open_year, root / "Close projects", closed_year) if not path.exists())
+        missing = tuple(path for path in (root / "Open projects", open_year, root / "Closed projects", closed_year) if not path.exists())
         return PublicFolderPaths(
             public_root=root,
             public_root_class=_classify_root(root),
