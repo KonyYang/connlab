@@ -45,7 +45,7 @@ def test_public_paths_use_company_directory_names(tmp_path: Path) -> None:
     service, _, paths = _service(tmp_path)
     context = service.context("P1")
     assert context.public_open_path == paths["public"] / "Open projects" / "2026" / paths["local"].name
-    assert context.public_closed_path == paths["public"] / "Close projects" / "2026" / paths["local"].name
+    assert context.public_closed_path == paths["public"] / "Closed projects" / "2026" / paths["local"].name
 
 
 def test_legacy_path_record_never_authorizes_replacing_new_target(tmp_path: Path) -> None:
@@ -162,7 +162,7 @@ def test_submit_moves_open_to_closed_and_locks_sync(tmp_path: Path) -> None:
         ),
     )
 
-    closed_file = paths["public"] / "Close projects" / "2026" / paths["local"].name / "file.txt"
+    closed_file = paths["public"] / "Closed projects" / "2026" / paths["local"].name / "file.txt"
     assert closed_file.read_text(encoding="utf-8") == "v1"
     assert repository.get_state("P1").sync_locked is True
     assert "Sync is locked after Submit." in service.preview_sync("P1").blockers
@@ -181,7 +181,7 @@ def test_submit_preview_blocks_unmanaged_public_open_file(tmp_path: Path) -> Non
         ),
     )
     open_folder = paths["public"] / "Open projects" / "2026" / paths["local"].name
-    closed_folder = paths["public"] / "Close projects" / "2026" / paths["local"].name
+    closed_folder = paths["public"] / "Closed projects" / "2026" / paths["local"].name
     unmanaged = open_folder / "human-extra.txt"
     unmanaged.write_text("outside ConnLab", encoding="utf-8")
 
@@ -221,7 +221,7 @@ def test_submit_execute_rejects_stale_preview_when_unmanaged_file_appears(tmp_pa
     submit = service.preview_submit("P1")
     assert submit.status == "ready"
     open_folder = paths["public"] / "Open projects" / "2026" / paths["local"].name
-    closed_folder = paths["public"] / "Close projects" / "2026" / paths["local"].name
+    closed_folder = paths["public"] / "Closed projects" / "2026" / paths["local"].name
     (open_folder / "human-extra.txt").write_text("outside ConnLab", encoding="utf-8")
 
     with pytest.raises(PublicFolderWorkflowConflictError, match="stale"):
@@ -240,7 +240,7 @@ def test_submit_execute_rejects_stale_preview_when_unmanaged_file_appears(tmp_pa
 
 def test_pull_copies_closed_to_local_history_without_overwriting_current(tmp_path: Path) -> None:
     service, _repository, paths = _service(tmp_path)
-    closed = paths["public"] / "Close projects" / "2026" / paths["local"].name
+    closed = paths["public"] / "Closed projects" / "2026" / paths["local"].name
     closed.mkdir(parents=True)
     (closed / "approved.txt").write_text("approved", encoding="utf-8")
     (paths["local"] / "current.txt").write_text("current", encoding="utf-8")
