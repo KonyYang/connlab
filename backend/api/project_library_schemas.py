@@ -35,6 +35,7 @@ class MembersResponse(BaseModel):
 
 class RootsRequest(BaseModel):
     roots: list[str] = Field(min_length=1, max_length=1000)
+    single_project: bool = False
 
 
 class CandidateResponse(BaseModel):
@@ -53,6 +54,7 @@ class ScanResponse(BaseModel):
     boundary_roots: list[CandidateResponse]
     warnings: list[str]
     truncated: bool
+    selection_issue: Literal["choose_project", "partial_project", "needs_ltr"] | None = None
 
 
 class IntakeAssignment(BaseModel):
@@ -60,6 +62,7 @@ class IntakeAssignment(BaseModel):
     source_path: str
     target_member_id: str | None = None
     new_project_title: str | None = None
+    ltr_number: str | None = Field(default=None, max_length=64)
 
 
 class IntakeRequest(BaseModel):
