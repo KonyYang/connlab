@@ -8,6 +8,18 @@ import {
 import type { WorkbenchVersionStatus } from "./projectWorkbenchVersionSelectors";
 
 describe("deriveProjectFolderTasks", () => {
+  it("shows only the first missing directory on its own operation", () => {
+    const first = "Required public directory is missing or not a folder: D:/PublicProject/Open projects. Check or create it manually.";
+    const second = "Required public directory is missing or not a folder: D:/PublicProject/Open projects/2026. Check or create it manually.";
+    const input = readyInput();
+    const tasks = deriveProjectFolderTasks({ ...input,
+      publicFolderWorkflowPreviews: { sync: { operation_type: "sync", status: "blocked", blockers: [first, second], conflicts: [], warnings: [], items: [], required_confirmations: [] } as never, submit: null, pull: null },
+      publicFolderWorkflowMessage: first,
+    });
+    expect(tasks[1].detailMessages).toEqual([first]);
+    expect(tasks[2].detailMessages).toEqual([]);
+    expect(tasks[3].detailMessages).toEqual([]);
+  });
   it("lists every uploaded, unchanged and conflict file in a partial sync result", () => {
     const item = (relative_path: string, action: string, status: string) => ({
       relative_path, action, status, kind: "file", local_path: null, public_path: null, message: null,
