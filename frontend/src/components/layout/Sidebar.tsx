@@ -47,7 +47,7 @@ export function Sidebar({
   const accountTrigger = useRef<HTMLButtonElement>(null);
   const displayName = profile.profile?.display_name ?? CURRENT_USER_DISPLAY_NAME;
   const accountLocked = interactionLocked || profile.busy;
-  const [folderAvailability, setFolderAvailability] = useState<{ projectId: string; available: boolean; path: string | null } | null>(null);
+  const [folderAvailability, setFolderAvailability] = useState<{ projectId: string; available: boolean } | null>(null);
   const [folderError, setFolderError] = useState<string | null>(null);
   const projectIdRef = useRef(projectId);
   projectIdRef.current = projectId;
@@ -61,7 +61,7 @@ export function Sidebar({
       const current = ++request;
       void getPublicFolderWorkflowContext(projectId).then((context) => {
         if (active && current === request && context.project_id === projectId) {
-          setFolderAvailability({ projectId, available: context.local_official_folder_available, path: context.local_official_folder_path });
+          setFolderAvailability({ projectId, available: context.local_official_folder_available });
         }
       }).catch(() => {
         if (active && current === request) setFolderAvailability(null);
@@ -147,7 +147,7 @@ export function Sidebar({
                 }
               }}
               tabIndex={disabled ? -1 : undefined}
-              title={interactionLocked ? interactionLockedReason : item.route === "folders" ? disabled ? "Open a project with an available folder first" : `Open project folder: ${folderAvailability?.path ?? ""}` : item.label}
+              title={interactionLocked ? interactionLockedReason : item.route === "folders" ? disabled ? "Open a project with an available folder first" : "Open project folder" : item.label}
               type="button"
             >
               <span className="nav-icon"><UiIcon name={item.icon} /></span>
