@@ -14,6 +14,7 @@ describe("ProjectFolderTaskList", () => {
     const onTaskAction = vi.fn();
     render(<ProjectFolderActionsSurface tasks={[{ ...tasks[1], blockers: [message], detailMessages: [message], retryMissingDirectory: true }]} onTaskAction={onTaskAction} />);
     expect(screen.getAllByText(message)).toHaveLength(1);
+    expect(screen.getByRole("alert").textContent).toBe(message);
     await userEvent.setup().click(screen.getByRole("button", { name: "Retry" }));
     expect(onTaskAction).toHaveBeenCalledWith(tasks[1].actionTarget);
   });

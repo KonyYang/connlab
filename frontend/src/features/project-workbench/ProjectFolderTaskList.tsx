@@ -106,7 +106,7 @@ export function ProjectFolderActionsSurface({
       </div>
       {footerAction}
       {panelBlocker ? (
-        <p className="runtime-console-folder-actions-blocker">{panelBlocker}</p>
+        <p className="runtime-console-folder-actions-blocker" role={isMissingDirectory(panelBlocker) ? "alert" : undefined} style={isMissingDirectory(panelBlocker) ? { color: "var(--color-danger)" } : undefined}>{panelBlocker}</p>
       ) : null}
     </section>
   );
@@ -179,7 +179,7 @@ function FolderOperation({
         {task.detailMessages && task.detailMessages.length > 0 ? (
           <ul className="runtime-console-folder-operation-details">
             {task.detailMessages.map((message) => (
-              <li key={message}>{message}</li>
+              <li key={message} role={isMissingDirectory(message) ? "alert" : undefined} style={isMissingDirectory(message) ? { color: "var(--color-danger)" } : undefined}>{message}</li>
             ))}
           </ul>
         ) : null}
@@ -217,4 +217,8 @@ function selectPanelBlocker(tasks: ProjectFolderTaskRow[]): string | null {
       !tasks.some((task) => task.detailMessages?.includes(message))
   );
   return directBlocker ?? null;
+}
+
+function isMissingDirectory(message: string): boolean {
+  return message.startsWith("Required public directory is missing or not a folder:");
 }
