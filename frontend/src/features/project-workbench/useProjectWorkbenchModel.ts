@@ -1009,7 +1009,12 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         ...previous,
         [operation]: null,
       }));
+      if (operation === "sync") void onRefreshPublicFolderWorkflowContext();
       const issue = selectPublicFolderWorkflowPreviewIssue(preview);
+      if (operation === "sync" && preview.status === "current" && !issue) {
+        setPublicFolderWorkflowMessage(null);
+        return;
+      }
       if ((preview.status !== "ready" && !(operation === "sync" && preview.status === "partial")) || issue || !preview.preview_hash) {
         setPublicFolderWorkflowMessage(
           issue ?? "Preview cannot be confirmed yet."

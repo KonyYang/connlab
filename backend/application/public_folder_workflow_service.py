@@ -263,6 +263,7 @@ class PublicFolderWorkflowContext:
     blockers: tuple[str, ...]
     warnings: tuple[str, ...]
     local_official_folder_available: bool = False
+    public_open_folder_available: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -356,6 +357,7 @@ class PublicFolderWorkflowService:
             local_official_folder_available=bool(
                 local_official_folder_path and local_official_folder_path.is_dir()
             ),
+            public_open_folder_available=bool(paths and paths.public_open_path.is_dir()),
         )
 
     def set_auto_sync(

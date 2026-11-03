@@ -636,6 +636,7 @@ export type PublicFolderWorkflowOperationType = "sync" | "submit" | "pull";
 
 export type PublicFolderWorkflowStatus =
   | "ready"
+  | "current"
   | "blocked"
   | "conflict"
   | "partial"
@@ -691,6 +692,7 @@ export type PublicFolderWorkflowContext = {
   year_evidence: string | null;
   local_official_folder_path: string | null;
   local_official_folder_available: boolean;
+  public_open_folder_available?: boolean;
   public_open_path: string | null;
   public_closed_path: string | null;
   blockers: string[];

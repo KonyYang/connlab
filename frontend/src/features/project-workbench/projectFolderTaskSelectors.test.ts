@@ -8,11 +8,11 @@ import {
 import type { WorkbenchVersionStatus } from "./projectWorkbenchVersionSelectors";
 
 describe("deriveProjectFolderTasks", () => {
-  it("offers opening the public folder only after completed sync", () => {
+  it("offers opening an existing public folder without requiring a new sync", () => {
     const input = readyInput();
-    const result = { operation_type: "sync", status: "completed", counts: {}, errors: [], items: [], preview: {} } as never;
     expect(deriveProjectFolderTasks(input)[1].showOpenPublicFolder).toBe(false);
-    expect(deriveProjectFolderTasks({ ...input, publicFolderWorkflowResults: { sync: result, submit: null, pull: null } })[1].showOpenPublicFolder).toBe(true);
+    const context = { ...input.publicFolderWorkflowContext!, public_open_folder_available: true };
+    expect(deriveProjectFolderTasks({ ...input, publicFolderWorkflowContext: context })[1].showOpenPublicFolder).toBe(true);
   });
   it("shows only the first missing directory on its own operation", () => {
     const first = "Required public directory is missing or not a folder: D:/PublicProject/Open projects. Check or create it manually.";
@@ -37,12 +37,23 @@ describe("deriveProjectFolderTasks", () => {
       items: [item("a.txt", "add", "completed"), item("b.txt", "add", "completed"),
         item("c.txt", "skip", "current"), item("d.txt", "conflict", "conflict")],
     } as PublicFolderWorkflowResult;
+    const input = readyInput();
     const tasks = deriveProjectFolderTasks({
-      ...readyInput(), publicFolderWorkflowResults: { sync: result, submit: null, pull: null },
+      ...input, publicFolderWorkflowContext: { ...input.publicFolderWorkflowContext!, public_open_folder_available: true },
+      publicFolderWorkflowResults: { sync: result, submit: null, pull: null },
     });
+    expect(tasks[1].showOpenPublicFolder).toBe(true);
     expect(tasks[1].detailMessages).toEqual(expect.arrayContaining([
       "Uploaded a.txt", "Uploaded b.txt", "Unchanged c.txt", "Skipped d.txt: Conflict",
     ]));
+  });
+  it("describes a current sync without repeating it in other operations", () => {
+    const input = readyInput();
+    const preview = { operation_type: "sync", status: "current", blockers: [], conflicts: [], warnings: [], items: [], required_confirmations: [] } as never;
+    const tasks = deriveProjectFolderTasks({ ...input, publicFolderWorkflowPreviews: { sync: preview, submit: null, pull: null } });
+    expect(tasks[1].detailMessages).toContain("Public folder is up to date.");
+    expect(tasks[2].detailMessages).toEqual([]);
+    expect(tasks[3].detailMessages).toEqual([]);
   });
   it("returns the quiet four-operation Folder Actions model", () => {
     const tasks = deriveProjectFolderTasks(readyInput());

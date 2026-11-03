@@ -43,6 +43,14 @@ def test_context_reports_existing_local_official_folder_as_available(tmp_path: P
     assert context.local_official_folder_available is True
 
 
+def test_context_reports_public_project_folder_availability(tmp_path: Path) -> None:
+    service, _repository, _paths = _service(tmp_path)
+    context = service.context("P1")
+    assert context.public_open_folder_available is False
+    context.public_open_path.mkdir(parents=True)
+    assert service.context("P1").public_open_folder_available is True
+
+
 def test_public_paths_use_company_directory_names(tmp_path: Path) -> None:
     service, _, paths = _service(tmp_path, existing_years=False)
     context = service.context("P1")
