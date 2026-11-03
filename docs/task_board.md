@@ -233,11 +233,11 @@
   "tasks": {
     "TASK_PUBLIC_SYNC_CURRENT_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/public-sync-current-20261103",
       "resources": [],
-      "integrated_head": "2efeff119eb79fbee7bb6b0242acb46152513c68",
+      "integrated_head": "360bab3a57f70112554d8ab98c37ca8e95745b51",
       "task": {
         "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
         "summary": "Show public folder for current and partial sync",
@@ -255,7 +255,7 @@
         "risk_reasons": [],
         "activation_head": "42581385c28e0364cbf6a8132c1353d1f86c3300",
         "started_at": "2026-11-03T13:35:12.990828Z",
-        "updated_at": "2026-11-03T14:18:20.826127Z",
+        "updated_at": "2026-11-03T14:19:21.462228Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -265,7 +265,51 @@
           "summary": "Align public folder icon to right edge.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "roles": {
+            "qa": {
+              "method": "same-agent targeted validation",
+              "status": "passed"
+            },
+            "reviewer": {
+              "method": "same-agent review",
+              "status": "passed"
+            },
+            "developer": {
+              "method": "same-agent implementation",
+              "status": "passed"
+            }
+          },
+          "version": 1,
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Frontend component test",
+              "result": "13 tests passed"
+            },
+            {
+              "status": "passed",
+              "name": "Diff review",
+              "result": "One layout-only declaration"
+            }
+          ],
+          "scope_ok": true,
+          "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
+          "schema": "connlab.sol-task-report",
+          "subject": "8ed113d0f9e0b4062d42ebb4844da5b4df1ab855",
+          "changed_paths": [
+            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx"
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "8ed113d0f9e0b4062d42ebb4844da5b4df1ab855",
+            "primary_before": "60a2fbab30affa45c0f33661d6ccdb546ccc445e",
+            "integrated_head": "360bab3a57f70112554d8ab98c37ca8e95745b51",
+            "recovered": false
+          },
+          "summary": "Align public folder icon to right"
+        }
       }
     }
   }
