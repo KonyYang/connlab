@@ -1399,11 +1399,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByRole("alert").textContent).toContain(
       "Template folder does not exist: D:/Template"
     );
-    expect(
-      screen
-        .getByLabelText("Folder Actions")
-        .querySelectorAll("button")
-    ).toHaveLength(4);
+    expect((screen.getByRole("button", { name: "Open public folder" }) as HTMLButtonElement).disabled).toBe(true);
     await user.click(screen.getByRole("button", { name: "Open Settings" }));
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
     expect(onUpdateOfficialWorkspace).not.toHaveBeenCalled();
