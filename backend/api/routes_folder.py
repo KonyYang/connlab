@@ -118,6 +118,20 @@ def open_local_project_folder(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@router.post("/open-public", response_model=ProjectFolderOpenResponse)
+def open_public_project_folder(
+    project_id: str,
+    service: ProjectFolderOpenService = Depends(get_project_folder_open_service),
+) -> ProjectFolderOpenResponse:
+    """Open the public project folder resolved by the backend."""
+    try:
+        return _open_response(service.open_public_project_folder(project_id))
+    except PublicFolderWorkflowNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PublicFolderWorkflowError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.post("/preview", response_model=FolderPlanResponse)
 def preview_folder(
     project_id: str,

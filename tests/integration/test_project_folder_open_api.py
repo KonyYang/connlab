@@ -25,6 +25,18 @@ def test_open_local_project_folder_uses_backend_resolved_project_id() -> None:
     }
 
 
+def test_open_public_folder_uses_project_identity_only() -> None:
+    service = _OpenService()
+    app.dependency_overrides[get_project_folder_open_service] = lambda: service
+    try:
+        response = TestClient(app).post("/api/projects/P1/folder/open-public", json={"path": "D:/other"})
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert service.project_ids == ["P1"]
+    assert response.json()["status"] == "opened"
+
+
 class _OpenService:
     def __init__(self) -> None:
         self.project_ids: list[str] = []
@@ -37,3 +49,7 @@ class _OpenService:
             message="Project folder path copied. Open it in File Explorer.",
             local_official_folder_path=Path("D:/Projects/P1"),
         )
+
+    def open_public_project_folder(self, project_id: str) -> ProjectFolderOpenResult:
+        self.project_ids.append(project_id)
+        return ProjectFolderOpenResult(project_id, "opened", "Opened", None)

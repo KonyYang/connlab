@@ -185,6 +185,9 @@ function FolderOperation({
         ) : null}
       </div>
       <div className="runtime-console-folder-operation-controls">
+        {task.showOpenPublicFolder ? (
+          <button type="button" onClick={() => onTaskAction?.("public_project_folder_open")}>Open public folder</button>
+        ) : null}
         {task.confirming && task.operation ? (
           <div className="runtime-console-folder-operation-confirmation">
             <button
