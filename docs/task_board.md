@@ -242,11 +242,11 @@
   "tasks": {
     "TASK_SIDEBAR_PROJECT_FOLDER_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/sidebar-project-folder-20261103",
       "resources": [],
-      "integrated_head": "aeace2691608500fac8bbaaf589b49abb7560f46",
+      "integrated_head": "809076c65ca6a59310567b532f0799287b374dac",
       "task": {
         "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
         "summary": "Open current project folder from sidebar",
@@ -263,7 +263,7 @@
         "risk_reasons": [],
         "activation_head": "ed17990775e95c4670db1c1b71e4571d2783dc33",
         "started_at": "2026-11-03T15:07:28.726477Z",
-        "updated_at": "2026-11-03T15:29:04.310146Z",
+        "updated_at": "2026-11-03T15:29:49.100534Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -273,7 +273,47 @@
           "summary": "User requested reverting only the latest path in hover hint.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "647f3ef63aec8e9bea10d3a04f05b7f6c55da7cc",
+            "primary_before": "963d3d75eb9e25f58b8abc6b7efee364da09cc4e",
+            "integrated_head": "809076c65ca6a59310567b532f0799287b374dac",
+            "recovered": false
+          },
+          "version": 1,
+          "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
+          "changed_paths": [
+            "frontend/src/components/layout/Sidebar.test.tsx",
+            "frontend/src/components/layout/Sidebar.tsx"
+          ],
+          "schema": "connlab.sol-task-report",
+          "subject": "647f3ef63aec8e9bea10d3a04f05b7f6c55da7cc",
+          "summary": "Revert folder path from hover hint",
+          "scope_ok": true,
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Sidebar tests",
+              "result": "9 tests passed"
+            }
+          ],
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "method": "same-agent review"
+            },
+            "qa": {
+              "status": "passed",
+              "method": "same-agent targeted validation"
+            },
+            "developer": {
+              "status": "passed",
+              "method": "same-agent implementation"
+            }
+          }
+        }
       }
     }
   }
