@@ -242,11 +242,11 @@
   "tasks": {
     "TASK_SIDEBAR_PROJECT_FOLDER_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/sidebar-project-folder-20261103",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "314841c6f48701cc06a62b1f84c1f261540550de",
       "task": {
         "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
         "summary": "Open current project folder from sidebar",
@@ -263,9 +263,58 @@
         "risk_reasons": [],
         "activation_head": "ed17990775e95c4670db1c1b71e4571d2783dc33",
         "started_at": "2026-11-03T15:07:28.726477Z",
-        "updated_at": "2026-11-03T15:07:28.726477Z",
+        "updated_at": "2026-11-03T15:11:27.124025Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "summary": "Open active project folder from sidebar",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/components/layout/AppShell.tsx",
+            "frontend/src/components/layout/Sidebar.test.tsx",
+            "frontend/src/components/layout/Sidebar.tsx",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts"
+          ],
+          "validation": [
+            {
+              "name": "Frontend tests",
+              "result": "40 tests passed",
+              "status": "passed"
+            },
+            {
+              "name": "Frontend build",
+              "result": "TypeScript and Vite build passed",
+              "status": "passed"
+            }
+          ],
+          "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
+          "version": 1,
+          "roles": {
+            "qa": {
+              "status": "passed",
+              "method": "same-agent targeted validation"
+            },
+            "developer": {
+              "status": "passed",
+              "method": "same-agent implementation"
+            },
+            "reviewer": {
+              "status": "passed",
+              "method": "same-agent requirements and code review"
+            }
+          },
+          "schema": "connlab.sol-task-report",
+          "subject": "eda89c2b67fc149fef788f87bdfaa68ad0dfd99c",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "eda89c2b67fc149fef788f87bdfaa68ad0dfd99c",
+            "primary_before": "503d841c6b5275818b71fba4278f13abdc070cad",
+            "integrated_head": "314841c6f48701cc06a62b1f84c1f261540550de",
+            "recovered": false
+          }
+        }
       }
     }
   }
