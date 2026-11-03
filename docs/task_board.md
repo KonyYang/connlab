@@ -233,11 +233,11 @@
   "tasks": {
     "TASK_PUBLIC_SYNC_CURRENT_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/public-sync-current-20261103",
       "resources": [],
-      "integrated_head": "c4c3aaa84494de0d2cdebd899583fd5a5e2e056e",
+      "integrated_head": "9d92e655c38db4ec5de9ad2bf6dfb2224343b4f9",
       "task": {
         "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
         "summary": "Show public folder for current and partial sync",
@@ -255,7 +255,7 @@
         "risk_reasons": [],
         "activation_head": "42581385c28e0364cbf6a8132c1353d1f86c3300",
         "started_at": "2026-11-03T13:35:12.990828Z",
-        "updated_at": "2026-11-03T14:07:38.817197Z",
+        "updated_at": "2026-11-03T14:09:54.796981Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -265,7 +265,53 @@
           "summary": "Move public folder icon beside Auto sync and disable when unavailable.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "changed_paths": [
+            "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
+            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx"
+          ],
+          "scope_ok": true,
+          "roles": {
+            "developer": {
+              "method": "same-agent implementation",
+              "status": "passed"
+            },
+            "qa": {
+              "method": "same-agent targeted validation",
+              "status": "passed"
+            },
+            "reviewer": {
+              "method": "same-agent review",
+              "status": "passed"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "161d7e08354776579ddf9846fa87254755b72c48",
+            "primary_before": "f151d2d421af4d65165e9cd4001bf8166f8c7972",
+            "integrated_head": "9d92e655c38db4ec5de9ad2bf6dfb2224343b4f9",
+            "recovered": false
+          },
+          "schema": "connlab.sol-task-report",
+          "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
+          "version": 1,
+          "summary": "Place folder icon beside auto sync",
+          "validation": [
+            {
+              "result": "105 tests passed",
+              "status": "passed",
+              "name": "Frontend tests"
+            },
+            {
+              "result": "TypeScript and Vite build passed",
+              "status": "passed",
+              "name": "Frontend build"
+            }
+          ],
+          "subject": "161d7e08354776579ddf9846fa87254755b72c48"
+        }
       }
     }
   }
