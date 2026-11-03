@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
+    "task_id": "TASK_OPEN_PUBLIC_FOLDER_20261103",
     "tier": "standard",
-    "subject": "84899bf91a10467347cb0853c007c1fc379341d2",
-    "summary": "Clarify missing public folder guidance",
+    "subject": "5b3d1b53952cc54d0197cde01865fe5c2c584428",
+    "summary": "Open synced public project folder",
     "disposition": "completed",
-    "decision_ref": "User requested local close only; no push or publication.",
-    "closed_at": "2026-11-03T00:09:00.843899Z"
+    "decision_ref": "User explicitly requested local close only, no push or publication.",
+    "closed_at": "2026-11-03T10:09:11.879533Z"
   },
   "retained_history": [
     {
@@ -219,97 +219,18 @@
       "disposition": "completed",
       "decision_ref": "User requested local close only; no push or publication.",
       "closed_at": "2026-11-02T23:42:25.372915Z"
+    },
+    {
+      "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
+      "tier": "standard",
+      "subject": "84899bf91a10467347cb0853c007c1fc379341d2",
+      "summary": "Clarify missing public folder guidance",
+      "disposition": "completed",
+      "decision_ref": "User requested local close only; no push or publication.",
+      "closed_at": "2026-11-03T00:09:00.843899Z"
     }
   ],
-  "tasks": {
-    "TASK_OPEN_PUBLIC_FOLDER_20261103": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
-      "branch": "codex/open-public-folder-20261103",
-      "resources": [],
-      "integrated_head": "ad75c87f00674bc74c70903c64c173b7d8e10bd3",
-      "task": {
-        "task_id": "TASK_OPEN_PUBLIC_FOLDER_20261103",
-        "summary": "Open synced public project folder",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Add trusted public folder opening after successful sync and remove redundant confirmation message",
-        "scope_paths": [
-          "backend/application/project_folder_open_service.py",
-          "backend/api/routes_folder.py",
-          "frontend/src/api/client.ts",
-          "frontend/src/features/project-workbench",
-          "tests/unit/test_project_folder_open_service.py",
-          "tests/integration/test_project_folder_open_api.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "e01e3af3affc0a9c3d0fc17933450e39db82135d",
-        "started_at": "2026-11-03T00:09:46.745500Z",
-        "updated_at": "2026-11-03T00:12:58.706486Z",
-        "checkpoint": null,
-        "report": {
-          "scope_ok": true,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "5b3d1b53952cc54d0197cde01865fe5c2c584428",
-            "primary_before": "a8d7e681e53c7428991a7d36651c35932c65fad2",
-            "integrated_head": "ad75c87f00674bc74c70903c64c173b7d8e10bd3",
-            "recovered": false
-          },
-          "subject": "5b3d1b53952cc54d0197cde01865fe5c2c584428",
-          "validation": [
-            {
-              "status": "passed",
-              "result": "8 tests passed with isolated paths and mocked launcher",
-              "name": "Backend tests"
-            },
-            {
-              "status": "passed",
-              "result": "103 tests passed",
-              "name": "Frontend tests"
-            },
-            {
-              "status": "passed",
-              "result": "TypeScript and Vite build passed",
-              "name": "Frontend build"
-            }
-          ],
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "method": "same-agent code and requirements review"
-            },
-            "qa": {
-              "status": "passed",
-              "method": "same-agent targeted validation"
-            },
-            "developer": {
-              "status": "passed",
-              "method": "same-agent implementation"
-            }
-          },
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_OPEN_PUBLIC_FOLDER_20261103",
-          "changed_paths": [
-            "backend/api/routes_folder.py",
-            "backend/application/project_folder_open_service.py",
-            "frontend/src/api/client.ts",
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-            "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
-            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
-            "tests/integration/test_project_folder_open_api.py",
-            "tests/unit/test_project_folder_open_service.py"
-          ],
-          "summary": "Open backend-resolved public folder after successful sync"
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
