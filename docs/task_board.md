@@ -239,7 +239,36 @@
       "closed_at": "2026-11-03T10:09:11.879533Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_SIDEBAR_PROJECT_FOLDER_20261103": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
+      "branch": "codex/sidebar-project-folder-20261103",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
+        "summary": "Open current project folder from sidebar",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Enable sidebar folder for currently open project with available folder and safe project transitions",
+        "scope_paths": [
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/components/layout",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "ed17990775e95c4670db1c1b71e4571d2783dc33",
+        "started_at": "2026-11-03T15:07:28.726477Z",
+        "updated_at": "2026-11-03T15:07:28.726477Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
