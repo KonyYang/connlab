@@ -173,6 +173,18 @@ function FolderOperation({
               <span className="runtime-console-folder-auto-sync-track" aria-hidden="true" />
             </label>
           ) : null}
+          {task.operation === "sync" ? (
+            <button
+              className="runtime-console-folder-operation-icon runtime-console-folder-operation-icon-button"
+              type="button"
+              aria-label="Open public folder"
+              title="Open public folder"
+              disabled={!task.showOpenPublicFolder}
+              onClick={() => onTaskAction?.("public_project_folder_open")}
+            >
+              <UiIcon name="folder" />
+            </button>
+          ) : null}
         </div>
         {task.summary ? <p>{task.summary}</p> : null}
         {task.context ? <small>{task.context}</small> : null}
@@ -185,9 +197,6 @@ function FolderOperation({
         ) : null}
       </div>
       <div className="runtime-console-folder-operation-controls">
-        {task.showOpenPublicFolder ? (
-          <button type="button" onClick={() => onTaskAction?.("public_project_folder_open")}>Open public folder</button>
-        ) : null}
         {task.confirming && task.operation ? (
           <div className="runtime-console-folder-operation-confirmation">
             <button

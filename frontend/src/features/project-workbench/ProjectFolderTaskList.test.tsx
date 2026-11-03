@@ -12,8 +12,15 @@ describe("ProjectFolderTaskList", () => {
   it("opens the public folder from a completed sync", async () => {
     const onTaskAction = vi.fn();
     render(<ProjectFolderActionsSurface tasks={[{ ...tasks[1], showOpenPublicFolder: true }]} onTaskAction={onTaskAction} />);
-    await userEvent.setup().click(screen.getByRole("button", { name: "Open public folder" }));
+    const button = screen.getByRole("button", { name: "Open public folder" });
+    expect(button.getAttribute("title")).toBe("Open public folder");
+    expect(button.parentElement).toBe(screen.getByLabelText("Auto sync public working copy").closest(".runtime-console-folder-operation-title"));
+    await userEvent.setup().click(button);
     expect(onTaskAction).toHaveBeenCalledWith("public_project_folder_open");
+  });
+  it("disables the public folder icon when the folder is unavailable", () => {
+    render(<ProjectFolderActionsSurface tasks={[{ ...tasks[1], showOpenPublicFolder: false }]} />);
+    expect((screen.getByRole("button", { name: "Open public folder" }) as HTMLButtonElement).disabled).toBe(true);
   });
   it("shows a missing directory once and retries through the sync action", async () => {
     const message = "Required public directory is missing or not a folder: D:/PublicProject/Open projects. Check or create it manually.";
