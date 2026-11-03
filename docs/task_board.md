@@ -254,16 +254,18 @@
         "route": "sol_build_review_qa",
         "scope": "Enable sidebar folder for currently open project with available folder and safe project transitions",
         "scope_paths": [
-          "frontend/src/App.tsx",
           "frontend/src/App.test.tsx",
+          "frontend/src/App.tsx",
           "frontend/src/components/layout",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
           "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
-          "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx"
+          "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+          "frontend/src/features/report-workspace/ReportWorkspace.tsx"
         ],
         "risk_reasons": [],
         "activation_head": "ed17990775e95c4670db1c1b71e4571d2783dc33",
         "started_at": "2026-11-03T15:07:28.726477Z",
-        "updated_at": "2026-11-03T15:30:44.240305Z",
+        "updated_at": "2026-11-03T15:31:34.212114Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
