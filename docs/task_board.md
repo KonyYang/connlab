@@ -242,11 +242,11 @@
   "tasks": {
     "TASK_SIDEBAR_PROJECT_FOLDER_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/sidebar-project-folder-20261103",
       "resources": [],
-      "integrated_head": "133993873479a6d4703264ae7ef4f31e4b60d09c",
+      "integrated_head": "aeace2691608500fac8bbaaf589b49abb7560f46",
       "task": {
         "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
         "summary": "Open current project folder from sidebar",
@@ -263,7 +263,7 @@
         "risk_reasons": [],
         "activation_head": "ed17990775e95c4670db1c1b71e4571d2783dc33",
         "started_at": "2026-11-03T15:07:28.726477Z",
-        "updated_at": "2026-11-03T15:24:28.067958Z",
+        "updated_at": "2026-11-03T15:25:59.969525Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -273,7 +273,52 @@
           "summary": "Show the current project folder path in hover hint.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
+          "schema": "connlab.sol-task-report",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "571396e369a23c366272a858bde7dc1494874ae5",
+            "primary_before": "8007a2746ba081b660eb159741af35fa943c3765",
+            "integrated_head": "aeace2691608500fac8bbaaf589b49abb7560f46",
+            "recovered": false
+          },
+          "scope_ok": true,
+          "roles": {
+            "qa": {
+              "method": "same-agent targeted validation",
+              "status": "passed"
+            },
+            "developer": {
+              "method": "same-agent implementation",
+              "status": "passed"
+            },
+            "reviewer": {
+              "method": "same-agent review",
+              "status": "passed"
+            }
+          },
+          "summary": "Show current project folder path in sidebar hover hint",
+          "changed_paths": [
+            "frontend/src/components/layout/Sidebar.test.tsx",
+            "frontend/src/components/layout/Sidebar.tsx"
+          ],
+          "subject": "571396e369a23c366272a858bde7dc1494874ae5",
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Sidebar tests",
+              "result": "10 tests passed including project switching"
+            },
+            {
+              "status": "passed",
+              "name": "Frontend build",
+              "result": "TypeScript and Vite build passed"
+            }
+          ],
+          "version": 1
+        }
       }
     }
   }
