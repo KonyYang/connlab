@@ -17,13 +17,13 @@ describe("Sidebar interaction lock", () => {
     await refreshCurrentProfile();
   });
   it("opens the active project's available folder and disables the action after close", async () => {
-    vi.mocked(getPublicFolderWorkflowContext).mockResolvedValue({ project_id: "P1", local_official_folder_available: true } as never);
+    vi.mocked(getPublicFolderWorkflowContext).mockResolvedValue({ project_id: "P1", local_official_folder_available: true, local_official_folder_path: "D:/P1" } as never);
     vi.mocked(openLocalProjectFolder).mockResolvedValue({ project_id: "P1", status: "opened", message: "Opened", local_official_folder_path: "D:/P1" });
     const user = userEvent.setup();
     const view = render(<Sidebar activeRoute="workbench" projectId="P1" />);
     const folders = screen.getByRole("button", { name: "Folders" }) as HTMLButtonElement;
     await waitFor(() => expect(folders.disabled).toBe(false));
-    expect(folders.title).toBe("Open project folder");
+    expect(folders.title).toBe("Open project folder: D:/P1");
     await user.click(folders);
     expect(openLocalProjectFolder).toHaveBeenCalledWith("P1");
     view.rerender(<Sidebar activeRoute="projects" projectId={null} />);
@@ -40,6 +40,16 @@ describe("Sidebar interaction lock", () => {
     await act(async () => { resolveFirst({ project_id: "P1", local_official_folder_available: true }); });
     expect((screen.getByRole("button", { name: "Folders" }) as HTMLButtonElement).disabled).toBe(true);
     expect(openLocalProjectFolder).not.toHaveBeenCalled();
+  });
+  it("updates the hover path when the open project changes", async () => {
+    vi.mocked(getPublicFolderWorkflowContext)
+      .mockResolvedValueOnce({ project_id: "P1", local_official_folder_available: true, local_official_folder_path: "D:/P1" } as never)
+      .mockResolvedValueOnce({ project_id: "P2", local_official_folder_available: true, local_official_folder_path: "D:/P2" } as never);
+    const view = render(<Sidebar activeRoute="workbench" projectId="P1" />);
+    const folders = screen.getByRole("button", { name: "Folders" }) as HTMLButtonElement;
+    await waitFor(() => expect(folders.title).toContain("D:/P1"));
+    view.rerender(<Sidebar activeRoute="workbench" projectId="P2" />);
+    await waitFor(() => expect(folders.title).toBe("Open project folder: D:/P2"));
   });
   it("rechecks the folder when the current project's folder changes", async () => {
     vi.mocked(getPublicFolderWorkflowContext)
