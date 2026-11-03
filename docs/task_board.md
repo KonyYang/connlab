@@ -233,7 +233,7 @@
   "tasks": {
     "TASK_PUBLIC_SYNC_CURRENT_20261103": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/public-sync-current-20261103",
       "resources": [],
@@ -255,63 +255,17 @@
         "risk_reasons": [],
         "activation_head": "42581385c28e0364cbf6a8132c1353d1f86c3300",
         "started_at": "2026-11-03T13:35:12.990828Z",
-        "updated_at": "2026-11-03T14:13:24.317001Z",
+        "updated_at": "2026-11-03T14:18:20.826127Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
           "stage": "revision",
           "status": "running",
-          "summary": "Hide normal up-to-date message; retain error and conflict feedback.",
+          "summary": "Align public folder icon to right edge.",
           "requires_user": false
         },
-        "report": {
-          "changed_paths": [
-            "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
-            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
-            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "result": "43 tests passed",
-              "name": "Frontend tests"
-            },
-            {
-              "status": "passed",
-              "result": "TypeScript and Vite build passed",
-              "name": "Frontend build"
-            }
-          ],
-          "subject": "ffe5ad425aa36e6e9128d0d3ea56786f4eb076e9",
-          "schema": "connlab.sol-task-report",
-          "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "ffe5ad425aa36e6e9128d0d3ea56786f4eb076e9",
-            "primary_before": "b3b5685b20a57caadb8027a3c30c9e668a03d48c",
-            "integrated_head": "2efeff119eb79fbee7bb6b0242acb46152513c68",
-            "recovered": false
-          },
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "method": "same-agent review"
-            },
-            "developer": {
-              "status": "passed",
-              "method": "same-agent implementation"
-            },
-            "qa": {
-              "status": "passed",
-              "method": "same-agent targeted validation"
-            }
-          },
-          "scope_ok": true,
-          "version": 1,
-          "summary": "Keep normal sync state quiet and retain problem details"
-        }
+        "report": null
       }
     }
   }
