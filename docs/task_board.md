@@ -242,7 +242,7 @@
   "tasks": {
     "TASK_SIDEBAR_PROJECT_FOLDER_20261103": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/sidebar-project-folder-20261103",
       "resources": [],
@@ -265,62 +265,17 @@
         "risk_reasons": [],
         "activation_head": "ed17990775e95c4670db1c1b71e4571d2783dc33",
         "started_at": "2026-11-03T15:07:28.726477Z",
-        "updated_at": "2026-11-03T15:34:28.460058Z",
+        "updated_at": "2026-11-03T15:45:57.167373Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
           "stage": "revision",
           "status": "running",
-          "summary": "Remove duplicate Report header folder action now available in sidebar.",
+          "summary": "Replace report return icon with right aligned Back button.",
           "requires_user": false
         },
-        "report": {
-          "subject": "43efe807eaa493e2379c6e07f4a6f981767f2539",
-          "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
-          "validation": [
-            {
-              "result": "81 tests passed including report generation and sidebar",
-              "name": "Frontend tests",
-              "status": "passed"
-            },
-            {
-              "result": "TypeScript and Vite build passed",
-              "name": "Frontend build",
-              "status": "passed"
-            }
-          ],
-          "schema": "connlab.sol-task-report",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "43efe807eaa493e2379c6e07f4a6f981767f2539",
-            "primary_before": "728e61e6bb5b8c4eb6c7de1797bebb1e2e333d94",
-            "integrated_head": "2c1b0dcbd99b7146f0ca306de89922a7808c54ef",
-            "recovered": false
-          },
-          "changed_paths": [
-            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.tsx"
-          ],
-          "roles": {
-            "qa": {
-              "status": "passed",
-              "method": "same-agent targeted validation"
-            },
-            "reviewer": {
-              "status": "passed",
-              "method": "same-agent review"
-            },
-            "developer": {
-              "status": "passed",
-              "method": "same-agent implementation"
-            }
-          },
-          "summary": "Remove redundant report header folder button",
-          "scope_ok": true,
-          "version": 1
-        }
+        "report": null
       }
     }
   }
