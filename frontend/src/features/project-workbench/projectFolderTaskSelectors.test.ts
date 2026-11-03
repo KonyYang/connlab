@@ -17,6 +17,7 @@ describe("deriveProjectFolderTasks", () => {
       publicFolderWorkflowMessage: first,
     });
     expect(tasks[1].detailMessages).toEqual([first]);
+    expect(tasks[1].actionTarget).toBe("public_folder_workflow_sync");
     expect(tasks[2].detailMessages).toEqual([]);
     expect(tasks[3].detailMessages).toEqual([]);
   });

@@ -9,13 +9,14 @@ import type {
 } from "./projectFolderTaskSelectors";
 
 describe("ProjectFolderTaskList", () => {
-  it("shows a missing directory once and retries the affected preview", async () => {
+  it("shows a missing directory once and retries through the sync action", async () => {
     const message = "Required public directory is missing or not a folder: D:/PublicProject/Open projects. Check or create it manually.";
     const onTaskAction = vi.fn();
-    render(<ProjectFolderActionsSurface tasks={[{ ...tasks[1], blockers: [message], detailMessages: [message], retryMissingDirectory: true }]} onTaskAction={onTaskAction} />);
+    render(<ProjectFolderActionsSurface tasks={[{ ...tasks[1], blockers: [message], detailMessages: [message] }]} onTaskAction={onTaskAction} />);
     expect(screen.getAllByText(message)).toHaveLength(1);
     expect(screen.getByRole("alert").textContent).toBe(message);
-    await userEvent.setup().click(screen.getByRole("button", { name: "Retry" }));
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Sync now" }));
     expect(onTaskAction).toHaveBeenCalledWith(tasks[1].actionTarget);
   });
   it("shows all conflict details and the existing-folder confirmation", () => {
