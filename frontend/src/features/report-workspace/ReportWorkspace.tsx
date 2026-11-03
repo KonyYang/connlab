@@ -18,8 +18,6 @@ import {
   generateInternalReport,
   downloadInternalReportDraft,
   previewInternalReportGeneration,
-  openLocalProjectFolder,
-  getPublicFolderWorkflowContext,
   inspectLlcrResultWorkbook,
   isCustomerReportMissingAfterPreviewError,
   publishManagedReport,
@@ -59,13 +57,7 @@ type ReportWorkspaceProps = {
   identityLabel?: string;
 };
 
-type BusyAction = "load" | "initial" | "open-folder" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-update" | "publish" | "download" | "customer" | "customer-source" | "authoring" | null;
-
-type ProjectFolderAvailability = {
-  projectId: string;
-  status: "checking" | "available" | "missing" | "unavailable" | "failed";
-  reason?: string;
-};
+type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-update" | "publish" | "download" | "customer" | "customer-source" | "authoring" | null;
 
 type CustomerRegenerationApproval = {
   projectId: string;
@@ -118,7 +110,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [internalGenerationPreview, setInternalGenerationPreview] = useState<InternalReportGenerationPreview | null>(null);
-  const [folderAvailability, setFolderAvailability] = useState<ProjectFolderAvailability | null>(null);
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [checkingSource, setCheckingSource] = useState(false);
   const sourceRequest = useRef(false);
@@ -174,22 +165,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     setEquipmentFile(null);
     setEquipmentIds("");
     setReportSourceFile(null);
-  }, [projectId]);
-
-  useEffect(() => {
-    let active = true;
-    setFolderAvailability({ projectId, status: "checking" });
-    void getPublicFolderWorkflowContext(projectId).then((context) => {
-      if (active && mounted.current && activeProject.current === projectId) {
-        setFolderAvailability({ projectId, status: context.local_official_folder_available ? "available"
-          : context.local_official_folder_path ? "unavailable" : "missing" });
-      }
-    }).catch(() => {
-      if (active && mounted.current && activeProject.current === projectId) {
-        setFolderAvailability({ projectId, status: "failed" });
-      }
-    });
-    return () => { active = false; };
   }, [projectId]);
 
   useEffect(() => {
@@ -287,7 +262,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   );
   const reportFileName = currentReport?.status === "ready" ? currentReport.file_name : null;
 
-  async function handleInternalAction(action: "initial" | "open-folder", operation: (isCurrent: () => boolean) => Promise<void>): Promise<void> {
+  async function handleInternalAction(action: "initial", operation: (isCurrent: () => boolean) => Promise<void>): Promise<void> {
     if (busyAction || authoringOperation.current) return;
     const request = ++internalRequest.current;
     const isCurrent = () => mounted.current && activeProject.current === projectId && request === internalRequest.current;
@@ -630,14 +605,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     });
   }
 
-  const folderStatus = folderAvailability?.projectId === projectId ? folderAvailability.status : "checking";
-  const folderDisabledReason = folderStatus === "checking" ? "Checking project folder availability..."
-    : folderStatus === "failed" ? "Unable to check the project folder. Return to Workspace and retry."
-    : folderStatus === "missing" ? "No project folder is linked. Create or link it in Workspace."
-    : folderStatus === "unavailable" ? folderAvailability?.reason || "The project folder is unavailable. Restore or link it in Workspace."
-    : busyAction ? busyAction === "open-folder" ? "Opening project folder..." : "Wait for the current operation to finish."
-    : undefined;
-
   const commandbar = (
     <div className="report-workspace-commandbar" aria-label="Report Workspace actions">
       <button className="report-workspace-back report-workspace-return" onClick={onBack} type="button"
@@ -645,22 +612,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
         <img src={testWorkbenchIcon} alt="" aria-hidden="true" width="32" height="32" />
       </button>
       <span className="report-workspace-identity" title={identityLabel}>{identityLabel}</span>
-      <div className="report-workspace-header-actions">
-        <span className="report-workspace-folder-action" title={folderDisabledReason} tabIndex={folderDisabledReason ? 0 : undefined}>
-          <button className="report-workspace-back" disabled={Boolean(folderDisabledReason)} onClick={() => void handleInternalAction("open-folder", async (isCurrent) => {
-            try {
-              const result = await openLocalProjectFolder(projectId);
-              if (isCurrent() && result.status !== "opened") {
-                const reason = result.message || "Unable to open the project folder. Check its location and try again.";
-                setFolderAvailability({ projectId, status: "unavailable", reason });
-                setError(reason);
-              }
-            } catch (reason) {
-              if (isCurrent()) setError(errorMessage(reason, "Unable to open the project folder. Check its location and try again."));
-            }
-          })} type="button">Open Project Folder</button>
-        </span>
-      </div>
     </div>
   );
 
