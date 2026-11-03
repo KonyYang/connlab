@@ -230,7 +230,37 @@
       "closed_at": "2026-11-03T00:09:00.843899Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_PUBLIC_SYNC_CURRENT_20261103": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
+      "branch": "codex/public-sync-current-20261103",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
+        "summary": "Show public folder for current and partial sync",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Correct current sync feedback, show existing public folder action, preserve partial conflict details",
+        "scope_paths": [
+          "backend/application/public_folder_workflow_service.py",
+          "backend/api/routes_public_folder_workflow.py",
+          "frontend/src/api/client.ts",
+          "frontend/src/features/project-workbench",
+          "tests/unit/test_public_folder_workflow_service.py",
+          "tests/integration/test_public_folder_workflow_api.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "42581385c28e0364cbf6a8132c1353d1f86c3300",
+        "started_at": "2026-11-03T13:35:12.990828Z",
+        "updated_at": "2026-11-03T13:35:12.990828Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
