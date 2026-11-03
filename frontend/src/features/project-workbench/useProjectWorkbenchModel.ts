@@ -926,6 +926,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       const context = await getPublicFolderWorkflowContext(projectId);
       if (epoch !== lifecycleEpoch.current || context.project_id !== projectId) return;
       setPublicFolderWorkflowContext(context);
+      window.dispatchEvent(new CustomEvent("connlab:project-folder-changed", { detail: projectId }));
       setPublicFolderWorkflowContextError(null);
     } catch (err) {
       if (epoch !== lifecycleEpoch.current) return;

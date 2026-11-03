@@ -121,9 +121,10 @@ it("keeps old folder-linking links accessible and returns to the common import f
 });
 
 vi.mock("./components/layout/AppShell", () => ({
-  AppShell: ({ children, onNavigate, activeRoute }: { children: ReactNode; onNavigate: (path: string) => void; activeRoute: string }) => (
+  AppShell: ({ children, onNavigate, activeRoute, projectId }: { children: ReactNode; onNavigate: (path: string) => void; activeRoute: string; projectId?: string | null }) => (
     <>
       <output data-testid="active-area">{activeRoute}</output>
+      <output data-testid="sidebar-project">{projectId ?? "none"}</output>
       <nav aria-label="Test sidebar">
         <button type="button" onClick={() => onNavigate("/settings")}>Settings</button>
         <button type="button" onClick={() => onNavigate("/projects")}>Projects</button>
@@ -138,13 +139,26 @@ vi.mock("./components/support/FrontendDiagnosticsReporter", () => ({
 }));
 
 vi.mock("./pages/ProjectWorkbenchPage", () => ({
-  ProjectWorkbenchPage: ({ onOpenBasicInformation, onBrowseProjectFiles }: { onOpenBasicInformation: () => void; onBrowseProjectFiles?: (id: string) => void }) => (
+  ProjectWorkbenchPage: ({ onOpenBasicInformation, onBrowseProjectFiles, onBack }: { onOpenBasicInformation: () => void; onBrowseProjectFiles?: (id: string) => void; onBack: () => void }) => (
     <section aria-label="Project Workbench">
       <button type="button" onClick={onOpenBasicInformation}>Basic Information</button>
+      <button type="button" onClick={onBack}>Close project</button>
       {onBrowseProjectFiles && <button type="button" onClick={() => onBrowseProjectFiles("member-1")}>Browse Files</button>}
     </section>
   ),
 }));
+
+it("passes the open project to the sidebar across page changes and clears it on close", async () => {
+  window.history.replaceState({}, "", "/projects/P1");
+  const user = userEvent.setup();
+  render(<App />);
+  expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
+  await user.click(screen.getByRole("button", { name: "Settings" }));
+  expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
+  await user.click(screen.getByRole("button", { name: "Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Close project" }));
+  expect(screen.getByTestId("sidebar-project").textContent).toBe("none");
+});
 
 vi.mock("./pages/ProjectBasicInformationPage", () => ({
   ProjectBasicInformationPage: ({

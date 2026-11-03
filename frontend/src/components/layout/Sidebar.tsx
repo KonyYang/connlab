@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 import { UiIcon, type UiIconName } from "../common/UiIcon";
 import { CURRENT_USER_DISPLAY_NAME, bootstrapCurrentProfile, refreshCurrentProfile, useCurrentProfile } from "../../currentUser";
 import { AccountDialog } from '../../features/local-identity/AccountDialog';
+import { getPublicFolderWorkflowContext, openLocalProjectFolder } from "../../api/client";
 
 type SidebarProps = {
   activeRoute: string;
@@ -10,6 +11,7 @@ type SidebarProps = {
   interactionLockedReason?: string;
   onNavigate?: (path: string) => void;
   onToggleCollapsed?: () => void;
+  projectId?: string | null;
 };
 
 type NavItem = {
@@ -37,13 +39,69 @@ export function Sidebar({
   interactionLocked = false,
   interactionLockedReason = "Current operation is running. Keep this page open.",
   onNavigate,
-  onToggleCollapsed
+  onToggleCollapsed,
+  projectId = null,
 }: SidebarProps): ReactElement {
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const profile = useCurrentProfile();
   const accountTrigger = useRef<HTMLButtonElement>(null);
   const displayName = profile.profile?.display_name ?? CURRENT_USER_DISPLAY_NAME;
   const accountLocked = interactionLocked || profile.busy;
+  const [folderAvailability, setFolderAvailability] = useState<{ projectId: string; available: boolean } | null>(null);
+  const [folderError, setFolderError] = useState<string | null>(null);
+  const projectIdRef = useRef(projectId);
+  projectIdRef.current = projectId;
+  useEffect(() => {
+    let active = true;
+    let request = 0;
+    setFolderAvailability(null);
+    setFolderError(null);
+    if (!projectId) return;
+    const refresh = () => {
+      const current = ++request;
+      void getPublicFolderWorkflowContext(projectId).then((context) => {
+        if (active && current === request && context.project_id === projectId) {
+          setFolderAvailability({ projectId, available: context.local_official_folder_available });
+        }
+      }).catch(() => {
+        if (active && current === request) setFolderAvailability(null);
+      });
+    };
+    const onFolderChanged = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === projectId) refresh();
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("connlab:project-folder-changed", onFolderChanged);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("connlab:project-folder-changed", onFolderChanged);
+    };
+  }, [projectId]);
+
+  async function openProjectFolder(): Promise<void> {
+    if (!projectId || folderAvailability?.projectId !== projectId || !folderAvailability.available) return;
+    setFolderError(null);
+    try {
+      const result = await openLocalProjectFolder(projectId);
+      if (projectIdRef.current !== projectId) return;
+      if (result.status !== "opened") {
+        if (result.status === "unsupported" && result.local_official_folder_path && navigator.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(result.local_official_folder_path);
+            if (projectIdRef.current !== projectId) return;
+            setFolderError("Project folder path copied. Open it in File Explorer.");
+            return;
+          } catch { /* Display the path when clipboard access is unavailable. */ }
+        }
+        setFolderError([result.message, result.local_official_folder_path].filter(Boolean).join(" "));
+      }
+    } catch (error) {
+      if (projectIdRef.current !== projectId) return;
+      setFolderError(error instanceof Error ? error.message : "Could not open the project folder.");
+    }
+  }
   useEffect(() => {
     void bootstrapCurrentProfile();
     const refresh = () => { void refreshCurrentProfile(); };
@@ -74,7 +132,7 @@ export function Sidebar({
       <nav className="sidebar-nav">
         {NAV_ITEMS.map((item) => {
           const active = item.route === activeRoute;
-          const disabled = Boolean(item.disabled) || interactionLocked;
+          const disabled = (item.route === "folders" ? !projectId || folderAvailability?.projectId !== projectId || !folderAvailability.available : Boolean(item.disabled)) || interactionLocked;
           return (
             <button
               aria-disabled={disabled ? true : undefined}
@@ -84,7 +142,8 @@ export function Sidebar({
               key={item.route}
               onClick={() => {
                 if (!disabled) {
-                  onNavigate?.(`/${item.route}`);
+                  if (item.route === "folders") void openProjectFolder();
+                  else onNavigate?.(`/${item.route}`);
                 }
               }}
               tabIndex={disabled ? -1 : undefined}
@@ -97,6 +156,7 @@ export function Sidebar({
           );
         })}
       </nav>
+      {folderError ? <p role="alert">{folderError}</p> : null}
       <div className="sidebar-account">
         <button
           ref={accountTrigger}
