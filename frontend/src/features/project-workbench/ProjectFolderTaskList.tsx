@@ -176,6 +176,7 @@ function FolderOperation({
           {task.operation === "sync" ? (
             <button
               className="runtime-console-folder-operation-icon runtime-console-folder-operation-icon-button"
+              style={{ marginLeft: "auto" }}
               type="button"
               aria-label="Open public folder"
               title="Open public folder"
