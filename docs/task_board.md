@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_OPEN_PUBLIC_FOLDER_20261103",
+    "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
     "tier": "standard",
-    "subject": "5b3d1b53952cc54d0197cde01865fe5c2c584428",
-    "summary": "Open synced public project folder",
+    "subject": "8ed113d0f9e0b4062d42ebb4844da5b4df1ab855",
+    "summary": "Show public folder for current and partial sync",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local close only, no push or publication.",
-    "closed_at": "2026-11-03T10:09:11.879533Z"
+    "decision_ref": "User requested local close only; no push or publication.",
+    "closed_at": "2026-11-03T15:06:34.859125Z"
   },
   "retained_history": [
     {
@@ -228,91 +228,18 @@
       "disposition": "completed",
       "decision_ref": "User requested local close only; no push or publication.",
       "closed_at": "2026-11-03T00:09:00.843899Z"
+    },
+    {
+      "task_id": "TASK_OPEN_PUBLIC_FOLDER_20261103",
+      "tier": "standard",
+      "subject": "5b3d1b53952cc54d0197cde01865fe5c2c584428",
+      "summary": "Open synced public project folder",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local close only, no push or publication.",
+      "closed_at": "2026-11-03T10:09:11.879533Z"
     }
   ],
-  "tasks": {
-    "TASK_PUBLIC_SYNC_CURRENT_20261103": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
-      "branch": "codex/public-sync-current-20261103",
-      "resources": [],
-      "integrated_head": "360bab3a57f70112554d8ab98c37ca8e95745b51",
-      "task": {
-        "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
-        "summary": "Show public folder for current and partial sync",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Correct current sync feedback, show existing public folder action, preserve partial conflict details",
-        "scope_paths": [
-          "backend/application/public_folder_workflow_service.py",
-          "backend/api/routes_public_folder_workflow.py",
-          "frontend/src/api/client.ts",
-          "frontend/src/features/project-workbench",
-          "tests/unit/test_public_folder_workflow_service.py",
-          "tests/integration/test_public_folder_workflow_api.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "42581385c28e0364cbf6a8132c1353d1f86c3300",
-        "started_at": "2026-11-03T13:35:12.990828Z",
-        "updated_at": "2026-11-03T14:19:21.462228Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
-          "stage": "revision",
-          "status": "running",
-          "summary": "Align public folder icon to right edge.",
-          "requires_user": false
-        },
-        "report": {
-          "roles": {
-            "qa": {
-              "method": "same-agent targeted validation",
-              "status": "passed"
-            },
-            "reviewer": {
-              "method": "same-agent review",
-              "status": "passed"
-            },
-            "developer": {
-              "method": "same-agent implementation",
-              "status": "passed"
-            }
-          },
-          "version": 1,
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Frontend component test",
-              "result": "13 tests passed"
-            },
-            {
-              "status": "passed",
-              "name": "Diff review",
-              "result": "One layout-only declaration"
-            }
-          ],
-          "scope_ok": true,
-          "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
-          "schema": "connlab.sol-task-report",
-          "subject": "8ed113d0f9e0b4062d42ebb4844da5b4df1ab855",
-          "changed_paths": [
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx"
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "8ed113d0f9e0b4062d42ebb4844da5b4df1ab855",
-            "primary_before": "60a2fbab30affa45c0f33661d6ccdb546ccc445e",
-            "integrated_head": "360bab3a57f70112554d8ab98c37ca8e95745b51",
-            "recovered": false
-          },
-          "summary": "Align public folder icon to right"
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
