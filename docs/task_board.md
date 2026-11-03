@@ -221,7 +221,37 @@
       "closed_at": "2026-11-02T23:42:25.372915Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_OPEN_PUBLIC_FOLDER_20261103": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
+      "branch": "codex/open-public-folder-20261103",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_OPEN_PUBLIC_FOLDER_20261103",
+        "summary": "Open synced public project folder",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Add trusted public folder opening after successful sync and remove redundant confirmation message",
+        "scope_paths": [
+          "backend/application/project_folder_open_service.py",
+          "backend/api/routes_folder.py",
+          "frontend/src/api/client.ts",
+          "frontend/src/features/project-workbench",
+          "tests/unit/test_project_folder_open_service.py",
+          "tests/integration/test_project_folder_open_api.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "e01e3af3affc0a9c3d0fc17933450e39db82135d",
+        "started_at": "2026-11-03T00:09:46.745500Z",
+        "updated_at": "2026-11-03T00:09:46.745500Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
