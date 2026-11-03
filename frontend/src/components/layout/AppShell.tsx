@@ -11,6 +11,7 @@ type AppShellProps = {
   interactionLocked?: boolean;
   interactionLockedReason?: string;
   onNavigate?: (path: string) => void;
+  projectId?: string | null;
 };
 
 function navigate(path: string): void {
@@ -25,6 +26,7 @@ export function AppShell({
   children,
   interactionLocked = false,
   interactionLockedReason,
+  projectId,
   onNavigate = navigate
 }: AppShellProps): ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -41,6 +43,7 @@ export function AppShell({
       <div className={`app-shell${sidebarCollapsed ? " app-shell-sidebar-collapsed" : ""}`}>
         <Sidebar
           activeRoute={activeRoute}
+          projectId={projectId}
           collapsed={sidebarCollapsed}
           interactionLocked={interactionLocked}
           interactionLockedReason={interactionLockedReason}

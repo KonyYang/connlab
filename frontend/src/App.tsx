@@ -308,12 +308,15 @@ export default function App(): ReactElement {
   const importSuffix = batchSuffix;
   const importPath = `/projects/import${importSuffix}`;
   const returnProjectId = new URLSearchParams(window.location.search).get("project");
+  const currentProjectRoute = isProjectWorkspaceRoute(route) ? route : lastProjectRoute ? parseRoute(lastProjectRoute) : null;
+  const openProjectId = currentProjectRoute && isProjectWorkspaceRoute(currentProjectRoute) && "projectId" in currentProjectRoute ? currentProjectRoute.projectId : null;
 
   return (
     <>
       <FrontendDiagnosticsReporter />
       <AppShell
       activeRoute={activeRoute}
+      projectId={openProjectId}
       interactionLocked={Boolean(intakeInteractionLockReason)}
       interactionLockedReason={intakeInteractionLockReason ?? undefined}
       topBarTitle={topBarTitle}

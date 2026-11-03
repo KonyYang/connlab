@@ -1,18 +1,53 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
-import { ApiRequestError } from '../../api/client';
+import { ApiRequestError, getPublicFolderWorkflowContext, openLocalProjectFolder } from '../../api/client';
 import * as profileApi from '../../api/localIdentity';
 import { refreshCurrentProfile } from '../../currentUser';
 vi.mock('../../api/localIdentity', async original => ({ ...await original<typeof import('../../api/localIdentity')>(),
   getLocalProfile: vi.fn(), saveLocalProfile: vi.fn() }));
+vi.mock('../../api/client', async original => ({ ...await original<typeof import('../../api/client')>(),
+  getPublicFolderWorkflowContext: vi.fn(), openLocalProjectFolder: vi.fn() }));
 
 describe("Sidebar interaction lock", () => {
   beforeEach(async () => {
     vi.resetAllMocks();
     vi.mocked(profileApi.getLocalProfile).mockResolvedValue({ profile: null });
     await refreshCurrentProfile();
+  });
+  it("opens the active project's available folder and disables the action after close", async () => {
+    vi.mocked(getPublicFolderWorkflowContext).mockResolvedValue({ project_id: "P1", local_official_folder_available: true } as never);
+    vi.mocked(openLocalProjectFolder).mockResolvedValue({ project_id: "P1", status: "opened", message: "Opened", local_official_folder_path: "D:/P1" });
+    const user = userEvent.setup();
+    const view = render(<Sidebar activeRoute="workbench" projectId="P1" />);
+    const folders = screen.getByRole("button", { name: "Folders" }) as HTMLButtonElement;
+    await waitFor(() => expect(folders.disabled).toBe(false));
+    await user.click(folders);
+    expect(openLocalProjectFolder).toHaveBeenCalledWith("P1");
+    view.rerender(<Sidebar activeRoute="projects" projectId={null} />);
+    expect(folders.disabled).toBe(true);
+  });
+  it("does not enable the previous project after switching during a folder check", async () => {
+    let resolveFirst!: (value: any) => void;
+    vi.mocked(getPublicFolderWorkflowContext)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockResolvedValueOnce({ project_id: "P2", local_official_folder_available: false } as never);
+    const view = render(<Sidebar activeRoute="workbench" projectId="P1" />);
+    view.rerender(<Sidebar activeRoute="workbench" projectId="P2" />);
+    await act(async () => { resolveFirst({ project_id: "P1", local_official_folder_available: true }); });
+    expect((screen.getByRole("button", { name: "Folders" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(openLocalProjectFolder).not.toHaveBeenCalled();
+  });
+  it("rechecks the folder when the current project's folder changes", async () => {
+    vi.mocked(getPublicFolderWorkflowContext)
+      .mockResolvedValueOnce({ project_id: "P1", local_official_folder_available: false } as never)
+      .mockResolvedValueOnce({ project_id: "P1", local_official_folder_available: true } as never);
+    render(<Sidebar activeRoute="workbench" projectId="P1" />);
+    await waitFor(() => expect(getPublicFolderWorkflowContext).toHaveBeenCalledTimes(1));
+    expect((screen.getByRole("button", { name: "Folders" }) as HTMLButtonElement).disabled).toBe(true);
+    act(() => window.dispatchEvent(new CustomEvent("connlab:project-folder-changed", { detail: "P1" })));
+    await waitFor(() => expect((screen.getByRole("button", { name: "Folders" }) as HTMLButtonElement).disabled).toBe(false));
   });
   it('opens the name editor directly and returns focus to the avatar after native Escape', async () => {
     HTMLDialogElement.prototype.showModal = function () {
