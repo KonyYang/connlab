@@ -215,7 +215,7 @@
   "tasks": {
     "TASK_PUBLIC_FOLDER_MESSAGE_20261103": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/public-folder-messages-20261103",
       "resources": [],
@@ -232,62 +232,17 @@
         "risk_reasons": [],
         "activation_head": "afc9fe83ec1f5e5cfc6a2ecbaacc846244db2343",
         "started_at": "2026-11-02T23:52:27.892398Z",
-        "updated_at": "2026-11-03T00:02:06.066508Z",
+        "updated_at": "2026-11-03T00:06:25.047925Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
           "stage": "revision",
           "status": "running",
-          "summary": "User requested more prominent red missing-directory warning.",
+          "summary": "Remove redundant Retry button; use cloud action to retry.",
           "requires_user": false
         },
-        "report": {
-          "version": 1,
-          "summary": "Highlight missing public directory warnings",
-          "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
-          "subject": "73ef8d9d2ff8978c7494a580aeb1bf432058de57",
-          "validation": [
-            {
-              "status": "passed",
-              "result": "21 tests passed",
-              "name": "Vitest targeted"
-            },
-            {
-              "status": "passed",
-              "result": "TypeScript and Vite build passed",
-              "name": "Frontend build"
-            }
-          ],
-          "roles": {
-            "reviewer": {
-              "method": "same-agent review",
-              "status": "passed"
-            },
-            "qa": {
-              "method": "same-agent final validation",
-              "status": "passed"
-            },
-            "developer": {
-              "method": "same-agent implementation",
-              "status": "passed"
-            }
-          },
-          "changed_paths": [
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx"
-          ],
-          "schema": "connlab.sol-task-report",
-          "scope_ok": true,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "73ef8d9d2ff8978c7494a580aeb1bf432058de57",
-            "primary_before": "a1a04e703a88c5f27792d79c4983018ff7a21366",
-            "integrated_head": "ced93100e9fe2e520012497782c3a9d1db753745",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
