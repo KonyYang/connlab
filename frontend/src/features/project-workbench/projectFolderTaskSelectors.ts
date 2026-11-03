@@ -343,7 +343,6 @@ function selectPreviewDetailMessages(preview: PublicFolderWorkflowPreview): stri
       return true;
     });
     return [...new Set([
-      ...(preview.status === "current" ? ["Public folder is up to date."] : []),
       ...(preview.required_confirmations.includes("confirm_existing_public_folder") ? [`Existing folder: ${preview.public_open_path}. Confirm this is the correct project before syncing.`] : []),
       ...blockers,
       ...preview.items.filter((item) => item.status === "conflict").map((item) => `Will skip ${item.relative_path}: ${item.message ?? "Conflict"}`),
@@ -362,6 +361,7 @@ function selectPreviewDetailMessages(preview: PublicFolderWorkflowPreview): stri
 
 function selectResultDetailMessages(result: PublicFolderWorkflowResult): string[] {
   if (result.operation_type === "sync") {
+    if (result.status === "completed") return [];
     const label = result.status === "partial" ? "Partial sync" : result.status === "failed" ? "Sync failed" : "Sync completed";
     return [`${label}: ${result.counts.add ?? 0} files added, ${result.counts.update ?? 0} updated, ${(result.counts.conflict ?? 0) + (result.counts.directory_conflict ?? 0)} conflicts skipped.`,
       ...(result.items ?? []).filter((item) => item.kind === "file" && item.status === "completed").map((item) => `Uploaded ${item.relative_path}`),

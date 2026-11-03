@@ -47,13 +47,19 @@ describe("deriveProjectFolderTasks", () => {
       "Uploaded a.txt", "Uploaded b.txt", "Unchanged c.txt", "Skipped d.txt: Conflict",
     ]));
   });
-  it("describes a current sync without repeating it in other operations", () => {
+  it("keeps a current sync quiet without repeating messages in other operations", () => {
     const input = readyInput();
     const preview = { operation_type: "sync", status: "current", blockers: [], conflicts: [], warnings: [], items: [], required_confirmations: [] } as never;
     const tasks = deriveProjectFolderTasks({ ...input, publicFolderWorkflowPreviews: { sync: preview, submit: null, pull: null } });
-    expect(tasks[1].detailMessages).toContain("Public folder is up to date.");
+    expect(tasks[1].detailMessages).toEqual([]);
     expect(tasks[2].detailMessages).toEqual([]);
     expect(tasks[3].detailMessages).toEqual([]);
+  });
+  it("keeps a completed sync quiet", () => {
+    const input = readyInput();
+    const result = { operation_type: "sync", status: "completed", counts: { add: 1 }, errors: [], items: [], preview: {} } as never;
+    const tasks = deriveProjectFolderTasks({ ...input, publicFolderWorkflowResults: { sync: result, submit: null, pull: null } });
+    expect(tasks[1].detailMessages).toEqual([]);
   });
   it("returns the quiet four-operation Folder Actions model", () => {
     const tasks = deriveProjectFolderTasks(readyInput());

@@ -1072,7 +1072,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         [operation]: result.preview,
       }));
       setPublicFolderWorkflowConfirmingOperation(null);
-      setPublicFolderWorkflowMessage(result.status === "partial" ? "Partial sync: some files were skipped. Review the list below." : result.status === "failed" ? "Sync failed. Review the list below." : `${publicFolderWorkflowOperationLabel(operation)} completed.`);
+      setPublicFolderWorkflowMessage(result.status === "partial" ? "Partial sync: some files were skipped. Review the list below." : result.status === "failed" ? "Sync failed. Review the list below." : operation === "sync" ? null : `${publicFolderWorkflowOperationLabel(operation)} completed.`);
       await onRefreshPublicFolderWorkflowContext();
       await onRefreshOfficialFolderCheck();
       await onRefreshPackagePreview();
