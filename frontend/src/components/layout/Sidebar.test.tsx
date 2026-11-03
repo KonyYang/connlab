@@ -23,10 +23,12 @@ describe("Sidebar interaction lock", () => {
     const view = render(<Sidebar activeRoute="workbench" projectId="P1" />);
     const folders = screen.getByRole("button", { name: "Folders" }) as HTMLButtonElement;
     await waitFor(() => expect(folders.disabled).toBe(false));
+    expect(folders.title).toBe("Open project folder");
     await user.click(folders);
     expect(openLocalProjectFolder).toHaveBeenCalledWith("P1");
     view.rerender(<Sidebar activeRoute="projects" projectId={null} />);
     expect(folders.disabled).toBe(true);
+    expect(folders.title).toBe("Open a project with an available folder first");
   });
   it("does not enable the previous project after switching during a folder check", async () => {
     let resolveFirst!: (value: any) => void;
