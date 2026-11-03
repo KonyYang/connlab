@@ -233,11 +233,11 @@
   "tasks": {
     "TASK_PUBLIC_SYNC_CURRENT_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/public-sync-current-20261103",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "c4c3aaa84494de0d2cdebd899583fd5a5e2e056e",
       "task": {
         "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
         "summary": "Show public folder for current and partial sync",
@@ -255,9 +255,65 @@
         "risk_reasons": [],
         "activation_head": "42581385c28e0364cbf6a8132c1353d1f86c3300",
         "started_at": "2026-11-03T13:35:12.990828Z",
-        "updated_at": "2026-11-03T13:35:12.990828Z",
+        "updated_at": "2026-11-03T13:37:41.530866Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "subject": "a8722ac3a979e37fcaec752b5c3feca620c950d4",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "a8722ac3a979e37fcaec752b5c3feca620c950d4",
+            "primary_before": "e5e4e7357f1160413e2c36e67242a89b58944634",
+            "integrated_head": "c4c3aaa84494de0d2cdebd899583fd5a5e2e056e",
+            "recovered": false
+          },
+          "summary": "Expose existing public folder and handle current sync state",
+          "version": 1,
+          "changed_paths": [
+            "backend/api/routes_public_folder_workflow.py",
+            "backend/application/public_folder_workflow_service.py",
+            "frontend/src/api/client.ts",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+            "tests/unit/test_public_folder_workflow_service.py"
+          ],
+          "scope_ok": true,
+          "schema": "connlab.sol-task-report",
+          "roles": {
+            "reviewer": {
+              "method": "same-agent code and requirements review",
+              "status": "passed"
+            },
+            "qa": {
+              "method": "same-agent targeted validation",
+              "status": "passed"
+            },
+            "developer": {
+              "method": "same-agent implementation",
+              "status": "passed"
+            }
+          },
+          "validation": [
+            {
+              "name": "Backend tests",
+              "result": "43 tests passed using isolated data",
+              "status": "passed"
+            },
+            {
+              "name": "Frontend tests",
+              "result": "121 tests passed",
+              "status": "passed"
+            },
+            {
+              "name": "Frontend build",
+              "result": "TypeScript and Vite build passed",
+              "status": "passed"
+            }
+          ],
+          "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103"
+        }
       }
     }
   }
