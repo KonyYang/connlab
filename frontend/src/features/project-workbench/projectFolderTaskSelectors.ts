@@ -27,6 +27,7 @@ export type ProjectFolderTaskIconName =
 export type ProjectFolderTaskActionTarget =
   | "folder"
   | "project_folder_open"
+  | "public_project_folder_open"
   | "request_material"
   | "fee"
   | "required_forms_generate"
@@ -69,6 +70,7 @@ export type ProjectFolderTaskRow = {
   confirmLabel?: string;
   cancelLabel?: string;
   detailMessages?: string[];
+  showOpenPublicFolder?: boolean;
 };
 
 export type ProjectFolderTaskSelectorInput = {
@@ -226,6 +228,7 @@ function deriveWorkflowTask(
     confirmLabel: operation === "sync" && preview?.required_confirmations.includes("confirm_existing_public_folder") ? "Confirm folder and sync" : definition.confirmLabel,
     cancelLabel: "Cancel",
     detailMessages,
+    showOpenPublicFolder: operation === "sync" && result?.status === "completed",
   };
 }
 
@@ -379,7 +382,7 @@ function selectOperationFeedback(
     return ["Working..."];
   }
   if (input.publicFolderWorkflowConfirmingOperation === operation) {
-    return ["Confirm after reviewing the preview."];
+    return [];
   }
   const feedback = input.publicFolderWorkflowError ?? input.publicFolderWorkflowMessage;
   if (feedback?.startsWith("Required public directory is missing or not a folder:") && Object.values(input.publicFolderWorkflowPreviews).some(

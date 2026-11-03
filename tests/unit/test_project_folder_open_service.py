@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from backend.application.project_folder_open_service import (
     ProjectFolderOpenResult,
@@ -72,6 +73,25 @@ def test_project_folder_open_service_blocks_without_local_path():
     assert result.status == "blocked"
     assert result.message == "Project folder is not available yet."
     assert result.local_official_folder_path is None
+    assert gateway.opened == []
+
+
+def test_public_folder_open_uses_only_backend_resolved_path(tmp_path):
+    public_folder = tmp_path / "Open projects" / "2026" / "project"
+    public_folder.mkdir(parents=True)
+    workflow = FakeWorkflowService(SimpleNamespace(public_open_path=public_folder))
+    gateway = FakeOpenGateway()
+    result = ProjectFolderOpenService(workflow_service=workflow, gateway=gateway).open_public_project_folder("project-1")
+    assert result.status == "opened"
+    assert gateway.opened == [public_folder]
+    assert workflow.requested_project_ids == ["project-1"]
+
+
+def test_public_folder_open_blocks_without_resolved_path():
+    gateway = FakeOpenGateway()
+    workflow = FakeWorkflowService(SimpleNamespace(public_open_path=None))
+    result = ProjectFolderOpenService(workflow_service=workflow, gateway=gateway).open_public_project_folder("project-1")
+    assert result.status == "blocked"
     assert gateway.opened == []
 
 

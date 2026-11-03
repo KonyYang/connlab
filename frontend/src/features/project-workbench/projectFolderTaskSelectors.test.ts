@@ -8,6 +8,12 @@ import {
 import type { WorkbenchVersionStatus } from "./projectWorkbenchVersionSelectors";
 
 describe("deriveProjectFolderTasks", () => {
+  it("offers opening the public folder only after completed sync", () => {
+    const input = readyInput();
+    const result = { operation_type: "sync", status: "completed", counts: {}, errors: [], items: [], preview: {} } as never;
+    expect(deriveProjectFolderTasks(input)[1].showOpenPublicFolder).toBe(false);
+    expect(deriveProjectFolderTasks({ ...input, publicFolderWorkflowResults: { sync: result, submit: null, pull: null } })[1].showOpenPublicFolder).toBe(true);
+  });
   it("shows only the first missing directory on its own operation", () => {
     const first = "Required public directory is missing or not a folder: D:/PublicProject/Open projects. Check or create it manually.";
     const second = "Required public directory is missing or not a folder: D:/PublicProject/Open projects/2026. Check or create it manually.";

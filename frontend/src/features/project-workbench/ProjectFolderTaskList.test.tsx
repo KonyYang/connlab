@@ -9,6 +9,12 @@ import type {
 } from "./projectFolderTaskSelectors";
 
 describe("ProjectFolderTaskList", () => {
+  it("opens the public folder from a completed sync", async () => {
+    const onTaskAction = vi.fn();
+    render(<ProjectFolderActionsSurface tasks={[{ ...tasks[1], showOpenPublicFolder: true }]} onTaskAction={onTaskAction} />);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Open public folder" }));
+    expect(onTaskAction).toHaveBeenCalledWith("public_project_folder_open");
+  });
   it("shows a missing directory once and retries through the sync action", async () => {
     const message = "Required public directory is missing or not a folder: D:/PublicProject/Open projects. Check or create it manually.";
     const onTaskAction = vi.fn();

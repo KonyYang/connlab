@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import {
   deleteTemporaryProject,
+  openPublicProjectFolder,
   type OfficialWorkspaceConflictStrategy,
   previewTemporaryProjectDelete,
   type PublicFolderWorkflowOperationType,
@@ -71,6 +72,7 @@ export function ProjectWorkbenchLayout({
     useState<TemporaryProjectDeletePreview | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [publicFolderOpenError, setPublicFolderOpenError] = useState<string | null>(null);
   const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
   const [folderUpdateReview, setFolderUpdateReview] = useState<FolderUpdateReview | null>(null);
   const [recoveryPreviewCheckedProject, setRecoveryPreviewCheckedProject] = useState<string | null>(null);
@@ -206,7 +208,7 @@ export function ProjectWorkbenchLayout({
     publicFolderWorkflowResults,
     publicFolderWorkflowBusyOperation,
     publicFolderWorkflowConfirmingOperation,
-    publicFolderWorkflowError,
+    publicFolderWorkflowError: publicFolderOpenError ?? publicFolderWorkflowError,
     publicFolderWorkflowMessage,
     publicFolderWorkflowAutoSyncBusy,
     requiredFormsPreview,
@@ -419,6 +421,15 @@ export function ProjectWorkbenchLayout({
     }
     if (actionTarget === "project_folder_open") {
       void onOpenLocalProjectFolder();
+      return;
+    }
+    if (actionTarget === "public_project_folder_open") {
+      setPublicFolderOpenError(null);
+      void openPublicProjectFolder(project.project_id).then((result) => {
+        if (result.status !== "opened") setPublicFolderOpenError(result.message);
+      }).catch((error: unknown) => {
+        setPublicFolderOpenError(error instanceof Error ? error.message : "Could not open the public folder.");
+      });
       return;
     }
     if (actionTarget === "request_material") {

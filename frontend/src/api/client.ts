@@ -4101,6 +4101,13 @@ export function openLocalProjectFolder(
   );
 }
 
+export function openPublicProjectFolder(projectId: string): Promise<ProjectFolderOpenResponse> {
+  return requestJson<ProjectFolderOpenResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/folder/open-public`,
+    { method: "POST" }
+  );
+}
+
 export function previewEvidencePlacement(projectId: string): Promise<EvidencePlacementPlan> {
   return requestJson<EvidencePlacementPlan>(
     `/api/projects/${encodeURIComponent(projectId)}/evidence/placement-preview`,

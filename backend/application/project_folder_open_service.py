@@ -65,3 +65,21 @@ class ProjectFolderOpenService:
             message=gateway_result.message,
             local_official_folder_path=path,
         )
+
+    def open_public_project_folder(self, project_id: str) -> ProjectFolderOpenResult:
+        """Open the project-specific public folder resolved by the workflow."""
+        path = self._workflow_service.context(project_id).public_open_path
+        if path is None:
+            return ProjectFolderOpenResult(
+                project_id=project_id,
+                status="blocked",
+                message="Public project folder is not available yet.",
+                local_official_folder_path=None,
+            )
+        result = self._gateway.open_directory(path)
+        return ProjectFolderOpenResult(
+            project_id=project_id,
+            status=result.status,
+            message=result.message,
+            local_official_folder_path=None,
+        )
