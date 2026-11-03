@@ -147,7 +147,7 @@ export function Sidebar({
                 }
               }}
               tabIndex={disabled ? -1 : undefined}
-              title={interactionLocked ? interactionLockedReason : item.label}
+              title={interactionLocked ? interactionLockedReason : item.route === "folders" ? disabled ? "Open a project with an available folder first" : "Open project folder" : item.label}
               type="button"
             >
               <span className="nav-icon"><UiIcon name={item.icon} /></span>
