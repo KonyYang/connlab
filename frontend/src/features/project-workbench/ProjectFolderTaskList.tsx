@@ -185,9 +185,6 @@ function FolderOperation({
         ) : null}
       </div>
       <div className="runtime-console-folder-operation-controls">
-        {task.retryMissingDirectory && task.actionTarget && !readonlyReason ? (
-          <button type="button" onClick={activateTaskAction}>Retry</button>
-        ) : null}
         {task.confirming && task.operation ? (
           <div className="runtime-console-folder-operation-confirmation">
             <button

@@ -69,7 +69,6 @@ export type ProjectFolderTaskRow = {
   confirmLabel?: string;
   cancelLabel?: string;
   detailMessages?: string[];
-  retryMissingDirectory?: boolean;
 };
 
 export type ProjectFolderTaskSelectorInput = {
@@ -227,7 +226,6 @@ function deriveWorkflowTask(
     confirmLabel: operation === "sync" && preview?.required_confirmations.includes("confirm_existing_public_folder") ? "Confirm folder and sync" : definition.confirmLabel,
     cancelLabel: "Cancel",
     detailMessages,
-    retryMissingDirectory: Boolean(preview?.blockers[0]?.startsWith("Required public directory is missing or not a folder:") && canRun),
   };
 }
 
