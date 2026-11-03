@@ -242,11 +242,11 @@
   "tasks": {
     "TASK_SIDEBAR_PROJECT_FOLDER_20261103": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
       "branch": "codex/sidebar-project-folder-20261103",
       "resources": [],
-      "integrated_head": "314841c6f48701cc06a62b1f84c1f261540550de",
+      "integrated_head": "133993873479a6d4703264ae7ef4f31e4b60d09c",
       "task": {
         "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
         "summary": "Open current project folder from sidebar",
@@ -263,7 +263,7 @@
         "risk_reasons": [],
         "activation_head": "ed17990775e95c4670db1c1b71e4571d2783dc33",
         "started_at": "2026-11-03T15:07:28.726477Z",
-        "updated_at": "2026-11-03T15:17:23.694632Z",
+        "updated_at": "2026-11-03T15:18:18.357192Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -273,7 +273,47 @@
           "summary": "Add descriptive hover hint to sidebar folder action.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "changed_paths": [
+            "frontend/src/components/layout/Sidebar.test.tsx",
+            "frontend/src/components/layout/Sidebar.tsx"
+          ],
+          "subject": "71870d8fe6576225608843246288acd03f8379ad",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "71870d8fe6576225608843246288acd03f8379ad",
+            "primary_before": "3561aa7511fcca1d0500d2b605ef03e567f8afb1",
+            "integrated_head": "133993873479a6d4703264ae7ef4f31e4b60d09c",
+            "recovered": false
+          },
+          "validation": [
+            {
+              "status": "passed",
+              "result": "9 tests passed",
+              "name": "Sidebar tests"
+            }
+          ],
+          "version": 1,
+          "schema": "connlab.sol-task-report",
+          "roles": {
+            "qa": {
+              "method": "same-agent targeted validation",
+              "status": "passed"
+            },
+            "developer": {
+              "method": "same-agent implementation",
+              "status": "passed"
+            },
+            "reviewer": {
+              "method": "same-agent review",
+              "status": "passed"
+            }
+          },
+          "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
+          "scope_ok": true,
+          "summary": "Describe sidebar folder action on hover"
+        }
       }
     }
   }
