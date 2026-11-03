@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PUBLIC_EXISTING_DIRS_20261103",
-    "tier": "high_risk",
-    "subject": "f3248ad35b3ffc8b35b81699742af9764ce20f3d",
-    "summary": "Require existing public root and year directories",
+    "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
+    "tier": "standard",
+    "subject": "84899bf91a10467347cb0853c007c1fc379341d2",
+    "summary": "Clarify missing public folder guidance",
     "disposition": "completed",
     "decision_ref": "User requested local close only; no push or publication.",
-    "closed_at": "2026-11-02T23:42:25.372915Z"
+    "closed_at": "2026-11-03T00:09:00.843899Z"
   },
   "retained_history": [
     {
@@ -210,89 +210,18 @@
       "disposition": "completed",
       "decision_ref": "User requested local close only; no push or publication.",
       "closed_at": "2026-11-02T23:35:38.490026Z"
+    },
+    {
+      "task_id": "TASK_PUBLIC_EXISTING_DIRS_20261103",
+      "tier": "high_risk",
+      "subject": "f3248ad35b3ffc8b35b81699742af9764ce20f3d",
+      "summary": "Require existing public root and year directories",
+      "disposition": "completed",
+      "decision_ref": "User requested local close only; no push or publication.",
+      "closed_at": "2026-11-02T23:42:25.372915Z"
     }
   ],
-  "tasks": {
-    "TASK_PUBLIC_FOLDER_MESSAGE_20261103": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
-      "branch": "codex/public-folder-messages-20261103",
-      "resources": [],
-      "integrated_head": "878dd2fa3d5a2aa9483cd85900e2b592f28d23d0",
-      "task": {
-        "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
-        "summary": "Clarify missing public folder guidance",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Deduplicate operation-specific missing directory messages and provide retry without mutating public files",
-        "scope_paths": [
-          "frontend/src/features/project-workbench"
-        ],
-        "risk_reasons": [],
-        "activation_head": "afc9fe83ec1f5e5cfc6a2ecbaacc846244db2343",
-        "started_at": "2026-11-02T23:52:27.892398Z",
-        "updated_at": "2026-11-03T00:07:22.828914Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
-          "stage": "revision",
-          "status": "running",
-          "summary": "Remove redundant Retry button; use cloud action to retry.",
-          "requires_user": false
-        },
-        "report": {
-          "summary": "Remove redundant retry button and retain cloud retry",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "84899bf91a10467347cb0853c007c1fc379341d2",
-            "primary_before": "e01c140585dc7ada03c64d36b64d89332478409c",
-            "integrated_head": "878dd2fa3d5a2aa9483cd85900e2b592f28d23d0",
-            "recovered": false
-          },
-          "validation": [
-            {
-              "name": "Vitest targeted",
-              "result": "21 tests passed",
-              "status": "passed"
-            },
-            {
-              "name": "Frontend build",
-              "result": "TypeScript and Vite build passed",
-              "status": "passed"
-            }
-          ],
-          "subject": "84899bf91a10467347cb0853c007c1fc379341d2",
-          "schema": "connlab.sol-task-report",
-          "changed_paths": [
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
-            "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
-            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts"
-          ],
-          "version": 1,
-          "task_id": "TASK_PUBLIC_FOLDER_MESSAGE_20261103",
-          "scope_ok": true,
-          "roles": {
-            "qa": {
-              "method": "same-agent final validation",
-              "status": "passed"
-            },
-            "reviewer": {
-              "method": "same-agent review",
-              "status": "passed"
-            },
-            "developer": {
-              "method": "same-agent implementation",
-              "status": "passed"
-            }
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
