@@ -411,6 +411,17 @@ describe("useProjectWorkbenchModel", () => {
     expect(apiMocks.executePublicFolderWorkflowSubmit).not.toHaveBeenCalled();
   });
 
+  it("treats an already current sync as up to date, without asking for confirmation", async () => {
+    apiMocks.previewPublicFolderWorkflowSync.mockResolvedValueOnce({ ...publicFolderWorkflowPreview("sync"), status: "current", next_action: "none" });
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(result.current.project?.project_id).toBe("project-1"));
+    await act(async () => { await result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBeNull();
+    expect(result.current.publicFolderWorkflowMessage).toBeNull();
+    expect(result.current.publicFolderWorkflowPreviews.sync?.status).toBe("current");
+    expect(apiMocks.executePublicFolderWorkflowSync).not.toHaveBeenCalled();
+  });
+
   it("opens the backend-resolved local project folder", async () => {
     apiMocks.openLocalProjectFolder.mockResolvedValueOnce({
       project_id: "project-1",

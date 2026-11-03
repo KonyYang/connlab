@@ -228,7 +228,7 @@ function deriveWorkflowTask(
     confirmLabel: operation === "sync" && preview?.required_confirmations.includes("confirm_existing_public_folder") ? "Confirm folder and sync" : definition.confirmLabel,
     cancelLabel: "Cancel",
     detailMessages,
-    showOpenPublicFolder: operation === "sync" && result?.status === "completed",
+    showOpenPublicFolder: operation === "sync" && Boolean(input.publicFolderWorkflowContext?.public_open_folder_available),
   };
 }
 
@@ -343,6 +343,7 @@ function selectPreviewDetailMessages(preview: PublicFolderWorkflowPreview): stri
       return true;
     });
     return [...new Set([
+      ...(preview.status === "current" ? ["Public folder is up to date."] : []),
       ...(preview.required_confirmations.includes("confirm_existing_public_folder") ? [`Existing folder: ${preview.public_open_path}. Confirm this is the correct project before syncing.`] : []),
       ...blockers,
       ...preview.items.filter((item) => item.status === "conflict").map((item) => `Will skip ${item.relative_path}: ${item.message ?? "Conflict"}`),

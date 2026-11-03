@@ -87,6 +87,7 @@ class PublicFolderWorkflowContextResponse(BaseModel):
     blockers: list[str]
     warnings: list[str]
     local_official_folder_available: bool = False
+    public_open_folder_available: bool = False
 
 
 class PublicFolderWorkflowExecuteRequest(BaseModel):
@@ -268,6 +269,7 @@ def _context_response(context: PublicFolderWorkflowContext) -> PublicFolderWorkf
         blockers=list(context.blockers),
         warnings=list(context.warnings),
         local_official_folder_available=context.local_official_folder_available,
+        public_open_folder_available=context.public_open_folder_available,
     )
 
 
