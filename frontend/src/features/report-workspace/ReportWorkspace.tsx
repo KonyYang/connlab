@@ -32,7 +32,6 @@ import {
   type InternalReportGenerationPreview,
 } from "../../api/client";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
-import testWorkbenchIcon from "./test-workbench.png";
 import { CustomerReportProgress } from "../../components/common/CustomerReportProgress";
 import { useCustomerReportJob } from "./useCustomerReportJob";
 import { useReportDraftUpdates } from "./useReportDraftUpdates";
@@ -607,11 +606,9 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
 
   const commandbar = (
     <div className="report-workspace-commandbar" aria-label="Report Workspace actions">
-      <button className="report-workspace-back report-workspace-return" onClick={onBack} type="button"
-        aria-label="Back To Workspace" title="Back To Workspace">
-        <img src={testWorkbenchIcon} alt="" aria-hidden="true" width="32" height="32" />
-      </button>
       <span className="report-workspace-identity" title={identityLabel}>{identityLabel}</span>
+      <button className="report-workspace-back" onClick={onBack} type="button"
+        aria-label="Back To Workspace" title="Back To Workspace">Back</button>
     </div>
   );
 

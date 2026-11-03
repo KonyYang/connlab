@@ -262,7 +262,7 @@ describe("ReportWorkspace", () => {
     expect(await screen.findByText(/protected customer report could not be read/)).toBeTruthy();
   });
 
-  it("places an accessible icon-only Workspace return before the project identity", async () => {
+  it("places a visible Back button after the project identity", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     render(<ReportWorkspace projectId="project-1" identityLabel="DL-001 Connector Testing" onBack={onBack} />);
@@ -270,9 +270,9 @@ describe("ReportWorkspace", () => {
     expect(screen.getByRole("heading", { name: "Report", exact: true })).toBeTruthy();
     const actions = screen.getByLabelText("Report Workspace actions");
     const back = within(actions).getByRole("button", { name: "Back To Workspace", exact: true });
-    expect(back.textContent?.trim()).toBe("");
+    expect(back.textContent?.trim()).toBe("Back");
     expect(back.title).toBe("Back To Workspace");
-    expect(within(actions).getAllByRole("button")[0]).toBe(back);
+    expect(actions.lastElementChild).toBe(back);
     expect(within(actions).queryByRole("button", { name: "Open Project Folder", exact: true })).toBeNull();
     await user.click(back);
     expect(onBack).toHaveBeenCalledOnce();
