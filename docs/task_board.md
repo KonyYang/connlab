@@ -278,12 +278,13 @@
           "frontend/src/pages/ProjectListPage.test.tsx",
           "frontend/src/pages/ProjectListPage.tsx",
           "frontend/src/pages/ProjectWorkbenchPage.test.tsx",
-          "frontend/src/pages/ProjectWorkbenchPage.tsx"
+          "frontend/src/pages/ProjectWorkbenchPage.tsx",
+          "frontend/src/project-dashboard.css"
         ],
         "risk_reasons": [],
         "activation_head": "69be28f21b8973a23310a831755ab875eb50175f",
         "started_at": "2026-11-04T22:23:41.581841Z",
-        "updated_at": "2026-11-04T23:42:51.061999Z",
+        "updated_at": "2026-11-04T23:44:39.684342Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
