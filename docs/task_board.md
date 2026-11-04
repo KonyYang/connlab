@@ -322,6 +322,31 @@
           "summary": "Replace report return icon with right aligned Back button"
         }
       }
+    },
+    "TASK_IMPORT_RECYCLE_CONSISTENCY_20261105": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
+      "branch": "codex/import-recycle-consistency-20261105",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_IMPORT_RECYCLE_CONSISTENCY_20261105",
+        "summary": "Give imported projects the same Recycle action as local projects",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Show the Recycle action for any project that remains in the active registry, including stopped imported projects, while keeping the existing guarded preview and backend blockers authoritative. Validate through the Projects public UI seam without changing real data.",
+        "scope_paths": [
+          "frontend/src/pages/ProjectListPage.tsx",
+          "frontend/src/pages/ProjectListPage.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "1dd0d00c53cc2a0634f4963aacbd47835f940328",
+        "started_at": "2026-11-04T16:54:27.241529Z",
+        "updated_at": "2026-11-04T16:54:27.241529Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
