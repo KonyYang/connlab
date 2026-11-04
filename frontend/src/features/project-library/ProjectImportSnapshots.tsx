@@ -2,16 +2,18 @@ import type { PortableResolution, PortableRestorePlan } from "../../api/projectL
 import { PortableCoverage, RestoreProtection } from "./PortableRestore";
 
 type Props = { plan: PortableRestorePlan; disabled: boolean; onResolve: (path: string, resolution?: PortableResolution) => void; onSkip?: () => void };
-const choices: Record<PortableResolution, string> = { replace_working_copy: "Use Imported Version", keep_as_history: "Keep Another Copy" };
 export function ProjectImportSnapshotDetails({ plan, disabled, onResolve, onSkip }: Props) {
-  const options = !plan.blockers.length ? (plan.resolution_options ?? []).filter(option => option in choices) : [];
+  const canReplace = !plan.blockers.length && (plan.resolution_options ?? []).includes("replace_working_copy");
   const conflict = plan.status === "conflict" || Boolean(plan.resolution);
   return <div className="library-snapshot-details">
     {plan.blockers.length > 0 && <p role="alert">{plan.blockers.some(note => note.startsWith("Update ConnLab")) ? "Update ConnLab before importing this project." : "Saved project data could not be verified. Export this project again from the original computer."}</p>}
     {plan.status === "conflict" && !plan.blockers.length && <>
-      <p>This project has different data. View the differences, then choose which copy to keep.</p>
-      <div className="library-actions">{options.map(option => <button key={option} type="button" disabled={disabled} onClick={() => onResolve(plan.source_path, option)}>{choices[option]}</button>)}
-        {onSkip && <button type="button" disabled={disabled} onClick={onSkip}>Skip</button>}
+      <p>{canReplace
+        ? "This is the same project with different saved data. Replacing it will save a complete recovery copy of the current project first."
+        : "This folder is not verified as the same project, so it cannot replace the existing project."}</p>
+      <div className="library-actions">
+        {canReplace && <button type="button" disabled={disabled} onClick={() => onResolve(plan.source_path, "replace_working_copy")}>Replace Existing Project</button>}
+        {onSkip && <button type="button" disabled={disabled} onClick={onSkip}>Cancel Import</button>}
       </div>
     </>}
     {plan.resolution === "replace_working_copy" && <p role="alert">The current working copy will be replaced. A complete recovery copy will be saved first: {plan.backup_path}</p>}

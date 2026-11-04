@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { ProjectWorkbenchPage } from "./ProjectWorkbenchPage";
 import { useProjectWorkbenchModel, type ProjectWorkbenchModel } from "../features/project-workbench/useProjectWorkbenchModel";
@@ -18,22 +17,18 @@ const props = () => ({ projectId: "imported-project", onBack: vi.fn(), onOpenMat
 
 beforeEach(() => { vi.mocked(useProjectWorkbenchModel).mockReturnValue(model as unknown as ProjectWorkbenchModel); });
 
-it("keeps unnumbered imported files available in the common workbench while explaining missing setup", async () => {
-  const callbacks = props();
-  render(<ProjectWorkbenchPage {...callbacks} />);
+it("shows an imported project in the standard workbench without a special file setup card", () => {
+  render(<ProjectWorkbenchPage {...props()} />);
   expect(screen.getByRole("region", { name: "Standard workbench" })).toBeTruthy();
-  expect(screen.getByText(/Review Basic Information/)).toBeTruthy();
-  expect(screen.getByText(/No confirmed Matrix/)).toBeTruthy();
-  await userEvent.setup().click(screen.getByRole("button", { name: "Browse Files" }));
-  expect(callbacks.onBrowseProjectFiles).toHaveBeenCalledWith("imported-member");
+  expect(screen.queryByRole("complementary", { name: "Project files and setup" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Browse Files" })).toBeNull();
 });
 
-it("does not show missing-setup warnings for confirmed restored data", () => {
+it("also keeps restored imported data free of the special file setup card", () => {
   vi.mocked(useProjectWorkbenchModel).mockReturnValue({ ...model, basicInformation: { status: "confirmed" }, activeConfirmedMatrixSnapshot: { confirmed_matrix_id: "matrix-1" } } as unknown as ProjectWorkbenchModel);
   render(<ProjectWorkbenchPage {...props()} />);
-  expect(screen.getByRole("button", { name: "Browse Files" })).toBeTruthy();
-  expect(screen.queryByText(/Review Basic Information/)).toBeNull();
-  expect(screen.queryByText(/No confirmed Matrix/)).toBeNull();
+  expect(screen.queryByRole("complementary", { name: "Project files and setup" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Browse Files" })).toBeNull();
 });
 
 it("keeps the existing workbench unchanged for projects without an imported file binding", () => {
