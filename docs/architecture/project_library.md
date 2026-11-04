@@ -22,14 +22,21 @@ explicitly authorized operation.
 
 ### Simple receiving flow
 
-Import Projects has one default path: choose a folder, review the detected project,
-and import. After a review the source editor collapses to the folder name and
-Change Folder. Save location comes from Settings, with a small link back to that
-setting. Manual paths, extra sources and boundary controls remain under More
-Options. A single project has no checkbox, bulk count, filter or paginator;
-batches retain one combined list and selection. Normal checks are collapsed in
-Details. Conflicts expose one explanation and direct keep/skip actions, with
-comparisons under View Differences. The backend still authorizes every choice.
+Import Projects has one default path: choose one complete project folder. The
+normal production route runs the existing scan and reviewed plan automatically.
+When the result is safe, ConnLab receives the files (or restores a compatible
+portable snapshot) and opens the verified Project identity without showing a
+second review or confirmation page. An unchanged duplicate opens its existing
+Project without creating another batch. The configured save location is owned by
+Settings and is not repeated or editable on the import page.
+
+The page stops only for a decision that cannot be inferred safely: a missing LTR,
+an incomplete folder boundary, a carried ConnLab identity without a usable
+snapshot, or an identity/content conflict. Those cases reuse the existing direct
+files-only, keep-copy, replace/history and skip decisions. Manual path entry is a
+fallback only when the native folder picker fails. Batch controls, linking tools,
+destination controls and implementation details are not part of the default
+single-project path. The backend still authorizes every choice.
 
 Each ordinary review row carries a stable fingerprint of its reviewed source and
 destination context. Files-only replanning retains selection/keep-copy decisions
@@ -49,9 +56,10 @@ Folded comparisons name changed/added/absent files (bounded lists) and recognize
 project, Matrix, test-result and scheduling record families. They compare saved
 content, not row order, and do not perform a field-level merge.
 
-A successful single-project intake with no outstanding source warnings opens the
-verified Project identity directly. Results needing review remain visible before
-Open Project. Returning to Projects always uses the complete catalog.
+A successful single-project intake opens the verified Project identity directly.
+Non-blocking source warnings remain recorded instead of preventing normal project
+use. A retained history copy stays in its safe details view. Returning to Projects
+always uses the complete catalog.
 
 Source completeness is separate from file layout. A carried ConnLab identity
 without a snapshot is never silently treated as a restored project. When that
@@ -106,7 +114,8 @@ requires boundary review. Keep Separate cannot override these boundary blockers.
 Registry summaries expose a historical LTR only through explicit Project membership.
 Its display kind is `imported`, with `has_registered_ltr=false` and no registered
 LTR record. A real LTR registration always wins. Imported rows use the normal
-project actions and show missing Matrix state rather than invented completion.
+project actions without a permanent imported-only badge; missing Matrix state is
+shown rather than inventing completion.
 
 Recognized standard imports also bind the received root, business folder and
 Source Book in the normal workspace record and publish a matching manifest.
@@ -136,23 +145,17 @@ copies retain their transport-derived destination until their identity is resolv
 
 Ordinary instances reuse the active Settings **Project default save location**.
 They keep their existing database and data directories; import does not require
-a new library root or a database move. Missing or unavailable destinations are
-shown before source selection, with inline location setup. A valid existing
-directory can be saved through the same external-resource registration used by
-Settings. Data/database directories and redirected paths are rejected. Explicit
-managed libraries keep their existing root binding and do not expose a location
-override in this page. Changing the future import destination does not move or
-rewrite existing registered projects.
+a new library root or a database move. Missing or unavailable destinations block
+source selection and direct the operator to Settings. Data/database directories
+and redirected paths remain rejected. The import page has no destination editor.
+Changing the future import destination does not move or rewrite existing projects.
 
-Selecting a source automatically scans and reviews it. Ordinary files and
-portable snapshots share the chooser and final **Confirm Import** surface.
-Saved-data projects use the existing per-project restore tokens and reviewed
-conflict choices; warnings and replacement recovery consequences remain visible.
-The final destination comes from the reviewed server plans, rather than a stale
-page-load hint. Divergent destinations during a mixed review require another
-check. Manual path entry, explicit boundary adjustment and in-place linking are
-under **Advanced**. The page offers **Open Folder**, respects opener failures,
-and exposes initial-load retry instead of leaving the operator at a raw error.
+Selecting one source automatically scans and reviews it. Ordinary files and
+portable snapshots use the same chooser and server-reviewed tokens. A safe plan
+executes immediately; saved-data restore uses the existing plan ID, fingerprint
+and conflict protections. Manual path entry appears only after native-picker
+failure. In-place linking remains available only through its compatible direct
+route and is not advertised as a normal import choice.
 
 Intake and restore plans bind the destination path and directory identity. A
 changed/replaced destination invalidates old confirmations and unfinished batch
@@ -199,15 +202,13 @@ across detail and import navigation. Old `/project-library` and `/projects?view=
 same homepage; existing member detail URLs remain compatible. This is a frontend
 composition of existing read APIs, with no database/schema migration.
 
-Import Projects defaults to receiving copies into the configured project folder.
-Source locations are shown as a removable selection list; Clear All only resets
-that selection. Manual paths remain available in a collapsed section. Selection
-changes invalidate reviewed plans, while a cancelled or repeated folder choice
-preserves them. Choosing and removing sources never executes intake.
-In-place linking and portable-data recovery remain under **More Import Options**.
-The old Legacy list URL opens the shared library; existing detail and import URLs
-remain compatible. File opening, location changes and test continuation remain in
-their corresponding project details.
+Import Projects receives one selected project into the configured project folder.
+Changing the selected folder invalidates its reviewed plan; cancelling the native
+picker preserves the current reviewed selection. A safe selection executes only
+after the server has returned its bound plan and fingerprint. The old Legacy list
+and direct linking URLs remain compatible, but no longer add choices to the common
+import page. File opening, location changes and test continuation remain in their
+corresponding project details.
 
 All-project and individual receiving-batch views retain separate session search
 and page state. New batches start unfiltered. Member links carry the batch in the

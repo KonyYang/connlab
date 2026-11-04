@@ -72,9 +72,7 @@ it.each(["", "batch-1"])("preserves browsing context but returns from import to 
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Import Projects" }));
-  await user.click(await screen.findByText("More Options"));
-  await user.click(screen.getByRole("button", { name: "Link Folders Without Copying" }));
-  await user.click(await screen.findByRole("button", { name: "Back to Import Projects" }));
+  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe("/projects");
   await user.click(await screen.findByText("Project Files", {exact:true}));
@@ -108,16 +106,15 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
 });
 
-it("keeps old folder-linking links accessible and returns to the common import flow", async () => {
+it("keeps the old direct folder-linking URL accessible without exposing it in the common import flow", async () => {
   window.history.replaceState({}, "", "/tools/legacy-projects");
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Import Projects" }));
-  await userEvent.setup().click(await screen.findByText("More Options"));
-  expect(screen.getByRole("button", { name: "Link Folders Without Copying" })).toBeTruthy();
   expect(window.location.pathname).toBe("/projects/import");
-  await userEvent.setup().click(screen.getByRole("button", { name: "Link Folders Without Copying" }));
-  expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
+  expect(screen.queryByText("More Options")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Link Folders Without Copying" })).toBeNull();
 });
 
 vi.mock("./components/layout/AppShell", () => ({

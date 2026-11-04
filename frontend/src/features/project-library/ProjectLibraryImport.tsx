@@ -10,7 +10,7 @@ import "./project-library.css";
 
 type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string, batchId?: string) => void; onOpenProject?: (id: string) => void; onOpenSettings?: () => void; backLabel?: string; onLegacyPreview?: () => void };
 
-export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOpenProject, onOpenSettings, onLegacyPreview, backLabel = "Back to Projects" }: Props) {
+export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOpenProject, backLabel = "Back to Projects" }: Props) {
   const [runtime, setRuntime] = useState<LibraryRuntime | null>(null);
   const [sources, setSources] = useState("");
   const sourcePaths = [...new Set(sources.split(/\r?\n/).map(value => value.trim().replace(/^"|"$/g, "")).filter(Boolean))];
@@ -27,12 +27,13 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
   const [error, setError] = useState("");
   const [busyMessage, setBusyMessage] = useState("Checking selected folders…");
   const [manualOpen, setManualOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [setupAttempt, setSetupAttempt] = useState(0);
   const [batch, setBatch] = useState<LibraryBatch | null>(null);
   const [recoveryId, setRecoveryId] = useState("");
   const [recoveredCompletedId, setRecoveredCompletedId] = useState("");
   const [submission, setSubmission] = useState<LibraryBatchRequest | null>(null);
+  const startedIntake = useRef("");
+  const openedExisting = useRef("");
   const interactionEpoch = useRef(0);
   const live = useRef(true);
   const request = useRef<AbortController | null>(null);
@@ -70,6 +71,8 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
   }, [batch]);
   function changeSources(value: string) {
     interactionEpoch.current += 1; setRecoveryId(""); setSubmission(null); setRecoveredCompletedId("");
+    startedIntake.current = "";
+    openedExisting.current = "";
     request.current?.abort(); request.current = null;
     setSources(value); setLtrNumber(""); setScan(null); setPlan(null); setSelected([]); setSeparate([]); setFilesOnly([]); setBatch(null); setError("");
     setSnapshots([]); setSnapshotResults([]);
@@ -110,7 +113,6 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
   function acceptReview(checked: Awaited<ReturnType<typeof reviewImportCandidates>>) {
     if ((checked.plan?.items.length ?? 0) + checked.snapshots.length !== 1) throw new Error("The check did not return one complete project. Choose the project folder again.");
     setManualOpen(false);
-    setMoreOpen(false);
     setPlan(checked.plan); setSnapshots(checked.snapshots);
     setSelected(readyImportPaths(checked.plan, checked.snapshots));
     const root = checked.projectsRoot;
@@ -197,6 +199,24 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
   const displayBatch = combinedImportResults(batch, snapshotResults);
   const freshSuccess = displayBatch?.status === "completed" && displayBatch.batch_id !== recoveredCompletedId && displayBatch.counts.failed === 0 && displayBatch.counts.review === 0 && !error && !busy;
   const selectionProblem = selectedImportProblem(plan, snapshots, selected);
+  const automaticIntakeKey = (() => {
+    if (!onOpenProject) return "";
+    const ordinary = plan?.items.length === 1 ? plan.items[0] : null;
+    if (ordinary && selected.includes(ordinary.source_path)
+        && (ordinary.status === "ready" || ordinary.status === "conflict" && ordinary.can_keep_separate && separate.includes(ordinary.source_path))) {
+      return `ordinary:${plan!.plan_id}:${plan!.fingerprint}:${ordinary.source_path}`;
+    }
+    const saved = !plan && snapshots.length === 1 ? snapshots[0] : null;
+    if (saved && selected.includes(saved.source_path) && saved.status === "ready" && !saved.blockers.length) {
+      return `saved:${saved.plan_id}:${saved.fingerprint}:${saved.source_path}`;
+    }
+    return "";
+  })();
+  const automaticExistingMemberId = (() => {
+    if (!onOpenProject || plan?.items.length !== 1 || snapshots.length) return "";
+    const item = plan.items[0];
+    return item.status === "already_added" && item.existing_member_id ? item.existing_member_id : "";
+  })();
   const hasReview = Boolean(plan || snapshots.length);
   const detailsBySource: Record<string, ImportResultDetails> = Object.fromEntries((plan?.items ?? []).map(row => [row.source_path, { ltrNumber: row.ltr_number, kind: row.target_member_id ? "existing_files" : "files", warnings: [...new Set(row.warnings)] }]));
   for (const row of snapshots) detailsBySource[row.source_path] = { ltrNumber: row.ltr_number, warnings: [...new Set(row.warnings)] };
@@ -209,6 +229,11 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
       warnings: [...new Set([...warnings, ...member.warnings])],
     };
   }
+  useEffect(() => {
+    if (!automaticIntakeKey || locked || displayBatch || selectionProblem || startedIntake.current === automaticIntakeKey) return;
+    startedIntake.current = automaticIntakeKey;
+    void receive();
+  }, [automaticIntakeKey, locked, displayBatch?.batch_id, selectionProblem]);
   async function openImportedMember(memberId: string) {
     const restored = snapshotResults.find(row => row.member_id === memberId)?.result;
     if (restored) {
@@ -232,10 +257,14 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     }
   }
   useEffect(() => {
+    if (!automaticExistingMemberId || locked || displayBatch || openedExisting.current === automaticExistingMemberId) return;
+    openedExisting.current = automaticExistingMemberId;
+    void openImportedMember(automaticExistingMemberId);
+  }, [automaticExistingMemberId, locked, displayBatch?.batch_id]);
+  useEffect(() => {
     if (!freshSuccess || !onOpenProject || !displayBatch || displayBatch.items.length !== 1 || (plan?.items.length ?? 0) + snapshots.length !== 1) return;
     const item = displayBatch.items[0], details = detailsBySource[item.source_path];
-    const restored = snapshotResults.some(row => row.member_id === item.member_id);
-    if (!item.member_id || item.status !== "added" || restored && details?.warnings.length || details?.kind === "history") return;
+    if (!item.member_id || item.status !== "added" || details?.kind === "history") return;
     const key = `${displayBatch.batch_id}:${item.member_id}`;
     if (openedOutcome.current === key) return;
     openedOutcome.current = key;
@@ -257,27 +286,25 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
         <button type="button" className="library-text-action" disabled={locked} onClick={() => void choose()}>Change Folder</button>
       </div> : <>
         <h2>Choose a project</h2>
-        <p>Choose the LTR folder, or a complete project folder whose name starts with its LTR.</p>
-        <div className="library-actions"><button type="button" className="primary-action" disabled={locked} title="Choose one complete project folder. Files are copied only after Confirm Import." onClick={() => void choose()}>Choose Project Folder</button></div>
+        <p>Choose the project's LTR folder. ConnLab will receive it and open the project.</p>
+        <div className="library-actions"><button type="button" className="primary-action" disabled={locked} title="Choose one complete project folder. Files are copied after the checks pass." onClick={() => void choose()}>Choose Project Folder</button></div>
       </>}
-      <details open={manualOpen} onToggle={event => setManualOpen(event.currentTarget.open)}><summary>Enter Path Manually</summary>
+      {manualOpen && <div className="library-editor">
         <label>Source path<input value={sources} disabled={locked} onChange={event => changeSources(event.target.value)} placeholder="Full path to one project folder" /></label>
         <button type="button" disabled={locked || !sourcePaths.length} onClick={() => void review()}>Check Folder</button>
-      </details>
+      </div>}
       {scan?.selection_issue === "needs_ltr" && !hasReview && <div className="library-editor">
         <p>No LTR was found in this folder or its project information. Enter the project's existing LTR to check it.</p>
         <label>LTR number<input value={ltrNumber} disabled={locked} onChange={event => setLtrNumber(event.target.value)} placeholder="DL-2026-09-032" /></label>
         <button type="button" disabled={locked || !/^DL-\d{4}-\d{2}-\d{3}(?:[A-Z][A-Z0-9]*)?$/i.test(ltrNumber.trim())} onClick={() => void review()}>Check Project</button>
       </div>}
-      {onLegacyPreview && <details open={moreOpen} onToggle={event => setMoreOpen(event.currentTarget.open)}><summary>More Options</summary><button type="button" disabled={locked} title="Keep folders at their current locations and register links without copying files." onClick={onLegacyPreview}>Link Folders Without Copying</button></details>}
       {busy && <p role="status">{busyMessage}</p>}
       {error && <div><p role="alert">{error}</p>{recoveryId && !batch && <button type="button" disabled={busy} onClick={() => void refreshBatch()}>Recover Last Batch</button>}{submission && !batch && <button type="button" disabled={busy} onClick={() => void receive(false, true)}>Retry Batch Submission</button>}{!submission && !batch && sourcePaths.length > 0 && <button type="button" disabled={locked} onClick={() => void review()}>Check Again</button>}</div>}
       {scan?.truncated && !plan && <p role="alert">Incomplete results. Choose a smaller source folder before importing projects.</p>}
       {scan && !plan && !scan.items.length && !scan.selection_issue && <p>Choose one complete project folder to check.</p>}
       {scan?.warnings.map((note, i) => <p key={i} role="status">{note}</p>)}
-      {!hasReview && <p className="library-save-summary" title={runtime.projects_root}>Save to: {runtime.projects_root.split(/[\\/]/).pop() || runtime.projects_root}{onOpenSettings && <> · <button type="button" className="library-text-action" disabled={locked} onClick={onOpenSettings} title="Change Project default save location in Settings">Change</button></>}</p>}
     </section>}
-    {(plan || snapshots.length > 0) && !displayBatch && <section className="library-panel">
+    {(plan || snapshots.length > 0) && !displayBatch && !automaticIntakeKey && !automaticExistingMemberId && <section className="library-panel">
       <ProjectImportReviewList plan={plan} snapshots={snapshots} selected={selected} separate={separate} disabled={locked}
         onToggle={(path, checked) => setSelected(values => checked ? [...new Set([...values, path])] : values.filter(value => value !== path))}
         onKeepSeparate={(path, keep) => {

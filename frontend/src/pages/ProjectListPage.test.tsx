@@ -42,7 +42,7 @@ describe("ProjectListPage lifecycle registry views", () => {
       snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: true }] });
     render(<ProjectListPage onOpenProject={onOpenProject} />);
     expect(await screen.findByText(number)).toBeTruthy();
-    expect(screen.getByText("Imported · Review Needed")).toBeTruthy();
+    expect(screen.queryByText("Imported · Review Needed")).toBeNull();
     expect(screen.getByText("Matrix needed")).toBeTruthy();
     expect(screen.queryByText("Files Only", { exact: true, selector: "span" })).toBeNull();
     expect(screen.getAllByRole("row")).toHaveLength(2);
