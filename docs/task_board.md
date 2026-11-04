@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
+    "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
     "tier": "standard",
-    "subject": "8ed113d0f9e0b4062d42ebb4844da5b4df1ab855",
-    "summary": "Show public folder for current and partial sync",
+    "subject": "6c32846fcb3ba56ecc18a16c601717dc8415b888",
+    "summary": "Open current project folder from sidebar",
     "disposition": "completed",
-    "decision_ref": "User requested local close only; no push or publication.",
-    "closed_at": "2026-11-03T15:06:34.859125Z"
+    "decision_ref": "User explicitly requested local close of both ready_for_close tasks; preserve commits and do not push or publish.",
+    "closed_at": "2026-11-04T22:22:07.622933Z"
   },
   "retained_history": [
     {
@@ -237,92 +237,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local close only, no push or publication.",
       "closed_at": "2026-11-03T10:09:11.879533Z"
+    },
+    {
+      "task_id": "TASK_PUBLIC_SYNC_CURRENT_20261103",
+      "tier": "standard",
+      "subject": "8ed113d0f9e0b4062d42ebb4844da5b4df1ab855",
+      "summary": "Show public folder for current and partial sync",
+      "disposition": "completed",
+      "decision_ref": "User requested local close only; no push or publication.",
+      "closed_at": "2026-11-03T15:06:34.859125Z"
     }
   ],
   "tasks": {
-    "TASK_SIDEBAR_PROJECT_FOLDER_20261103": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\public-folder-messages\\connlab",
-      "branch": "codex/sidebar-project-folder-20261103",
-      "resources": [],
-      "integrated_head": "10cd47a770c2b8ae90c67510c110d65eb8420967",
-      "task": {
-        "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
-        "summary": "Open current project folder from sidebar",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Enable sidebar folder for currently open project with available folder and safe project transitions",
-        "scope_paths": [
-          "frontend/src/App.test.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/components/layout",
-          "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
-          "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
-          "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-          "frontend/src/features/report-workspace/ReportWorkspace.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "ed17990775e95c4670db1c1b71e4571d2783dc33",
-        "started_at": "2026-11-03T15:07:28.726477Z",
-        "updated_at": "2026-11-03T15:47:27.293105Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
-          "stage": "revision",
-          "status": "running",
-          "summary": "Replace report return icon with right aligned Back button.",
-          "requires_user": false
-        },
-        "report": {
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "method": "same-agent review"
-            },
-            "developer": {
-              "status": "passed",
-              "method": "same-agent implementation"
-            },
-            "qa": {
-              "status": "passed",
-              "method": "same-agent targeted validation"
-            }
-          },
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Report tests",
-              "result": "58 tests passed"
-            },
-            {
-              "status": "passed",
-              "name": "Frontend build",
-              "result": "TypeScript and Vite build passed"
-            }
-          ],
-          "schema": "connlab.sol-task-report",
-          "scope_ok": true,
-          "subject": "6c32846fcb3ba56ecc18a16c601717dc8415b888",
-          "changed_paths": [
-            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.tsx"
-          ],
-          "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
-          "version": 1,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "6c32846fcb3ba56ecc18a16c601717dc8415b888",
-            "primary_before": "89d82012d28efb8610f18658d55a97a35ddcca75",
-            "integrated_head": "10cd47a770c2b8ae90c67510c110d65eb8420967",
-            "recovered": false
-          },
-          "summary": "Replace report return icon with right aligned Back button"
-        }
-      }
-    },
     "TASK_IMPORT_RECYCLE_CONSISTENCY_20261105": {
       "slot": "micro",
       "state": "ready_for_close",
