@@ -544,9 +544,6 @@
 .project-registry-icon-action:focus-visible { outline: 3px solid rgba(31, 102, 209, 0.26); outline-offset: 2px; }
 @media (max-width: 760px) { .project-management-retained-row { grid-template-columns: 1fr; gap: 10px; } .project-registry-areas { gap: 5px; } }
 
-.registry-sample-cell details { font-size: 13px; margin-top: 6px; }
-.registry-sample-cell details p { overflow-wrap: anywhere; }
-
 .top-bar-projects .register-toolbar .registry-tools { flex: 0 1 458px; max-width: 100%; flex-wrap: nowrap; }
 .top-bar-projects .register-toolbar .project-search { flex: 0 1 320px; max-width: 320px; min-width: 140px; }
 .top-bar-projects .register-toolbar .registry-view-select { flex: 0 0 132px; min-width: 132px; }

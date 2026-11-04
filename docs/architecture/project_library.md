@@ -191,9 +191,10 @@ responses for the same internal ID use the latest revision; equal LTRs never com
 independent records.
 
 A received member combines with a registered row only through its explicit
-`project_id`. Its folder and mutable title remain searchable and **Project Files**
-opens its existing file-management details. Linked and unclaimed member IDs stay
-namespaced. Matching names, paths or LTRs never merge records or authorize writes.
+`project_id`. Its folder and mutable title remain searchable, but the registered
+project row does not expose a separate **Project Files** disclosure. File access
+uses the active project's normal folder action. Linked and unclaimed member IDs
+stay namespaced. Matching names, paths or LTRs never merge records or authorize writes.
 Read-only retained-registry checks prevent a trashed workspace from reappearing
 through its folder entry. If those checks fail, uncertain workspace entries wait
 for retry; independently available records remain visible with a warning.
