@@ -260,11 +260,11 @@
   "tasks": {
     "TASK_ONE_CLICK_PROJECT_INTAKE_20261105": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/one-click-project-intake-20261105",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "79364b4591531d2a966824e7e2de968676cee8f5",
       "task": {
         "task_id": "TASK_ONE_CLICK_PROJECT_INTAKE_20261105",
         "summary": "Receive or restore one project from a folder with one normal action",
@@ -281,9 +281,69 @@
         "risk_reasons": [],
         "activation_head": "69be28f21b8973a23310a831755ab875eb50175f",
         "started_at": "2026-11-04T22:23:41.581841Z",
-        "updated_at": "2026-11-04T22:23:41.581841Z",
+        "updated_at": "2026-11-04T22:45:37.086451Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_ONE_CLICK_PROJECT_INTAKE_20261105",
+          "subject": "67d65a57a19d5ee31650c1a1bd0104ea05365af3",
+          "summary": "Import Projects now receives one safe project automatically, restores trusted saved data, opens verified duplicates without another batch, keeps exceptional decisions explicit, and presents received Projects with normal actions and honest missing-data state.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/architecture/project_library.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "frontend-full",
+              "evidence": "Vitest: 123 files passed, 1198 tests passed, 1 skipped."
+            },
+            {
+              "status": "passed",
+              "name": "frontend-build",
+              "evidence": "TypeScript project build and Vite production build passed."
+            },
+            {
+              "status": "passed",
+              "name": "isolated-backend",
+              "evidence": "24 scoped integration cases passed against temporary databases and project directories."
+            },
+            {
+              "status": "passed",
+              "name": "isolated-browser-smoke",
+              "evidence": "Built UI showed one chooser; mocked scan, plan, batch and member requests returned 200; one click navigated to /projects/isolated-project without Confirm Import."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Implemented the one-project automatic path with TDD RED/GREEN coverage and retained existing protected decisions."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Standards pass: 0 findings. Spec pass: 0 findings. Verified production callsite, server-token use, cancellation, retry, duplicate and history behavior."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Complete frontend suite, production build, isolated backend integrations and isolated browser smoke passed on commit 67d65a57."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "67d65a57a19d5ee31650c1a1bd0104ea05365af3",
+            "primary_before": "7e7365467ecf4995ab89196c806200683b2622c7",
+            "integrated_head": "79364b4591531d2a966824e7e2de968676cee8f5",
+            "recovered": false
+          }
+        }
       }
     }
   }
