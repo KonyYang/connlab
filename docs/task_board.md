@@ -272,16 +272,18 @@
         "route": "sol_build_review_qa",
         "scope": "Make the default Import Projects path choose one complete project folder, automatically run the existing reviewed intake or portable restore when it is safe, and open the resulting normal Project. Show decisions only for missing identity, missing snapshots, source-boundary problems, duplicates or conflicts. Keep source files unchanged, preserve all fingerprint/conflict/restore protections, expose truthful missing information in the normal Project, and validate only with isolated data.",
         "scope_paths": [
-          "frontend/src/features/project-library",
-          "frontend/src/pages/ProjectListPage.tsx",
-          "frontend/src/pages/ProjectListPage.test.tsx",
+          "docs/architecture/project_library.md",
           "frontend/src/App.test.tsx",
-          "docs/architecture/project_library.md"
+          "frontend/src/features/project-library",
+          "frontend/src/pages/ProjectListPage.test.tsx",
+          "frontend/src/pages/ProjectListPage.tsx",
+          "frontend/src/pages/ProjectWorkbenchPage.test.tsx",
+          "frontend/src/pages/ProjectWorkbenchPage.tsx"
         ],
         "risk_reasons": [],
         "activation_head": "69be28f21b8973a23310a831755ab875eb50175f",
         "started_at": "2026-11-04T22:23:41.581841Z",
-        "updated_at": "2026-11-04T23:20:21.135166Z",
+        "updated_at": "2026-11-04T23:21:21.535762Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
