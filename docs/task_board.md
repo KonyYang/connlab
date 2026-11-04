@@ -257,7 +257,36 @@
       "closed_at": "2026-11-04T22:22:07.622933Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_ONE_CLICK_PROJECT_INTAKE_20261105": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
+      "branch": "codex/one-click-project-intake-20261105",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_ONE_CLICK_PROJECT_INTAKE_20261105",
+        "summary": "Receive or restore one project from a folder with one normal action",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Make the default Import Projects path choose one complete project folder, automatically run the existing reviewed intake or portable restore when it is safe, and open the resulting normal Project. Show decisions only for missing identity, missing snapshots, source-boundary problems, duplicates or conflicts. Keep source files unchanged, preserve all fingerprint/conflict/restore protections, expose truthful missing information in the normal Project, and validate only with isolated data.",
+        "scope_paths": [
+          "frontend/src/features/project-library",
+          "frontend/src/pages/ProjectListPage.tsx",
+          "frontend/src/pages/ProjectListPage.test.tsx",
+          "frontend/src/App.test.tsx",
+          "docs/architecture/project_library.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "69be28f21b8973a23310a831755ab875eb50175f",
+        "started_at": "2026-11-04T22:23:41.581841Z",
+        "updated_at": "2026-11-04T22:23:41.581841Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
