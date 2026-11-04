@@ -356,7 +356,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(screen.getByRole("button", { name: /Open Workbench.*TMP-AABBCCDD/ })).toBeTruthy();
   });
 
-  it("does not render lifecycle write actions from the registry", async () => {
+  it("keeps Recycle available for a stopped project without exposing lifecycle write actions", async () => {
     mockRows([
       registryRow({
         project_id: "P-STOP-DL",
@@ -377,7 +377,8 @@ describe("ProjectListPage lifecycle registry views", () => {
     render(<ProjectListPage onOpenProject={vi.fn()} />);
 
     expect(await screen.findByRole("button", { name: /Open Workbench/ })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Stop|Resume|Close|Delete/i })).toBeNull();
+    expect(screen.getByRole("button", { name: "Delete project DL-2026-06-013" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Stop|Resume|Close/i })).toBeNull();
   });
 
   it("exposes priority row markers for narrow-width status next step and action visibility", async () => {

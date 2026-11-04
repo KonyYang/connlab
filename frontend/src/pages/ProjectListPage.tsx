@@ -384,7 +384,7 @@ function BusinessProjectListPage({
                         >
                           <UiIcon name="workbench" />
                         </button>
-                        {Boolean(lifecycle && !lifecycle.readonly && (!lifecycle.registry_state || lifecycle.registry_state === "active")) && <button
+                        {Boolean(lifecycle && (!lifecycle.registry_state || lifecycle.registry_state === "active")) && <button
                           className="row-action project-registry-icon-action"
                           type="button"
                           aria-label={`Delete project ${row.display_project_id}`}
