@@ -45,6 +45,8 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(screen.queryByText("Imported · Review Needed")).toBeNull();
     expect(screen.getByText("Matrix needed")).toBeTruthy();
     expect(screen.queryByText("Files Only", { exact: true, selector: "span" })).toBeNull();
+    expect(screen.queryByText("Project Files", { exact: true })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Browse Files" })).toBeNull();
     expect(screen.getAllByRole("row")).toHaveLength(2);
     expect(await screen.findByRole("button", { name: `Delete project ${number}` })).toBeTruthy();
     await userEvent.setup().click(screen.getByRole("button", { name: new RegExp(`Open Workbench.*${number}`) }));

@@ -360,7 +360,6 @@ function BusinessProjectListPage({
                     </td>
                     <td className="registry-sample-cell" data-label="Sample Description">
                       {displayText(row.sample_description, "Not recorded")}
-                      {item.members.length > 0 && <details><summary>Project Files</summary>{item.members.map(member => <div key={member.member_id}><p>{member.folder_path}</p><button className="row-action" type="button" disabled={!onOpenMember} onClick={() => onOpenMember?.(member.member_id)}>Browse Files</button></div>)}</details>}
                     </td>
                     <td className="registry-test-item-column registry-test-item-cell" data-label="Test Item">
                       {displayText(row.test_item, "Not recorded")}

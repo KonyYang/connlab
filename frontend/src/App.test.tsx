@@ -52,23 +52,18 @@ it.each(["", "batch-1"])("preserves browsing context but returns from import to 
   vi.mocked(libraryApi.getPortableInfo).mockResolvedValue({ status: "current", fingerprint: "current", created_at: "2026-10-27", format_version: 1, record_counts: { projects: 1 }, file_count: 2, warnings: [], blockers: [] });
   const suffix = batchId ? `?batch=${batchId}` : "";
   const user = userEvent.setup();
-  window.history.replaceState({}, "", `/project-library${suffix}`);
+  window.history.replaceState({}, "", `/project-library/member-1${suffix}`);
   render(<App />);
-  await user.click(await screen.findByText("Project Files", {exact:true}));
-  await user.click(screen.getByRole("button", {name:"Browse Files"}));
-  expect(window.location.pathname).toBe("/project-library/member-1");
-  expect(window.location.search).toBe(suffix);
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Import Projects" }));
   expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe("/projects");
-  await user.click(await screen.findByText("Project Files", {exact:true}));
-  await user.click(screen.getByRole("button", {name:"Browse Files"}));
-  await user.click(await screen.findByRole("button", { name: "Matrix" }));
-  expect(window.location.pathname).toBe("/projects/project-1/matrix-editor");
-  expect(await screen.findByLabelText("Matrix editor")).toBeTruthy();
+  await user.click(await screen.findByRole("button", { name: /Open Workbench.*DL-2026-09-032/ }));
+  expect(window.location.pathname).toBe("/projects/project-1");
+  expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Browse Files" })).toBeNull();
 });
 
 vi.mock("./api/legacyProjects", async () => ({
