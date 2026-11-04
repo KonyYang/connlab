@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
-    "tier": "standard",
-    "subject": "6c32846fcb3ba56ecc18a16c601717dc8415b888",
-    "summary": "Open current project folder from sidebar",
+    "task_id": "TASK_IMPORT_RECYCLE_CONSISTENCY_20261105",
+    "tier": "micro",
+    "subject": "e1e8a2a8f47d19cd4e85aa8d51e570abf9fad8cb",
+    "summary": "Give imported projects the same Recycle action as local projects",
     "disposition": "completed",
     "decision_ref": "User explicitly requested local close of both ready_for_close tasks; preserve commits and do not push or publish.",
-    "closed_at": "2026-11-04T22:22:07.622933Z"
+    "closed_at": "2026-11-04T22:22:16.639026Z"
   },
   "retained_history": [
     {
@@ -246,74 +246,18 @@
       "disposition": "completed",
       "decision_ref": "User requested local close only; no push or publication.",
       "closed_at": "2026-11-03T15:06:34.859125Z"
+    },
+    {
+      "task_id": "TASK_SIDEBAR_PROJECT_FOLDER_20261103",
+      "tier": "standard",
+      "subject": "6c32846fcb3ba56ecc18a16c601717dc8415b888",
+      "summary": "Open current project folder from sidebar",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local close of both ready_for_close tasks; preserve commits and do not push or publish.",
+      "closed_at": "2026-11-04T22:22:07.622933Z"
     }
   ],
-  "tasks": {
-    "TASK_IMPORT_RECYCLE_CONSISTENCY_20261105": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
-      "branch": "codex/import-recycle-consistency-20261105",
-      "resources": [],
-      "integrated_head": "5fa18524cd1526710ae1e00419e66f5cd18fb4a1",
-      "task": {
-        "task_id": "TASK_IMPORT_RECYCLE_CONSISTENCY_20261105",
-        "summary": "Give imported projects the same Recycle action as local projects",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Show the Recycle action for any project that remains in the active registry, including stopped imported projects, while keeping the existing guarded preview and backend blockers authoritative. Validate through the Projects public UI seam without changing real data.",
-        "scope_paths": [
-          "frontend/src/pages/ProjectListPage.tsx",
-          "frontend/src/pages/ProjectListPage.test.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "1dd0d00c53cc2a0634f4963aacbd47835f940328",
-        "started_at": "2026-11-04T16:54:27.241529Z",
-        "updated_at": "2026-11-04T16:56:42.498906Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_IMPORT_RECYCLE_CONSISTENCY_20261105",
-          "subject": "e1e8a2a8f47d19cd4e85aa8d51e570abf9fad8cb",
-          "summary": "Projects in the active registry now retain the normal Recycle action even when their business lifecycle is stopped and read-only. Existing registry preview, blockers, retained-data confirmation and lifecycle write restrictions remain authoritative.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "frontend/src/pages/ProjectListPage.tsx"
-          ],
-          "validation": [
-            {
-              "name": "TDD Projects registry behavior",
-              "status": "passed",
-              "result": "Recorded RED because the stopped project lacked the Recycle action, then GREEN after separating registry location from lifecycle read-only state. The complete ProjectListPage test file passes: 20 tests.",
-              "evidence": "npm test -- --run src/pages/ProjectListPage.test.tsx"
-            },
-            {
-              "name": "Exact diff self-review",
-              "status": "passed",
-              "result": "Two-file diff is limited to the action visibility condition and its public UI regression. Backend registry preview and blockers remain unchanged.",
-              "evidence": "git diff --check"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Root implemented the localized behavior with a red-green public UI regression and exact-diff self-review."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "e1e8a2a8f47d19cd4e85aa8d51e570abf9fad8cb",
-            "primary_before": "989cf2f6cbf2f5933ed8995073b8504ed1c7af30",
-            "integrated_head": "5fa18524cd1526710ae1e00419e66f5cd18fb4a1",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
