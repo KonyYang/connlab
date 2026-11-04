@@ -22,19 +22,17 @@ beforeEach(() => {
   vi.mocked(api.getLibraryMember).mockResolvedValue({ member_id: "member", project_id: "verified-project", ltr_number: candidate.ltr_number, title: candidate.title, folder_path: item.target_path, revision: 1, batch_id: "batch", snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: true });
 });
 
-it("checks one folder and waits for one confirmation before opening its verified workspace", async () => {
+it("automatically receives one safe folder and opens its verified workspace", async () => {
   const user = userEvent.setup(), open = vi.fn();
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={open} />);
   await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
-  await screen.findByRole("button", { name: "Confirm Import", exact: true });
+  await waitFor(() => expect(open).toHaveBeenCalledWith("verified-project"));
   expect(api.scanLibrarySources).toHaveBeenCalledWith([path], expect.any(AbortSignal), true);
-  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  expect(api.startLibraryBatch).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ selected: [path], plan_id: "plan", fingerprint: "verified" }));
   expect(screen.queryByRole("checkbox")).toBeNull();
   expect(screen.queryByRole("button", { name: "Add Folder" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Find Projects Inside" })).toBeNull();
-  await user.click(screen.getByRole("button", { name: "Confirm Import", exact: true }));
-  await waitFor(() => expect(open).toHaveBeenCalledWith("verified-project"));
-  expect(api.startLibraryBatch).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ selected: [path] }));
+  expect(screen.queryByRole("button", { name: "Confirm Import", exact: true })).toBeNull();
 });
 
 it("asks for the actual project when an upper folder is selected and creates no import review", async () => {
@@ -47,19 +45,20 @@ it("asks for the actual project when an upper folder is selected and creates no 
   expect(screen.queryByRole("button", { name: "Confirm Import" })).toBeNull();
 });
 
-it("requests a missing LTR only when needed and checks it before enabling confirmation", async () => {
-  const user = userEvent.setup();
+it("requests a missing LTR only when needed and then completes the same automatic intake", async () => {
+  const user = userEvent.setup(), open = vi.fn();
   vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [{ ...candidate, ltr_number: null }], warnings: [], truncated: false, selection_issue: "needs_ltr" } as api.LibraryScan);
-  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={open} />);
   await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
   const number = await screen.findByRole("textbox", { name: "LTR number" });
   expect(api.planLibraryIntake).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: "Check Project" })).toHaveProperty("disabled", true);
   await user.type(number, "DL-2026-09-032");
   await user.click(screen.getByRole("button", { name: "Check Project" }));
-  await screen.findByRole("button", { name: "Confirm Import" });
+  await waitFor(() => expect(open).toHaveBeenCalledWith("verified-project"));
   expect(api.planLibraryIntake).toHaveBeenLastCalledWith([path], expect.any(AbortSignal), [{ source_path: path, ltr_number: "DL-2026-09-032" }]);
-  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  expect(api.startLibraryBatch).toHaveBeenCalledOnce();
+  expect(screen.queryByRole("button", { name: "Confirm Import" })).toBeNull();
 });
 
 it("replaces the reviewed source rather than accumulating a batch", async () => {
@@ -83,5 +82,47 @@ it("does not expose a batch when a stale or incompatible scanner expands the sel
   await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
   expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Choose one complete project folder at a time.");
   expect(api.planLibraryIntake).not.toHaveBeenCalled();
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+});
+
+it("opens an already received project without creating another batch", async () => {
+  const user = userEvent.setup(), open = vi.fn();
+  vi.mocked(api.planLibraryIntake).mockResolvedValue({
+    plan_id: "duplicate-plan", fingerprint: "duplicate-fingerprint", warnings: [],
+    items: [{ ...item, status: "already_added", existing_member_id: "existing-member" }],
+  });
+  vi.mocked(api.getLibraryMember).mockResolvedValue({
+    member_id: "existing-member", project_id: "existing-project", ltr_number: candidate.ltr_number,
+    title: candidate.title, folder_path: item.target_path, revision: 2, batch_id: "older-batch",
+    snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: true,
+  });
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={open} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
+  await waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("existing-project"));
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: "Confirm Import" })).toBeNull();
+});
+
+it("restores trusted saved data and opens the project while retaining non-blocking warnings", async () => {
+  const user = userEvent.setup(), open = vi.fn();
+  const saved: api.PortableRestorePlan = {
+    plan_id: "saved-plan", fingerprint: "saved-fingerprint", project_id: "saved-project",
+    ltr_number: candidate.ltr_number, title: candidate.title, source_path: path, target_path: item.target_path,
+    resolution_options: [], resolution: null, source_signature: "source-signature", target_revision: null,
+    backup_path: null, status: "ready", created_at: "2026-11-01T00:00:00Z", record_counts: { matrices: 1 },
+    file_count: 8, warnings: ["One original source file is unavailable."], blockers: [],
+  };
+  vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [{ ...candidate, has_portable: true }], warnings: [], truncated: false });
+  vi.mocked(api.inspectPortableProject).mockResolvedValue(saved);
+  vi.mocked(api.restorePortableProject).mockResolvedValue({
+    status: "restored", warnings: saved.warnings,
+    member: { member_id: "saved-member", project_id: "saved-project", ltr_number: candidate.ltr_number,
+      title: candidate.title, folder_path: item.target_path, revision: 1, batch_id: "saved-batch",
+      snapshot_status: "current", snapshot_created_at: saved.created_at, warnings: saved.warnings, can_continue: true },
+  });
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={open} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
+  await waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("saved-project"));
+  expect(api.restorePortableProject).toHaveBeenCalledExactlyOnceWith({ plan_id: "saved-plan", fingerprint: "saved-fingerprint" });
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
 });

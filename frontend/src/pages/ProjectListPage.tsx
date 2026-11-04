@@ -357,7 +357,6 @@ function BusinessProjectListPage({
                       {row.display_project_id_kind === "temporary" ? (
                         <span className="registry-temp-badge">Temporary Planning</span>
                       ) : null}
-                      {row.display_project_id_kind === "imported" && <span className="registry-temp-badge">Imported · Review Needed</span>}
                     </td>
                     <td className="registry-sample-cell" data-label="Sample Description">
                       {displayText(row.sample_description, "Not recorded")}
