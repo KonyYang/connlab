@@ -260,11 +260,11 @@
   "tasks": {
     "TASK_ONE_CLICK_PROJECT_INTAKE_20261105": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/one-click-project-intake-20261105",
       "resources": [],
-      "integrated_head": "79364b4591531d2a966824e7e2de968676cee8f5",
+      "integrated_head": "218b605970146807e8b64c3ff4454ea77d090715",
       "task": {
         "task_id": "TASK_ONE_CLICK_PROJECT_INTAKE_20261105",
         "summary": "Receive or restore one project from a folder with one normal action",
@@ -283,7 +283,7 @@
         "risk_reasons": [],
         "activation_head": "69be28f21b8973a23310a831755ab875eb50175f",
         "started_at": "2026-11-04T22:23:41.581841Z",
-        "updated_at": "2026-11-04T23:21:21.535762Z",
+        "updated_at": "2026-11-04T23:35:55.264869Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -293,7 +293,63 @@
           "summary": "User feedback 2026-11-05: remove Project files/setup card and make verified same-project conflicts choose Replace Existing Project or Cancel Import.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_ONE_CLICK_PROJECT_INTAKE_20261105",
+          "subject": "d88b50789effade8b36fc4a64b2e6cb6c0fdaacd",
+          "summary": "Imported projects now use the normal Workbench without a special files/setup card. The common import flow offers Replace Existing Project only for a trusted same-identity snapshot conflict, otherwise Cancel Import; replacement keeps the existing recovery-copy, stale-review and rollback protections.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/architecture/project_library.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/features/project-library/ProjectImportReviewList.tsx",
+            "frontend/src/features/project-library/ProjectImportSnapshots.test.tsx",
+            "frontend/src/features/project-library/ProjectImportSnapshots.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+            "frontend/src/pages/ProjectWorkbenchPage.test.tsx",
+            "frontend/src/pages/ProjectWorkbenchPage.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "frontend-full",
+              "evidence": "Vitest complete pass: 123 files passed, 1200 tests passed, 1 file/test skipped by the existing configuration. After the final cancellation-copy adjustment, all 65 affected tests passed on the exact subject."
+            },
+            {
+              "status": "passed",
+              "name": "frontend-build",
+              "evidence": "TypeScript project build and Vite production build passed on the exact subject."
+            },
+            {
+              "status": "passed",
+              "name": "isolated-backend-protection",
+              "evidence": "7 portability integration cases passed against temporary databases/directories, covering replacement recovery copies, same-LTR different identity isolation, rollback and resume."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Used TDD RED/GREEN slices for the normal Workbench, replace/cancel conflict controls and cancellation state."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Focused exact-diff review completed sequentially: Standards axis 0 findings; Spec axis 0 findings. Confirmed stable Project identity, not library_member_id or LTR alone, gates replacement."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Complete frontend suite, exact-state affected suite, production build and isolated backend protection tests passed; no real business database or original project directory was changed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "d88b50789effade8b36fc4a64b2e6cb6c0fdaacd",
+            "primary_before": "466c816d63ab93b61579db0f27618cb9d5f4b4d8",
+            "integrated_head": "218b605970146807e8b64c3ff4454ea77d090715",
+            "recovered": false
+          }
+        }
       }
     }
   }
