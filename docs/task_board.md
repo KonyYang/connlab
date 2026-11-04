@@ -260,11 +260,11 @@
   "tasks": {
     "TASK_ONE_CLICK_PROJECT_INTAKE_20261105": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/one-click-project-intake-20261105",
       "resources": [],
-      "integrated_head": "218b605970146807e8b64c3ff4454ea77d090715",
+      "integrated_head": "525f91f3b70bd0d6a56473c21a6c88d0129cfc34",
       "task": {
         "task_id": "TASK_ONE_CLICK_PROJECT_INTAKE_20261105",
         "summary": "Receive or restore one project from a folder with one normal action",
@@ -284,7 +284,7 @@
         "risk_reasons": [],
         "activation_head": "69be28f21b8973a23310a831755ab875eb50175f",
         "started_at": "2026-11-04T22:23:41.581841Z",
-        "updated_at": "2026-11-04T23:44:39.684342Z",
+        "updated_at": "2026-11-04T23:48:10.868316Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -294,7 +294,60 @@
           "summary": "User explicitly requested: 请删除它 (the Project Files disclosure selected on the Projects list).",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_ONE_CLICK_PROJECT_INTAKE_20261105",
+          "subject": "30c36e4190ce947ee1823a11945e713eb43c9cf7",
+          "summary": "Registered Projects rows no longer show the redundant Project Files disclosure, absolute path, or Browse Files button. Imported projects use the same normal Workbench and active-project folder action as locally created projects; linked and unclaimed folder behavior and all import protections remain unchanged.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/architecture/project_library.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx",
+            "frontend/src/project-dashboard.css"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "frontend-full",
+              "evidence": "The earlier complete task suite passed (123 files, 1200 tests, 1 existing skip). On the exact revised subject, the affected ProjectListPage and App suites passed: 2 files and 34 tests."
+            },
+            {
+              "status": "passed",
+              "name": "frontend-build",
+              "evidence": "TypeScript project build and Vite production build passed on the exact subject."
+            },
+            {
+              "status": "passed",
+              "name": "isolated-backend-protection",
+              "evidence": "7 portability integration cases passed against temporary databases/directories, covering replacement recovery copies, same-LTR different identity isolation, rollback and resume."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Used a focused TDD RED/GREEN slice to remove the registered-row Project Files disclosure while retaining normal Workbench access."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Focused exact-diff review completed sequentially: Standards axis 0 findings; Spec axis 0 findings. Confirmed only the redundant registered-row disclosure and its orphaned styles were removed."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Exact-state affected frontend tests and production build passed. Earlier full-suite and isolated backend protection evidence remains valid because this revision changes only registered-row presentation; no real business database or original project directory was changed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "30c36e4190ce947ee1823a11945e713eb43c9cf7",
+            "primary_before": "6167f03fe09b1e59e927a5dcc9bfd8c497994227",
+            "integrated_head": "525f91f3b70bd0d6a56473c21a6c88d0129cfc34",
+            "recovered": false
+          }
+        }
       }
     }
   }
