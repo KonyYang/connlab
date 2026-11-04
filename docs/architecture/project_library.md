@@ -32,11 +32,14 @@ Settings and is not repeated or editable on the import page.
 
 The page stops only for a decision that cannot be inferred safely: a missing LTR,
 an incomplete folder boundary, a carried ConnLab identity without a usable
-snapshot, or an identity/content conflict. Those cases reuse the existing direct
-files-only, keep-copy, replace/history and skip decisions. Manual path entry is a
-fallback only when the native folder picker fails. Batch controls, linking tools,
-destination controls and implementation details are not part of the default
-single-project path. The backend still authorizes every choice.
+snapshot, or an identity/content conflict. A trusted snapshot with the same stable
+Project identity and different saved data offers only **Replace Existing Project**
+or **Cancel Import**. Replacement first creates the backend-owned complete recovery
+copy. A matching LTR with a different Project identity cannot replace the current
+project from this flow. Manual path entry is a fallback only when the native folder
+picker fails. Batch controls, linking tools, destination controls and implementation
+details are not part of the default single-project path. The backend still
+authorizes every choice.
 
 Each ordinary review row carries a stable fingerprint of its reviewed source and
 destination context. Files-only replanning retains selection/keep-copy decisions
@@ -123,13 +126,12 @@ Existing mismatched workspace bindings require review. Ordinary successful impor
 navigation reads the actual member identity before opening the workbench; retained,
 unavailable or unbound records keep their safe details entry.
 
-Project details expose the explicit `library_member_id` association. The common
-workbench uses it for Browse Files even when a legacy layout has no official-folder
-binding or LTR. Missing Basic Information and confirmed Matrix are stated without
-claiming restored data. Browsing returns to the same project. Recycle display and
-restore conflict checks use the same historical identity rule as Projects; a real
-registered LTR continues to take precedence. These reads do not register an LTR or
-mutate source materials.
+Project details expose the explicit `library_member_id` association for catalog and
+file-management views. The common Workbench does not add an imported-project setup
+card or a special Browse Files action; imported and locally created projects use the
+same normal Workbench actions. Recycle display and restore conflict checks use the
+same historical identity rule as Projects; a real registered LTR continues to take
+precedence. These reads do not register an LTR or mutate source materials.
 
 Imported projects without real Matrix draft steps show an empty setup state rather
 than sample test steps. Actual draft steps remain visible for review, and confirmed
@@ -344,8 +346,11 @@ resolution. A same-identity replacement must retain a complete target recovery
 point before switching the working copy. That recovery point includes the target
 data graph and external assets as well as its ordinary files. A different identity
 using the same LTR may be retained as history without acquiring current LTR
-ownership. History remains searchable and browsable, including location recovery;
-it does not become an editable working project merely by being received.
+ownership through the separate retained-record workflow, but the common import flow
+does not offer that as an alternative to replacement. It permits replacement only
+for the verified same Project identity; otherwise the operator cancels the import.
+History remains searchable and browsable, including location recovery; it does not
+become an editable working project merely by being received.
 
 The plan binds the source signature and target revision. Changing a resolution or
 changing either side requires review again. Neither modification time nor a
@@ -377,9 +382,12 @@ The intended operator sequence is:
    Check that the saved data is current, then copy the complete project root.
 5. On the other computer, choose the complete project root through the same import
    entry. Saved ConnLab data automatically takes the existing restoration path.
-   Resolve an offered conflict explicitly and review missing dependencies. A missing
-   snapshot is never silently treated as a successful data restoration; newer formats
-   remain blocked. Files-only intake still requires an explicit choice where offered.
+   If the stable Project identity already exists with different saved data, choose
+   **Replace Existing Project** or **Cancel Import**. Replacement creates a complete
+   recovery copy before switching; the LTR alone never enables it. Review missing
+   dependencies. A missing snapshot is never silently treated as a successful data
+   restoration; newer formats remain blocked. Files-only intake still requires an
+   explicit choice where offered.
 
 **More Options** retains **Link Folders Without Copying** for in-place registration.
 Backend batch discovery/intake and recovered batch results remain compatible; the

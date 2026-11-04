@@ -36,22 +36,11 @@ it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project
   expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
 });
 
-it("returns from imported files to the same workbench", async () => {
-  const record: libraryApi.LibraryMember = { member_id: "member-1", project_id: "project-1", ltr_number: null,
-    title: "Unnumbered archive", folder_path: "D:/test-library/projects/archive", revision: 1, batch_id: null,
-    snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: true };
-  vi.mocked(libraryApi.getLibraryMember).mockResolvedValue(record);
-  vi.mocked(libraryApi.getLibraryFiles).mockResolvedValue({ items: [], warnings: [] });
-  vi.mocked(libraryApi.getPortableInfo).mockResolvedValue({ status: "missing", fingerprint: "", created_at: null, format_version: 1, record_counts: {}, file_count: 0, warnings: [], blockers: [] });
+it("shows an imported project in the normal workbench without a special file action", async () => {
   window.history.replaceState({}, "", "/projects/project-1");
-  const user = userEvent.setup();
   render(<App />);
-  await user.click(await screen.findByRole("button", { name: "Browse Files" }));
-  expect(window.location.pathname).toBe("/project-library/member-1");
-  expect(new URLSearchParams(window.location.search).get("project")).toBe("project-1");
-  await user.click(await screen.findByRole("button", { name: "Back to Project", exact: true }));
-  expect(window.location.pathname + window.location.search).toBe("/projects/project-1");
   expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Browse Files" })).toBeNull();
 });
 
 it.each(["", "batch-1"])("preserves browsing context but returns from import to all Projects for batch=%s", async (batchId) => {
@@ -136,11 +125,10 @@ vi.mock("./components/support/FrontendDiagnosticsReporter", () => ({
 }));
 
 vi.mock("./pages/ProjectWorkbenchPage", () => ({
-  ProjectWorkbenchPage: ({ onOpenBasicInformation, onBrowseProjectFiles, onBack }: { onOpenBasicInformation: () => void; onBrowseProjectFiles?: (id: string) => void; onBack: () => void }) => (
+  ProjectWorkbenchPage: ({ onOpenBasicInformation, onBack }: { onOpenBasicInformation: () => void; onBack: () => void }) => (
     <section aria-label="Project Workbench">
       <button type="button" onClick={onOpenBasicInformation}>Basic Information</button>
       <button type="button" onClick={onBack}>Close project</button>
-      {onBrowseProjectFiles && <button type="button" onClick={() => onBrowseProjectFiles("member-1")}>Browse Files</button>}
     </section>
   ),
 }));

@@ -23,8 +23,7 @@ export function ProjectWorkbenchPage({
   onOpenFeeEvaluation,
   onOpenBasicInformation,
   onOpenReportWorkspace,
-  onOpenSettings,
-  onBrowseProjectFiles
+  onOpenSettings
 }: ProjectWorkbenchPageProps): ReactElement {
   const model = useProjectWorkbenchModel(projectId);
   const runtimeModel = selectProjectRuntimeConsoleModel(model);
@@ -37,14 +36,6 @@ export function ProjectWorkbenchPage({
     <section className="workbench-page">
       {model.error && <ErrorMessage message={model.error} />}
       {model.project && <>
-        {model.project.library_member_id && onBrowseProjectFiles && <aside className="runtime-console-workflow-alert" aria-label="Project files and setup">
-          <strong>Project files</strong>
-          {model.basicInformationLoading || model.activeConfirmedMatrixLoading ? <span>Checking project setup…</span> : <>
-            {model.basicInformation?.status !== "confirmed" && <span>Review Basic Information before testing.</span>}
-            {!model.activeConfirmedMatrixSnapshot && <span>No confirmed Matrix. Review or create the Matrix before testing.</span>}
-          </>}
-          <div><button type="button" className="ui-secondary-action" onClick={() => onBrowseProjectFiles(model.project!.library_member_id!)}>Browse Files</button></div>
-        </aside>}
         <ProjectWorkbenchLayout
           runtimeModel={runtimeModel}
           onBack={onBack}

@@ -47,7 +47,7 @@ export function ProjectImportReviewList({ plan, snapshots, selected, separate, d
       {(item.status === "ready" && !("resolution" in item && item.resolution) || already) && <p className="library-import-purpose">{importPurpose(item)}</p>}
     </>;
     const decision = <>
-      {snapshot ? isSkipped ? <p>Skipped. <button type="button" disabled={disabled} onClick={() => setSkipped(values => values.filter(key => key !== decisionKey))}>Change Decision</button></p>
+      {snapshot ? isSkipped ? <p>Import cancelled. <button type="button" disabled={disabled} onClick={() => setSkipped(values => values.filter(key => key !== decisionKey))}>Review Again</button></p>
         : <ProjectImportSnapshotDetails plan={snapshot} disabled={disabled} onResolve={onResolveSnapshot} onSkip={() => skip(item)} />
         : <>
           <ProjectImportDecision item={item} disabled={disabled} keep={separate.includes(item.source_path)} skipped={isSkipped}

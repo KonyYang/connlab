@@ -281,23 +281,36 @@ it("can retry a failed initial setup load without reloading or writing project d
   expect(api.scanLibrarySources).not.toHaveBeenCalled();
 });
 
-it("requires a fresh backend conflict review before selecting a saved project for retention", async () => {
+it("replaces a verified earlier version only after the user chooses replacement", async () => {
+  const user = userEvent.setup(), open = vi.fn();
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/snapshot");
+  vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [{ source_path: "D:/snapshot", title: savedProject.title, ltr_number: savedProject.ltr_number, kind: "project", warnings: [], child_folders: [], has_portable: true }], warnings: [], truncated: false });
+  vi.mocked(api.inspectPortableProject).mockResolvedValue({ ...savedProject, status: "conflict", resolution_options: ["replace_working_copy", "keep_as_history"] });
+  vi.mocked(api.planPortableRestore).mockResolvedValue({ ...savedProject, status: "ready", resolution: "replace_working_copy", fingerprint: "replacement-review", backup_path: "D:/managed/data/project_library/recovery/saved-project" });
+  vi.mocked(api.restorePortableProject).mockResolvedValue(savedResult);
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={open} />);
+  await chooseFolder(user);
+  expect(api.restorePortableProject).not.toHaveBeenCalled();
+  await user.click(await screen.findByRole("button", { name: "Replace Existing Project" }));
+  expect(api.planPortableRestore).toHaveBeenCalledWith("D:/snapshot", "replace_working_copy", expect.any(AbortSignal));
+  await waitFor(() => expect(api.restorePortableProject).toHaveBeenCalledWith({ plan_id: "portable-plan", fingerprint: "replacement-review", resolution: "replace_working_copy" }));
+  await waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("saved-project"));
+});
+
+it("cancels a saved project that is not verified as the same project", async () => {
   const user = userEvent.setup();
   vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/snapshot");
   vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [{ source_path: "D:/snapshot", title: savedProject.title, ltr_number: savedProject.ltr_number, kind: "project", warnings: [], child_folders: [], has_portable: true }], warnings: [], truncated: false });
   vi.mocked(api.inspectPortableProject).mockResolvedValue({ ...savedProject, status: "conflict", resolution_options: ["keep_as_history"] });
-  vi.mocked(api.planPortableRestore).mockResolvedValue({ ...savedProject, resolution: "keep_as_history", fingerprint: "retention-review" });
-  vi.mocked(api.restorePortableProject).mockResolvedValue({ ...savedResult, status: "history_kept", member: { ...savedResult.member, is_history: true, can_continue: false } });
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
   await chooseFolder(user);
-  await user.click(await screen.findByRole("button", { name: "Keep Another Copy" }));
-  expect(api.planPortableRestore).toHaveBeenCalledWith("D:/snapshot", "keep_as_history", expect.any(AbortSignal));
-  await screen.findByRole("button", { name: "Confirm Import" });
-  expect(screen.getByText("Keep this copy for browsing. The current working project stays unchanged.")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Replace Existing Project" })).toBeNull();
+  await user.click(await screen.findByRole("button", { name: "Cancel Import" }));
+  expect(screen.getByText(/Import cancelled/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Review Again" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Confirm Import" })).toBeNull();
+  expect(api.planPortableRestore).not.toHaveBeenCalled();
   expect(api.restorePortableProject).not.toHaveBeenCalled();
-  await user.click(within(screen.getByRole("region", { name: "Confirm import selection" })).getByRole("button", { name: "Confirm Import" }));
-  await screen.findByRole("button", { name: "Open Snapshot project" });
-  expect(api.restorePortableProject).toHaveBeenCalledWith({ plan_id: "portable-plan", fingerprint: "retention-review", resolution: "keep_as_history" });
 });
 
 it("recognizes saved test data from the ordinary chooser and restores only after explicit confirmation", async () => {
