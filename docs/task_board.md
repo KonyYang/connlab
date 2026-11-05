@@ -287,11 +287,11 @@
   "tasks": {
     "TASK_TEMPORARY_FORMAL_20261105": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\temporary-formal-worktree",
       "branch": "codex/temporary-formal-20261105",
       "resources": [],
-      "integrated_head": "883ce87e4a7cf2eedfba061621e983b1e1f0593d",
+      "integrated_head": "a92ac8a83b571c67b41bf516ef52a729bc1c6ee8",
       "task": {
         "task_id": "TASK_TEMPORARY_FORMAL_20261105",
         "summary": "Register a formal LTR on an existing temporary project without losing its data",
@@ -328,7 +328,7 @@
         ],
         "activation_head": "de02a50601622c3054f64cf829a2f6a0c80337e4",
         "started_at": "2026-11-05T14:24:45.961870Z",
-        "updated_at": "2026-11-05T23:10:53.214513Z",
+        "updated_at": "2026-11-05T23:20:40.034297Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -338,7 +338,91 @@
           "summary": "User reported missing original application confirmation values and explicitly requested completing intake snapshot preservation and safe legacy prefill on 2026-11-06. Continue same task locally; no push or publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "subject": "ee9f7f990efb37f7e2f3e5c4596519eeb39eaeec",
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/api/routes_project.py",
+            "backend/api/routes_temporary_project_registration.py",
+            "backend/application/intake_confirmation_service.py",
+            "backend/application/intake_data_projection.py",
+            "backend/application/project_service.py",
+            "backend/application/temporary_project_intake_source.py",
+            "backend/application/temporary_project_registration_service.py",
+            "backend/domain/models.py",
+            "backend/infrastructure/storage/database.py",
+            "backend/infrastructure/storage/database_general_migrations.py",
+            "backend/infrastructure/storage/models.py",
+            "backend/infrastructure/storage/repositories/project_temporary_context.py",
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/api/client.ts",
+            "frontend/src/api/temporaryProjectRegistration.ts",
+            "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.test.tsx",
+            "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.tsx",
+            "frontend/src/pages/IntakeInboxPage.test.tsx",
+            "frontend/src/pages/IntakeInboxPage.tsx",
+            "tests/integration/test_temporary_project_registration_api.py",
+            "tests/unit/test_temporary_project_intake_source.py",
+            "tests/unit/test_temporary_project_registration_service.py"
+          ],
+          "roles": {
+            "reviewer": {
+              "method": "Independent conversion_reviewer exact 23-file revision review; Standards 0, Spec 0; 3 isolated risk-focused checks passed",
+              "status": "passed"
+            },
+            "developer": {
+              "method": "Independent conversion_developer revision context: coherent TDD slices, 45 targeted Python and 23 frontend checks plus 13 post-cleanup affected checks, self-review",
+              "status": "passed"
+            },
+            "integrator": {
+              "method": "Root verified clean exact subject, committed revision manifest, board-only primary divergence, final screenshots and proportional evidence",
+              "status": "passed"
+            },
+            "qa": {
+              "method": "Independent conversion_qa exact-subject matrices, final build and isolated browser; processes and own artifacts cleaned",
+              "status": "passed"
+            },
+            "planner": {
+              "method": "Independent conversion_planner revision context: frozen facts, legacy resolver, portable provenance and additive migration plan",
+              "status": "passed"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "ee9f7f990efb37f7e2f3e5c4596519eeb39eaeec",
+            "primary_before": "c24a4ea3cdb6dd89a65461fdb160a2d75832431e",
+            "integrated_head": "a92ac8a83b571c67b41bf516ef52a729bc1c6ee8",
+            "recovered": false
+          },
+          "schema": "connlab.sol-task-report",
+          "summary": "Preserve complete confirmed intake snapshots when creating temporary projects and safely recover linked legacy sources for same-project formal registration; local integration only",
+          "task_id": "TASK_TEMPORARY_FORMAL_20261105",
+          "scope_ok": true,
+          "validation": [
+            {
+              "result": "241 passed on exact final subject; creation-to-prefill API, full form and samples, old schema idempotence, source ownership/conflicts, frozen recovery, portability and LTR/lifecycle regressions",
+              "name": "Affected backend QA",
+              "status": "passed"
+            },
+            {
+              "result": "166 passed in 7 files; captures complete current intake values within 700ms without autosave, explicit source choice and manual values retained",
+              "name": "Affected frontend QA",
+              "status": "passed"
+            },
+            {
+              "result": "TypeScript and Vite passed; 221 modules",
+              "name": "Final production build",
+              "status": "passed"
+            },
+            {
+              "result": "Original five fields, unique/conflicting source selection and details, manual edits, 594px bounds and cancel verified; isolated SQLite, transactional workbook and browser API fixtures; no real Office COM writes",
+              "name": "Isolated Chrome",
+              "status": "passed"
+            }
+          ],
+          "version": 1
+        }
       }
     }
   }
