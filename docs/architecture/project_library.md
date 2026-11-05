@@ -32,7 +32,9 @@ second review or confirmation page. An unchanged duplicate opens its existing
 Project without creating another batch. The configured save location is owned by
 Settings and is not repeated or editable on the import page.
 
-The page stops only for a decision that cannot be inferred safely: a missing LTR,
+No ConnLab import dialog is rendered while the native picker, source check or
+safe automatic intake is running. An in-app dialog appears only for a decision
+that cannot be inferred safely: a missing LTR,
 an incomplete folder boundary, a carried ConnLab identity without a usable
 snapshot, or an identity/content conflict. A trusted snapshot with the same stable
 Project identity and different saved data offers only **Replace Existing Project**

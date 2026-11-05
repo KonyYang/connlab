@@ -1,3 +1,6 @@
+import os
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -31,6 +34,41 @@ def test_invalid_batches_and_picker_cancel_are_non_writing(tmp_path):
     api.app.dependency_overrides[get_directory_picker] = lambda: lambda: None
     assert api.post("/api/tools/legacy-projects/pick-directory").json() == {"path": None}
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows native picker boundary")
+@pytest.mark.parametrize("cancelled", [False, True])
+def test_project_picker_uses_compact_windows_folder_browser(monkeypatch, tmp_path, cancelled):
+    import pythoncom
+    from win32com.shell import shell, shellcon
+    from backend.infrastructure.files.windows_path_picker import WindowsPathPicker, filedialog
+
+    selected = tmp_path / "DL-2026-09-032 项目"
+    released = []
+    calls = []
+    monkeypatch.setattr(pythoncom, "CoInitialize", lambda: None)
+    monkeypatch.setattr(pythoncom, "CoUninitialize", lambda: released.append(True))
+
+    def choose(*args):
+        calls.append(args)
+        return None if cancelled else (b"selected", "name", 0)
+
+    monkeypatch.setattr(shell, "SHBrowseForFolder", choose)
+    monkeypatch.setattr(shell, "SHGetPathFromIDListW", lambda value: str(selected))
+    monkeypatch.setattr(
+        filedialog,
+        "askdirectory",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("Tk folder dialog not expected")),
+    )
+
+    assert WindowsPathPicker().pick_legacy_project_directory() == (
+        None if cancelled else selected
+    )
+    assert calls[0][2] == "Choose one project folder"
+    assert calls[0][3] & shellcon.BIF_RETURNONLYFSDIRS
+    assert calls[0][3] & shellcon.BIF_EDITBOX
+    assert not calls[0][3] & 0x0040
+    assert released == [True]
 
 
 def test_registered_application_preview_never_requests_database_or_settings(tmp_path):

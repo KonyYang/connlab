@@ -302,6 +302,20 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     detailsBySource={detailsBySource}
     busy={busy} onOpenMember={openImportedMember} onViewLibrary={() => onViewLibrary()} onRefresh={() => void refreshBatch()}
     onResume={() => void receive(true)} onReceiveMore={() => changeSources("")} heading={displayBatch.batch_id === recoveredCompletedId ? "Import Result" : undefined} />;
+  const needsDialog = Boolean(
+    error
+    || runtime && !runtime.configured
+    || manualOpen
+    || scan?.selection_issue
+    || (plan || snapshots.length > 0) && !automaticIntakeKey && !automaticExistingMemberId
+    || displayBatch && (
+      displayBatch.status === "interrupted"
+      || displayBatch.counts.failed > 0
+      || displayBatch.counts.review > 0
+      || displayBatch.status === "running" && !startedIntake.current
+    )
+    || snapshotResults.some(row => row.status === "failed")
+  );
   const content = <section className="project-library" aria-label="Import projects">
     {presentation === "page" ? (topBar ? createPortal(back, topBar) : <header className="library-heading"><h1>Import Projects</h1>{back}</header>) : <header className="library-heading"><h2>Import Project</h2>{dismiss}</header>}
     {!runtime && !error && <p role="status">Loading import setup…</p>}
@@ -352,6 +366,8 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     {snapshotResults.some(row => row.status === "failed") && <button type="button" disabled={locked} onClick={() => { const failed = snapshotResults.filter(row => row.status === "failed").map(row => row.source_path); changeSources(failed.join("\n")); void review(failed); }}>Check Failed Projects Again</button>}
   </section>;
   return presentation === "dialog"
-    ? <div className="project-import-overlay"><div className="project-import-dialog" role="dialog" aria-modal="true" aria-label="Import project">{content}</div></div>
+    ? needsDialog
+      ? <div className="project-import-overlay"><div className="project-import-dialog" role="dialog" aria-modal="true" aria-label="Import project">{content}</div></div>
+      : null
     : content;
 }

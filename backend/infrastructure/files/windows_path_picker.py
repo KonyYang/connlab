@@ -55,11 +55,25 @@ class WindowsPathPicker:
             pythoncom.CoUninitialize()
 
     def pick_legacy_project_directory(self) -> Path | None:
-        """Choose an existing project or parent directory without changing it."""
-        selection = self._run_dialog(lambda: filedialog.askdirectory(
-            title="Choose a legacy project folder or a parent folder containing projects", mustexist=True,
-        ))
-        return Path(selection) if selection else None
+        """Choose one existing project with the compact Windows folder browser."""
+        import pythoncom
+        from win32com.shell import shell, shellcon
+
+        pythoncom.CoInitialize()
+        try:
+            selection = shell.SHBrowseForFolder(
+                0,
+                None,
+                "Choose one project folder",
+                shellcon.BIF_RETURNONLYFSDIRS | shellcon.BIF_EDITBOX,
+                None,
+                None,
+            )
+            if not selection or not selection[0]:
+                return None
+            return Path(shell.SHGetPathFromIDListW(selection[0]))
+        finally:
+            pythoncom.CoUninitialize()
 
     def pick_file(self, resource_type: ExternalResourceType) -> Path | None:
         """Return one selected file path, or None when cancelled."""

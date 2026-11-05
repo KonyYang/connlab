@@ -27,6 +27,10 @@ beforeEach(() => {
 });
 
 it("opens the native project-folder picker directly from Projects and stays there when cancelled", async () => {
+  let cancelPicker: (value: string | null) => void = () => undefined;
+  vi.mocked(libraryApi.pickLibraryFolder).mockReturnValue(
+    new Promise(resolve => { cancelPicker = resolve; })
+  );
   window.history.replaceState({}, "", "/projects");
   const user = userEvent.setup();
   render(<App />);
@@ -38,6 +42,8 @@ it("opens the native project-folder picker directly from Projects and stays ther
   expect(screen.getByTestId("active-area").textContent).toBe("projects");
   expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
   expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
+  cancelPicker(null);
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull());
 });
 
 it("receives one safe selected project in the background and opens its workspace", async () => {
@@ -69,6 +75,28 @@ it("receives one safe selected project in the background and opens its workspace
   await waitFor(() => expect(window.location.pathname).toBe("/projects/verified-project"));
   expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
   expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
+});
+
+it("keeps background checking hidden and shows a dialog only when a decision is required", async () => {
+  const source = "D:/old/Connector";
+  let finishScan: (value: libraryApi.LibraryScan) => void = () => undefined;
+  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
+  vi.mocked(libraryApi.scanLibrarySources).mockReturnValue(
+    new Promise(resolve => { finishScan = resolve; })
+  );
+  window.history.replaceState({}, "", "/projects");
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  await waitFor(() => expect(libraryApi.scanLibrarySources).toHaveBeenCalledOnce());
+  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
+
+  finishScan({
+    items: [{ source_path: source, title: "Connector", ltr_number: null, kind: "project", warnings: [], child_folders: [] }],
+    warnings: [], truncated: false, selection_issue: "needs_ltr",
+  });
+  expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
 });
 
 it("stays on Projects and opens a focused decision dialog only when information is missing", async () => {
