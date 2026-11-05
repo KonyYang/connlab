@@ -242,7 +242,7 @@ export type ProjectWorkbenchModel = {
   onValidateMatrixDraft: () => Promise<void>;
   onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
-  onRefreshLifecycle: (throwOnError?: boolean) => Promise<void>;
+  onRefreshLifecycle: (refreshRegistration?: boolean) => Promise<void>;
   onActivateLifecycle: (reason: string) => Promise<void>;
   onCloseLifecycle: (
     reasonCategory: ProjectCloseReasonCategory,
@@ -1116,17 +1116,22 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
-  async function onRefreshLifecycle(throwOnError = false): Promise<void> {
+  async function onRefreshLifecycle(refreshRegistration = false): Promise<void> {
     const request = lifecycleEpoch.current;
     setLifecycleLoading(true);
     try {
-      const [nextLifecycle, nextProject, nextLtrs] = await Promise.all([
-        getProjectLifecycle(projectId), getProject(projectId), listProjectLtrs(projectId),
-      ]);
+      const nextLifecycle = await getProjectLifecycle(projectId);
       if (request !== lifecycleEpoch.current) return;
+      // Ordinary lifecycle refreshes also run during initial Workbench loading,
+      // which already owns the Project/LTR read. Registration explicitly asks
+      // for the changed identity after the same-project commit succeeds.
+      if (refreshRegistration) {
+        const [nextProject, nextLtrs] = await Promise.all([getProject(projectId), listProjectLtrs(projectId)]);
+        if (request !== lifecycleEpoch.current) return;
+        setProject(nextProject);
+        setLtrs(nextLtrs);
+      }
       setLifecycle(nextLifecycle);
-      setProject(nextProject);
-      setLtrs(nextLtrs);
       setLifecycleError(null);
     } catch (err) {
       if (request !== lifecycleEpoch.current) return;
@@ -1134,7 +1139,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setLifecycleError(
         err instanceof Error ? err.message : "Failed to load project lifecycle."
       );
-      if (throwOnError) throw err;
+      if (refreshRegistration) throw err;
     } finally {
       if (request === lifecycleEpoch.current) setLifecycleLoading(false);
     }

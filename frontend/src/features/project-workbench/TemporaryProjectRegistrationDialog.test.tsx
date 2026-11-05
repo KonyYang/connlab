@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { TemporaryProjectRegistrationDialog } from './TemporaryProjectRegistrationDialog';
 import { prepareTemporaryRegistration, previewTemporaryRegistration, commitTemporaryRegistration } from '../../api/temporaryProjectRegistration';
+import { useProjectWorkbenchModel } from './useProjectWorkbenchModel';
 
 vi.mock('../../api/temporaryProjectRegistration', () => ({
   prepareTemporaryRegistration: vi.fn(), previewTemporaryRegistration: vi.fn(), commitTemporaryRegistration: vi.fn(),
@@ -73,4 +74,37 @@ it('recognizes a successful registration after its response is lost and refreshe
   await user.click(await screen.findByRole('button', { name: 'Confirm registration' }));
   await waitFor(() => expect(registered).toHaveBeenCalledOnce());
   expect(commitTemporaryRegistration).toHaveBeenCalledTimes(1);
+});
+
+it('keeps initial identity loading single and refreshes the identity only after explicit registration', async () => {
+  let registered = false;
+  const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+    const path = new URL(String(input), 'http://localhost').pathname;
+    let body: unknown;
+    if (path === '/api/projects/P1') body = { project_id: 'P1', product_name: registered ? 'Registered connector' : 'Temporary connector', requestor: 'Alice', status: registered ? 'ltr_registered' : 'draft' };
+    else if (path === '/api/projects/P1/ltr') body = registered ? [{ ltr_id: 'L1', project_id: 'P1', ltr_number: 'DL-2026-11-001', status: 'registered' }] : [];
+    else if (path === '/api/projects/P1/lifecycle') body = { project_id: 'P1', lifecycle_state: 'active', readonly: false, allowed_actions: ['close'], status: registered ? 'ltr_registered' : 'draft', warnings: [] };
+    else if (path === '/api/external-resources') body = [];
+    else return new Response(JSON.stringify({ detail: 'No retained resource in this isolated API fixture' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const reads = () => fetcher.mock.calls.filter(([input]) => new URL(String(input), 'http://localhost').pathname === '/api/projects/P1').length;
+  const view = renderHook(() => useProjectWorkbenchModel('P1'));
+  try {
+    await waitFor(() => expect(view.result.current.project?.product_name).toBe('Temporary connector'));
+    await waitFor(() => expect(view.result.current.lifecycleLoading).toBe(false));
+    expect(reads()).toBe(1);
+    await act(async () => { await view.result.current.onRefreshLifecycle(); });
+    expect(reads()).toBe(1);
+    registered = true;
+    await act(async () => { await view.result.current.onRefreshLifecycle(true); });
+    expect(reads()).toBe(2);
+    expect(view.result.current.project?.project_id).toBe('P1');
+    expect(view.result.current.project?.product_name).toBe('Registered connector');
+    expect(view.result.current.latestLtr).toBe('DL-2026-11-001');
+  } finally {
+    view.unmount();
+    vi.unstubAllGlobals();
+  }
 });
