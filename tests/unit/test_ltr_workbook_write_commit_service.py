@@ -42,23 +42,26 @@ def test_ltr_workbook_commit_auto_appends_next_base_number() -> None:
     assert session.prepared_calls == [("2026", "write")]
     assert session.appended[0].dl_number == "DL-2026-05-002"
     assert session.appended_rows[0].as_excel_row()[16] == "N/A"
-    assert session.dropdown_calls == [("2026", "Nantong", None)]
+    assert session.dropdown_calls == []
     assert ltr_service.created[0].ltr_number == "DL-2026-05-002"
 
 
-def test_ltr_workbook_commit_appends_missing_location_to_dropdown_source() -> None:
-    """When location is missing in dropdown source, commit appends it once."""
+def test_ltr_workbook_commit_writes_site_without_updating_excel_dropdown() -> None:
+    """The application site value is written without changing workbook validation."""
     service, session, ltr_service = _service(
         {"2026": [("May", 1, 1, "DL-2026-05-001")]},
         dropdown_contains_location=False,
     )
 
+    def reject_dropdown_update(*args, **kwargs):
+        raise AssertionError("Excel dropdown must not be modified")
+
+    session.ensure_location_dropdown_value = reject_dropdown_update
     service.commit_project("P1", _command(number_input=None))
 
-    assert session.dropdown_calls == [("2026", "Nantong", None)]
+    assert session.appended_rows[0].as_excel_row()[9] == "Nantong"
     note = ltr_service.created[0].notes or ""
-    assert '"location_dropdown_appended": true' in note
-    assert '"location_dropdown_source_range_after": "=$AB$1:$AB$37"' in note
+    assert '"location_dropdown_appended": false' in note
 
 
 def test_ltr_workbook_commit_specified_base_replaces_existing_row() -> None:
@@ -70,6 +73,8 @@ def test_ltr_workbook_commit_specified_base_replaces_existing_row() -> None:
     assert result.action == "replace_existing"
     assert result.pointer.row_number == 2
     assert session.replaced[0].dl_number == "DL-2026-05-007"
+    assert session.replaced_rows[0].as_excel_row()[9] == "Nantong"
+    assert session.dropdown_calls == []
     assert session.replaced_rows[0].as_excel_row()[16] == "N/A"
 
 

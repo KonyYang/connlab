@@ -28,7 +28,6 @@ from backend.application.specified_ltr_workbook_authority_preview_service import
 )
 from backend.domain import LtrRecord, LtrStatus, Project
 from backend.infrastructure.office import (
-    LtrWorkbookDropdownEnsureResult,
     LtrWorkbookExistingRow,
     LtrWorkbookRowPointer,
     LtrWorkbookTransactionGateway,
@@ -203,15 +202,6 @@ class LtrWorkbookWriteCommitService:
                 decision.target_sheet,
                 mode="write",
             )
-            dropdown_result = context.session.ensure_location_dropdown_value(
-                decision.target_sheet,
-                preview.row_data.location or "",
-                row_number=(
-                    decision.existing_row.row_number
-                    if decision.existing_row is not None
-                    else None
-                ),
-            )
             if decision.existing_row is not None:
                 pointer = context.session.write_registration_row(
                     decision.existing_row.sheet_name,
@@ -228,10 +218,9 @@ class LtrWorkbookWriteCommitService:
                 pointer,
                 context.workbook_path,
                 context.backup_path,
-                dropdown_result,
             )
 
-        decision, pointer, workbook_path, backup_path, dropdown_result = (
+        decision, pointer, workbook_path, backup_path = (
             self._transaction.run_short_transaction(_operation)
         )
         ltr = self._ltr_service.register_ltr(
@@ -240,7 +229,7 @@ class LtrWorkbookWriteCommitService:
                 ltr_number=pointer.dl_number,
                 requested_by=command.requested_by,
                 requested_date=command.requested_date or command.plan_date,
-                notes=_audit_notes(command, decision, pointer, backup_path, dropdown_result),
+                notes=_audit_notes(command, decision, pointer, backup_path),
                 current_case_id=command.current_case_id,
                 duplicate_resolution=command.duplicate_resolution,
             ),
@@ -532,7 +521,6 @@ def _audit_notes(
     decision: _NumberDecision,
     pointer: LtrWorkbookRowPointer,
     backup_path: Path,
-    dropdown_result: LtrWorkbookDropdownEnsureResult,
 ) -> str:
     """Return local LTR audit notes for the committed workbook write."""
     return json.dumps(
@@ -542,10 +530,10 @@ def _audit_notes(
             "sheet_name": pointer.sheet_name,
             "row_number": pointer.row_number,
             "backup_path": str(backup_path),
-            "location_dropdown_appended": dropdown_result.appended,
-            "location_dropdown_appended_value": dropdown_result.appended_value,
-            "location_dropdown_source_range_before": dropdown_result.source_range_before,
-            "location_dropdown_source_range_after": dropdown_result.source_range_after,
+            "location_dropdown_appended": False,
+            "location_dropdown_appended_value": None,
+            "location_dropdown_source_range_before": None,
+            "location_dropdown_source_range_after": None,
             "operator_note": command.operator_note,
         },
         ensure_ascii=True,
