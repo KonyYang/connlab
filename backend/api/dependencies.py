@@ -3018,6 +3018,34 @@ def get_specified_ltr_workbook_authority_preview_service(
     )
 
 
+def get_temporary_project_registration_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+):
+    """Build same-project registration with a durable external-write journal."""
+    from backend.application.temporary_project_registration_service import TemporaryProjectRegistrationService
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+
+    workbook = LtrWorkbookTransactionGateway(OfficeFacade(), LtrWorkbookTransactionConfig(
+        path=settings.ltr_workbook.path, write_enabled=settings.ltr_workbook.write_enabled,
+        modify_password=settings.ltr_workbook.modify_password,
+        lock_dir=settings.ltr_workbook.lock_dir,
+        lock_timeout_seconds=settings.ltr_workbook.lock_timeout_seconds,
+        backup_dir=settings.ltr_workbook.backup_dir,
+        backup_retention_count=settings.ltr_workbook.backup_retention_count,
+        backup_retention_days=settings.ltr_workbook.backup_retention_days,
+        backup_retention_max_mb=settings.ltr_workbook.backup_retention_max_mb,
+    ))
+    return TemporaryProjectRegistrationService(
+        projects=ProjectRepository(session), forms=ApplicationFormRepository(session),
+        samples=SampleInfoRepository(session), ltrs=LtrRecordRepository(session),
+        basic_information=ProjectBasicInformationRepository(session),
+        temporary_context=ProjectTemporaryContextRepository(session), workbook=workbook,
+        journal=GenerationJournal(settings.data_dir / 'ltr_registration'),
+        ltr_service=get_ltr_service(session), commit_local=session.commit,
+    )
+
+
 def get_ltr_authority_service(
     workbook_service: LtrWorkbookWriteCommitService = Depends(
         get_ltr_workbook_write_commit_service

@@ -24,6 +24,35 @@ the base number's annual sheet. Revalidate the confirmed target/base state under
 transaction; a missing base, duplicate target, or stale row blocks the write. An associated append
 never replaces the base row.
 
+## Temporary-project formal registration
+
+An active no-LTR Project can apply for a formal number from its Workbench without
+creating another Project or returning to Intake. The internal `project_id`, Matrix
+drafts/authority, fee records, source materials and reports remain attached to the
+same aggregate. Conversion does not create folders or start public-drive sync.
+
+`/api/projects/{project_id}/ltr-registration` prepares current confirmed Basic
+Information (then draft/form/temporary fallback), previews the actual proposed
+number and workbook row, and commits the acknowledged intent. Specified existing
+numbers use the existing replacement comparison; associated suffixes retain their
+base row. Another local current owner blocks conversion; historical associations
+are not silently transferred. Closed/hidden or previously formal inconsistent
+projects must be reopened/restored/corrected first.
+
+A dedicated local `ltr_registration` journal retains the original project,
+metadata/source signature, workbook path, number decision and preview token.
+Under the workbook lock, number and row fingerprints are revalidated before any
+mutation; the actual complete A:Q result is journaled before Save. If Excel saves
+but the local transaction fails, retry compares the original physical row and
+only completes the missing local binding. A different row, duplicate number,
+workbook location or changed project source blocks recovery; retry never silently
+allocates another number. The local commit is completed before returning success,
+and the journal remains available across request/process failures.
+
+Validation uses disposable SQLite stores and isolated workbook boundaries; no real
+public LTR workbook is mutated by automated tests. Existing Basic Information
+versions remain immutable and are not re-confirmed by conversion.
+
 ## Domain ownership
 
 - **Project** owns lifecycle identity and traceability.

@@ -125,13 +125,17 @@ class LtrWorkbookTransactionGateway:
         """Run one operation, save once, close the workbook, and release the lock."""
         with self.open_transaction() as transaction:
             result = operation(transaction)
-            transaction.session.save()
-            _prune_workbook_backups(
-                transaction.workbook_path,
-                self._config,
-                transaction.backup_path,
-            )
+            self.save_transaction(transaction)
             return result
+
+    def save_transaction(self, transaction: LtrWorkbookTransactionContext) -> None:
+        """Save an explicit transaction and retain the normal backup policy."""
+        transaction.session.save()
+        self.prune_transaction_backups(transaction)
+
+    def prune_transaction_backups(self, transaction: LtrWorkbookTransactionContext) -> None:
+        """Bound backups after a recovery check that deliberately performs no Save."""
+        _prune_workbook_backups(transaction.workbook_path, self._config, transaction.backup_path)
 
 
 class LtrWorkbookTransaction:

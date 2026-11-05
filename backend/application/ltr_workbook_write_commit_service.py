@@ -252,6 +252,33 @@ def _validate_confirmation(command: CommitLtrWorkbookWriteCommand) -> None:
         raise LtrWorkbookWriteCommitError("Operator confirmation is required.")
 
 
+def write_previewed_registration_row(context, row_data, command, *, expected_action: str, before_write=None):
+    """Write an already projected row only if its confirmed decision still holds.
+
+    The caller owns Save and its durable recovery intent. This shares the normal
+    registration decision/acknowledgement checks without rebuilding form sources.
+    """
+    _validate_confirmation(command)
+    decision = _resolve_number_decision(
+        context.session, command, _annual_sheet_names(context.session.list_sheets()),
+        LtrWorkbookYearSheetBootstrapPolicy(),
+    )
+    if decision.ltr_number != row_data.dl_number or decision.action != expected_action:
+        raise LtrWorkbookWriteCommitError("LTR number changed after preview. Refresh before applying.")
+    _verify_specified_ltr_intent(context.session, decision, command)
+    _verify_proposed_row_intent(row_data, decision, command)
+    if before_write is not None:
+        before_write()
+    context.session.prepare_sheet_for_operation(decision.target_sheet, mode="write")
+    if decision.existing_row is not None:
+        pointer = context.session.write_registration_row(
+            decision.existing_row.sheet_name, decision.existing_row.row_number, row_data,
+        )
+    else:
+        pointer = context.session.append_registration_row(decision.target_sheet, row_data)
+    return pointer
+
+
 def _reject_existing_local_ltr(records: list[LtrRecord]) -> None:
     """Reject workbook writes when the project already has an active local LTR."""
     if any(record.status is LtrStatus.REGISTERED for record in records):

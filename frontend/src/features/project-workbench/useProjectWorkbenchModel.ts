@@ -242,7 +242,7 @@ export type ProjectWorkbenchModel = {
   onValidateMatrixDraft: () => Promise<void>;
   onConfirmMatrixDraft: () => Promise<void>;
   onFolderCreated: (generation: FolderGeneration) => Promise<void>;
-  onRefreshLifecycle: () => Promise<void>;
+  onRefreshLifecycle: (throwOnError?: boolean) => Promise<void>;
   onActivateLifecycle: (reason: string) => Promise<void>;
   onCloseLifecycle: (
     reasonCategory: ProjectCloseReasonCategory,
@@ -1116,13 +1116,17 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
-  async function onRefreshLifecycle(): Promise<void> {
+  async function onRefreshLifecycle(throwOnError = false): Promise<void> {
     const request = lifecycleEpoch.current;
     setLifecycleLoading(true);
     try {
-      const nextLifecycle = await getProjectLifecycle(projectId);
+      const [nextLifecycle, nextProject, nextLtrs] = await Promise.all([
+        getProjectLifecycle(projectId), getProject(projectId), listProjectLtrs(projectId),
+      ]);
       if (request !== lifecycleEpoch.current) return;
       setLifecycle(nextLifecycle);
+      setProject(nextProject);
+      setLtrs(nextLtrs);
       setLifecycleError(null);
     } catch (err) {
       if (request !== lifecycleEpoch.current) return;
@@ -1130,6 +1134,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setLifecycleError(
         err instanceof Error ? err.message : "Failed to load project lifecycle."
       );
+      if (throwOnError) throw err;
     } finally {
       if (request === lifecycleEpoch.current) setLifecycleLoading(false);
     }

@@ -44,6 +44,7 @@ import {
 } from "../projectIdentity";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 import { TestReportDraftButton } from "./TestReportDraftButton";
+import { TemporaryProjectRegistrationDialog } from "./TemporaryProjectRegistrationDialog";
 
 type ProjectWorkbenchLayoutProps = {
   runtimeModel: ProjectRuntimeConsoleModel;
@@ -72,6 +73,7 @@ export function ProjectWorkbenchLayout({
     useState<TemporaryProjectDeletePreview | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [showRegistration, setShowRegistration] = useState(false);
   const [publicFolderOpenError, setPublicFolderOpenError] = useState<string | null>(null);
   const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
   const [folderUpdateReview, setFolderUpdateReview] = useState<FolderUpdateReview | null>(null);
@@ -498,6 +500,7 @@ export function ProjectWorkbenchLayout({
   useEffect(() => {
     setShowFolderConflictDialog(false);
     setFolderUpdateReview(null);
+    setShowRegistration(false);
   }, [project.project_id]);
 
   async function performFolderUpdate(strategy?: ProjectFolderUpdateAction, reviewed?: FolderUpdateReview, resumeRebuild = false): Promise<void> {
@@ -544,6 +547,11 @@ export function ProjectWorkbenchLayout({
         </div>
       </section>
       <div className="runtime-console-commandbar-actions" aria-label="Project Workbench actions">
+        {lifecycle.mode === "temporary_planning" && !lifecycleReadonlyView.readonly ? (
+          <button type="button" title="Apply a formal LTR number and keep this project's data" onClick={() => setShowRegistration(true)}>
+            Apply LTR Number
+          </button>
+        ) : null}
         {!lifecycleReadonlyView.readonly ? (
           <button type="button" onClick={onOpenMatrixEditor}>
             Matrix Editor
@@ -568,6 +576,12 @@ export function ProjectWorkbenchLayout({
 
   return (
     <section className="runtime-console-shell" aria-label="Project runtime console">
+      {showRegistration ? <TemporaryProjectRegistrationDialog key={project.project_id} projectId={project.project_id}
+        onClose={() => setShowRegistration(false)} onRegistered={async () => {
+          await runtimeModel.onRefreshLifecycle(true);
+          setShowRegistration(false);
+          void onRefreshOfficialWorkspacePreview();
+        }} /> : null}
       {topBarActionsRoot ? createPortal(runtimeConsoleTopbar, topBarActionsRoot) : runtimeConsoleTopbar}
 
       {checkingRecoveryPreview ? (
