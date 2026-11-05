@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LTR_EXCEL_SAVE_20261105",
+    "task_id": "TASK_TEMPORARY_FORMAL_20261105",
     "tier": "high_risk",
-    "subject": "74607313ae834e84997b13fb0368eba0b30c114c",
-    "summary": "Fix LTR workbook save after Excel data recovery open",
+    "subject": "ee9f7f990efb37f7e2f3e5c4596519eeb39eaeec",
+    "summary": "Register a formal LTR on an existing temporary project without losing its data",
     "disposition": "completed",
-    "decision_ref": "User explicitly authorized local Close of completed LTR Excel Save fix and starting temporary-to-formal conversion; preserve commits, no push or publication.",
-    "closed_at": "2026-11-05T14:15:10.369920Z"
+    "decision_ref": "User requested closing the current task. Local close only under persistent no-push/no-publication instruction; latest draft and folder redesign remains discussion only.",
+    "closed_at": "2026-11-05T23:57:51.361754Z"
   },
   "retained_history": [
     {
@@ -282,150 +282,18 @@
       "disposition": "completed",
       "decision_ref": "White 已验收：受影响测试 89/89 通过，TypeScript tsc -b 0 错误；Vite 生产构建由 White 在本机无沙箱环境复核通过（EXIT=0, built in 2.03s）。保留既有 commits；仅本地关闭，不推送、不发布。",
       "closed_at": "2026-11-05T05:55:31.532314Z"
+    },
+    {
+      "task_id": "TASK_LTR_EXCEL_SAVE_20261105",
+      "tier": "high_risk",
+      "subject": "74607313ae834e84997b13fb0368eba0b30c114c",
+      "summary": "Fix LTR workbook save after Excel data recovery open",
+      "disposition": "completed",
+      "decision_ref": "User explicitly authorized local Close of completed LTR Excel Save fix and starting temporary-to-formal conversion; preserve commits, no push or publication.",
+      "closed_at": "2026-11-05T14:15:10.369920Z"
     }
   ],
-  "tasks": {
-    "TASK_TEMPORARY_FORMAL_20261105": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab\\tmp\\temporary-formal-worktree",
-      "branch": "codex/temporary-formal-20261105",
-      "resources": [],
-      "integrated_head": "a92ac8a83b571c67b41bf516ef52a729bc1c6ee8",
-      "task": {
-        "task_id": "TASK_TEMPORARY_FORMAL_20261105",
-        "summary": "Register a formal LTR on an existing temporary project without losing its data",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Same-project registration preview and commit, metadata prefill, automatic or specified numbering, durable recovery and temporary Workbench entry; isolated tests only, no real workbook mutation or publication",
-        "scope_paths": [
-          "backend/api/dependencies.py",
-          "backend/api/routes_project.py",
-          "backend/api/routes_temporary_project_registration.py",
-          "backend/application/intake_confirmation_service.py",
-          "backend/application/intake_data_projection.py",
-          "backend/application/project_service.py",
-          "backend/application/temporary_project_intake_source.py",
-          "backend/application/temporary_project_registration_service.py",
-          "backend/domain/models.py",
-          "backend/infrastructure/storage/database.py",
-          "backend/infrastructure/storage/database_general_migrations.py",
-          "backend/infrastructure/storage/models.py",
-          "backend/infrastructure/storage/repositories/project_temporary_context.py",
-          "docs/PROJECT_CONTEXT.md",
-          "frontend/src/api/client.ts",
-          "frontend/src/api/temporaryProjectRegistration.ts",
-          "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.test.tsx",
-          "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.tsx",
-          "frontend/src/pages/IntakeInboxPage.test.tsx",
-          "frontend/src/pages/IntakeInboxPage.tsx",
-          "tests/integration/test_temporary_project_registration_api.py",
-          "tests/unit/test_temporary_project_intake_source.py",
-          "tests/unit/test_temporary_project_registration_service.py"
-        ],
-        "risk_reasons": [
-          "Registers authoritative LTR Excel rows and must recover safely if external save succeeds before local commit."
-        ],
-        "activation_head": "de02a50601622c3054f64cf829a2f6a0c80337e4",
-        "started_at": "2026-11-05T14:24:45.961870Z",
-        "updated_at": "2026-11-05T23:20:40.034297Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_TEMPORARY_FORMAL_20261105",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User reported missing original application confirmation values and explicitly requested completing intake snapshot preservation and safe legacy prefill on 2026-11-06. Continue same task locally; no push or publication.",
-          "requires_user": false
-        },
-        "report": {
-          "subject": "ee9f7f990efb37f7e2f3e5c4596519eeb39eaeec",
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/routes_project.py",
-            "backend/api/routes_temporary_project_registration.py",
-            "backend/application/intake_confirmation_service.py",
-            "backend/application/intake_data_projection.py",
-            "backend/application/project_service.py",
-            "backend/application/temporary_project_intake_source.py",
-            "backend/application/temporary_project_registration_service.py",
-            "backend/domain/models.py",
-            "backend/infrastructure/storage/database.py",
-            "backend/infrastructure/storage/database_general_migrations.py",
-            "backend/infrastructure/storage/models.py",
-            "backend/infrastructure/storage/repositories/project_temporary_context.py",
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/api/client.ts",
-            "frontend/src/api/temporaryProjectRegistration.ts",
-            "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.test.tsx",
-            "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.tsx",
-            "frontend/src/pages/IntakeInboxPage.test.tsx",
-            "frontend/src/pages/IntakeInboxPage.tsx",
-            "tests/integration/test_temporary_project_registration_api.py",
-            "tests/unit/test_temporary_project_intake_source.py",
-            "tests/unit/test_temporary_project_registration_service.py"
-          ],
-          "roles": {
-            "reviewer": {
-              "method": "Independent conversion_reviewer exact 23-file revision review; Standards 0, Spec 0; 3 isolated risk-focused checks passed",
-              "status": "passed"
-            },
-            "developer": {
-              "method": "Independent conversion_developer revision context: coherent TDD slices, 45 targeted Python and 23 frontend checks plus 13 post-cleanup affected checks, self-review",
-              "status": "passed"
-            },
-            "integrator": {
-              "method": "Root verified clean exact subject, committed revision manifest, board-only primary divergence, final screenshots and proportional evidence",
-              "status": "passed"
-            },
-            "qa": {
-              "method": "Independent conversion_qa exact-subject matrices, final build and isolated browser; processes and own artifacts cleaned",
-              "status": "passed"
-            },
-            "planner": {
-              "method": "Independent conversion_planner revision context: frozen facts, legacy resolver, portable provenance and additive migration plan",
-              "status": "passed"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "ee9f7f990efb37f7e2f3e5c4596519eeb39eaeec",
-            "primary_before": "c24a4ea3cdb6dd89a65461fdb160a2d75832431e",
-            "integrated_head": "a92ac8a83b571c67b41bf516ef52a729bc1c6ee8",
-            "recovered": false
-          },
-          "schema": "connlab.sol-task-report",
-          "summary": "Preserve complete confirmed intake snapshots when creating temporary projects and safely recover linked legacy sources for same-project formal registration; local integration only",
-          "task_id": "TASK_TEMPORARY_FORMAL_20261105",
-          "scope_ok": true,
-          "validation": [
-            {
-              "result": "241 passed on exact final subject; creation-to-prefill API, full form and samples, old schema idempotence, source ownership/conflicts, frozen recovery, portability and LTR/lifecycle regressions",
-              "name": "Affected backend QA",
-              "status": "passed"
-            },
-            {
-              "result": "166 passed in 7 files; captures complete current intake values within 700ms without autosave, explicit source choice and manual values retained",
-              "name": "Affected frontend QA",
-              "status": "passed"
-            },
-            {
-              "result": "TypeScript and Vite passed; 221 modules",
-              "name": "Final production build",
-              "status": "passed"
-            },
-            {
-              "result": "Original five fields, unique/conflicting source selection and details, manual edits, 594px bounds and cancel verified; isolated SQLite, transactional workbook and browser API fixtures; no real Office COM writes",
-              "name": "Isolated Chrome",
-              "status": "passed"
-            }
-          ],
-          "version": 1
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
