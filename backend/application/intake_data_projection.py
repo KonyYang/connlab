@@ -114,4 +114,3 @@ class IntakeDataProjector:
         if lowered in {"no", "n", "false", "0", "not allowed"}:
             return False
         return None
-
