@@ -31,6 +31,26 @@ creating another Project or returning to Intake. The internal `project_id`, Matr
 drafts/authority, fee records, source materials and reports remain attached to the
 same aggregate. Conversion does not create folders or start public-drive sync.
 
+Creating a temporary project from Intake freezes the complete current editor
+fields, sample rows, requested-testing rows and project setup into a versioned
+`ProjectTemporaryContext.intake_snapshot_json`. The click captures visible source
+values plus current editor refs immediately; it does not wait for draft autosave,
+confirm the original case or write it back. Human notes stay separate. Nullable
+additive migration preserves legacy rows. The project stays DRAFT and owns its
+projected ApplicationForm/SampleInfo; unresolved optional planning quantities
+stay in the raw snapshot and do not block creation. The frozen JSON is portable
+without its provenance case or source asset rows.
+
+Legacy temporary projects without snapshots recover only through explicitly
+linked source asset IDs and the corresponding selected-form cases. A case bound
+to another project or rejected is excluded; title similarity and newest-case
+selection are not authority. Identical complete facts can share provenance, but
+differing candidates require an explicit comparison/selection or explicit manual
+continuation. Preparation is read-only. Confirmed Basic Information and current
+manual form values win; source facts fill absent `None` fields without replacing
+explicit blanks, existing form identity or sample rows. A selected full legacy
+snapshot is frozen on the same project only during confirmed registration.
+
 `/api/projects/{project_id}/ltr-registration` prepares current confirmed Basic
 Information (then draft/form/temporary fallback), previews the actual proposed
 number and workbook row, and commits the acknowledged intent. Specified existing
@@ -48,6 +68,10 @@ only completes the missing local binding. A different row, duplicate number,
 workbook location or changed project source blocks recovery; retry never silently
 allocates another number. The local commit is completed before returning success,
 and the journal remains available across request/process failures.
+Before the first workbook mutation, the selected legacy source is revalidated
+inside the workbook lock. Once a workbook write may have happened, recovery uses
+the complete frozen intent rather than depending on later edits or removal of
+the original Intake case; current project authority changes remain protected.
 
 Validation uses disposable SQLite stores and isolated workbook boundaries; no real
 public LTR workbook is mutated by automated tests. Existing Basic Information

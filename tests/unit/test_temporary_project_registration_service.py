@@ -47,6 +47,9 @@ class Store:
     def search(self, number):
         return [item for item in self.items if item.ltr_number == number]
 
+    def freeze_intake_snapshot(self, identity, snapshot_json):
+        self.items = [replace(item, intake_snapshot_json=snapshot_json) if item.project_id == identity else item for item in self.items]
+
 
 class Workbook:
     """A transaction-bound file-system boundary with save/rollback behavior."""
@@ -107,15 +110,16 @@ class Workbook:
         pass
 
 
-def build(tmp_path, basic_information=None):
+def build(tmp_path, basic_information=None, intake_source=None, temporary_context=None, sample_store=None):
     projects = Store(Project(project_id='P1', project_no=None, product_name='Connector', requestor='Alice', status=ProjectStatus.DRAFT))
     forms, ltrs = Store(), Store()
     workbook = Workbook(tmp_path)
     journal = GenerationJournal(tmp_path / 'journal')
     service = TemporaryProjectRegistrationService(
-        projects=projects, forms=forms, samples=Store(), ltrs=ltrs,
-        basic_information=basic_information or Store(), temporary_context=Store(), workbook=workbook,
+        projects=projects, forms=forms, samples=sample_store or Store(), ltrs=ltrs,
+        basic_information=basic_information or Store(), temporary_context=temporary_context or Store(), workbook=workbook,
         journal=journal, ltr_service=LtrService(projects, ltrs, ProjectLifecycleService(projects)),
+        intake_source=intake_source,
     )
     values = dict(sample_description='Connector', test_item='Qualification', requested_by='Alice',
         project_type='New Product Development', location='Nantong', test_type_in_sheet='Partial Qualification',
@@ -309,3 +313,66 @@ def test_unknown_requestor_placeholder_is_not_proposed_as_a_real_person(tmp_path
     service, projects, _, _, _, _, _ = build(tmp_path)
     projects.items[0] = replace(projects.items[0], requestor='Unknown requestor')
     assert service.prepare('P1')['values']['requested_by'] == ''
+
+
+def legacy_source():
+    from backend.application.temporary_project_intake_source import TemporaryProjectIntakeSource
+    from backend.domain import ProjectTemporaryContext
+    raw = {'version': 1, 'fields': {'requester': 'Alice', 'phone': 'Source phone', 'email': 'source@example.test',
+        'project_type': 'New Product Development', 'manufacturing_site': 'Nantong', 'request_date': '2026-11-05'},
+        'project_setup': {'test_item': 'Qualification', 'sample_description': 'Connector', 'project_leader': 'Even Yang',
+            'lab_performing_tests': 'Dongguan', 'test_type_in_sheet': 'Partial Qualification'},
+        'samples': [{'product_name': 'Connector', 'part_number': 'PN-SOURCE', 'quantity': '5'}],
+        'requested_testing_rows': [], 'source_case_id': 'C1', 'selected_form_asset_id': 'A1'}
+    class Candidates:
+        def eligible_snapshots(self, project_id, asset_ids): return [raw]
+    return raw, TemporaryProjectIntakeSource(Candidates()), Store(ProjectTemporaryContext(context_id='CTX', project_id='P1', source_asset_ids=('A1',)))
+
+
+def test_legacy_fills_only_absent_form_values_and_preserves_manual_values_and_blanks(tmp_path):
+    raw, source, context = legacy_source()
+    service, _, forms, _, _, _, values = build(tmp_path, intake_source=source, temporary_context=context)
+    forms.items = [ApplicationForm(form_id='F-MANUAL', project_id='P1', form_no='REQ', revision='A', requester='Alice',
+        phone='Manual phone', assigned_personnel='')]
+    prepared = service.prepare('P1')
+    assert prepared['values']['project_type'] == 'New Product Development'
+    assert prepared['values']['location'] == 'Nantong' and prepared['values']['lab_performing_tests'] == 'Dongguan'
+    assert prepared['values']['project_leader'] == ''
+    preview = service.preview('P1', values, plan_date=date(2026, 11, 5), intake_source_id=prepared['intake_source_id'])
+    service.commit('P1', preview['preview_token'], operator_confirmed=True)
+    assert forms.items[0].form_id == 'F-MANUAL' and forms.items[0].phone == 'Manual phone'
+    assert forms.items[0].email == 'source@example.test' and forms.items[0].request_date == date(2026, 11, 5)
+
+
+def test_source_change_while_waiting_for_workbook_blocks_initial_write(tmp_path):
+    raw, source, context = legacy_source()
+    service, _, _, _, workbook, _, values = build(tmp_path, intake_source=source, temporary_context=context)
+    preview = service.preview('P1', values, plan_date=date(2026, 11, 5))
+    original_open = workbook.open_transaction
+    @contextmanager
+    def changed_during_open():
+        with original_open() as transaction:
+            raw['fields']['phone'] = 'Changed while waiting for Excel'
+            yield transaction
+    workbook.open_transaction = changed_during_open
+    with pytest.raises(ValueError, match='source changed'):
+        service.commit('P1', preview['preview_token'], operator_confirmed=True)
+    assert workbook.saves == 0
+
+
+def test_saved_intent_recovers_full_snapshot_even_if_original_case_changes(tmp_path):
+    raw, source, context = legacy_source()
+    samples = Store()
+    service, projects, forms, ltrs, workbook, _, values = build(tmp_path, intake_source=source, temporary_context=context, sample_store=samples)
+    original = projects.items[0]
+    preview = service.preview('P1', values, plan_date=date(2026, 11, 5))
+    service.commit('P1', preview['preview_token'], operator_confirmed=True)
+    # Simulated request commit rollback restores local rows; workbook stays saved.
+    projects.items, forms.items, ltrs.items = [original], [], []
+    samples.items = []
+    context.items[0] = replace(context.items[0], intake_snapshot_json=None)
+    raw['fields']['phone'] = 'Source changed after Excel Save'
+    pending = service.prepare('P1')['recovery_preview']
+    assert pending['preview_token'] == preview['preview_token']
+    service.commit('P1', preview['preview_token'], operator_confirmed=True)
+    assert forms.items[0].phone == 'Source phone' and workbook.saves == 1

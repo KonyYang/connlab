@@ -122,6 +122,15 @@ export type CreateTemporaryProjectInput = {
   requestor?: string | null;
   source_asset_ids?: string[];
   notes?: string | null;
+  intake_snapshot?: {
+    version: 1;
+    fields: Record<string, string>;
+    samples: Record<string, string>[];
+    requested_testing_rows: Record<string, string>[];
+    project_setup: Record<string, string>;
+    source_case_id: string | null;
+    selected_form_asset_id: string | null;
+  } | null;
 };
 
 export type CreateTemporaryProjectResponse = {

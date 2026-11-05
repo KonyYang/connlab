@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ApiRequestError,
   completeNewProject,
+  createTemporaryProject,
   getIntakeCaseReview,
   getIntakePrecheckLookupOptions,
   getNewProjectCompletionOptions,
@@ -29,6 +30,7 @@ vi.mock("../api/client", async (importOriginal) => {
   return {
     ...actual,
     completeNewProject: vi.fn(),
+    createTemporaryProject: vi.fn(),
     getIntakeCaseReview: vi.fn(),
     getIntakePrecheckLookupOptions: vi.fn(),
     getNewProjectCompletionOptions: vi.fn(),
@@ -43,6 +45,7 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
   beforeEach(() => {
     currentProfile = { profile: null, loaded: true, busy: false, error: null };
     vi.clearAllMocks();
+    vi.mocked(createTemporaryProject).mockResolvedValue({ project_id: 'temporary-current', display_project_id: 'TMP-CURRENT', display_project_id_kind: 'temporary', has_registered_ltr: false, status: 'draft', next_route: '/projects/temporary-current' });
     locationAssign.mockReset();
     vi.stubGlobal("location", {
       ...window.location,
@@ -68,6 +71,29 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('captures current form, sample and setup edits immediately without waiting for draft autosave', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const phone = await screen.findByDisplayValue('123456');
+    const quantity = screen.getByLabelText('Quantity row 1');
+    vi.mocked(updateIntakeCaseReviewFields).mockClear();
+    await user.clear(phone);
+    await user.type(phone, '999');
+    await user.clear(quantity);
+    await user.type(quantity, '7');
+    await user.click(screen.getByRole('button', { name: 'Create Temporary Project' }));
+    await waitFor(() => expect(createTemporaryProject).toHaveBeenCalledOnce());
+    const payload = vi.mocked(createTemporaryProject).mock.calls[0][0];
+    expect(payload.intake_snapshot).toEqual(expect.objectContaining({
+      version: 1, source_case_id: 'case-1', selected_form_asset_id: 'asset-1',
+      fields: expect.objectContaining({ phone: '999', email: 'bob@example.test', manufacturing_site: 'DG', project_type: 'Qualification' }),
+      samples: [expect.objectContaining({ part_number: 'PN-1', quantity: '7', material: 'Copper' })],
+      requested_testing_rows: activeCase.requested_testing_rows,
+      project_setup: expect.objectContaining({ project_leader: 'Lab User', lab_performing_tests: 'Dongguan', test_type_in_sheet: 'Qualification' }),
+    }));
+    expect(updateIntakeCaseReviewFields).not.toHaveBeenCalled();
   });
 
   it('uses the local profile for a new unassigned project and sends that leader to completion', async () => {

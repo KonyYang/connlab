@@ -14,7 +14,9 @@ from backend.api.main import app
 from backend.application.temporary_project_registration_service import TemporaryProjectRegistrationService
 from backend.application.ltr_service import LtrService
 from backend.application.project_lifecycle_service import ProjectLifecycleService
-from backend.domain import Project, ProjectStatus, ApplicationForm, ProjectTestPlanDraft, ProjectTestPlanDraftStatus
+from backend.domain import Project, ProjectStatus, ApplicationForm, ProjectTestPlanDraft, ProjectTestPlanDraftStatus, ProjectTemporaryContext, IntakePackage, IntakePackageSourceType, IntakePackageStatus, IntakeAsset, IntakeAssetRole, IntakeCase, IntakeCaseStatus, IntakeDraft
+from backend.application.temporary_project_intake_source import TemporaryProjectIntakeSource, LinkedIntakeCandidateSource
+from backend.infrastructure.storage.repositories.intake_package import IntakePackageRepository, IntakeAssetRepository, IntakeCaseRepository, IntakeDraftRepository
 from backend.infrastructure.files.generation_journal import GenerationJournal
 from backend.infrastructure.office import LtrWorkbookExistingRow, LtrWorkbookRowPointer
 from backend.infrastructure.storage.database import create_database_engine, create_session_factory, init_db
@@ -90,7 +92,8 @@ def registration_api(tmp_path):
             samples=SampleInfoRepository(session), ltrs=ltrs, basic_information=ProjectBasicInformationRepository(session),
             temporary_context=ProjectTemporaryContextRepository(session), workbook=workbook,
             journal=GenerationJournal(settings.data_dir / 'ltr_registration'),
-            ltr_service=LtrService(projects, ltrs, ProjectLifecycleService(projects)), commit_local=session.commit)
+            ltr_service=LtrService(projects, ltrs, ProjectLifecycleService(projects)), commit_local=session.commit,
+            intake_source=TemporaryProjectIntakeSource(LinkedIntakeCandidateSource(assets=IntakeAssetRepository(session), cases=IntakeCaseRepository(session), drafts=IntakeDraftRepository(session))))
 
     with factory() as session:
         ProjectRepository(session).create(Project(project_id='P1', project_no=None, product_name='Connector',
@@ -169,3 +172,104 @@ def test_api_missing_fields_and_recycled_project_are_blocked_without_excel_write
     assert blocked.status_code == 409
     assert blocked.json()['detail']['code'] == 'project_registry_read_only'
     assert workbook.saves == 0
+
+
+def captured_snapshot():
+    return {'version': 1, 'fields': {'requester': 'Alice', 'phone': 'immediate phone edit',
+        'email': 'current@example.test', 'request_date': '2026-11-05', 'project_type': 'New Product Development',
+        'manufacturing_site': 'Nantong', 'business_unit': 'Power Solutions', 'post_testing_disposition': 'Send Back to Requestor'},
+        'samples': [{'product_name': 'Connector', 'part_number': 'PN-CURRENT', 'quantity': '7', 'material': 'Copper'}],
+        'requested_testing_rows': [{'test_to_be_performed': 'Current test', 'applicable_specification': 'GS-current'}],
+        'project_setup': {'test_item': 'Qualification', 'sample_description': 'Current connector', 'project_leader': 'Even Yang',
+            'lab_performing_tests': 'Dongguan', 'test_type_in_sheet': 'Partial Qualification'},
+        'source_case_id': 'CASE1', 'selected_form_asset_id': 'ASSET1'}
+
+
+def seed_intake(factory):
+    import json
+    with factory() as session:
+        IntakePackageRepository(session).create(IntakePackage(package_id='PKG1', source_type=IntakePackageSourceType.OUTLOOK_MSG,
+            status=IntakePackageStatus.READY_FOR_REVIEW, source_original_name='request.msg', source_stored_path=Path('isolated-request.msg')))
+        IntakeAssetRepository(session).create(IntakeAsset(asset_id='ASSET1', package_id='PKG1', original_name='request.docx',
+            stored_path=Path('isolated-request.docx'), extension='.docx', mime_type=None, size_bytes=10, sha256='hash',
+            asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM))
+        IntakeCaseRepository(session).create(IntakeCase(case_id='CASE1', package_id='PKG1', selected_form_asset_id='ASSET1', status=IntakeCaseStatus.NEEDS_REVIEW))
+        IntakeDraftRepository(session).create(IntakeDraft(draft_id='DRAFT1', case_id='CASE1', parsed_fields_json=json.dumps({
+            'requester': 'Old Alice', 'phone': 'old phone', 'project_type': 'Operational Support', 'manufacturing_site': 'Old site',
+            'samples': [{'product_name': 'Old connector', 'part_number': 'OLD', 'quantity': '3'}],
+            'project_setup': {'project_leader': 'Old leader', 'lab_performing_tests': 'Valley Green', 'test_type_in_sheet': 'Electrical'}})))
+        session.commit()
+
+
+def test_create_from_current_intake_preserves_full_snapshot_and_registration_fields(registration_api):
+    import json
+    from dataclasses import replace
+    client, workbook, _, factory = registration_api
+    seed_intake(factory)
+    current = captured_snapshot()
+    created = client.post('/api/projects/temporary', json={'sample_description': 'Current connector', 'test_item': 'Qualification',
+        'requestor': 'Alice', 'source_asset_ids': ['ASSET1'], 'notes': 'Human notes stay unchanged', 'intake_snapshot': current})
+    assert created.status_code == 201, created.text
+    identity = created.json()['project_id']
+    assert client.get(f'/api/projects/{identity}').json()['status'] == 'draft'
+    prepared = client.get(f'/api/projects/{identity}/ltr-registration').json()
+    assert {key: prepared['values'][key] for key in ('project_type', 'location', 'project_leader', 'lab_performing_tests', 'test_type_in_sheet')} == {
+        'project_type': 'New Product Development', 'location': 'Nantong', 'project_leader': 'Even Yang',
+        'lab_performing_tests': 'Dongguan', 'test_type_in_sheet': 'Partial Qualification'}
+    with factory() as session:
+        form = ApplicationFormRepository(session).list_by_project(identity)[0]
+        samples = SampleInfoRepository(session).list_by_project(identity)
+        context = ProjectTemporaryContextRepository(session).get_by_project(identity)
+        assert form.phone == 'immediate phone edit' and form.email == 'current@example.test'
+        assert samples[0].part_number == 'PN-CURRENT' and samples[0].quantity == 7
+        assert json.loads(context.intake_snapshot_json)['requested_testing_rows'] == current['requested_testing_rows']
+        assert context.notes == 'Human notes stay unchanged'
+        draft_store = IntakeDraftRepository(session)
+        original = draft_store.get_by_case('CASE1')
+        assert json.loads(original.parsed_fields_json)['phone'] == 'old phone'
+        draft_store.update(replace(original, parsed_fields_json=json.dumps({'phone': 'later unrelated source edit'})))
+        assert IntakeCaseRepository(session).get('CASE1').confirmed_project_id is None
+        session.commit()
+    # New request/session reads only the frozen Project data, not the edited case.
+    assert client.get(f'/api/projects/{identity}/ltr-registration').json()['values'] == prepared['values']
+    preview = client.post(f'/api/projects/{identity}/ltr-registration/preview', json={'values': prepared['values'], 'plan_date': '2026-11-05'})
+    assert preview.status_code == 200, preview.text
+    assert workbook.saves == 0
+
+
+def test_legacy_unique_unbound_case_is_recovered_readonly_and_other_project_case_is_excluded(registration_api):
+    import json
+    from dataclasses import replace
+    client, workbook, _, factory = registration_api
+    seed_intake(factory)
+    with factory() as session:
+        # Model the real old shape: same package/form, one case already belongs elsewhere.
+        ProjectRepository(session).create(Project(project_id='LEGACY', project_no=None, product_name='Old title', requestor='Alice'))
+        ProjectTemporaryContextRepository(session).create(ProjectTemporaryContext(context_id='CTX', project_id='LEGACY', source_asset_ids=('ASSET1',), notes='untouched'))
+        drafts = IntakeDraftRepository(session)
+        original = drafts.get_by_case('CASE1')
+        data = captured_snapshot()
+        drafts.update(replace(original, parsed_fields_json=json.dumps({**data['fields'], 'samples': data['samples'], 'project_setup': data['project_setup'], 'requested_testing_rows': data['requested_testing_rows']})))
+        IntakeCaseRepository(session).create(IntakeCase(case_id='OTHERCASE', package_id='PKG1', selected_form_asset_id='ASSET1',
+            status=IntakeCaseStatus.CONFIRMED, confirmed_project_id='P1'))
+        IntakeDraftRepository(session).create(IntakeDraft(draft_id='OTHERDRAFT', case_id='OTHERCASE', parsed_fields_json=json.dumps({**data['fields'], 'project_type': 'Innovation'})))
+        session.commit()
+    prepared = client.get('/api/projects/LEGACY/ltr-registration')
+    assert prepared.status_code == 200, prepared.text
+    payload = prepared.json()
+    assert payload['values']['project_type'] == 'New Product Development'
+    assert payload['values']['location'] == 'Nantong' and payload['values']['project_leader'] == 'Even Yang'
+    assert payload['intake_candidates'] == []
+    with factory() as session:
+        assert ApplicationFormRepository(session).list_by_project('LEGACY') == []
+        assert SampleInfoRepository(session).list_by_project('LEGACY') == []
+        assert IntakeCaseRepository(session).get('CASE1').confirmed_project_id is None
+    preview = client.post('/api/projects/LEGACY/ltr-registration/preview', json={'values': payload['values'], 'plan_date': '2026-11-05', 'intake_source_id': payload['intake_source_id']}).json()
+    result = client.post('/api/projects/LEGACY/ltr-registration/commit', json={'preview_token': preview['preview_token'], 'operator_confirmed': True})
+    assert result.status_code == 200, result.text
+    with factory() as session:
+        form = ApplicationFormRepository(session).list_by_project('LEGACY')[0]
+        assert form.email == 'current@example.test'
+        assert SampleInfoRepository(session).list_by_project('LEGACY')[0].part_number == 'PN-CURRENT'
+        assert ProjectTemporaryContextRepository(session).get_by_project('LEGACY').intake_snapshot_json is not None
+        assert IntakeCaseRepository(session).get('CASE1').confirmed_project_id is None

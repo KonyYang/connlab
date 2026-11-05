@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -94,6 +95,18 @@ class ProjectCreateRequest(BaseModel):
     business_unit: str | None = None
 
 
+class TemporaryIntakeSnapshotRequest(BaseModel):
+    """Versioned current editor values; provenance never grants project ownership."""
+    model_config = ConfigDict(extra='forbid')
+    version: Literal[1] = 1
+    fields: dict[str, str] = Field(default_factory=dict)
+    samples: list[dict[str, str]] = Field(default_factory=list)
+    requested_testing_rows: list[dict[str, str]] = Field(default_factory=list)
+    project_setup: dict[str, str] = Field(default_factory=dict)
+    source_case_id: str | None = None
+    selected_form_asset_id: str | None = None
+
+
 class TemporaryProjectCreateRequest(BaseModel):
     """Request body for creating a temporary planning project."""
 
@@ -103,6 +116,7 @@ class TemporaryProjectCreateRequest(BaseModel):
     requestor: str | None = None
     source_asset_ids: list[str] = Field(default_factory=list)
     notes: str | None = None
+    intake_snapshot: TemporaryIntakeSnapshotRequest | None = None
 
 
 class ProjectResponse(BaseModel):
@@ -285,16 +299,20 @@ def create_temporary_project(
     ),
 ) -> TemporaryProjectCreateResponse:
     """Create an active temporary planning project without registering an LTR."""
-    project = service.create_temporary_project(
-        CreateTemporaryProjectCommand(
-            request_summary=request.request_summary,
-            sample_description=request.sample_description,
-            test_item=request.test_item,
-            requestor=request.requestor,
-            source_asset_ids=tuple(request.source_asset_ids),
-            notes=request.notes,
+    try:
+        project = service.create_temporary_project(
+            CreateTemporaryProjectCommand(
+                request_summary=request.request_summary,
+                sample_description=request.sample_description,
+                test_item=request.test_item,
+                requestor=request.requestor,
+                source_asset_ids=tuple(request.source_asset_ids),
+                notes=request.notes,
+                intake_snapshot=request.intake_snapshot.model_dump() if request.intake_snapshot is not None else None,
+            )
         )
-    )
+    except ValueError as exc:
+        raise HTTPException(400, detail=str(exc)) from exc
     registry_row = registry_service.get_row(project.project_id)
     if registry_row is None:
         raise HTTPException(

@@ -906,10 +906,16 @@ export function IntakeInboxPage({
         temporaryProjectPayload({
           packageImport,
           directWordName,
-          fieldValues,
-          requestedTestingRows,
-          setupValues,
-          visibleAttachmentAssets
+          fieldValues: {
+            ...Object.fromEntries((activeCase?.fields ?? []).map(field => [field.key, editableValue(field.value)])),
+            ...fieldValuesRef.current,
+          },
+          sampleRows: sampleRowsRef.current,
+          requestedTestingRows: requestedTestingRowsRef.current,
+          setupValues: setupValuesRef.current,
+          visibleAttachmentAssets,
+          sourceCaseId: activeCase?.case_id ?? null,
+          selectedFormAssetId: activeCase?.selected_form_asset_id ?? null
         })
       );
       onSessionChange(EMPTY_INTAKE_SESSION);
@@ -1215,16 +1221,22 @@ function temporaryProjectPayload({
   packageImport,
   directWordName,
   fieldValues,
+  sampleRows,
   requestedTestingRows,
   setupValues,
-  visibleAttachmentAssets
+  visibleAttachmentAssets,
+  sourceCaseId,
+  selectedFormAssetId
 }: {
   packageImport: IntakePackageImport | null;
   directWordName: string | null;
   fieldValues: Record<string, string>;
+  sampleRows: PrecheckSampleRow[];
   requestedTestingRows: PrecheckRequestedTestingRow[];
   setupValues: NewProjectSetupConfirmationValues;
   visibleAttachmentAssets: IntakeAsset[];
+  sourceCaseId: string | null;
+  selectedFormAssetId: string | null;
 }): CreateTemporaryProjectInput {
   const requestSummary = firstText(
     packageImport?.subject,
@@ -1243,7 +1255,21 @@ function temporaryProjectPayload({
     sample_description: firstText(setupValues.sampleDescription, requestSummary),
     test_item: firstText(setupValues.testItem, requestedTestingText(requestedTestingRows)),
     requestor,
-    source_asset_ids: visibleAttachmentAssets.map((asset) => asset.asset_id),
+    source_asset_ids: [...new Set([...visibleAttachmentAssets.map((asset) => asset.asset_id), ...(selectedFormAssetId ? [selectedFormAssetId] : [])])],
+    intake_snapshot: {
+      version: 1,
+      fields: { ...fieldValues },
+      samples: sampleRows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value ?? '')]))),
+      requested_testing_rows: requestedTestingRows.map(row => ({ ...row })),
+      project_setup: {
+        ltr_mode: setupValues.ltrMode, specified_ltr_number: setupValues.specifiedLtrNumber,
+        test_item: setupValues.testItem, sample_description: setupValues.sampleDescription,
+        test_type_in_sheet: setupValues.testTypeInSheet, project_leader: setupValues.projectLeader,
+        lab_performing_tests: setupValues.labPerformingTests,
+      },
+      source_case_id: sourceCaseId,
+      selected_form_asset_id: selectedFormAssetId,
+    },
     notes: packageImport
       ? firstText(
           packageImport.source_original_name,

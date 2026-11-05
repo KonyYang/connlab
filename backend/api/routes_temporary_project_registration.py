@@ -18,6 +18,7 @@ class RegistrationPreviewRequest(BaseModel):
     plan_date: date = Field(default_factory=date.today)
     mode: str = 'auto'
     specified_number: str | None = None
+    intake_source_id: str | None = None
 
 
 class RegistrationCommitRequest(BaseModel):
@@ -50,7 +51,7 @@ def prepare_registration(project_id: str, service: TemporaryProjectRegistrationS
 def preview_registration(project_id: str, request: RegistrationPreviewRequest,
                          service: TemporaryProjectRegistrationService = Depends(get_temporary_project_registration_service)):
     return _invoke(lambda: service.preview(project_id, request.values, plan_date=request.plan_date,
-        mode=request.mode, specified_number=request.specified_number))
+        mode=request.mode, specified_number=request.specified_number, intake_source_id=request.intake_source_id))
 
 
 @router.post('/commit')

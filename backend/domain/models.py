@@ -132,6 +132,7 @@ class ProjectTemporaryContext:
     test_item: str | None = None
     notes: str | None = None
     source_asset_ids: tuple[str, ...] = ()
+    intake_snapshot_json: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
