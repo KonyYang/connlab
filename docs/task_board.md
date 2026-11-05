@@ -287,7 +287,7 @@
   "tasks": {
     "TASK_TEMPORARY_FORMAL_20261105": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\temporary-formal-worktree",
       "branch": "codex/temporary-formal-20261105",
       "resources": [],
@@ -326,87 +326,17 @@
         ],
         "activation_head": "de02a50601622c3054f64cf829a2f6a0c80337e4",
         "started_at": "2026-11-05T14:24:45.961870Z",
-        "updated_at": "2026-11-05T16:00:45.718277Z",
-        "checkpoint": null,
-        "report": {
-          "scope_ok": true,
-          "schema": "connlab.sol-task-report",
-          "subject": "c6403c2d51e74a2a3304009fbea02d91a81de2f0",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "c6403c2d51e74a2a3304009fbea02d91a81de2f0",
-            "primary_before": "3a0d3343f29f3d7af3add17a1784edaee2c6c03e",
-            "integrated_head": "883ce87e4a7cf2eedfba061621e983b1e1f0593d",
-            "recovered": false
-          },
+        "updated_at": "2026-11-05T22:40:32.130458Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
-          "summary": "Register formal LTR on the retained temporary project with preview, identity preservation and durable recovery; verified and integrated locally only",
-          "roles": {
-            "developer": {
-              "method": "Independent conversion_developer context: TDD, targeted checks, self-review and bounded QA fixes",
-              "status": "passed"
-            },
-            "integrator": {
-              "method": "Root context: exact subject, clean worktrees, reserved scope, unchanged backend/frontend logic evidence, final screenshots and primary board-only divergence checked",
-              "status": "passed"
-            },
-            "reviewer": {
-              "method": "Independent conversion_reviewer context: exact full diff plus two increments; Standards 0, Spec 0; two risk-focused tests passed",
-              "status": "passed"
-            },
-            "qa": {
-              "method": "Independent conversion_qa context: affected matrices, final build, isolated browser and artifact/process cleanup",
-              "status": "passed"
-            },
-            "planner": {
-              "method": "Independent conversion_planner context: source-based plan and authority/recovery boundaries",
-              "status": "passed"
-            }
-          },
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Affected backend matrix",
-              "result": "115 passed on 88cd418e; final backend and Python test bytes verified identical"
-            },
-            {
-              "status": "passed",
-              "name": "Affected frontend matrix",
-              "result": "148 passed on 2595af02; final frontend logic/test bytes verified identical; later change is dialog CSS only"
-            },
-            {
-              "status": "passed",
-              "name": "Final production build",
-              "result": "TypeScript and Vite build passed on c6403c2d"
-            },
-            {
-              "status": "passed",
-              "name": "Isolated Chrome workflow",
-              "result": "1366/594 widths, specified comparison, focus/Escape, cancel, stale preview, failed commit recovery and lost-response idempotence verified; isolated SQLite/in-memory workbook/browser API fixtures; no real Office COM writes"
-            }
-          ],
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/main.py",
-            "backend/api/routes_temporary_project_registration.py",
-            "backend/application/ltr_workbook_write_commit_service.py",
-            "backend/application/specified_ltr_workbook_authority_preview_service.py",
-            "backend/application/temporary_project_registration_service.py",
-            "backend/infrastructure/office/ltr_workbook_transaction_gateway.py",
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/api/temporaryProjectRegistration.ts",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-            "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.test.tsx",
-            "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.tsx",
-            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
-            "frontend/src/workbench.css",
-            "tests/integration/test_temporary_project_registration_api.py",
-            "tests/unit/test_temporary_project_registration_service.py"
-          ],
-          "task_id": "TASK_TEMPORARY_FORMAL_20261105"
-        }
+          "task_id": "TASK_TEMPORARY_FORMAL_20261105",
+          "stage": "revision",
+          "status": "running",
+          "summary": "User reported missing original application confirmation values and explicitly requested completing intake snapshot preservation and safe legacy prefill on 2026-11-06. Continue same task locally; no push or publication.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
