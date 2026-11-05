@@ -177,6 +177,11 @@ class SpecifiedLtrWorkbookAuthorityPreviewService:
                 blockers=(message,),
             )
 
+    def preview_projected_row(self, row: LtrWorkbookRowData) -> SpecifiedLtrWorkbookAuthorityPreview:
+        """Compare a current-project projection without creating an Intake case."""
+        normalized, _ = _parse_full_dl(row.dl_number)
+        return self._preview_normalized(normalized, row)
+
     def verify_ack(
         self,
         *,

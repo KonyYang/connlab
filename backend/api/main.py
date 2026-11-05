@@ -38,6 +38,7 @@ from backend.api.routes_ltr_workbook_compatibility import (
 )
 from backend.api.routes_new_project_completion import router as new_project_router
 from backend.api.routes_project import router as project_router
+from backend.api.routes_temporary_project_registration import router as temporary_project_registration_router
 from backend.api.routes_project_basic_information import (
     router as project_basic_information_router,
 )
@@ -234,6 +235,7 @@ _include_project_router(ltr_workbook_basic_information_sync_router)
 _include_project_router(ltr_workbook_compatibility_router)
 _include_project_router(new_project_router)
 _include_project_router(project_router)
+_include_project_router(temporary_project_registration_router)
 _include_project_router(project_basic_information_router)
 _include_project_router(project_schedule_router)
 _include_project_router(project_test_plan_router)

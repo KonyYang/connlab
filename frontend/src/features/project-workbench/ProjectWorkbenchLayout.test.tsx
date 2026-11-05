@@ -27,6 +27,11 @@ vi.mock("./ProjectFolderCreationPanel", () => ({
   ProjectFolderCreationPanel: () => <section>Folder setup panel</section>,
 }));
 
+vi.mock('../../api/temporaryProjectRegistration', () => ({
+  prepareTemporaryRegistration: vi.fn(() => new Promise(() => {})),
+  previewTemporaryRegistration: vi.fn(), commitTemporaryRegistration: vi.fn(),
+}));
+
 vi.mock("./ProjectSection2SyncPanel", () => ({
   ProjectSection2SyncPanel: () => <section>Section 2 dates panel</section>,
 }));
@@ -86,6 +91,26 @@ beforeEach(() => {
 });
 
 describe("ProjectWorkbenchLayout lifecycle modes", () => {
+  it('closes the registration dialog when navigation selects a different project', async () => {
+    const view = renderWorkbench({ latestLtr: null }, { project_no: null });
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Apply LTR Number' }));
+    expect(screen.getByRole('dialog', { name: 'Apply LTR Number' })).toBeTruthy();
+    const other = { ...project, project_id: 'different-project', project_no: null };
+    view.rerender(<ProjectWorkbenchLayout project={other} runtimeModel={buildRuntimeModel({ latestLtr: null }, other)}
+      onBack={vi.fn()} onOpenMatrixEditor={vi.fn()} onOpenFeeEvaluation={vi.fn()}
+      onOpenBasicInformation={vi.fn()} onOpenReportWorkspace={vi.fn()} onOpenSettings={vi.fn()} />);
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Apply LTR Number' })).toBeNull());
+  });
+  it("offers LTR registration only on an active temporary project", () => {
+    const temporary = renderWorkbench({ latestLtr: null }, { project_no: null });
+    expect(screen.getByRole('button', { name: 'Apply LTR Number' })).toBeTruthy();
+    temporary.unmount();
+    const formal = renderWorkbench({ latestLtr: 'DL-2026-11-001' });
+    expect(screen.queryByRole('button', { name: 'Apply LTR Number' })).toBeNull();
+    formal.unmount();
+    renderWorkbench({ latestLtr: null, lifecycle: lifecycleResponse({ lifecycle_state: 'closed' }) }, { project_no: null, status: 'closed' });
+    expect(screen.queryByRole('button', { name: 'Apply LTR Number' })).toBeNull();
+  });
   it.each([false, true])("shows an honest empty Matrix state for imported files instead of example test steps (empty saved draft: %s)", async hasEmptyDraft => {
     const onOpenMatrixEditor = vi.fn();
     renderWorkbench({ matrixDraft: hasEmptyDraft ? testPlanDraft : null }, { library_member_id: "imported-member" }, { onOpenMatrixEditor });
