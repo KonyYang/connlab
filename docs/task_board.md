@@ -284,7 +284,54 @@
       "closed_at": "2026-11-05T05:55:31.532314Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_TEMPORARY_FORMAL_20261105": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab\\tmp\\temporary-formal-worktree",
+      "branch": "codex/temporary-formal-20261105",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_TEMPORARY_FORMAL_20261105",
+        "summary": "Register a formal LTR on an existing temporary project without losing its data",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Same-project registration preview and commit, metadata prefill, automatic or specified numbering, durable recovery and temporary Workbench entry; isolated tests only, no real workbook mutation or publication",
+        "scope_paths": [
+          "backend/application/temporary_project_registration_service.py",
+          "backend/application/ltr_workbook_write_commit_service.py",
+          "backend/application/specified_ltr_workbook_authority_preview_service.py",
+          "backend/api/routes_temporary_project_registration.py",
+          "backend/api/dependencies.py",
+          "backend/api/main.py",
+          "backend/infrastructure/files/ltr_registration_journal.py",
+          "backend/infrastructure/office/ltr_workbook_transaction_gateway.py",
+          "frontend/src/api/temporaryProjectRegistration.ts",
+          "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.tsx",
+          "frontend/src/features/project-workbench/TemporaryProjectRegistrationDialog.test.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+          "frontend/src/workbench.css",
+          "tests/unit/test_temporary_project_registration_service.py",
+          "tests/unit/test_ltr_workbook_write_commit_service.py",
+          "tests/unit/test_specified_ltr_workbook_authority_preview_service.py",
+          "tests/unit/test_ltr_registration_journal.py",
+          "tests/integration/test_temporary_project_registration_api.py",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [
+          "Registers authoritative LTR Excel rows and must recover safely if external save succeeds before local commit."
+        ],
+        "activation_head": "de02a50601622c3054f64cf829a2f6a0c80337e4",
+        "started_at": "2026-11-05T14:24:45.961870Z",
+        "updated_at": "2026-11-05T14:24:45.961870Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
