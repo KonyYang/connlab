@@ -269,11 +269,11 @@
   "tasks": {
     "TASK_DIRECT_PROJECT_IMPORT_20261105": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/direct-project-import-20261105",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "1604bb1b1526b85cb554e1d949d27f7e480a17ca",
       "task": {
         "task_id": "TASK_DIRECT_PROJECT_IMPORT_20261105",
         "summary": "Open the native project-folder picker directly from Projects and show import UI only for exceptions or recovery.",
@@ -291,9 +291,68 @@
         "risk_reasons": [],
         "activation_head": "a7618b8c19f1f94a1a06080af563228393498ac5",
         "started_at": "2026-11-05T05:04:35.689539Z",
-        "updated_at": "2026-11-05T05:04:35.689539Z",
+        "updated_at": "2026-11-05T05:18:37.589627Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_DIRECT_PROJECT_IMPORT_20261105",
+          "subject": "18ebdc74d9f8d88621d1ed36c6508e7f385806e2",
+          "summary": "Open the native folder picker directly from Projects, automatically receive safe single-project imports, and reserve a compact dialog for decisions and recovery while retaining legacy import URLs.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/architecture/project_library.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-library/project-library.css",
+            "frontend/src/pages/ProjectListPage.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Affected import and project-list regression",
+              "evidence": "89 tests passed on final behavior, covering direct picker launch and cancel, safe automatic intake, missing-LTR decision UI, legacy URL compatibility, conflicts, snapshots, and Projects list behavior."
+            },
+            {
+              "status": "passed",
+              "name": "Complete frontend test matrix",
+              "evidence": "1204 tests passed and 1 profiling test remained intentionally skipped. The only sandbox failure was the existing local dev-proxy port bind; that exact test passed separately with permission to bind 127.0.0.1:5173."
+            },
+            {
+              "status": "passed",
+              "name": "TypeScript and production build",
+              "evidence": "npm run build passed: tsc -b and Vite production build completed with 219 modules transformed."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review",
+              "evidence": "Sequential same-agent Standards and Spec passes found no findings. Existing scan, bound plan/fingerprint, batch, conflict, recovery, cancellation and late-response protections remain the only import implementation; git diff --check passed."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary context implemented the focused frontend orchestration, dialog presentation, regression tests, and architecture update."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Focused sequential same-agent Standards and Spec review; no independent-agent claim."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "One complete frontend matrix plus isolated permission-bound proxy verification and TypeScript/Vite production build."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "18ebdc74d9f8d88621d1ed36c6508e7f385806e2",
+            "primary_before": "8f31fa28147b86301f9db36ba1433e0d5ece9774",
+            "integrated_head": "1604bb1b1526b85cb554e1d949d27f7e480a17ca",
+            "recovered": false
+          }
+        }
       }
     }
   }
