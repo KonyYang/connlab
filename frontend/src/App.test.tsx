@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -11,15 +11,105 @@ import * as libraryApi from "./api/projectLibrary";
 vi.mock("./api/projectLibrary", async () => ({
   ...await vi.importActual<typeof import("./api/projectLibrary")>("./api/projectLibrary"),
   getLibraryRuntime: vi.fn(), listLibraryMembers: vi.fn(), getLibraryMember: vi.fn(), getLibraryFiles: vi.fn(), getPortableInfo: vi.fn(),
+  pickLibraryFolder: vi.fn(), scanLibrarySources: vi.fn(), planLibraryIntake: vi.fn(), startLibraryBatch: vi.fn(),
+  inspectPortableProject: vi.fn(), planPortableRestore: vi.fn(), restorePortableProject: vi.fn(), getLibraryBatch: vi.fn(), resumeLibraryBatch: vi.fn(),
 }));
 vi.mock("./pages/ProjectMatrixEditorPage", () => ({ ProjectMatrixEditorPage: ({ projectId }: { projectId: string }) => <section aria-label="Matrix editor">{projectId}</section> }));
 
 beforeEach(() => {
-  sessionStorage.clear();
+  vi.clearAllMocks();
+  sessionStorage.clear(); localStorage.clear();
   vi.mocked(listProjectRegistryRows).mockResolvedValue([]);
   vi.mocked(libraryApi.getLibraryRuntime).mockResolvedValue({ library_root: "D:/test-library", projects_root: "D:/test-library/projects", data_root: "D:/test-library/data", database_path: "D:/test-library/data/connlab.sqlite3", configured: true, format_version: 1 });
   vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [] });
+  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(null);
   vi.mocked(listLegacyProjects).mockResolvedValue([]);
+});
+
+it("opens the native project-folder picker directly from Projects and stays there when cancelled", async () => {
+  window.history.replaceState({}, "", "/projects");
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+
+  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce());
+  expect(window.location.pathname).toBe("/projects");
+  expect(screen.getByTestId("active-area").textContent).toBe("projects");
+  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
+});
+
+it("receives one safe selected project in the background and opens its workspace", async () => {
+  const source = "D:/old/DL-2026-09-032 Connector";
+  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
+  vi.mocked(libraryApi.scanLibrarySources).mockResolvedValue({
+    items: [{ source_path: source, title: "Connector", ltr_number: "DL-2026-09-032", kind: "project", warnings: [], child_folders: [] }],
+    warnings: [], truncated: false,
+  });
+  vi.mocked(libraryApi.planLibraryIntake).mockResolvedValue({
+    plan_id: "plan", fingerprint: "verified", warnings: [],
+    items: [{ source_path: source, target_path: "D:/test-library/projects/DL-2026-09-032", title: "Connector", ltr_number: "DL-2026-09-032", status: "ready", warnings: [], can_keep_separate: false }],
+  });
+  vi.mocked(libraryApi.startLibraryBatch).mockResolvedValue({
+    batch_id: "batch", status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 },
+    items: [{ source_path: source, status: "added", message: "Added", member_id: "member" }],
+  });
+  vi.mocked(libraryApi.getLibraryMember).mockResolvedValue({
+    member_id: "member", project_id: "verified-project", ltr_number: "DL-2026-09-032", title: "Connector",
+    folder_path: "D:/test-library/projects/DL-2026-09-032", revision: 1, batch_id: "batch",
+    snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: true,
+  });
+  window.history.replaceState({}, "", "/projects");
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+
+  await waitFor(() => expect(window.location.pathname).toBe("/projects/verified-project"));
+  expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
+});
+
+it("stays on Projects and opens a focused decision dialog only when information is missing", async () => {
+  const source = "D:/old/Connector";
+  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
+  vi.mocked(libraryApi.scanLibrarySources).mockResolvedValue({
+    items: [{ source_path: source, title: "Connector", ltr_number: null, kind: "project", warnings: [], child_folders: [] }],
+    warnings: [], truncated: false, selection_issue: "needs_ltr",
+  });
+  window.history.replaceState({}, "", "/projects");
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+
+  expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
+  expect(await screen.findByRole("textbox", { name: "LTR number" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Choose Project Folder" })).toBeNull();
+  expect(window.location.pathname).toBe("/projects");
+});
+
+it("does not reopen the folder picker after leaving Projects from an import decision", async () => {
+  const source = "D:/old/Connector";
+  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
+  vi.mocked(libraryApi.scanLibrarySources).mockResolvedValue({
+    items: [{ source_path: source, title: "Connector", ltr_number: null, kind: "project", warnings: [], child_folders: [] }],
+    warnings: [], truncated: false, selection_issue: "needs_ltr",
+  });
+  window.history.replaceState({}, "", "/projects");
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Settings" }));
+  expect(window.location.pathname).toBe("/settings");
+  await user.click(screen.getByRole("button", { name: "Projects" }));
+
+  expect(await screen.findByRole("button", { name: "Import Projects" })).toBeTruthy();
+  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
+  expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce();
 });
 
 it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project-library"])("opens project receiving from %s and returns to all Projects", async (path) => {
@@ -32,8 +122,9 @@ it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe("/projects");
   await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
-  expect(window.location.pathname).toBe("/projects/import");
-  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
+  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
+  expect(window.location.pathname).toBe("/projects");
+  expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
 });
 
 it("shows an imported project in the normal workbench without a special file action", async () => {
@@ -57,9 +148,8 @@ it.each(["", "batch-1"])("preserves browsing context but returns from import to 
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Import Projects" }));
-  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
-  await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
-  expect(window.location.pathname + window.location.search).toBe("/projects");
+  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
+  expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: /Open Workbench.*DL-2026-09-032/ }));
   expect(window.location.pathname).toBe("/projects/project-1");
   expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
@@ -86,8 +176,9 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   expect(window.location.pathname).toBe("/projects");
   expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
   await user.click(screen.getByRole("button", { name: "Import Projects" }));
-  expect(window.location.pathname).toBe("/projects/import");
-  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
+  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
+  expect(window.location.pathname).toBe("/projects");
+  expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
 });
 
 it("keeps the old direct folder-linking URL accessible without exposing it in the common import flow", async () => {

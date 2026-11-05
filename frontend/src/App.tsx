@@ -197,6 +197,7 @@ function parseCurrentRoute(): Route {
 
 export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(parseCurrentRoute);
+  const [projectImportOpen, setProjectImportOpen] = useState(false);
   const resumeTemperatureWorkspace = useRef<boolean | null>(route.name === "temperatureRise" ? true : null);
   const navigationGeneration = useRef(0);
   const [intakeSession, setIntakeSession] =
@@ -236,6 +237,12 @@ export default function App(): ReactElement {
       setIntakeInteractionLockReason(null);
     }
   }, [intakeInteractionLockReason, route.name]);
+
+  useEffect(() => {
+    if (route.name !== "projects" && route.name !== "projectLibraryList") {
+      setProjectImportOpen(false);
+    }
+  }, [route.name]);
 
   function handleShellNavigate(path: string): void {
     const generation = ++navigationGeneration.current;
@@ -325,14 +332,26 @@ export default function App(): ReactElement {
       <RouteLoadBoundary key={JSON.stringify(route)}>
       <Suspense fallback={<RouteLoadingFallback />}>
       {(route.name === "projects" || route.name === "projectLibraryList") && (
-        <ProjectListPage
-          onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}${batchSuffix}`)}
-          batchId={importBatchId}
-          onViewAll={() => navigate('/projects')}
-          onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}${batchSuffix}`)}
-          onOpenLinked={id => navigate(`/legacy-projects/${encodeURIComponent(id)}${batchSuffix}`)}
-          onImport={() => navigate(importPath)}
-        />
+        <>
+          <ProjectListPage
+            onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}${batchSuffix}`)}
+            batchId={importBatchId}
+            onViewAll={() => navigate('/projects')}
+            onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}${batchSuffix}`)}
+            onOpenLinked={id => navigate(`/legacy-projects/${encodeURIComponent(id)}${batchSuffix}`)}
+            onImport={() => setProjectImportOpen(true)}
+          />
+          {projectImportOpen && <ProjectLibraryImport
+            presentation="dialog"
+            startOnMount
+            onDismiss={() => setProjectImportOpen(false)}
+            onBack={() => setProjectImportOpen(false)}
+            onViewLibrary={() => setProjectImportOpen(false)}
+            onOpenMember={id => { setProjectImportOpen(false); navigate(`/project-library/${encodeURIComponent(id)}`); }}
+            onOpenProject={id => { setProjectImportOpen(false); navigate(`/projects/${encodeURIComponent(id)}`); }}
+            onOpenSettings={() => { setProjectImportOpen(false); navigate("/settings"); }}
+          />}
+        </>
       )}
       {route.name === "intake" && (
         <IntakeInboxPage

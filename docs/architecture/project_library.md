@@ -22,8 +22,10 @@ explicitly authorized operation.
 
 ### Simple receiving flow
 
-Import Projects has one default path: choose one complete project folder. The
-normal production route runs the existing scan and reviewed plan automatically.
+Import Projects has one default path: choose one complete project folder. From
+the Projects catalog, the button opens the native folder picker directly; the
+ordinary flow does not navigate to a separate import page. The existing scan and
+reviewed plan then run automatically.
 When the result is safe, ConnLab receives the files (or restores a compatible
 portable snapshot) and opens the verified Project identity without showing a
 second review or confirmation page. An unchanged duplicate opens its existing
@@ -39,7 +41,9 @@ copy. A matching LTR with a different Project identity cannot replace the curren
 project from this flow. Manual path entry is a fallback only when the native folder
 picker fails. Batch controls, linking tools, destination controls and implementation
 details are not part of the default single-project path. The backend still
-authorizes every choice.
+authorizes every choice. The old `/projects/import` and `/tools/project-library`
+routes remain available for compatible links and recovery; they are not the
+ordinary entry from Projects.
 
 Each ordinary review row carries a stable fingerprint of its reviewed source and
 destination context. Files-only replanning retains selection/keep-copy decisions
@@ -363,7 +367,7 @@ reporting a partially applied copy as complete.
 
 The intended operator sequence is:
 
-1. In Projects, choose **Import Projects**, then **Choose Project Folder**.
+1. In Projects, choose **Import Projects**. The native folder picker opens directly.
    The default UI checks exactly one complete project boundary, never recursively
    expands a parent into a batch, and replaces rather than appends a new selection.
    An LTR root and an LTR-prefixed business folder are valid inputs. Parent folders,
@@ -371,9 +375,10 @@ The intended operator sequence is:
    Identity metadata is read before asking for an LTR. Only an unidentified manual
    project can receive a user-supplied existing LTR; existing ConnLab identity cannot
    be overridden. The reviewed number, layout and conflicts are bound into the
-   ordinary intake plan. A single **Confirm Import** performs the copy; preview
-   alone does not copy or register the project. Destination remains the Settings
-   **Project default save location**. Original files and folders are preserved.
+   ordinary intake plan. A safe plan is received automatically; missing identity,
+   conflicts and recovery choices stop in one focused dialog for explicit action.
+   Destination remains the Settings **Project default save location**. Original
+   files and folders are preserved.
 2. In **Projects**, search by LTR or title, open the project details and use **Open Folder** for ordinary
    Windows file work. **Manage** provides file refresh, **Edit Title** and
    **Locate Folder** when a directory was moved or renamed.

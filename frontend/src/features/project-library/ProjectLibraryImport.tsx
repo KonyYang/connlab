@@ -8,9 +8,20 @@ import { ProjectImportReviewList } from "./ProjectImportReviewList";
 import { combinedImportResults, intakeReviewKey, readyImportPaths, receiveSavedProjects, reviewImportCandidates, selectedImportProblem, type SnapshotImportOutcome } from "./projectImportReview";
 import "./project-library.css";
 
-type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string, batchId?: string) => void; onOpenProject?: (id: string) => void; onOpenSettings?: () => void; backLabel?: string; onLegacyPreview?: () => void };
+type Props = {
+  onBack: () => void;
+  onViewLibrary: (batchId?: string) => void;
+  onOpenMember: (id: string, batchId?: string) => void;
+  onOpenProject?: (id: string) => void;
+  onOpenSettings?: () => void;
+  backLabel?: string;
+  onLegacyPreview?: () => void;
+  presentation?: "page" | "dialog";
+  startOnMount?: boolean;
+  onDismiss?: () => void;
+};
 
-export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOpenProject, backLabel = "Back to Projects" }: Props) {
+export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOpenProject, onOpenSettings, backLabel = "Back to Projects", presentation = "page", startOnMount = false, onDismiss }: Props) {
   const [runtime, setRuntime] = useState<LibraryRuntime | null>(null);
   const [sources, setSources] = useState("");
   const sourcePaths = [...new Set(sources.split(/\r?\n/).map(value => value.trim().replace(/^"|"$/g, "")).filter(Boolean))];
@@ -28,18 +39,21 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
   const [busyMessage, setBusyMessage] = useState("Checking selected folders…");
   const [manualOpen, setManualOpen] = useState(false);
   const [setupAttempt, setSetupAttempt] = useState(0);
+  const [setupReady, setSetupReady] = useState(false);
   const [batch, setBatch] = useState<LibraryBatch | null>(null);
   const [recoveryId, setRecoveryId] = useState("");
   const [recoveredCompletedId, setRecoveredCompletedId] = useState("");
   const [submission, setSubmission] = useState<LibraryBatchRequest | null>(null);
   const startedIntake = useRef("");
   const openedExisting = useRef("");
+  const startedPicker = useRef(false);
   const interactionEpoch = useRef(0);
   const live = useRef(true);
   const request = useRef<AbortController | null>(null);
   const topBar = useTopBarActionsRoot();
   useEffect(() => {
     live.current = true;
+    setSetupReady(false);
     const controller = new AbortController();
     const recoveryEpoch = interactionEpoch.current;
     let setupLoaded = false;
@@ -60,7 +74,8 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
           if (previous.status === "completed" && previous.counts.review === 0 && previous.counts.failed === 0) setRecoveredCompletedId(previous.batch_id);
         }
       }
-    }).catch(cause => { if (!controller.signal.aborted && recoveryEpoch === interactionEpoch.current) setError(setupLoaded ? (cause as Error).message : "Could not load the import save location. Retry, or reopen ConnLab if this continues."); });
+    }).catch(cause => { if (!controller.signal.aborted && recoveryEpoch === interactionEpoch.current) setError(setupLoaded ? (cause as Error).message : "Could not load the import save location. Retry, or reopen ConnLab if this continues."); })
+      .finally(() => { if (!controller.signal.aborted && recoveryEpoch === interactionEpoch.current) setSetupReady(true); });
     return () => { live.current = false; controller.abort(); request.current?.abort(); };
   }, [setupAttempt]);
   useEffect(() => {
@@ -79,6 +94,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     setBusy(false);
   }
   async function choose() {
+    const hadSelection = sourcePaths.length > 0 || Boolean(plan) || snapshots.length > 0;
     const epoch = ++interactionEpoch.current;
     setManualOpen(false);
     setBusy(true); setBusyMessage("Choose a project folder in the system window…"); setError("");
@@ -87,7 +103,10 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
       if (!live.current || epoch !== interactionEpoch.current) return;
       if (folder && (!sourcePaths.includes(folder) || sourcePaths.length > 1)) {
         const next = [folder]; changeSources(folder); await review(next, "");
-      } else setBusy(false);
+      } else {
+        setBusy(false);
+        if (!folder && startOnMount && !hadSelection) (onDismiss ?? onBack)();
+      }
     } catch (cause) { if (live.current && epoch === interactionEpoch.current) { setBusy(false); setManualOpen(true); setError(`Could not choose a folder. Enter its path below and check it again. ${(cause as Error).message}`); } }
   }
   async function review(paths = sourcePaths, providedLtr = ltrNumber) {
@@ -218,6 +237,13 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     return item.status === "already_added" && item.existing_member_id ? item.existing_member_id : "";
   })();
   const hasReview = Boolean(plan || snapshots.length);
+  const showSourceSummary = !manualOpen && (hasReview || presentation === "dialog" && sourcePaths.length > 0);
+  useEffect(() => {
+    if (!startOnMount || startedPicker.current || !setupReady || !runtime?.configured) return;
+    if (batch && batch.status !== "completed") return;
+    startedPicker.current = true;
+    void choose();
+  }, [startOnMount, setupReady, runtime?.configured, batch?.status]);
   const detailsBySource: Record<string, ImportResultDetails> = Object.fromEntries((plan?.items ?? []).map(row => [row.source_path, { ltrNumber: row.ltr_number, kind: row.target_member_id ? "existing_files" : "files", warnings: [...new Set(row.warnings)] }]));
   for (const row of snapshots) detailsBySource[row.source_path] = { ltrNumber: row.ltr_number, warnings: [...new Set(row.warnings)] };
   for (const row of snapshotResults) {
@@ -271,24 +297,25 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     void openImportedMember(item.member_id);
   }, [freshSuccess, displayBatch?.batch_id]);
   const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>{backLabel}</button>;
+  const dismiss = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onDismiss ?? onBack}>Cancel</button>;
   const results = displayBatch && <ProjectImportResults batch={displayBatch} titlesBySource={Object.fromEntries([...(plan?.items ?? []), ...snapshots, ...snapshotResults].map(item => [item.source_path, item.title]))}
     detailsBySource={detailsBySource}
     busy={busy} onOpenMember={openImportedMember} onViewLibrary={() => onViewLibrary()} onRefresh={() => void refreshBatch()}
     onResume={() => void receive(true)} onReceiveMore={() => changeSources("")} heading={displayBatch.batch_id === recoveredCompletedId ? "Import Result" : undefined} />;
-  return <section className="project-library" aria-label="Import projects">
-    {topBar ? createPortal(back, topBar) : <header className="library-heading"><h1>Import Projects</h1>{back}</header>}
+  const content = <section className="project-library" aria-label="Import projects">
+    {presentation === "page" ? (topBar ? createPortal(back, topBar) : <header className="library-heading"><h1>Import Projects</h1>{back}</header>) : <header className="library-heading"><h2>Import Project</h2>{dismiss}</header>}
     {!runtime && !error && <p role="status">Loading import setup…</p>}
     {error && !runtime?.configured && <div><p role="alert">{error}</p>{!runtime && <button type="button" onClick={() => { setError(""); setSetupAttempt(value => value + 1); }}>Retry Setup</button>}</div>}
-    {runtime && !runtime.configured && <p role="alert">{runtime.location_error && <>{runtime.location_error} </>}Set a valid Project default save location in Settings before importing projects.</p>}
-    {runtime?.configured && !freshSuccess && <section className={`library-panel${hasReview && !manualOpen ? " library-source-panel" : ""}`}>
-      {hasReview && !manualOpen ? <div className="library-source-summary" aria-label="Selected folder">
+    {runtime && !runtime.configured && <div className="library-setup-problem"><p role="alert">{runtime.location_error && <>{runtime.location_error} </>}Set a valid Project default save location in Settings before importing projects.</p>{onOpenSettings && <button type="button" onClick={onOpenSettings}>Open Settings</button>}</div>}
+    {runtime?.configured && !freshSuccess && <section className={`library-panel${showSourceSummary ? " library-source-panel" : ""}`}>
+      {showSourceSummary ? <div className="library-source-summary" aria-label="Selected folder">
         <span title={sourcePaths[0]}>Source: {sourcePaths[0]?.split(/[\\/]/).pop()}</span>
         <button type="button" className="library-text-action" disabled={locked} onClick={() => void choose()}>Change Folder</button>
-      </div> : <>
+      </div> : presentation === "page" || !startOnMount ? <>
         <h2>Choose a project</h2>
         <p>Choose the project's LTR folder. ConnLab will receive it and open the project.</p>
         <div className="library-actions"><button type="button" className="primary-action" disabled={locked} title="Choose one complete project folder. Files are copied after the checks pass." onClick={() => void choose()}>Choose Project Folder</button></div>
-      </>}
+      </> : null}
       {manualOpen && <div className="library-editor">
         <label>Source path<input value={sources} disabled={locked} onChange={event => changeSources(event.target.value)} placeholder="Full path to one project folder" /></label>
         <button type="button" disabled={locked || !sourcePaths.length} onClick={() => void review()}>Check Folder</button>
@@ -324,4 +351,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
       : results)}
     {snapshotResults.some(row => row.status === "failed") && <button type="button" disabled={locked} onClick={() => { const failed = snapshotResults.filter(row => row.status === "failed").map(row => row.source_path); changeSources(failed.join("\n")); void review(failed); }}>Check Failed Projects Again</button>}
   </section>;
+  return presentation === "dialog"
+    ? <div className="project-import-overlay"><div className="project-import-dialog" role="dialog" aria-modal="true" aria-label="Import project">{content}</div></div>
+    : content;
 }
