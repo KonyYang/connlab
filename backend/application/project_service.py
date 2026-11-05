@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from datetime import date
 from typing import Protocol
 from uuid import uuid4
 
 from backend.domain import Project, ProjectStatus, ProjectTemporaryContext
+from backend.application.temporary_project_intake_source import normalize_intake_snapshot, project_snapshot_records
 
 
 class ProjectRepositoryPort(Protocol):
@@ -50,6 +52,7 @@ class CreateTemporaryProjectCommand:
     requestor: str | None = None
     source_asset_ids: tuple[str, ...] = ()
     notes: str | None = None
+    intake_snapshot: dict | None = None
 
 
 class ProjectNotFoundError(LookupError):
@@ -63,10 +66,12 @@ class ProjectService:
         self,
         repository: ProjectRepositoryPort,
         temporary_context_store: ProjectTemporaryContextStorePort | None = None,
+        *, application_form_store=None, sample_store=None, intake_source=None,
     ) -> None:
         """Create a project service with its repository port."""
         self._repository = repository
         self._temporary_context_store = temporary_context_store
+        self._forms, self._samples, self._intake_source = application_form_store, sample_store, intake_source
 
     def create_project(self, command: CreateProjectCommand) -> Project:
         """Create a project with the default draft status."""
@@ -83,6 +88,12 @@ class ProjectService:
 
     def create_temporary_project(self, command: CreateTemporaryProjectCommand) -> Project:
         """Create an active no-LTR project for early Matrix and Fee planning."""
+        snapshot = normalize_intake_snapshot(command.intake_snapshot) if command.intake_snapshot is not None else None
+        if snapshot is not None:
+            if self._temporary_context_store is None or self._forms is None or self._samples is None:
+                raise ValueError('Temporary intake snapshot persistence is not configured.')
+            if self._intake_source is not None:
+                self._intake_source.validate_creation(snapshot, command.source_asset_ids)
         project = Project(
             project_id=uuid4().hex,
             project_no=None,
@@ -115,8 +126,14 @@ class ProjectService:
                         )
                         if value is not None
                     ),
+                    intake_snapshot_json=json.dumps(snapshot, ensure_ascii=False, sort_keys=True) if snapshot is not None else None,
                 )
             )
+        if snapshot is not None:
+            form, samples = project_snapshot_records(created.project_id, snapshot)
+            self._forms.create(form)
+            for sample in samples:
+                self._samples.create(sample)
         return created
 
     def list_projects(self) -> list[Project]:

@@ -77,6 +77,7 @@ class ProjectTemporaryContextModel(Base):
     test_item: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     source_asset_ids_json: Mapped[str | None] = mapped_column(Text)
+    intake_snapshot_json: Mapped[str | None] = mapped_column(Text)
 
 
 class ApplicationFormModel(Base):

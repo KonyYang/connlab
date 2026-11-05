@@ -489,6 +489,8 @@ def get_project_service(session: Session = Depends(get_session)) -> ProjectServi
     return ProjectService(
         ProjectRepository(session),
         ProjectTemporaryContextRepository(session),
+        application_form_store=ApplicationFormRepository(session), sample_store=SampleInfoRepository(session),
+        intake_source=_temporary_project_intake_source(session),
     )
 
 
@@ -3018,6 +3020,13 @@ def get_specified_ltr_workbook_authority_preview_service(
     )
 
 
+def _temporary_project_intake_source(session):
+    from backend.application.temporary_project_intake_source import LinkedIntakeCandidateSource, TemporaryProjectIntakeSource
+    return TemporaryProjectIntakeSource(LinkedIntakeCandidateSource(
+        assets=IntakeAssetRepository(session), cases=IntakeCaseRepository(session), drafts=IntakeDraftRepository(session),
+    ))
+
+
 def get_temporary_project_registration_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
@@ -3043,6 +3052,7 @@ def get_temporary_project_registration_service(
         temporary_context=ProjectTemporaryContextRepository(session), workbook=workbook,
         journal=GenerationJournal(settings.data_dir / 'ltr_registration'),
         ltr_service=get_ltr_service(session), commit_local=session.commit,
+        intake_source=_temporary_project_intake_source(session),
     )
 
 

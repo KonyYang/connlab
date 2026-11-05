@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, replace
+from dataclasses import asdict, replace, fields
 from datetime import date
 import json
 from pathlib import Path
@@ -20,6 +20,7 @@ from backend.application.specified_ltr_workbook_authority_preview_service import
 )
 from backend.application.new_project_setup_policy import normalize_lab_performing_tests
 from backend.application.project_basic_information_source import ProjectBasicInformationSourceAssembler
+from backend.application.temporary_project_intake_source import project_snapshot_records
 from backend.domain import ApplicationForm, LtrStatus, ProjectStatus, ProjectLifecycleState
 from backend.infrastructure.files.generation_journal import fingerprint, json_value
 from backend.infrastructure.office import LtrWorkbookRowData, LtrWorkbookExistingRow
@@ -42,33 +43,45 @@ class TemporaryProjectRegistrationService:
     """Preview first; journal external intent before Save; bind locally afterwards."""
 
     def __init__(self, *, projects, forms, samples, ltrs, basic_information,
-                 temporary_context, workbook, journal, ltr_service, commit_local=lambda: None):
+                 temporary_context, workbook, journal, ltr_service, commit_local=lambda: None, intake_source=None):
         self._projects, self._forms, self._samples, self._ltrs = projects, forms, samples, ltrs
         self._basic, self._temporary = basic_information, temporary_context
         self._workbook, self._journal, self._ltr_service = workbook, journal, ltr_service
         self._commit_local = commit_local
+        self._intake_source = intake_source
 
     def prepare(self, project_id: str) -> dict:
         project = self._project(project_id)
-        values = self._prefill(project)
         state = self._journal.read(project_id)
         recovery = state is not None and state['status'] in {'writing', 'saving'}
+        source = ({'snapshot': state['effects'].get('intake_snapshot'),
+            'source_id': state['effects'].get('intake_source_id'), 'candidates': []}
+            if recovery else self._resolve_intake(project_id))
+        values = self._prefill(project, source['snapshot'])
         return {
             'project_id': project_id, 'values': state['effects']['values'] if recovery else values,
             'required_fields': REQUIRED_FIELDS,
             'recovery_preview': self._public_preview(state) if recovery else None,
             'registered_ltr_number': self._registered_number(project_id),
+            'intake_source_id': source['source_id'],
+            'intake_candidates': [{**candidate, 'values': self._prefill(project, candidate['snapshot'])} for candidate in source['candidates']],
         }
 
     def preview(self, project_id: str, values: dict[str, str], *, plan_date: date,
-                mode: str = 'auto', specified_number: str | None = None) -> dict:
+                mode: str = 'auto', specified_number: str | None = None, intake_source_id: str | None = None) -> dict:
         with self._journal.lock(project_id):
             project = self._eligible_project(project_id)
             pending = self._journal.read(project_id)
             if pending and pending['status'] in {'writing', 'saving'}:
                 return self._public_preview(pending)
-            values = self._validated_values(values, self._prefill(project))
-            effective_project, effective_form = self._effective_sources(project, values)
+            source = self._resolve_intake(project_id, intake_source_id)
+            if source['candidates'] and source['source_id'] is None:
+                raise TemporaryProjectRegistrationError('Several linked requests contain different information. Compare and choose an intake source, or explicitly continue manually.')
+            values = self._validated_values(values, self._prefill(project, source['snapshot']))
+            effective_project, effective_form = self._effective_sources(project, values, source['snapshot'])
+            samples = self._samples.list_by_project(project_id)
+            if not samples and source['snapshot'] is not None:
+                _, samples = project_snapshot_records(project_id, source['snapshot'])
             with self._workbook.open_read_only_transaction() as context:
                 sheets = tuple(str(s) for s in context.session.list_sheets() if str(s).isdigit() and len(str(s)) == 4)
                 if mode == 'auto':
@@ -89,7 +102,7 @@ class TemporaryProjectRegistrationService:
                 workbook_path = str(Path(context.workbook_path).resolve())
             self._reject_other_owner(project_id, number)
             row = LtrWorkbookWritePreviewService.project_row_data(
-                effective_project, effective_form, self._samples.list_by_project(project_id),
+                effective_project, effective_form, samples,
                 PreviewLtrWorkbookWriteCommand(ltr_number=number, plan_date=plan_date,
                     test_item=values['test_item'], sample_description=values['sample_description'],
                     location=values['location'], test_type_in_sheet=values['test_type_in_sheet'],
@@ -121,6 +134,8 @@ class TemporaryProjectRegistrationService:
                 'ltr_number': number, 'row': asdict(row), 'action': action,
                 'ack': ack, 'comparison': comparison, 'workbook_path': workbook_path,
                 'source_signature': self._source_signature(project),
+                'intake_snapshot': source['snapshot'], 'intake_source_id': source['source_id'],
+                'intake_source_fingerprint': source['fingerprint'],
             }
             self._journal.save(state)
             return self._public_preview(state)
@@ -157,6 +172,10 @@ class TemporaryProjectRegistrationService:
                     if intent['action'] == 'append_associated':
                         self._unique_workbook_row(context.session, base_ltr_number(intent['ltr_number']), sheets)
                     def retain_intent_before_write():
+                        if state['status'] == 'preview':
+                            source = self._resolve_intake(project_id, intent.get('intake_source_id'))
+                            if source['fingerprint'] != intent.get('intake_source_fingerprint'):
+                                raise TemporaryProjectRegistrationError('The linked intake source changed after preview. Refresh before applying.')
                         state['status'] = 'writing'
                         self._journal.save(state)
                     command = self._write_command(intent)
@@ -184,7 +203,10 @@ class TemporaryProjectRegistrationService:
 
     def _bind_local(self, project, intent):
         values = intent['values']
-        effective_project, effective_form = self._effective_sources(project, values)
+        if intent.get('intake_snapshot') is not None:
+            self._temporary.freeze_intake_snapshot(project.project_id,
+                json.dumps(intent['intake_snapshot'], ensure_ascii=False, sort_keys=True))
+        effective_project, effective_form = self._effective_sources(project, values, intent.get('intake_snapshot'))
         if project.status in {ProjectStatus.DRAFT, ProjectStatus.INTAKE_RECEIVED}:
             effective_project = effective_project.with_status(ProjectStatus.CONFIRMED)
         self._projects.update(effective_project)
@@ -193,6 +215,10 @@ class TemporaryProjectRegistrationService:
             self._forms.update(effective_form)
         else:
             self._forms.create(effective_form)
+        if not self._samples.list_by_project(project.project_id) and intent.get('intake_snapshot') is not None:
+            _, samples = project_snapshot_records(project.project_id, intent['intake_snapshot'])
+            for sample in samples:
+                self._samples.create(replace(sample, source_form_id=effective_form.form_id))
         setup = {'source': 'new_project_setup_confirmation', **values}
         notes = json.dumps({'commit_mode': 'external_ltr_workbook', 'action': intent['action'],
             'sheet_name': intent['saved_row']['sheet_name'], 'row_number': intent['saved_row']['row_number'],
@@ -245,17 +271,41 @@ class TemporaryProjectRegistrationService:
             raise TemporaryProjectRegistrationError('Duplicate LTR rows require manual review before registration.')
         return matches[0] if matches else None
 
-    def _prefill(self, project):
+    def _resolve_intake(self, project_id, source_id=None):
+        if self._intake_source is None:
+            return {'snapshot': None, 'source_id': None, 'fingerprint': None, 'candidates': []}
+        return self._intake_source.resolve(project_id, self._temporary.get_by_project(project_id), source_id=source_id)
+
+    def _prefill(self, project, snapshot=None):
         suggestions = ProjectBasicInformationSourceAssembler(ltr_store=self._ltrs,
             application_form_store=self._forms, sample_store=self._samples).assemble(project)
-        values = {key: item.source_value for key, item in suggestions.items()}
+        temporary = self._temporary.get_by_project(project.project_id)
+        values = {'sample_description': getattr(temporary, 'sample_description', None) or project.product_name or '',
+            'test_item': getattr(temporary, 'test_item', None) or ''}
+        if snapshot is not None:
+            source_form, _ = project_snapshot_records(project.project_id, snapshot)
+            values.update({'sample_description': snapshot['project_setup'].get('sample_description') or values['sample_description'],
+                'test_item': snapshot['project_setup'].get('test_item') or source_form.requested_testing or '',
+                'requested_by': source_form.requester, 'project_type': source_form.project_type or '',
+                'location': source_form.manufacturing_site or '', 'project_leader': source_form.assigned_personnel or '',
+                'lab_performing_tests': source_form.lab or '',
+                'test_type_in_sheet': snapshot['project_setup'].get('test_type_in_sheet', ''),
+                'post_testing_disposition': source_form.post_testing_disposition or '',
+                'sub_contract': 'Yes' if source_form.subcontract_allowed else 'No' if source_form.subcontract_allowed is False else source_form.subcontract or ''})
+        values.update({key: item.source_value for key, item in suggestions.items()})
         forms = self._forms.list_by_project(project.project_id)
+        if not forms and snapshot is not None and project.requestor.strip().casefold() in {'unknown requestor', 'unknown requester'}:
+            values['requested_by'] = snapshot['fields'].get('requester', '')
+        if forms:
+            form = forms[-1]
+            for key, attribute in (('requested_by', 'requester'), ('project_type', 'project_type'),
+                    ('location', 'manufacturing_site'), ('project_leader', 'assigned_personnel'), ('lab_performing_tests', 'lab'),
+                    ('post_testing_disposition', 'post_testing_disposition'), ('sub_contract', 'subcontract')):
+                current = getattr(form, attribute)
+                if current is not None:
+                    values[key] = current
         if forms and forms[-1].subcontract_allowed is not None:
             values['sub_contract'] = 'Yes' if forms[-1].subcontract_allowed else 'No'
-        temporary = self._temporary.get_by_project(project.project_id)
-        if temporary:
-            for key in ('sample_description', 'test_item'):
-                values[key] = getattr(temporary, key, None) or values.get(key, '')
         draft = self._basic.get_latest_draft(project.project_id)
         confirmed = self._basic.get_latest_confirmed(project.project_id)
         for record in (draft, confirmed):
@@ -288,10 +338,19 @@ class TemporaryProjectRegistrationService:
             raise TemporaryProjectRegistrationError('Sub-contract must be Yes or No.')
         return cleaned
 
-    def _effective_sources(self, project, values):
+    def _effective_sources(self, project, values, snapshot=None):
         forms = self._forms.list_by_project(project.project_id)
-        form = forms[-1] if forms else ApplicationForm(form_id=uuid4().hex, project_id=project.project_id,
-            form_no='', revision='', requester=values['requested_by'])
+        if forms:
+            form = forms[-1]
+            if snapshot is not None:
+                source_form, _ = project_snapshot_records(project.project_id, snapshot)
+                form = replace(form, **{field.name: getattr(source_form, field.name) for field in fields(ApplicationForm)
+                    if field.name not in {'form_id', 'project_id'} and getattr(form, field.name) is None})
+        elif snapshot is not None:
+            form, _ = project_snapshot_records(project.project_id, snapshot)
+        else:
+            form = ApplicationForm(form_id=uuid4().hex, project_id=project.project_id,
+                form_no='', revision='', requester=values['requested_by'])
         return (replace(project, requestor=values['requested_by'], product_name=values['sample_description']),
             replace(form, requester=values['requested_by'], project_type=values['project_type'],
                 manufacturing_site=values['location'], assigned_personnel=values['project_leader'],

@@ -25,6 +25,7 @@ from backend.infrastructure.storage.project_schedule_schema_migration import (
     bootstrap_project_schedule_schema,
 )
 from backend.infrastructure.storage.database_general_migrations import (
+    _migrate_temporary_project_intake_snapshot,
     _migrate_file_asset_provenance_columns,
     _migrate_ltr_duplicate_resolution_tables,
     _migrate_project_basic_information_records_table,
@@ -129,6 +130,7 @@ def init_db(engine: Engine) -> None:
         table for table in Base.metadata.tables.values() if table.name not in dedicated_tables
     ]
     Base.metadata.create_all(bind=engine, tables=general_tables)
+    _migrate_temporary_project_intake_snapshot(engine)
     migrate_group_completion_description(engine)
     migrate_standard_record_method_sync_schema(engine)
     _migrate_project_no_optional(engine)

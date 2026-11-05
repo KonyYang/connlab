@@ -8,6 +8,16 @@ from typing import Any
 from sqlalchemy.engine import Engine
 
 
+def _migrate_temporary_project_intake_snapshot(engine: Engine) -> None:
+    """Add nullable frozen intake facts without rewriting existing rows."""
+    if engine.dialect.name != 'sqlite':
+        return
+    with engine.begin() as connection:
+        columns = {row[1] for row in connection.exec_driver_sql('PRAGMA table_info(project_temporary_contexts)')}
+        if columns and 'intake_snapshot_json' not in columns:
+            connection.exec_driver_sql('ALTER TABLE project_temporary_contexts ADD COLUMN intake_snapshot_json TEXT')
+
+
 def _migrate_project_no_optional(engine: Engine) -> None:
     """Relax legacy project_no NOT NULL/UNIQUE constraints in local SQLite DBs."""
     if engine.dialect.name != "sqlite":

@@ -61,6 +61,33 @@ it('shows pending recovery on reopen without accepting changed registration info
   expect(screen.getByLabelText('Test Item')).toHaveProperty('disabled', true);
 });
 
+it('compares conflicting requests and requires an explicit choice while preserving manual edits', async () => {
+  const user = userEvent.setup();
+  const candidate = (source_id: string, requester: string, phone: string, leader: string) => ({ source_id,
+    values: { ...values, project_leader: leader }, snapshot: { fields: { requester, phone },
+      samples: [{ part_number: `PN-${phone}`, quantity: '5' }], requested_testing_rows: [], project_setup: {} } });
+  vi.mocked(prepareTemporaryRegistration).mockResolvedValue({ project_id: 'P1', values, required_fields: required,
+    registered_ltr_number: null, recovery_preview: null, intake_source_id: null,
+    intake_candidates: [candidate('source-A', 'Alice', '111', 'Leader A'), candidate('source-B', 'Bob', '222', 'Leader B')] });
+  render(<TemporaryProjectRegistrationDialog projectId="P1" onClose={vi.fn()} onRegistered={vi.fn()} />);
+  const source = await screen.findByLabelText('Request source');
+  expect(screen.getByRole('button', { name: 'Preview registration' })).toHaveProperty('disabled', true);
+  await user.click(screen.getByText('Request 2 details'));
+  expect(screen.getByRole('table', { name: 'Request 2 information' }).textContent).toContain('222');
+  const leader = screen.getByLabelText('Project Leader');
+  await user.clear(leader); await user.type(leader, 'Manual leader');
+  await user.selectOptions(source, 'source-B');
+  expect(leader).toHaveProperty('value', 'Manual leader');
+  await user.click(screen.getByRole('button', { name: 'Preview registration' }));
+  await waitFor(() => expect(previewTemporaryRegistration).toHaveBeenCalledWith('P1', expect.objectContaining({
+    intake_source_id: 'source-B', values: expect.objectContaining({ project_leader: 'Manual leader' }),
+  })));
+  await user.selectOptions(source, 'manual');
+  expect(screen.queryByRole('button', { name: 'Confirm registration' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Preview registration' }));
+  await waitFor(() => expect(previewTemporaryRegistration).toHaveBeenLastCalledWith('P1', expect.objectContaining({ intake_source_id: 'manual' })));
+});
+
 it('recognizes a successful registration after its response is lost and refreshes the same project', async () => {
   const user = userEvent.setup(), registered = vi.fn();
   vi.mocked(prepareTemporaryRegistration).mockResolvedValueOnce({ project_id: 'P1', values,

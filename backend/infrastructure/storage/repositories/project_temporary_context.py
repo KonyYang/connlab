@@ -34,6 +34,16 @@ class ProjectTemporaryContextRepository:
         )
         return _to_domain(row) if row else None
 
+    def freeze_intake_snapshot(self, project_id: str, snapshot_json: str) -> None:
+        """Capture a confirmed legacy source once without replacing human notes."""
+        row = self._session.scalar(select(ProjectTemporaryContextModel).where(ProjectTemporaryContextModel.project_id == project_id))
+        if row is None:
+            raise ValueError('Temporary project context is missing; intake snapshot cannot be retained.')
+        if row.intake_snapshot_json is not None and json.loads(row.intake_snapshot_json) != json.loads(snapshot_json):
+            raise ValueError('A different intake snapshot is already retained for this project.')
+        row.intake_snapshot_json = snapshot_json
+        self._session.flush()
+
     def delete_by_project(self, project_id: str) -> bool:
         """Delete temporary context by project id when one exists."""
         row = self._session.scalar(
@@ -57,6 +67,7 @@ def _to_model(context: ProjectTemporaryContext) -> ProjectTemporaryContextModel:
         test_item=context.test_item,
         notes=context.notes,
         source_asset_ids_json=json.dumps(list(context.source_asset_ids), sort_keys=True),
+        intake_snapshot_json=context.intake_snapshot_json,
     )
 
 
@@ -69,6 +80,7 @@ def _to_domain(row: ProjectTemporaryContextModel) -> ProjectTemporaryContext:
         test_item=row.test_item,
         notes=row.notes,
         source_asset_ids=_source_asset_ids(row.source_asset_ids_json),
+        intake_snapshot_json=row.intake_snapshot_json,
     )
 
 
