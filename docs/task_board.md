@@ -278,11 +278,11 @@
   "tasks": {
     "TASK_LTR_EXCEL_SAVE_20261105": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\ltr-save-review\\connlab",
       "branch": "codex/ltr-save-fix-20261105",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "e9c10e1243f2d662eb55a32c32edb7a35c028c6b",
       "task": {
         "task_id": "TASK_LTR_EXCEL_SAVE_20261105",
         "summary": "Fix LTR workbook save after Excel data recovery open",
@@ -298,9 +298,67 @@
         ],
         "activation_head": "f7bfe1c6d0f0129331e953b4ed50ea4c4baa43fe",
         "started_at": "2026-11-05T10:45:01.720986Z",
-        "updated_at": "2026-11-05T10:45:01.720986Z",
+        "updated_at": "2026-11-05T11:30:45.342097Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "roles": {
+            "qa": {
+              "method": "same-thread isolated workbook verification and automated tests",
+              "status": "passed"
+            },
+            "reviewer": {
+              "method": "same-thread code review; user explicitly approved substitution for independent review",
+              "status": "passed"
+            },
+            "developer": {
+              "method": "same-thread implementation",
+              "status": "passed"
+            },
+            "integrator": {
+              "method": "same-thread pre-integration status and subject verification; user explicitly approved substitution",
+              "status": "passed"
+            },
+            "planner": {
+              "method": "same-thread diagnosis and plan; user explicitly approved substitution",
+              "status": "passed"
+            }
+          },
+          "subject": "74607313ae834e84997b13fb0368eba0b30c114c",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "74607313ae834e84997b13fb0368eba0b30c114c",
+            "primary_before": "373539212ec8a0812474ecff5bfcca02ad63c65d",
+            "integrated_head": "e9c10e1243f2d662eb55a32c32edb7a35c028c6b",
+            "recovered": false
+          },
+          "task_id": "TASK_LTR_EXCEL_SAVE_20261105",
+          "version": 1,
+          "validation": [
+            {
+              "name": "Office lifecycle and LTR tests",
+              "status": "passed",
+              "result": "54 tests passed"
+            },
+            {
+              "name": "Office boundary and LTR API tests",
+              "status": "passed",
+              "result": "10 tests passed"
+            },
+            {
+              "name": "Isolated Excel workbook",
+              "status": "passed",
+              "result": "Old extract mode reproduced Save error; normal mode saved location dropdown and synthetic registration, verified after reopening"
+            }
+          ],
+          "schema": "connlab.sol-task-report",
+          "summary": "Open writable Excel workbooks in normal mode to permit LTR saves; user approved same-thread review in place of independent contexts",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/infrastructure/office/office_lifecycle.py",
+            "tests/unit/test_office_lifecycle.py"
+          ]
+        }
       }
     }
   }
