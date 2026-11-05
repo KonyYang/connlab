@@ -275,7 +275,35 @@
       "closed_at": "2026-11-05T00:05:55.274746Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LTR_EXCEL_SAVE_20261105": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\ltr-save-review\\connlab",
+      "branch": "codex/ltr-save-fix-20261105",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LTR_EXCEL_SAVE_20261105",
+        "summary": "Fix LTR workbook save after Excel data recovery open",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Open writable Excel workbooks normally; preserve read-only recovery behavior and validate on isolated LTR copy",
+        "scope_paths": [
+          "backend/infrastructure/office/office_lifecycle.py",
+          "tests/unit/test_office_lifecycle.py"
+        ],
+        "risk_reasons": [
+          "Office lifecycle is used for authoritative LTR workbook writes; validation must use isolated copies."
+        ],
+        "activation_head": "f7bfe1c6d0f0129331e953b4ed50ea4c4baa43fe",
+        "started_at": "2026-11-05T10:45:01.720986Z",
+        "updated_at": "2026-11-05T10:45:01.720986Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
