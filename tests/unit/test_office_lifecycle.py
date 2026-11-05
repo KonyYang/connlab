@@ -80,7 +80,13 @@ def test_open_excel_workbook_passes_password_to_open_and_write_reservation(monke
     assert kwargs["Delimiter"] is None
     assert kwargs["IgnoreReadOnlyRecommended"] is True
     assert kwargs["AddToMru"] is False
-    assert kwargs["CorruptLoad"] == 2
+    assert kwargs["CorruptLoad"] == 0
+
+    read_handle = manager.open_excel_workbook(
+        path=Path("D:/LabShare/LTR.XLS"), modify_password="DGLAB", read_only=True
+    )
+    read_handle.close(save_changes=False)
+    assert fake_excel.open_calls[-1]["CorruptLoad"] == 2
 
 
 class _FakeWorkbookForOpen:

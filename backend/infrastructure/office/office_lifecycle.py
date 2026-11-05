@@ -87,7 +87,8 @@ class OfficeLifecycleManager:
                 Delimiter=None,
                 IgnoreReadOnlyRecommended=True,
                 AddToMru=False,
-                CorruptLoad=2,
+                # Extract-data mode cannot save the opened workbook in Excel.
+                CorruptLoad=2 if read_only else 0,
             )
             return ExcelWorkbookHandle(
                 excel_app=excel,
