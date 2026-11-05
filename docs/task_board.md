@@ -266,7 +266,37 @@
       "closed_at": "2026-11-04T22:22:16.639026Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_DIRECT_PROJECT_IMPORT_20261105": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
+      "branch": "codex/direct-project-import-20261105",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_DIRECT_PROJECT_IMPORT_20261105",
+        "summary": "Open the native project-folder picker directly from Projects and show import UI only for exceptions or recovery.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Replace the normal Import Projects route hop with direct native selection, preserving automatic safe intake, conflict decisions, error handling, interruption recovery, and legacy route compatibility.",
+        "scope_paths": [
+          "docs/architecture/project_library.md",
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/pages/ProjectListPage.tsx",
+          "frontend/src/pages/ProjectListPage.test.tsx",
+          "frontend/src/features/project-library"
+        ],
+        "risk_reasons": [],
+        "activation_head": "a7618b8c19f1f94a1a06080af563228393498ac5",
+        "started_at": "2026-11-05T05:04:35.689539Z",
+        "updated_at": "2026-11-05T05:04:35.689539Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
