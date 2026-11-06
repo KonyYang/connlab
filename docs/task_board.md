@@ -320,7 +320,49 @@
       "closed_at": "2026-11-06T16:06:14.113769Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REPORT_TOOLS_BRIDGE_20261107": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
+      "branch": "codex/report-tools-bridge",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
+        "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Batches 1 and 2 only. Existing isolated working-copy pipeline, optional portable Tools result packages and Report mapping; no temperature math changes, real business writes, official release or push.",
+        "scope_paths": [
+          "backend/application/report_authoring",
+          "backend/application/tools_temperature_service.py",
+          "backend/application/mechanical_summary_folder.py",
+          "backend/application/report_tools_package.py",
+          "backend/api/routes_report_authoring.py",
+          "backend/api/routes_tools_temperature.py",
+          "backend/api/routes_tools_mechanical_summary.py",
+          "backend/api/dependencies.py",
+          "backend/infrastructure/office",
+          "backend/infrastructure/files",
+          "backend/domain/report_authoring.py",
+          "backend/interfaces",
+          "frontend/src/features/report-workspace",
+          "frontend/src/features/tools",
+          "frontend/src/api",
+          "frontend/src/styles",
+          "tests",
+          "docs/operational"
+        ],
+        "risk_reasons": [],
+        "activation_head": "72d78b14766b2e0276a03462828f8b5b5ed8231d",
+        "started_at": "2026-11-06T21:06:29.254660Z",
+        "updated_at": "2026-11-06T21:06:29.254660Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
