@@ -1,25 +1,44 @@
-# ConnLab 机械试验 Summary 工具方案
+# Mechanical Summary — folder generation
 
-## 目标与边界
+## User outcome
 
-在 Tools 提供独立机械试验整理工具，选择多份仪器记录，生成可独立编辑、审核和归档的 Excel Summary。无需项目或 LTR 关联；不改变温升工具，也不写入真实项目资料。参考 DL-2026-09-032 的原始 PDF、XLS 和人工 Summary，不把其数据、结论或样品映射作为其他项目默认值。
+Tools → Mechanical Summary opens a folder picker. The tool scans PDF/XLS/XLSX records recursively, identifies supported mechanical tests and downloads a uniquely named editable XLSX when the source identities and results are complete. Otherwise it shows only the test sections needing sample mappings, a hold-force field or confirmed qualitative report coverage. Optional metadata can remain `Not recorded`.
 
-## 第一部分：独立工具
+The tool is independent of project registration. It does not change source files, update the Matrix, issue a report or write into the selected folder. Downloads use the registered-looking LTR found in the current records and a Shanghai-time timestamp, including microseconds. Existing files are not overwritten by the application.
 
-1. 选择本次支持的 PDF 与 XLS/XLSX 输入，识别试验类型、组别、样品及曲线编号；对冲突或无法识别的内容提供人工确认，不猜测结果。
-2. 区分插拔力、峰值保持力、指定载荷保持力和定性试验；保留原始有效测量、仪器有效统计和曲线。生成可复制到报告的结果表，曲线编号位于结果表外；定量统计按确认范围计算 Min、Max、Avg 和样本标准差。定性 Pass 必须有依据或经用户确认。
-3. 每项保留可编辑 LTR、试验日期、人员、环境、设备 ID、试验条件、项目/过程、备注；缺失信息标明未记录。保持样品编号、单位、精度和原始符号；不把导出日期当试验日期。
-4. 生成独立 XLSX 下载，不修改原文件；供人工编辑和审核，不自动生成或发行报告。
-5. 来源可追溯到文件、页或单元格；避免重复制作原始数据或仪器统计，不增加仪表盘或自动判定。
+## Evidence and review rules
 
-## 第二部分：仅设计，本次不实施
+- Supported PDF records: MF/UMF, peak retention, FEnd section / FEnd section 1 hold records and cable-clamp pull. Recognize the actual instrument headers and rows, including wrapped headings and metadata columns; compare the extracted row count with any explicit instrument sample count; filenames are additional evidence. Scanned or unrecognized named mechanical records block generation with actionable feedback.
+- Supported original workbooks: polarisation/mis-mating and protection against electric shock exports with measurement headings, `[N]` / `[mm]`, numbered records and populated instrument statistics. Preserve exact raw strings, signs, precision and original cell coordinates so native chart series remain valid. An unnamed but recognizable instrument worksheet asks for its test type; it is not silently dropped. Irrelevant worksheets are listed separately.
+- Exclude existing Mechanical Summary files, temporary Office files, Source/Source Book, History, Backup and Archive directories. Display excluded files and their reasons. Deduplicate identical bytes; reject duplicate relative paths and mixed project IDs. An unreadable selected record cannot silently produce a complete-looking output. The user may explicitly exclude an irrelevant failing file and rescan.
+- Each section is bound to the source SHA-256 plus worksheet index. Generation re-reads the uploaded bytes and validates all source identities. Review accepts labels, metadata, display convention and explicit conclusions; it cannot replace measured values, add invented curves, drop PDF measurements or reuse another project's confirmation.
+- Sample ID, colour and part are split only when explicit in the current source. Unlabelled MF curves require the operator's input. Curve `1.20` remains text. Do not infer physical colour from plot colour or reuse the 032 six-curve mapping as a default.
+- Qualitative report tables have operator-confirmed sample/part coverage and literal Pass/Fail/N/A. Polarisation supports diagonal applicable combinations. The number of report cells need not equal the number of raw curves: 032's confirmed four-column protection matrix does not invent three extra curves. No force threshold automatically proves Pass.
+- Completed confirmations are retained in this browser's local storage per LTR and unchanged source fingerprint. They are revalidated by the backend on reuse. Another browser/device or changed source requires new review; no project mappings are hardcoded in production.
 
-Report 页面提供同一工具入口并携带明确的项目上下文；Tools 始终保持独立。生成后可选择下载或保存至经确认的项目目录；同名默认另存新版本，替换须先保留历史并明确确认。保存不等于审核或正式发行；保存前重新检查目录身份、占用及并发变化。
+## Workbook layout
 
-## 验收
+- Copy original XLS/XLSX worksheets through an isolated Excel instance, retaining native drawings and charts. Remove unneeded introductory fields and empty specification/limit/Cpk placeholders; keep measurement headings, units, numbered values and original populated statistics.
+- Preserve original PDF result/curve images and instrument statistics, cropped to effective content. Never redraw, fit or estimate values from curves. Generic photos are not automatically interpreted as sample mappings or equipment evidence.
+- Add a separate copyable report table. Quantitative reports contain SN, optional Colour/Part and measured force columns, followed by MIN/MAX/AVERAGE/sample STDEV formulas. Curve is outside the report borders. Merge repeated confirmed SN rows where colour/part distinguishes readings. Signed raw withdrawal values stay intact; magnitude display requires explicit confirmation.
+- Qualitative reports use only the confirmed matrix and conclusions. Do not create a second numeric summary. Use gray headers, Arial 11, centered content, thin borders and light-blue quantitative statistics. Arrange compact polarisation/mis-mating tables side by side when they fit.
+- All sections have eight editable light-blue information fields: LTR; Test Date; Tested By; Amb Temp. and Rel. Hum.; Test Equipment ID; Test Condition; Item/Process; Remark. Test Date is an Excel date. Never substitute print/export/file timestamps, load-cell capacity or a contact person's name. Unsupported or missing metadata remains `Not recorded`; labels and long values wrap without clipping.
+- Test categories/stages determine sheet count. Do not manufacture missing cable torsion/offset results merely because a historical summary contained those sheets. Original files and actual numeric provenance remain authoritative.
 
-- 在隔离副本中验证提供的 PDF、XLS 和参考 Summary；源文件摘要前后不变。
-- 核对插拔、峰值和保持力的记录、单位、统计范围、曲线与样品映射；不把历史 Pass 推广到其他项目。
-- 核对输出工作簿的有效原始数据、曲线、结果表、公式及八项可编辑信息；在可用 Excel 环境中检查打开、重算和可见排版。
-- 浏览器完成选择文件、核对、生成及下载的冒烟测试；缺失、冲突和不支持格式应明确提示，不能产生虚假成功。
-- 测试覆盖原文件保护、无项目使用、错误输入和生成失败；不操作真实报告、模板、项目资料，不实施 Report 入口与项目保存。
+## Implementation boundaries
+
+`MechanicalSummaryTool` owns selection, progress, targeted review and download. Typed frontend API methods send relative names and bytes, never arbitrary local filesystem paths. `mechanicalSummaryReview` builds only permitted review fields and handles the project-scoped cache. Leaving Tools invalidates pending downloads.
+
+Folder API routes coordinate source inspection and review. `application/mechanical_summary_folder.py` owns explicit evidence/review rules. `infrastructure/files/mechanical_summary_folder.py` reads supported sources. `infrastructure/office/mechanical_summary_folder.py` owns Excel, drawings, formulas and PDF images. The original per-file preview/generate APIs remain available for existing callers.
+
+Microsoft Excel and the existing Windows Office dependencies are required for generation. Each operation creates its own hidden Excel instance, disables macros/events/link updates, uses temporary copies and closes workbooks and COM resources. Failures leave sources untouched and offer retry guidance.
+
+## Validation and acceptance
+
+- Unit tests cover real instrument header variants, effective data selection, exact curve text, empty metadata, duplicate/mixed sources, explicit review and rejection of numeric tampering/stale source confirmations.
+- API tests cover folder preview and refusal to generate unresolved results. Native Office tests inspect the generated XLSX for original values/images, report borders, merged SN, formulas, styles and metadata.
+- Frontend tests cover automatic generation, unresolved mapping input, cancel, unmount, project/source-specific cache boundaries and continuing to edit colour/metadata after filling the last sample.
+- Validate 031 and 032 in isolated copies, retaining source hashes. Use each project's own confirmed mappings/matrices; compare measured values, all effective raw cells, image content/aspect, formula recalculation and rendered layouts. Never modify real project files for acceptance.
+- Final checks: affected Python tests including Office integration, affected frontend tests, TypeScript/Vite build, live folder upload/download at workstation and narrow widths, focused diff review.
+
+Known limits: unsupported instrument formats and unreadable scans require a readable export or explicit exclusion; photos do not establish hidden sample-to-curve associations. Browser-local confirmations are not a shared database or formal approval record.

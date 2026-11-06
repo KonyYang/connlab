@@ -154,3 +154,10 @@
 .tools-equipment-dialog h2 { margin: 0; font-size: 20px; }
 .tools-dialog-report { overflow-wrap: anywhere; }
 .tools-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+
+.mechanical-source > summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
+.mechanical-source > fieldset { display: grid; gap: 12px; min-width: 0; border: 0; padding: 8px 0; }
+.mechanical-source-values input { min-width: 90px; width: 100%; box-sizing: border-box; }
+.mechanical-source-values pre, pre.mechanical-source-values { white-space: pre-wrap; overflow-wrap: anywhere; }
+.mechanical-source label > input:not([type="checkbox"]) { flex: 1 1 180px; min-width: 100px; max-width: 100%; }
+.mechanical-source legend { overflow-wrap: anywhere; }
