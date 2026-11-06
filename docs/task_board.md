@@ -293,7 +293,45 @@
       "closed_at": "2026-11-05T14:15:10.369920Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_MECHANICAL_FOLDER_20261106": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\mechanical-folder-summary\\connlab",
+      "branch": "feature/mechanical-folder-summary",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_MECHANICAL_FOLDER_20261106",
+        "summary": "Generate mechanical summaries from a folder with evidence-bound review and approved layouts",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Folder discovery, source analysis, unresolved mapping input, preserved raw data and curves, approved result tables and eight metadata fields; validate isolated 031/032 copies.",
+        "scope_paths": [
+          "backend/application/mechanical_summary.py",
+          "backend/application/mechanical_summary_folder.py",
+          "backend/infrastructure/files/mechanical_summary_folder.py",
+          "backend/infrastructure/office/mechanical_summary_folder.py",
+          "backend/api/routes_tools_mechanical_summary.py",
+          "frontend/src/api/mechanicalSummary.ts",
+          "frontend/src/features/tools/MechanicalSummaryTool.tsx",
+          "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
+          "frontend/src/features/tools/mechanicalSummaryReview.ts",
+          "frontend/src/pages/ToolsPage.test.tsx",
+          "frontend/src/tools.css",
+          "tests/unit/test_mechanical_summary_folder.py",
+          "tests/integration/test_mechanical_summary_folder.py",
+          "docs/mechanical_summary_tool.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "4c92bf81942fca8084ffdc73cd9d210db00f1abe",
+        "started_at": "2026-11-06T00:12:40.232332Z",
+        "updated_at": "2026-11-06T00:12:40.232332Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
