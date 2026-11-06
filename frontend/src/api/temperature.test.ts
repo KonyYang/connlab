@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { downloadTemperatureWorkbook, importTemperatureWorkbook } from './temperature';
+import { downloadTemperatureWorkbook, exportTemperatureReportPackage, importTemperatureWorkbook, type TemperatureDownloadRequest } from './temperature';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -33,4 +33,26 @@ it('sends the Excel download request as JSON rather than text', async () => {
   });
   expect(new Headers(fetch.mock.calls[0][1].headers).get('Content-Type')).toBe('application/json');
   expect(result.fileName).toBe('curves.xlsx');
+});
+
+it('exports the original temperature file and reviewed settings as a portable report package', async () => {
+  const fetch = vi.fn().mockResolvedValue(new Response(new Blob(['zip']), {
+    headers: { 'Content-Disposition': "attachment; filename*=UTF-8''scanner_ReportResults.zip" },
+  }));
+  vi.stubGlobal('fetch', fetch);
+  const file = new File(['original source'], 'scanner.xlsx');
+  const request: TemperatureDownloadRequest = {
+    table: { file_name: file.name, sheet_names: ['Data'], sheet_name: 'Data', rows: [] },
+    selection: { header_row: 1, start_row: 2, end_row: 3, ambient_column: 2, current_column: 3,
+      temperature_columns: [1], thermocouples_per_sample: 1, excluded_rows: [], current_multiplier: 1 },
+    acknowledge_warnings: true, zero_intercept: false, maximum_coefficients: { a: .1, b: .2, c: .3 },
+    average_coefficients: null, target_rise: 30, derating: null,
+  };
+  const result = await exportTemperatureReportPackage(file, request);
+  expect(fetch.mock.calls[0][0]).toBe('/api/tools/temperature-rise/export-package');
+  const options = fetch.mock.calls[0][1];
+  expect(options.body.get('file')).toBe(file);
+  expect(JSON.parse(options.body.get('request'))).toEqual(request);
+  expect(new Headers(options.headers).get('Content-Type')).toBeNull();
+  expect(result.fileName).toBe('scanner_ReportResults.zip');
 });

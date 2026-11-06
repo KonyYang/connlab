@@ -4,6 +4,7 @@ from pathlib import PurePath
 from hashlib import sha256
 from io import BytesIO
 import json
+from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Response
 from fastapi.encoders import jsonable_encoder
@@ -91,9 +92,7 @@ def generate(files: list[UploadFile] = File(...), manifest: str = Form(...)):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 # Folder workflow keeps the existing per-file API available for older callers.
-def _folder_analysis(files, review):
-    from backend.infrastructure.files.mechanical_summary_folder import analyze_folder
-    from backend.application.mechanical_summary_folder import apply_review
+def _folder_sources(files):
     if not 1 <= len(files) <= 200:
         raise ValueError('Select a folder with at most 200 PDF/Excel files.')
     sources = []
@@ -104,6 +103,13 @@ def _folder_analysis(files, review):
         if total > 150 * 1024 * 1024:
             raise ValueError('Select a smaller test-results folder (up to 150 MB).')
         sources.append((file.filename or '', content))
+    return sources
+
+
+def _folder_analysis(files, review):
+    from backend.infrastructure.files.mechanical_summary_folder import analyze_folder
+    from backend.application.mechanical_summary_folder import apply_review
+    sources = _folder_sources(files)
     analysis = analyze_folder(sources)
     return sources, apply_review(analysis, json.loads(review) if review else None)
 
@@ -138,3 +144,21 @@ def generate_folder(files: list[UploadFile] = File(...), review: str = Form(''))
                         headers={'Content-Disposition': f'attachment; filename="{name}"'})
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post('/folder/export-package')
+def export_mechanical_report_package(files: list[UploadFile] = File(...), review: str = Form('', max_length=8 * 1024 * 1024)):
+    from backend.application.report_tools_package import ReportToolsPackage
+    from backend.infrastructure.files.mechanical_summary_folder import analyze_folder
+    from backend.infrastructure.office.mechanical_summary_folder import generate_folder_workbook
+    try:
+        package = ReportToolsPackage(None, analyze_folder, generate_folder_workbook)
+        name, content = package.export_mechanical(_folder_sources(files), json.loads(review) if review else None)
+        return Response(content, media_type='application/zip',
+                        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(name)}"})
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).exception('Mechanical report package generation failed')
+        raise HTTPException(status_code=503, detail='Could not export the report package. Check Microsoft Excel and close any Excel dialogs, then retry. Original files were not changed.') from exc

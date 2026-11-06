@@ -11,7 +11,7 @@ from backend.domain.report_authoring import (
 
 
 class ReportAuthoringService:
-    def __init__(self, *, repository, assets, inspect_upload, project_context, drafts=None, writer=None, results=None, result_writer=None, photos=None, customer=None):
+    def __init__(self, *, repository, assets, inspect_upload, project_context, drafts=None, writer=None, results=None, result_writer=None, photos=None, customer=None, sections=None, tools_packages=None):
         self.repository = repository
         self.assets = assets
         self.inspect_upload = inspect_upload
@@ -22,6 +22,8 @@ class ReportAuthoringService:
         self.result_writer = result_writer
         self.photos = photos
         self.customer = customer
+        self.sections = sections
+        self.tools_packages = tools_packages
 
     def state(self, project_id):
         context = self.project_context(project_id)
@@ -54,6 +56,8 @@ class ReportAuthoringService:
         if role not in SOURCE_ROLES:
             raise ValueError("Choose a supported report source role.")
         report_dl = self.inspect_upload(file_name, content, role, context["dl_number"])
+        if role == 'tools_result_package':
+            self.tools_packages.inspect(content)
         digest = sha256(content).hexdigest()
         if any(item.sha256 == digest and item.role == role for item in state.sources):
             return state
@@ -129,21 +133,134 @@ class ReportAuthoringService:
         artifact = ReportSource(**output["artifact"])
         return artifact, self.assets.read(project_id, artifact)
 
+    def adopt_current(self, project_id, request):
+        state, context = self._editable(project_id, request['expected_revision'])
+        if state.outputs:
+            raise ReportAuthoringConflict('A working copy is already selected. Continue editing it or explicitly choose another base.')
+        source, content = self.sections.read_source(project_id, request['source_sha256'], request['source_mode'])
+        dl = self.inspect_upload(source.file_name, content, 'original', context['dl_number'])
+        retained = ReportSource(uuid4().hex, 'original', source.file_name, sha256(content).hexdigest(),
+            len(content), self._now(), dl)
+        self.assets.retain(project_id, retained, content)
+        def revalidate():
+            now, _ = self.sections.read_source(project_id, request['source_sha256'], request['source_mode'])
+            if now.file_path != source.file_path:
+                raise ReportAuthoringConflict('The selected report location changed while preparing its copy.')
+            _, current_context = self._editable(project_id, request['expected_revision'])
+            if current_context != context:
+                raise ReportAuthoringConflict('Project authority changed while preparing the report copy.')
+        import shutil
+        generated = self.drafts.update(project_id, context['dl_number'], self.assets.path(project_id, retained),
+            shutil.copy2, revalidate, matrix_id=context['matrix_id'], make_current=False)
+        artifact = ReportSource(generated.report_revision_id, 'working_copy', generated.file_name,
+            retained.sha256, len(content), self._now(), dl)
+        self.assets.retain(project_id, artifact, content)
+        record = {'output_id': artifact.source_id, 'artifact': asdict(artifact), 'base_source_id': retained.source_id,
+            'operation': 'prepare_base', 'status': 'needs_review', 'issues': [],
+            'evidence': {'source_mode': source.mode, 'source_sha256': retained.sha256}}
+        return self.repository.save(replace(state, sources=(*state.sources, retained), base_source_id=retained.source_id,
+            outputs=(*state.outputs, record)), request['expected_revision'])
+
+    def _section_copy(self, project_id, request):
+        state, context = self._editable(project_id, request['expected_revision'])
+        if not state.outputs:
+            raise ValueError('Select a report working copy first.')
+        output = self._current_output(state, state.outputs[-1]['output_id'])
+        if output['artifact']['sha256'] != request['expected_sha256']:
+            raise ReportAuthoringConflict('The selected working copy changed. Reload before updating.')
+        return state, context, output
+
+    def update_llcr_copy(self, project_id, request):
+        state, context, output = self._section_copy(project_id, request)
+        generate, revalidate, evidence = self.sections.llcr(project_id, request['dataset_revision_id'], context['matrix_id'])
+        return self._updated_copy(state, context, output, 'llcr_update', request['expected_revision'],
+            generate, revalidate, evidence)
+
+    def update_equipment_copy(self, project_id, request, *, content=None, references_text=None):
+        state, context, output = self._section_copy(project_id, request)
+        retained, source = False, None
+        if content is None and not references_text:
+            for previous in reversed(state.outputs):
+                if previous['operation'] == 'prepare_base':
+                    break
+                evidence = previous.get('evidence', {})
+                if previous['operation'] == 'equipment_update':
+                    if evidence.get('equipment_source_id'):
+                        source = self._source(state, evidence['equipment_source_id'])
+                        content = self.assets.read(project_id, source)
+                    references_text = evidence.get('references_text')
+                    retained = True
+                    break
+        plan = self.sections.equipment(project_id, content=content, references_text=references_text, retained=retained)
+        if plan is None:
+            return None
+        generate, revalidate, evidence = plan
+        if content is not None and source is None:
+            self.inspect_upload('EquipmentID.docx', content, 'evidence', context['dl_number'])
+            source = ReportSource(uuid4().hex, 'evidence', 'EquipmentID.docx', sha256(content).hexdigest(), len(content), self._now())
+            self.assets.retain(project_id, source, content)
+            state = replace(state, sources=(*state.sources, source))
+        evidence.update(equipment_source_id=source.source_id if source else None, references_text=references_text)
+        return self._updated_copy(state, context, output, 'equipment_update', request['expected_revision'],
+            generate, revalidate, evidence)
+
     def source_table(self, project_id, source_id, sheet_name=None):
         source, content = self.source_content(project_id, source_id)
         return self.results.table(content, source.file_name, sheet_name)
 
+    def source_package(self, project_id, source_id):
+        source, content = self.source_content(project_id, source_id)
+        if source.role != 'tools_result_package':
+            raise ValueError('Choose a retained Tools result package.')
+        package = self.tools_packages.inspect(content)
+        entries = []
+        for entry in package['entries']:
+            value = {key: item for key, item in entry.items() if key != 'data'}
+            if entry['kind'] == 'temperature':
+                points = entry['data']['analysis']['points']
+                value.update(sample_count=len(points[-1]['sample_maxima']), sample_ids=entry['data']['sample_ids'])
+            entries.append(value)
+        return {'kind': package['kind'], 'project_hint': package['project_hint'], 'entries': entries,
+            'sources': [{key: item for key, item in source.items() if key != 'content'} for source in package['sources']],
+            'summary': {key: item for key, item in package['summary'].items() if key != 'content'}}
+
+    def _package_result(self, state, context, source, request):
+        package = self.tools_packages.inspect(self.assets.read(state.project_id, source))
+        entry = next((item for item in package['entries'] if item['entry_id'] == request.get('package_entry_id')), None)
+        if entry is None or entry['kind'] != request['kind']:
+            raise ValueError('Choose an available package result with its original measurement kind.')
+        if not entry['supported_for_report']:
+            raise ValueError(entry['reason'])
+        hint = package['project_hint']
+        if hint and hint.casefold() != context['dl_number'].casefold() and not request.get('source_project_confirmed'):
+            raise ValueError('The Tools package names another LTR. Confirm its applicability to this project before mapping it.')
+        data = entry['data']
+        if entry['kind'] == 'temperature':
+            identities = [item.strip() for item in request.get('sample_ids', [])]
+            count = len(data['analysis']['points'][-1]['sample_maxima'])
+            if identities and (len(identities) != count or len(set(identities)) != count or not all(identities)):
+                raise ValueError('Temperature sample identities must be unique and match the retained channel groups.')
+            data = {**data, 'sample_ids': identities or data['sample_ids']}
+        return {**data, 'tools_package': {'entry_id': entry['entry_id'], 'project_hint': hint,
+            'summary_sha256': package['summary']['sha256'],
+            'sources': [{key: value for key, value in item.items() if key != 'content'} for item in package['sources']]}}
+
     def preview_result(self, project_id, request):
         state, context = self._editable(project_id, request["expected_revision"])
         source = self._source(state, request["source_id"])
-        if source.role != request["kind"]:
+        if source.role != request["kind"] and source.role != 'tools_result_package':
             raise ValueError("Choose a source retained with the matching measurement role.")
         target = next((step for step in context["steps"] if all(step[key] == request[key] for key in ("group_id", "row_id", "step_token"))), None)
         if target is None:
             raise ValueError("Choose the result's Group and Step from the current confirmed Matrix.")
         if request["outcome"] != "pending" and not request["acceptance_reason"].strip():
             raise ValueError("Record this project's acceptance evidence before confirming an outcome.")
-        data = self.results.preview(self.assets.read(project_id, source), source.file_name, request)
+        if source.role == 'tools_result_package':
+            data = self._package_result(state, context, source, request)
+        else:
+            if request.get('package_entry_id'):
+                raise ValueError('Package entries require a retained Tools result package.')
+            data = self.results.preview(self.assets.read(project_id, source), source.file_name, request)
         profile = {key: value for key, value in request.items() if key != "preview_sha256"}
         result = {"kind": request["kind"], "source_id": source.source_id, "source_sha256": source.sha256,
             "matrix_id": context["matrix_id"], "target": target, "profile": profile, "data": data,
@@ -414,6 +531,7 @@ class ReportAuthoringService:
             for source in state.sources if source.source_id in used_sources]
         facts = {'matrix_id': context['matrix_id'], 'base_source_id': state.base_source_id,
             'internal_sha256': state.outputs[-1]['artifact']['sha256'] if state.outputs else None,
+            'working_output_id': state.outputs[-1]['output_id'] if state.outputs else None,
             'mappings': [asdict(item) for item in state.mappings], 'result_ids': sorted(active_ids), 'sources': dependencies}
         return sha256(json.dumps(facts, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
@@ -433,7 +551,12 @@ class ReportAuthoringService:
         result = self.drafts.update(state.project_id, context["dl_number"], self.assets.path(state.project_id, artifact),
             generate_copy, validate_retained_source, matrix_id=context["matrix_id"], make_current=False)
         content = result.file_path.read_bytes()
-        if changed[0] is False or sha256(content).hexdigest() == artifact.sha256:
+        unchanged = changed[0] is False or sha256(content).hexdigest() == artifact.sha256
+        # Selecting equipment is a durable decision even when its rendered rows
+        # were already current. Repeated identical decisions still create no version.
+        new_selection = operation == 'equipment_update' and (
+            output['operation'] != operation or output.get('evidence') != evidence)
+        if unchanged and not new_selection:
             return state
         updated = ReportSource(result.report_revision_id, "working_copy", result.file_name,
             sha256(content).hexdigest(), len(content), self._now(), context["dl_number"])

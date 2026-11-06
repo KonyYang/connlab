@@ -10,6 +10,7 @@ from backend.api.report_authoring_schemas import MappingRequest, SelectBaseReque
 from backend.domain.report_authoring import ReportAuthoringConflict
 from backend.api.report_authoring_schemas import PhotoUpdateRequest
 from backend.api.report_authoring_schemas import CustomerCopyRequest, CustomerCheckRequest
+from backend.api.report_authoring_schemas import AdoptWorkingCopyRequest, WorkingLlcrRequest
 
 
 router = APIRouter(prefix="/api/projects/{project_id}/report-workspace/authoring")
@@ -51,9 +52,10 @@ def state(project_id: str, service=Depends(get_report_authoring_service)):
 @router.post("/sources", dependencies=[Depends(require_project_folder_write_slot)])
 def upload_source(project_id: str, role: str = Form(...), expected_revision: int = Form(ge=0),
                         file: UploadFile = File(...), service=Depends(get_report_authoring_service)):
-    content = file.file.read(50 * 1024 * 1024 + 1)
-    if len(content) > 50 * 1024 * 1024:
-        raise HTTPException(413, "Report evidence exceeds the 50 MB limit.")
+    limit = 220 if role == 'tools_result_package' else 50
+    content = file.file.read(limit * 1024 * 1024 + 1)
+    if len(content) > limit * 1024 * 1024:
+        raise HTTPException(413, f"Report evidence exceeds the {limit} MB limit.")
     try:
         service.add_source(project_id, role=role, file_name=file.filename or "", content=content, expected_revision=expected_revision)
         return _state(service, project_id)
@@ -103,10 +105,51 @@ def download_output(project_id: str, output_id: str, service=Depends(get_report_
         raise _error(exc) from exc
 
 
+@router.post('/working-copy/adopt', dependencies=[Depends(require_project_folder_write_slot)])
+def adopt_working_copy(project_id: str, request: AdoptWorkingCopyRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.adopt_current(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/working-copy/llcr', dependencies=[Depends(require_project_folder_write_slot)])
+def update_working_llcr(project_id: str, request: WorkingLlcrRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.update_llcr_copy(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/working-copy/equipment', dependencies=[Depends(require_project_folder_write_slot)])
+def update_working_equipment(project_id: str, expected_revision: int = Form(ge=0),
+    expected_sha256: str = Form(pattern=r'^[0-9a-f]{64}$'), references_text: str | None = Form(default=None, max_length=20000),
+    file: UploadFile | None = File(default=None), service=Depends(get_report_authoring_service)):
+    content = file.file.read(20 * 1024 * 1024 + 1) if file else None
+    if content is not None and (not file.filename or not file.filename.lower().endswith('.docx') or len(content) > 20 * 1024 * 1024):
+        raise HTTPException(422, 'Choose an EquipmentID DOCX smaller than 20 MB.')
+    try:
+        state = service.update_equipment_copy(project_id, {'expected_revision': expected_revision, 'expected_sha256': expected_sha256},
+            content=content, references_text=references_text)
+        return _state(service, project_id) if state is not None else {'status': 'source_required', 'project_id': project_id}
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
 @router.get("/sources/{source_id}/table")
 def source_table(project_id: str, source_id: str, sheet_name: str = "", service=Depends(get_report_authoring_service)):
     try:
         return asdict(service.source_table(project_id, source_id, sheet_name))
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.get('/sources/{source_id}/package')
+def source_package(project_id: str, source_id: str, service=Depends(get_report_authoring_service)):
+    try:
+        return service.source_package(project_id, source_id)
     except (LookupError, ValueError, OSError) as exc:
         raise _error(exc) from exc
 

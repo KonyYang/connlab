@@ -43,3 +43,6 @@ export function previewMechanicalFolder(files: File[], review?: FolderReview): P
 export function generateMechanicalFolder(files: File[], review?: FolderReview) {
   return requestBlobResponse('/api/tools/mechanical-summary/folder/generate', { method: 'POST', body: folderBody(files, review) });
 }
+export function exportMechanicalReportPackage(files: File[], review: FolderReview) {
+  return requestBlobResponse('/api/tools/mechanical-summary/folder/export-package', { method: 'POST', body: folderBody(files, review) });
+}

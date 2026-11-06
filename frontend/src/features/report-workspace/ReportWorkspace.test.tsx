@@ -47,7 +47,10 @@ vi.mock("../../api/client", async () => {
   };
 });
 
-vi.mock("../../api/reportAuthoring", () => ({ getReportAuthoring: vi.fn(), selectReportBase: vi.fn() }));
+vi.mock("../../api/reportAuthoring", async () => ({
+  ...await vi.importActual<typeof import('../../api/reportAuthoring')>('../../api/reportAuthoring'),
+  getReportAuthoring: vi.fn(), selectReportBase: vi.fn(),
+}));
 
 const state: api.ReportWorkspaceState = {
   project_id: "project-1",
@@ -157,6 +160,9 @@ const equipmentPreview: api.EquipmentListPreview = {
 describe("ReportWorkspace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(authoring.getReportAuthoring).mockResolvedValue({ project_id: 'project-1', revision: 0,
+      sources: [], mappings: [], outputs: [], base_source_id: null,
+      context: { dl_number: 'DL-001', matrix_id: 'matrix-1', steps: [] } });
     sessionStorage.clear();
     vi.mocked(api.fetchLatestProjectCustomerReportJob).mockResolvedValue(null);
     vi.mocked(api.startProjectCustomerReportJob).mockReset();

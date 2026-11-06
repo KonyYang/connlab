@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { generateMechanicalFolder, previewMechanicalFolder, type FolderAnalysis, type FolderSection, type ReportTable } from '../../api/mechanicalSummary';
+import { exportMechanicalReportPackage, generateMechanicalFolder, previewMechanicalFolder, type FolderAnalysis, type FolderSection, type ReportTable } from '../../api/mechanicalSummary';
 import { informationFields, qualitative, reviewFor, resizeTable, savedReview, saveReview, sectionReady, tableReady } from './mechanicalSummaryReview';
 import { ToolsFeedback } from './ToolsFeedback';
 
@@ -85,6 +85,7 @@ export function MechanicalSummaryTool(): ReactElement {
   const [stage, setStage] = useState('');
   const [error, setError] = useState('');
   const [downloaded, setDownloaded] = useState('');
+  const [reportPackage, setReportPackage] = useState('');
   const [notice, setNotice] = useState('');
   useEffect(() => { picker.current?.setAttribute('webkitdirectory', ''); return () => { request.current += 1; }; }, []);
   const busy = Boolean(stage);
@@ -103,7 +104,7 @@ export function MechanicalSummaryTool(): ReactElement {
   async function choose(selected: File[]) {
     if (!selected.length || running.current) return;
     const supported = selected.filter(file => /\.(pdf|xlsx?)$/i.test(file.name));
-    setFiles(supported); setAnalysis(undefined); setDownloaded(''); setNotice(''); setError('');
+    setFiles(supported); setAnalysis(undefined); setDownloaded(''); setReportPackage(''); setNotice(''); setError('');
     if (!supported.length) { setError('No PDF or Excel records in this folder. Select the test-results folder.'); return; }
     running.current = true;
     const token = ++request.current;
@@ -132,9 +133,25 @@ export function MechanicalSummaryTool(): ReactElement {
     catch (cause) { if (token === request.current) setError(cause instanceof Error ? cause.message : 'Could not generate the workbook. Check that Microsoft Excel is available and retry.'); }
     finally { if (token === request.current) { setStage(''); running.current = false; } }
   }
+  async function exportForReport() {
+    if (!analysis || !ready || running.current) return;
+    const token = ++request.current;
+    running.current = true; setError(''); setReportPackage(''); setStage('Preparing report package…');
+    try {
+      const response = await exportMechanicalReportPackage(files, reviewFor(analysis));
+      if (token !== request.current) return;
+      const url = URL.createObjectURL(response.blob);
+      const anchor = document.createElement('a');
+      anchor.href = url; anchor.download = response.fileName || 'Mechanical_ReportResults.zip';
+      document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+      setReportPackage(anchor.download);
+    } catch (cause) {
+      if (token === request.current) setError(cause instanceof Error ? cause.message : 'Could not export the report package. Your review is retained; retry the export.');
+    } finally { if (token === request.current) { setStage(''); running.current = false; } }
+  }
   function change(index: number, section: FolderSection) {
     setAnalysis(old => old && ({ ...old, sections: old.sections.map((s, i) => i === index ? section : s) }));
-    setDownloaded(''); setError('');
+    setDownloaded(''); setReportPackage(''); setError('');
   }
   const ready = analysis && !analysis.errors.length && analysis.sections.length > 0 && analysis.sections.every(sectionReady);
   return <article className="tools-action-group" aria-label="Mechanical Summary">
@@ -147,6 +164,7 @@ export function MechanicalSummaryTool(): ReactElement {
       {stage && <p role="status">{stage}</p>}
       {error && <p className="tools-feedback-error" role="alert">{error}</p>}
       {downloaded && <p role="status" aria-label="Downloaded File">{downloaded}</p>}
+      {reportPackage && <p role="status" aria-label="Downloaded Report Package">{reportPackage}</p>}
       {notice && <p>{notice}</p>}
       {analysis && <>
         <p>{analysis.project || 'Selected folder'} · {analysis.sections.length} test records</p>
@@ -160,6 +178,8 @@ export function MechanicalSummaryTool(): ReactElement {
         {analysis.ignored.length > 0 && <details><summary>{analysis.ignored.length} files excluded from generation</summary>
           {analysis.ignored.map((item, i) => <p key={i}>{item.file}: {item.reason}</p>)}</details>}
         {!downloaded && <button type="button" className="primary-action tools-picker-action" disabled={busy || !ready} onClick={() => void generate()}>Generate Summary</button>}
+        <button type="button" disabled={busy || !ready} onClick={() => void exportForReport()}>Export for Report</button>
+        <p>Optional: download a reviewed results package. In Report preparation, retain it as a Tools results package, then choose the project’s Matrix Group / Step. This does not publish a report.</p>
       </>}
     </section></ToolsFeedback>}
   </article>;

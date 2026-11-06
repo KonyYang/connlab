@@ -11,6 +11,7 @@ from backend.api.temperature_schemas import (
 )
 from backend.application.temperature_data_preparation import prepare_data
 from backend.application.tools_temperature_service import DeratingParameters, ToolsTemperatureService
+from backend.application.report_tools_package import ReportToolsPackage
 from backend.domain.temperature_rise import calculate_current, generate_derating
 
 router = APIRouter(prefix='/api/tools/temperature-rise', tags=['tools'])
@@ -80,4 +81,18 @@ def download_temperature_workbook(request: DownloadTemperatureRequest,
         derating_parameters=DeratingParameters(**request.derating.model_dump()) if request.derating else None,
         report_metadata=request.report_metadata.application()))
     return Response(content, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(name)}"})
+
+
+@router.post('/export-package')
+def export_temperature_report_package(file: UploadFile = File(...), request: str = Form(..., max_length=8 * 1024 * 1024),
+                                      service: ToolsTemperatureService = Depends(get_tools_temperature_service)):
+    content = file.file.read(25 * 1024 * 1024 + 1)
+    def export():
+        selected = DownloadTemperatureRequest.model_validate_json(request).model_dump()
+        package = ReportToolsPackage(service, None,
+            temperature_request_validator=lambda value: DownloadTemperatureRequest.model_validate(value).model_dump())
+        return package.export_temperature(content, file.filename or 'Scanner.xlsx', selected)
+    name, packed = _call(export)
+    return Response(packed, media_type='application/zip',
                     headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(name)}"})

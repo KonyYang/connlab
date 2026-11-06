@@ -1440,6 +1440,10 @@ def get_customer_report_projection_service(
 
 def get_report_authoring_service(session: Session = Depends(get_session), settings: Settings = Depends(get_settings)):
     from backend.application.report_authoring.service import ReportAuthoringService
+    from backend.application.report_authoring.sections import WorkingReportSections
+    from backend.application.report_tools_package import ReportToolsPackage
+    from backend.infrastructure.files.mechanical_summary_folder import analyze_folder
+    from backend.api.temperature_schemas import DownloadTemperatureRequest
     from backend.infrastructure.files.report_authoring_assets import ReportAuthoringAssets, inspect_upload
     from backend.infrastructure.storage.repositories.report_authoring import ReportAuthoringRepository
     from backend.infrastructure.storage.repositories.project import ProjectRepository
@@ -1474,6 +1478,12 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
         assets=ReportAuthoringAssets(settings.data_dir / "report_authoring_assets"),
         inspect_upload=inspect_upload, project_context=context,
         drafts=get_report_draft_workspace(settings), writer=ReportCopyWriter(),
+        sections=WorkingReportSections(sources=get_customer_report_source_reader(session, settings),
+            datasets=get_current_report_update_service(session), writer=TestReportDocumentGateway(),
+            workspaces=ProjectOfficialWorkspaceRepository(session), drafts=get_report_draft_workspace(settings),
+            equipment_reader=EquipmentIdDocumentReader(), equipment_copies=get_tools_equipment_report_service(session)),
+        tools_packages=ReportToolsPackage(ToolsTemperatureService(TemperatureWorkbookGateway()), analyze_folder,
+            temperature_request_validator=lambda value: DownloadTemperatureRequest.model_validate(value).model_dump()),
         result_writer=ReportResultsDocument(temperature_chart=insert_temperature_chart),
         photos=ReportPhotoEditor(),
         customer=CustomerReportCopy(converter=CustomerReportDocumentGateway(),

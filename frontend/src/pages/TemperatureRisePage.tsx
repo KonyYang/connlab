@@ -70,6 +70,9 @@ function TemperatureRiseWorkspace(): ReactElement {
     <div className="temperature-primary-actions" role="group" aria-label="Data actions">
       {s.table && s.selection && <button type="button" className="primary-action" disabled={busy || s.confirmed || Boolean(roleIssue) || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button>}
       <button type="button" className="primary-action" disabled={busy || !s.analysis || Boolean(reportHumidityIssue(tool.reportInfo.values.relative_humidity))} onClick={() => void tool.download()}>Download Excel</button>
+      <button type="button" disabled={busy || !s.file || !s.confirmed || !s.analysis || Boolean(reportHumidityIssue(tool.reportInfo.values.relative_humidity))}
+        title="Download a reviewed results package. In Report preparation, retain it as a Tools results package, then choose the project’s Matrix Group / Step. This does not publish a report."
+        onClick={() => void tool.exportForReport()}>Export for Report</button>
     </div>
   </div>;
   return <section className="temperature-page" aria-label="Temperature Rise & Derating">

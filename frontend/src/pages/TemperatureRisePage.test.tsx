@@ -300,7 +300,7 @@ describe('temperature preparation and calculation workflow', () => {
     const confirm = screen.getByRole('button', { name: 'Confirm Data' });
     const download = screen.getByRole('button', { name: 'Download Excel' });
     const actions = within(screen.getByRole('banner')).getByRole('group', { name: 'Data actions' });
-    expect(within(actions).getAllByRole('button')).toEqual([confirm, download]);
+    expect(within(actions).getAllByRole('button')).toEqual([confirm, download, screen.getByRole('button', { name: 'Export for Report' })]);
     expect(screen.getByLabelText('Current Decimals').compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(download.closest('footer')).toBeNull();
     expect((download as HTMLButtonElement).disabled).toBe(true);
