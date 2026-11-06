@@ -353,6 +353,7 @@
           "frontend/src/features/report-workspace",
           "frontend/src/features/temperature",
           "frontend/src/features/tools",
+          "frontend/src/pages/TemperatureRisePage.reportPackage.test.tsx",
           "frontend/src/pages/TemperatureRisePage.test.tsx",
           "frontend/src/pages/TemperatureRisePage.tsx",
           "frontend/src/styles",
@@ -361,7 +362,7 @@
         "risk_reasons": [],
         "activation_head": "72d78b14766b2e0276a03462828f8b5b5ed8231d",
         "started_at": "2026-11-06T21:06:29.254660Z",
-        "updated_at": "2026-11-06T21:08:20.092977Z",
+        "updated_at": "2026-11-06T21:41:46.350444Z",
         "checkpoint": null,
         "report": null
       }
