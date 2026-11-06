@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_MECHANICAL_FOLDER_20261106",
-    "tier": "standard",
-    "subject": "b5328e733c43919772ec6ace460755a0a8ce3711",
-    "summary": "Generate mechanical summaries from a folder with evidence-bound review and approved layouts",
-    "disposition": "completed",
-    "decision_ref": "User explicitly requested closing the completed mechanical folder summary task. Preserve local commits; no push or publication under the persistent session preference.",
-    "closed_at": "2026-11-06T05:01:56.900493Z"
+    "task_id": "TASK_MATERIALS_TOOLS_20261106",
+    "tier": "high_risk",
+    "subject": "5c8ced47830f878bde55c8daec5d742c2d69fef1",
+    "summary": "Replace temporary-project creation with material folders and standalone Matrix/Fee tools",
+    "disposition": "cancelled",
+    "decision_ref": "User requested closing the current task on 2026-11-07. Stop before final independent review, QA and integration. Preserve development commit 5f5361faf4839e7628488058454366a7a8275912 on codex/materials-tools-20261106 and its worktree. Local close only; no push or publication; not accepted as complete.",
+    "closed_at": "2026-11-06T16:06:14.113769Z"
   },
   "retained_history": [
     {
@@ -300,55 +300,18 @@
       "disposition": "completed",
       "decision_ref": "User requested closing the current task. Local close only under persistent no-push/no-publication instruction; latest draft and folder redesign remains discussion only.",
       "closed_at": "2026-11-05T23:57:51.361754Z"
+    },
+    {
+      "task_id": "TASK_MECHANICAL_FOLDER_20261106",
+      "tier": "standard",
+      "subject": "b5328e733c43919772ec6ace460755a0a8ce3711",
+      "summary": "Generate mechanical summaries from a folder with evidence-bound review and approved layouts",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing the completed mechanical folder summary task. Preserve local commits; no push or publication under the persistent session preference.",
+      "closed_at": "2026-11-06T05:01:56.900493Z"
     }
   ],
-  "tasks": {
-    "TASK_MATERIALS_TOOLS_20261106": {
-      "slot": "main",
-      "state": "running",
-      "worktree": "D:\\PythonProject\\connlab\\tmp\\materials-tools-worktree",
-      "branch": "codex/materials-tools-20261106",
-      "resources": [
-        "materials-tools-isolated-tests"
-      ],
-      "integrated_head": null,
-      "task": {
-        "task_id": "TASK_MATERIALS_TOOLS_20261106",
-        "summary": "Replace temporary-project creation with material folders and standalone Matrix/Fee tools",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Preserve existing Intake autosave and formal registration. Replace temporary creation UI with safe material saving and configurable directory/editable email-derived folder name. Move temporary Matrix editing and linked Fee Evaluation into Tools without database-managed projects. Retain existing user data; no push or publication; isolated tests only.",
-        "scope_paths": [
-          "backend/api",
-          "backend/application",
-          "backend/domain",
-          "backend/infrastructure",
-          "backend/shared",
-          "frontend/src",
-          "tests",
-          "docs/PROJECT_CONTEXT.md",
-          "docs/materials_tools_plan.md"
-        ],
-        "risk_reasons": [
-          "Decouple project-bound Matrix and Fee workflows while preserving formal-project authority",
-          "Filesystem material copying and legacy temporary-project entry retirement require safety checks"
-        ],
-        "activation_head": "037366f20706be433d041d4e6f3e95457af8d91e",
-        "started_at": "2026-11-06T14:45:06.834531Z",
-        "updated_at": "2026-11-06T15:08:53.086337Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "stage": "development",
-          "status": "running",
-          "version": 1,
-          "summary": "Material save slice implemented with 7 developer tests GREEN and Settings/Intake UI WIP. Original Matrix editor now has explicit standalone seed/import/export/session adapter; first independent-entry RED/GREEN test passed. Developer continues Fee shared session/import/export and legacy recovery. Early independent reviewer found residual project method/record actions and save-state mismatch; fixes pending. Worktree tmp/materials-tools-worktree remains uncommitted; do not integrate or claim complete. No real business files changed; no push/publication.",
-          "requires_user": false,
-          "task_id": "TASK_MATERIALS_TOOLS_20261106"
-        },
-        "report": null
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
