@@ -107,11 +107,11 @@ export function ToolsPage({
     }
   }
 
-  if (planning === 'matrix') return <><div className="tools-planning-actions"><button type="button" onClick={() => {
+  if (planning === 'matrix') return <MatrixEditorWorkspace key={planningKey} standalone projectId="" onBackToWorkbench={()=>setPlanning(null)} onEvaluateFees={()=>setPlanning('fee')} onNewPlanningMatrix={() => {
     if (window.confirm('Clear this Tools Matrix and its fee estimate? Download any files you want to retain first.')) {
       clearPlanningSession(); setPlanningKey(value=>value+1);
     }
-  }}>New planning Matrix</button></div><MatrixEditorWorkspace key={planningKey} standalone projectId="" onBackToWorkbench={()=>setPlanning(null)} onEvaluateFees={()=>setPlanning('fee')} /></>;
+  }} />;
   if (planning === 'fee') return <ToolsFeeWorkspace onBack={()=>setPlanning('matrix')} />;
   return (
     <ToolsFeedbackTarget value={feedbackTarget}><section className="tools-page" aria-label="Tools">

@@ -99,6 +99,7 @@ import "../../workbench.css";
 type MatrixEditorWorkspaceProps = {
   standalone?: boolean;
   onEvaluateFees?: () => void;
+  onNewPlanningMatrix?: () => void;
   projectId: string;
   onBackToWorkbench: () => void;
   onOpenContactMeasurementSetup?: () => void;
@@ -172,6 +173,7 @@ function contactRecordType(testItem: string): "LLCR" | "CR" | null {
 export function MatrixEditorWorkspace({
   standalone = false,
   onEvaluateFees,
+  onNewPlanningMatrix,
   projectId,
   onBackToWorkbench,
 }: MatrixEditorWorkspaceProps): ReactElement {
@@ -1534,6 +1536,9 @@ export function MatrixEditorWorkspace({
         </p>
       </div>
       <div className="matrix-editor-commandbar-actions">
+        {standalone && onNewPlanningMatrix ? (
+          <button type="button" onClick={onNewPlanningMatrix}>New planning Matrix</button>
+        ) : null}
         <button
           type="button"
           disabled={isLifecycleReadonly}
@@ -1724,7 +1729,9 @@ export function MatrixEditorWorkspace({
                     : "Download Matrix preview?"}
                 </h3>
                 <p id="matrix-xlsx-conflict-description">
-                  {matrixXlsxExport.confirmation.authority_status === "unconfirmed"
+                  {standalone
+                    ? "Download this planning Matrix to your system Downloads folder. Your Tools editing session will be retained."
+                    : matrixXlsxExport.confirmation.authority_status === "unconfirmed"
                     ? "The current Matrix content is an unconfirmed draft. The preview will download to your system Downloads folder and will not change any official file in the project folder."
                     : "The Matrix is confirmed, but there is no available project folder. The preview will download to your system Downloads folder and will not be registered as an official project file."}
                 </p>
