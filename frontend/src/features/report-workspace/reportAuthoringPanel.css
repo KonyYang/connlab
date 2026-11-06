@@ -3,6 +3,118 @@
   min-width: 0;
 }
 
+.report-working-copy {
+  margin-bottom: 16px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-working-copy button {
+  margin: 4px 8px 4px 0;
+}
+
+.report-working-copy code {
+  overflow-wrap: anywhere;
+}
+
+.report-tools-package {
+  container: report-tools-package / inline-size;
+  min-width: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.report-tools-package > fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 0;
+  border: 0;
+}
+
+.report-tools-package label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.report-tools-package select,
+.report-tools-package input:not([type="checkbox"]),
+.report-tools-package textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  font: inherit;
+  font-weight: 400;
+}
+
+.report-tools-package textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.report-tools-package > fieldset > p,
+.report-tools-package-wide,
+.report-tools-package label.report-tools-package-check {
+  grid-column: 1 / -1;
+}
+
+.report-tools-package > fieldset > p {
+  margin: 0;
+}
+
+.report-tools-package small {
+  font-weight: 400;
+  color: var(--color-ink-muted);
+}
+
+.report-tools-package label.report-tools-package-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 400;
+}
+
+.report-tools-package-check input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--color-primary);
+}
+
+.report-tools-package button {
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.report-tools-package-preview {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+@container report-tools-package (min-width: 700px) {
+  .report-tools-package > fieldset {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .report-preparation-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

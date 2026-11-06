@@ -283,6 +283,12 @@ def measurement_table(result):
     else:
         headers = ['Sample SN', 'Instrument record', 'Color', f"{data['test_type'].capitalize()} {data['quantity']} force (N)"]
         keys = ['sample_id', 'record_id', 'color', 'value']
+        if any(row.get('part') for row in data['rows']):
+            headers.insert(3, 'Part')
+            keys.insert(3, 'part')
+        if any(row.get('raw_value') is not None and row['raw_value'] != row['value'] for row in data['rows']):
+            headers.append('Raw signed force (N)')
+            keys.append('raw_value')
         if data['quantity'] == 'hold':
             headers.append('Hold (s)')
             keys.append('hold_seconds')
@@ -317,6 +323,16 @@ def result_notes(result):
         coefficients = fit.get('fitted_coefficients') or fit['coefficients']
         lines.append(f"{label} fit: a={float(coefficients['a']):.6g}; b={float(coefficients['b']):.6g}; c={float(coefficients['c']):.6g}; R²={float(fit['r_squared']):.6f}.")
     lines.append('Displayed coefficients are rounded for readability; the retained analysis and editable chart workbook keep the full calculation precision.')
+    data = result['data']
+    for key, label in [('effective_maximum_coefficients', 'Max'), ('effective_average_coefficients', 'Avg of Max')]:
+        if key in data:
+            coefficients = data[key]
+            lines.append(f"Tools effective {label} coefficients for calculator/derating: a={float(coefficients['a']):.6g}; b={float(coefficients['b']):.6g}; c={float(coefficients['c']):.6g}. These are not the fitted chart curve or new measured readings.")
+    if data.get('target_rise') is not None:
+        lines.append(f"Retained Tools calculator target rise: {float(data['target_rise']):g} °C; not an automatically approved acceptance limit.")
+    if data.get('derating'):
+        parameters = data['derating']
+        lines.append(f"Retained Tools derating inputs: maximum temperature {float(parameters['max_temperature']):g} °C; ambient point {float(parameters['ambient_point']):g} °C; step {float(parameters['step']):g} °C. See the retained Summary workbook for the Tools calculation.")
     return lines
 
 

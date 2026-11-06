@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import "./reportAuthoringPanel.css";
 import { ReportFactUpdates } from "./ReportFactUpdates";
 import { ReportResultsImport } from "./ReportResultsImport";
+import { ReportToolsPackageImport } from "./ReportToolsPackageImport";
 import { ReportResultUpdate } from "./ReportResultUpdate";
 import { ReportPhotoSlots } from "./ReportPhotoSlots";
 import { ReportCustomerCopy } from "./ReportCustomerCopy";
@@ -14,6 +15,7 @@ const roles: [ReportSourceRole, string][] = [
   ["original", "This project's Internal Report"], ["layout_reference", "Approved report / layout reference"],
   ["specification", "Specification"], ["temperature", "Temperature measurements"], ["cr", "Contact resistance"],
   ["mechanical", "Mechanical Force Summary"], ["photo", "Photo"], ["evidence", "Supporting evidence"],
+  ["tools_result_package", "Tools results package"],
 ];
 const emptyMapping = (): Omit<ReportMappingInput, "expected_revision" | "source_id"> => ({
   kind: "specification", label: "", source_locator: "", value: "", reason: "", status: "pending",
@@ -21,15 +23,18 @@ const emptyMapping = (): Omit<ReportMappingInput, "expected_revision" | "source_
   report_text: "",
 });
 
-export function ReportAuthoringPanel({ projectId, disabled = false, onOperationStart }: {
+export function ReportAuthoringPanel({ projectId, disabled = false, onOperationStart, sharedState, onChanged, openRequest }: {
   projectId: string; disabled?: boolean; onOperationStart?: () => (() => void) | null;
+  sharedState?: ReportAuthoringState | null; onChanged?: (state: ReportAuthoringState) => void;
+  openRequest?: { section: 0 | 1 | 2; sequence: number };
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const entryHeading = useRef<HTMLHeadingElement | null>(null);
   const [focusTarget, setFocusTarget] = useState<0 | 1 | 2 | null>(null);
   const sectionHeadings = useRef<Array<HTMLHeadingElement | null>>([]);
-  const [state, setState] = useState<ReportAuthoringState | null>(null);
+  const [localState, setLocalState] = useState<ReportAuthoringState | null>(null);
+  const state = sharedState === undefined ? localState : sharedState;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -42,10 +47,16 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
   currentProject.current = projectId;
   useEffect(() => {
     operation.current?.releaseOutside(); operation.current = null;
-    sequence.current += 1; setState(null); setOpen(false); setFocusTarget(null); setBusy(false); setError("");
+    sequence.current += 1; setLocalState(null); setOpen(false); setFocusTarget(null); setBusy(false); setError("");
     setFile(null); setSourceId(""); setMapping(emptyMapping());
     return () => { sequence.current += 1; operation.current?.releaseOutside(); operation.current = null; };
   }, [projectId]);
+  useEffect(() => {
+    if (openRequest) { setOpen(true); setFocusTarget(openRequest.section); }
+  }, [openRequest]);
+  useEffect(() => {
+    if (state) setSourceId(previous => state.sources.some(source => source.source_id === previous) ? previous : state.sources[0]?.source_id || "");
+  }, [state]);
   useEffect(() => {
     if (!open || !state || focusTarget === null) return;
     const heading = sectionHeadings.current[focusTarget];
@@ -68,7 +79,8 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
   }
 
   function acceptChanged(next: ReportAuthoringState) {
-    if (currentProject.current === projectId && next.project_id === projectId) setState(next);
+    if (currentProject.current !== projectId || next.project_id !== projectId) return;
+    setLocalState(next); onChanged?.(next);
   }
 
   async function run(operation: () => Promise<ReportAuthoringState>) {
@@ -78,7 +90,7 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
     try {
       const result = await operation();
       if (request !== sequence.current || owner !== currentProject.current) return;
-      setState(result);
+      acceptChanged(result);
       setSourceId(previous => result.sources.some(source => source.source_id === previous) ? previous : result.sources[0]?.source_id || "");
     } catch (reason) {
       if (request === sequence.current && owner === currentProject.current)
@@ -157,8 +169,10 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
           <label>Source role <select value={role} onChange={event => setRole(event.target.value as ReportSourceRole)}>
             {roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select></label>
-          <label>Source file <input type="file" accept=".docx,.xlsx,.csv,.pdf,.png,.jpg,.jpeg,.txt"
-            onChange={event => setFile(event.target.files?.[0] || null)} /></label>
+          <label>Source file <input type="file" accept=".docx,.xlsx,.csv,.pdf,.png,.jpg,.jpeg,.txt,.zip"
+            onChange={event => { const next = event.target.files?.[0] || null; setFile(next);
+              if (next?.name.toLowerCase().endsWith('.zip')) setRole('tools_result_package'); }} /></label>
+          <p>For reviewed Tools results, choose the ZIP from Export for Report. Ordinary workbooks can still be mapped manually.</p>
           <button type="button" disabled={!file} onClick={() => file && void run(() => uploadReportSource(projectId, file, role, state.revision))}>Retain source copy</button>
         </fieldset>
         <ul>{state.sources.map(source => <li key={source.source_id}>
@@ -210,6 +224,7 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
         <button type="button" className="report-preparation-back" onClick={backToSteps}>Back to report steps</button>
         {!latest && <p className="report-preparation-guidance">Choose a report base before updating content.</p>}
         <ReportFactUpdates projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportToolsPackageImport key={`tools-${projectId}`} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportResultsImport key={projectId} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportResultUpdate projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportPhotoSlots projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />

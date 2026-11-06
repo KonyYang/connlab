@@ -40,6 +40,8 @@ import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
 import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDialog";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import { ReportAuthoringPanel } from "./ReportAuthoringPanel";
+import { getReportAuthoring, adoptCurrentReportWorkingCopy, updateWorkingCopyLlcr, updateWorkingCopyEquipment,
+  downloadReportArtifact, type ReportAuthoringState } from "../../api/reportAuthoring";
 import {
   buildLlcrConfirmationDecisions,
   buildEquipmentSelectionInput,
@@ -70,6 +72,10 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const topBarRoot = useTopBarActionsRoot();
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
   const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
+  const [authoringState, setAuthoringState] = useState<ReportAuthoringState | null>(null);
+  const [authoringReadFailed, setAuthoringReadFailed] = useState(false);
+  const [authoringOpenRequest, setAuthoringOpenRequest] = useState<{ section: 0 | 1 | 2; sequence: number }>();
+  const workingCopy = authoringState?.outputs.at(-1);
   const [customerReport, setCustomerReport] = useState<CustomerReportState | null>(null);
   const [customerReadFailed, setCustomerReadFailed] = useState(false);
   const [customerReportRecovery, setCustomerReportRecovery] = useState<CustomerReportState | null>(null);
@@ -95,7 +101,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       setEquipmentStatus(result.changed ? "Equipment List Updated." : "Equipment List Is Up To Date.");
     },
   });
-  const draftMode = currentReport?.status !== "ambiguous" && (draftUpdates.source?.mode === "download_draft"
+  const draftMode = !workingCopy && currentReport?.status !== "ambiguous" && (draftUpdates.source?.mode === "download_draft"
     || currentReport?.mode === "managed_draft" || currentReport?.status === "missing");
   useEffect(() => { if (draftUpdates.selectOpen) setReportSourceFile(null); }, [draftUpdates.selectOpen]);
   const equipmentRequest = useRef(false);
@@ -122,10 +128,16 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   });
   const legacyBusyAction = pageBusyAction ?? (draftUpdates.busy ? (draftUpdates.action === "equipment" ? "equipment-update" : "llcr")
     : customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || customerRegenerationApproval || equipmentSourceOpen || equipmentResult || draftUpdates.selectOpen ? "customer-source" : null);
-  const busyAction = legacyBusyAction ?? (authoringBusy ? "authoring" : null);
+  const busyAction = legacyBusyAction ?? (authoringBusy ? "authoring" : !authoringState ? "load" : null);
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
   activeProject.current = projectId;
+
+  function acceptAuthoringState(next: ReportAuthoringState) {
+    if (!mounted.current || activeProject.current !== next.project_id) return;
+    setAuthoringReadFailed(false);
+    setAuthoringState(previous => previous?.project_id === next.project_id && previous.revision > next.revision ? previous : next);
+  }
 
   function beginAuthoringOperation(): (() => void) | null {
     if (!mounted.current || activeProject.current !== projectId || legacyBusyAction || pageActionRef.current || authoringOperation.current) return null;
@@ -173,15 +185,30 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }, [message]);
 
   const refresh = useCallback(async () => {
-    const [nextState, nextReport, nextCustomerReport] = await loadReportState(projectId);
+    const [nextState, nextReport, nextCustomerReport, nextAuthoring] = await loadReportState(projectId);
     if (mounted.current && activeProject.current === projectId) {
       setState(nextState);
       setCurrentReport(nextReport);
       setCustomerReport(nextCustomerReport);
       setCustomerReadFailed(nextCustomerReport === null);
+      if (nextAuthoring) acceptAuthoringState(nextAuthoring);
+      else { setAuthoringState(null); setAuthoringReadFailed(true); }
     }
     return { state: nextState, customerReport: nextCustomerReport };
   }, [projectId]);
+
+  async function runAuthoringReload() {
+    if (pageBusyAction || authoringOperation.current) return;
+    setBusyAction("load");
+    try {
+      const next = await getReportAuthoring(projectId);
+      acceptAuthoringState(next);
+    } catch {
+      if (activeProject.current === projectId) setAuthoringReadFailed(true);
+    } finally {
+      if (activeProject.current === projectId) setBusyAction(null);
+    }
+  }
 
   useEffect(() => {
     const job = customerJob.job;
@@ -224,15 +251,17 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     setCustomerReportRecovery(null);
     setState(null);
     setCurrentReport(null);
+    setAuthoringState(null); setAuthoringReadFailed(false); setAuthoringOpenRequest(undefined);
     setCustomerReport(null);
     setCustomerReadFailed(false);
     loadReportState(projectId)
-      .then(([nextState, nextReport, nextCustomerReport]) => {
+      .then(([nextState, nextReport, nextCustomerReport, nextAuthoring]) => {
         if (active) {
           setState(nextState);
           setCurrentReport(nextReport);
           setCustomerReport(nextCustomerReport);
           setCustomerReadFailed(nextCustomerReport === null);
+          setAuthoringState(nextAuthoring); setAuthoringReadFailed(nextAuthoring === null);
         }
       })
       .catch((reason: unknown) => {
@@ -290,6 +319,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleGenerateInternalReport(): Promise<void> {
+    if (workingCopy || !authoringState) return;
     await handleInternalAction("initial", async (isCurrent) => {
       const preview = await previewInternalReportGeneration(projectId);
       if (!isCurrent()) return;
@@ -385,6 +415,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleGenerateCustomerReport(trigger: HTMLButtonElement): Promise<void> {
+    if (workingCopy || !authoringState) return;
     if (authoringOperation.current) return;
     if (!busyAction && !customerReportRecovery && currentReport?.status === "missing" &&
         !(customerReport?.mode === "managed_download" && customerReport.can_generate)) {
@@ -420,6 +451,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function performCustomerGeneration(approval: CustomerRegenerationApproval): Promise<void> {
+    if (workingCopy || !authoringState) return;
     if (authoringOperation.current) return;
     if (customerRequest.current || customerJob.busy || approval.projectId !== activeProject.current) return;
     customerRequest.current = true;
@@ -496,6 +528,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleConfirmCustomerReportRegeneration(): Promise<void> {
+    if (workingCopy || !authoringState) return;
     if (authoringOperation.current) return;
     const recovery = customerReportRecovery;
     if (busyAction || !recovery?.internal_report_sha256) {
@@ -520,7 +553,17 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
 
   async function handleUpdateLlcr(): Promise<void> {
     if (authoringOperation.current) return;
-    if (!latestDataset) {
+    if (!latestDataset || !authoringState) {
+      return;
+    }
+    if (workingCopy) {
+      await runAction("llcr", async () => {
+        if (!workingCopy.artifact?.sha256) throw new Error("Reload the selected working copy before updating it.");
+        const next = await updateWorkingCopyLlcr(projectId, { expected_revision: authoringState.revision,
+          expected_sha256: workingCopy.artifact.sha256, dataset_revision_id: latestDataset.dataset_id });
+        acceptAuthoringState(next);
+        return "LLCR results updated in the working copy. The official report is unchanged.";
+      });
       return;
     }
     if (draftMode) { await draftUpdates.updateLlcr(latestDataset.dataset_id); return; }
@@ -548,7 +591,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleEquipmentUpdate(input?: { file?: File; referencesText?: string }): Promise<void> {
-    if (authoringOperation.current) return;
+    if (authoringOperation.current || !authoringState) return;
     if (draftMode) { await draftUpdates.updateEquipment(input); return; }
     if (equipmentRequest.current || pageBusyAction || customerJob.busy || uploadedCustomerJob.busy) return;
     equipmentRequest.current = true;
@@ -559,6 +602,22 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     setError(null);
     setMessage(null);
     try {
+      if (workingCopy) {
+        if (!workingCopy.artifact?.sha256) throw new Error("Reload the selected working copy before updating it.");
+        const request = { expected_revision: authoringState.revision, expected_sha256: workingCopy.artifact.sha256 };
+        const next = input ? await updateWorkingCopyEquipment(projectId, request, input) : await updateWorkingCopyEquipment(projectId, request);
+        if (!isCurrent()) return;
+        if ('status' in next) { setEquipmentSourceOpen(true); return; }
+        acceptAuthoringState(next);
+        setEquipmentSourceOpen(false); setEquipmentFile(null); setEquipmentIds("");
+        const updated = next.outputs.at(-1);
+        const statistics = updated?.evidence?.statistics;
+        setEquipmentResult(statistics && (statistics.unmatched.length || statistics.incomplete.length || statistics.expired.length)
+          ? { status: 'completed', project_id: projectId, file_name: updated!.file_name, changed: updated?.output_id !== workingCopy.output_id,
+            current_sha256: updated?.artifact?.sha256 || '', archive_path: null, statistics } : null);
+        setEquipmentStatus("Equipment List updated in the working copy. The official report is unchanged.");
+        return;
+      }
       const result = await updateEquipmentListOneClick(projectId, input);
       if (!isCurrent()) return;
       if (result.status === "source_required") {
@@ -593,6 +652,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handlePublishManagedReport(): Promise<void> {
+    if (workingCopy || !authoringState) return;
     const expectedSha = currentReport?.file_sha256;
     if (!expectedSha || !currentReport.can_publish_to_official) {
       return;
@@ -624,7 +684,40 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       {error ? <ErrorMessage message={error} /> : null}
       {message ? <p className="report-workspace-message" role="status">{message}</p> : null}
 
-      {state && <ReportAuthoringPanel projectId={projectId} disabled={Boolean(legacyBusyAction)} onOperationStart={beginAuthoringOperation} />}
+      {state && authoringReadFailed && <div role="alert" className="report-workspace-blocker">
+        <p>Unable to check the selected working copy. Report changes are paused; the official report has not been changed.</p>
+        <button type="button" disabled={pageBusyAction !== null} onClick={() => void runAuthoringReload()}>Retry working-copy status</button>
+      </div>}
+      {state && authoringState && <section className="report-workspace-card report-working-copy" aria-label="Selected report working copy">
+        <h2>{workingCopy ? "Selected working copy" : "Choose a working copy"}</h2>
+        {workingCopy ? <>
+          <strong>{workingCopy.file_name}</strong><p>Saved revision {authoringState.revision} · All preparation and section updates use this copy.</p>
+          <details><summary>Version identity</summary><code>{workingCopy.artifact?.sha256 || "Reload to verify this version"}</code></details>
+          <p>The report in the project folder is separate and remains unchanged. These actions do not formally release a report.</p>
+          <button type="button" disabled={Boolean(busyAction)} onClick={() => void runAction('download', async () => {
+            const response = await downloadReportArtifact(workingCopy.download_url); downloadBlob(response.blob, response.fileName || workingCopy.file_name); return null;
+          })}>Download working copy</button>
+          <button type="button" disabled={Boolean(busyAction)} onClick={() => setAuthoringOpenRequest(previous => ({ section: 2, sequence: (previous?.sequence || 0) + 1 }))}>Review customer copy from this version</button>
+        </> : <>
+          <p>Choose an original in Report preparation, or retain a read-only copy of the current report. Existing report operations remain available until a working copy is selected.</p>
+          {draftUpdates.source?.status === 'ready' && draftUpdates.source.file_sha256 && <>
+          <p>Available report source: {draftUpdates.source.file_name} ({draftUpdates.source.mode === 'official' ? 'project-folder report' : 'retained draft'}).</p>
+          <button type="button" disabled={Boolean(busyAction)} onClick={() => void runAction('authoring', async () => {
+            const selected = draftUpdates.source!;
+            const current = await draftUpdates.refresh();
+            if (activeProject.current !== projectId) return null;
+            if (current.status !== 'ready' || current.file_sha256 !== selected.file_sha256 || current.mode !== selected.mode)
+              throw new Error('The available report source changed. Review the refreshed source before selecting it.');
+            if (current.mode !== 'official' && current.mode !== 'download_draft')
+              throw new Error('This report source is not available for a working copy. Select an original in Report preparation.');
+            const next = await adoptCurrentReportWorkingCopy(projectId, { expected_revision: authoringState.revision,
+              source_sha256: current.file_sha256!, source_mode: current.mode });
+            acceptAuthoringState(next); return "Selected a new working copy. The original report is unchanged.";
+          })}>Use report source as working copy</button></>}
+        </>}
+      </section>}
+      {state && <ReportAuthoringPanel projectId={projectId} disabled={Boolean(legacyBusyAction) || !authoringState}
+        sharedState={authoringState} onChanged={acceptAuthoringState} openRequest={authoringOpenRequest} onOperationStart={beginAuthoringOperation} />}
 
       {state && readiness ? (
         <div className="report-workspace-grid">
@@ -634,13 +727,13 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 <div className="report-workspace-action-row">
                   <button
                     className="primary-action"
-                    disabled={!readiness.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
+                    disabled={Boolean(workingCopy) || !readiness.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
                     onClick={() => void handleGenerateInternalReport()}
                     type="button"
                   >
                     {busyAction === "initial" ? "Generating..." : "Generate Internal Report"}
                   </button>
-                  {reportEntry.kind === "publish" ? (
+                  {reportEntry.kind === "publish" && !workingCopy ? (
                     <button
                       className="primary-action"
                       disabled={Boolean(busyAction)}
@@ -655,6 +748,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                   ) : null}
                 </div>
                 <div className="report-workspace-current-report">
+                  {workingCopy && <small>{currentReport?.mode === 'official' ? 'Report in project folder' : 'Previously managed report'} (not selected for editing)</small>}
                   {reportFileName ? <span className="report-workspace-report-name">{reportFileName}</span> : (
                     <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
                   )}
@@ -664,6 +758,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               {reportEntry.kind === "managed" ? <p className="report-workspace-note">Create the official project folder before publishing this draft.</p> : null}
               {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
             </section>
+            {workingCopy && <p className="report-workspace-note">Continue the selected working copy above. Initial generation is disabled to avoid recreating a different report.</p>}
+            {!workingCopy && <>
             <section className="report-workspace-customer-generation" aria-label="Customer Report">
               <div className="report-workspace-action-row">
                 <button
@@ -771,11 +867,12 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 </div>
               ) : null}
             </section>
+            </>}
           </section>
 
           <section className="report-workspace-card" aria-label="Update Internal Report">
             <div className="report-workspace-card-heading">
-              <div><h2>Update Internal Report</h2><p>Update selected sections; other content and manual edits are preserved.</p></div>
+              <div><h2>Update Internal Report</h2><p>{workingCopy ? `Target: selected working copy (${workingCopy.file_name}). The official report stays unchanged.` : "Update selected sections; other content and manual edits are preserved."}</p></div>
             </div>
             <div className="report-workspace-update-row">
               <div className="report-workspace-update-content">
@@ -804,7 +901,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               </div>
               <button
                 className="primary-action"
-                disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || (currentReport?.status !== "ready" && !draftMode)}
+                disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
                 onClick={() => void handleUpdateLlcr()}
                 type="button"
               >
@@ -814,7 +911,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
             <div className="report-workspace-update-row report-workspace-equipment-action">
               <button
                 className="primary-action"
-                disabled={Boolean(busyAction) || (currentReport?.status !== "ready" && !draftMode)}
+                disabled={Boolean(busyAction) || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
                 ref={equipmentTrigger}
                 onClick={() => void handleEquipmentUpdate()}
                 type="button"
@@ -842,7 +939,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               {draftUpdates.error ? <p role="alert" className="report-workspace-blocker">{draftUpdates.error}</p> : null}
               {draftUpdates.downloadError ? <p role="alert" className="report-workspace-blocker">{draftUpdates.downloadError}</p> : null}
             </div> : null}
-            {currentReport?.status !== "ready" && !draftMode ? (
+            {!workingCopy && currentReport?.status !== "ready" && !draftMode ? (
               <p className="report-workspace-blocker">
                 {currentReport?.status === "ambiguous"
                   ? "Keep exactly one current Internal Report before updating its sections."
@@ -965,6 +1062,7 @@ async function loadReportState(projectId: string) {
     fetchReportWorkspace(projectId),
     fetchCurrentReport(projectId),
     fetchCurrentCustomerReport(projectId).catch(() => null),
+    getReportAuthoring(projectId).catch(() => null),
   ] as const);
 }
 

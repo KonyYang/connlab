@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 
 
-SOURCE_ROLES = frozenset({"original", "layout_reference", "specification", "temperature", "cr", "mechanical", "photo", "evidence"})
+SOURCE_ROLES = frozenset({"original", "layout_reference", "specification", "temperature", "cr", "mechanical", "photo", "evidence", "tools_result_package"})
 MAPPING_KINDS = frozenset({"specification", "identity", "temperature", "cr", "mechanical", "photo", "acceptance"})
 
 

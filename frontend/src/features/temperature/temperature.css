@@ -2,10 +2,10 @@
 .temperature-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
 .top-bar-tools:has(.temperature-tools-return) { grid-template-columns: max-content minmax(0,1fr); }
 .top-bar-tools:has(.temperature-tools-return) .top-bar-actions { justify-content: flex-start; }
-.temperature-header-actions { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; }
-.temperature-header-inputs { display: flex; align-items: center; flex: 1 1 auto; gap: 8px; min-width: 0; overflow-x: auto; padding: 2px; scrollbar-width: thin; }
+.temperature-header-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%; min-width: 0; }
+.temperature-header-inputs { display: flex; align-items: center; flex: 1 1 260px; gap: 8px; min-width: min(260px,100%); max-width: 100%; box-sizing: border-box; overflow-x: auto; padding: 2px; scrollbar-width: thin; }
 .temperature-import-actions { display: flex; align-items: center; flex-shrink: 0; gap: 8px; min-width: 0; }
-.temperature-primary-actions { display: flex; align-items: center; flex-shrink: 0; gap: 6px; margin-left: auto; }
+.temperature-primary-actions { display: flex; align-items: center; flex-wrap: wrap; flex-shrink: 0; gap: 6px; max-width: 100%; margin-left: auto; }
 .temperature-header-actions:has(.temperature-import-fields) { gap: 8px; }
 .temperature-header-actions:has(.temperature-import-fields) .temperature-import-actions { margin-left: 0; flex-shrink: 0; gap: 6px; }
 .temperature-header-actions:has(.temperature-import-fields) .temperature-sheet-select { width: 144px; min-height: 32px; padding: 5px 6px; font-size: 12px; }
@@ -162,7 +162,7 @@
 .temperature-review-summary p { display: inline; font: inherit; }
 .temperature-review-summary p + p::before { content: ' · '; }
 .temperature-review-summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
-@media (max-width: 850px) { .temperature-analysis-grid { grid-template-columns: 1fr; } }
+@media (max-width: 850px) { .temperature-analysis-grid { grid-template-columns: 1fr; } .top-bar-tools:has(.temperature-tools-return) { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: 560px) { .temperature-panel { padding: 14px; } .temperature-region-fields { grid-template-columns: 1fr; } }
 .temperature-exit-dialog { width: min(440px, calc(100vw - 32px)); box-sizing: border-box; padding: 24px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); color: var(--color-ink); }
 .temperature-exit-dialog::backdrop { background: rgb(23 32 51 / 35%); }

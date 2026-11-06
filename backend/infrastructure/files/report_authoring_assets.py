@@ -60,9 +60,18 @@ def readable_word_bytes(content):
 def inspect_upload(file_name: str, content: bytes, role: str, project_dl: str) -> str:
     if not file_name or len(file_name) > 255 or any(char in file_name for char in '\\/:\x00') or file_name in {".", ".."}:
         raise ValueError("Choose a file with a plain filename.")
-    if not content or len(content) > 50 * 1024 * 1024:
+    limit = 220 if role == 'tools_result_package' else 50
+    if not content or len(content) > limit * 1024 * 1024:
+        if role == 'tools_result_package':
+            raise ValueError('Choose a nonempty Tools result package smaller than 220 MB.')
         raise ValueError("Choose a non-empty source smaller than 50 MB.")
     suffix = Path(file_name).suffix.lower()
+    if role == 'tools_result_package':
+        if suffix != '.zip':
+            raise ValueError('Choose the ZIP result package exported by Tools.')
+        # Its bounded container, source hashes and reviewed decisions are checked
+        # by the injected result-package reader before this source is retained.
+        return ''
     allowed = {".docx", ".xlsx", ".csv", ".pdf", ".png", ".jpg", ".jpeg", ".txt"}
     if suffix not in allowed:
         raise ValueError("Use DOCX, XLSX, CSV, PDF, PNG, JPEG or text evidence.")

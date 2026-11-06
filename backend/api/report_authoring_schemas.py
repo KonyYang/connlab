@@ -29,11 +29,27 @@ class SelectBaseRequest(BaseModel):
     source_id: str = Field(min_length=1, max_length=64)
 
 
+class AdoptWorkingCopyRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    expected_revision: int = Field(ge=0)
+    source_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    source_mode: Literal['official', 'download_draft']
+
+
+class WorkingLlcrRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    expected_revision: int = Field(ge=0)
+    expected_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    dataset_revision_id: str = Field(min_length=1, max_length=128)
+
+
 class ResultImportRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     expected_revision: int = Field(ge=0)
     source_id: str = Field(min_length=1, max_length=64)
     kind: Literal["temperature", "cr", "mechanical"]
+    package_entry_id: str | None = Field(default=None, min_length=1, max_length=128)
+    source_project_confirmed: bool = False
     sheet_name: str = Field(default="", max_length=255)
     start_row: int = Field(default=2, ge=1, le=20000)
     end_row: int = Field(default=2, ge=1, le=20000)

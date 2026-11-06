@@ -1,6 +1,6 @@
-import { requestJson, requestBlobResponse } from "./client";
+import { requestJson, requestBlobResponse, type EquipmentListOneClickResult } from "./client";
 
-export type ReportSourceRole = "original" | "layout_reference" | "specification" | "temperature" | "cr" | "mechanical" | "photo" | "evidence";
+export type ReportSourceRole = "original" | "layout_reference" | "specification" | "temperature" | "cr" | "mechanical" | "photo" | "evidence" | "tools_result_package";
 export type ReportSource = {
   source_id: string; role: ReportSourceRole; file_name: string; sha256: string;
   size_bytes: number; created_at: string; report_dl: string; download_url: string;
@@ -17,7 +17,7 @@ export type ReportAuthoringOutput = {
   download_url: string; base_source_id: string;
   artifact?: { sha256: string };
   parent_output_id?: string;
-  evidence?: { result_id?: string };
+  evidence?: { result_id?: string; statistics?: Extract<EquipmentListOneClickResult, { status: "completed" }>["statistics"] };
 };
 export type ReportMatrixStep = { group_id: string; row_id: string; group_label: string; test_item: string; step_token: string };
 export type ReportAuthoringState = {
@@ -42,6 +42,21 @@ export const saveReportMapping = (projectId: string, mapping: ReportMappingInput
 export const selectReportBase = (projectId: string, sourceId: string, revision: number) =>
   requestJson<ReportAuthoringState>(base(projectId) + "/base", { method: "POST", body: JSON.stringify({ source_id: sourceId, expected_revision: revision }) });
 export const downloadReportArtifact = (url: string) => requestBlobResponse(url);
+
+export const adoptCurrentReportWorkingCopy = (projectId: string, request: {
+  expected_revision: number; source_sha256: string; source_mode: string;
+}) => requestJson<ReportAuthoringState>(base(projectId) + '/working-copy/adopt', { method: 'POST', body: JSON.stringify(request) });
+export const updateWorkingCopyLlcr = (projectId: string, request: {
+  expected_revision: number; expected_sha256: string; dataset_revision_id: string;
+}) => requestJson<ReportAuthoringState>(base(projectId) + '/working-copy/llcr', { method: 'POST', body: JSON.stringify(request) });
+export function updateWorkingCopyEquipment(projectId: string, request: { expected_revision: number; expected_sha256: string },
+  input?: { file?: File; referencesText?: string }) {
+  const body = new FormData();
+  body.set('expected_revision', String(request.expected_revision)); body.set('expected_sha256', request.expected_sha256);
+  if (input?.file) body.set('file', input.file);
+  if (input?.referencesText) body.set('references_text', input.referencesText);
+  return requestJson<ReportAuthoringState | { status: 'source_required'; project_id: string }>(base(projectId) + '/working-copy/equipment', { method: 'POST', body });
+}
 
 export type FactPreview = { output_sha256: string; preview_sha256: string; mapping_ids: string[];
   changes: { old: string; new: string; occurrences: number; parts: string[] }[] };
@@ -70,16 +85,28 @@ export type ReportResult = {
   result_id?: string; kind: ResultImportRequest["kind"]; source_id: string; source_sha256: string;
   matrix_id: string; target: ReportMatrixStep; profile: ResultImportRequest; outcome: string; acceptance_reason: string;
   preview_sha256: string; data: { sheet_name: string; unit: string; quantity: string;
+    force_field?: string; withdraw_magnitude?: boolean;
     rows?: Record<string, string | number | Record<string, string>>[];
     summary?: { min: string; max: string; average: string; stdev: string | null };
     analysis?: { points: { source_row: number | null; current: number; rises: number[]; maximum: number; average: number }[] };
   };
 };
+export type ReportToolsPackage = {
+  project_hint?: string;
+  entries: { entry_id: string; label: string; kind: string; supported_for_report: boolean; reason: string;
+    source_names: string[]; sample_count?: number | null; sample_ids?: string[] }[];
+};
+export type ToolsPackageImportRequest = Pick<ResultImportRequest,
+  'expected_revision' | 'source_id' | 'kind' | 'group_id' | 'row_id' | 'step_token' | 'outcome' | 'acceptance_reason' | 'preview_sha256'> & {
+  package_entry_id: string; sample_ids?: string[]; source_project_confirmed?: boolean;
+};
+export const getReportToolsPackage = (projectId: string, sourceId: string) =>
+  requestJson<ReportToolsPackage>(base(projectId) + `/sources/${encodeURIComponent(sourceId)}/package`);
 export const getReportSourceTable = (projectId: string, sourceId: string, sheetName = "") =>
   requestJson<ReportTable>(base(projectId) + `/sources/${encodeURIComponent(sourceId)}/table?sheet_name=${encodeURIComponent(sheetName)}`);
-export const previewReportResult = (projectId: string, request: ResultImportRequest) =>
+export const previewReportResult = (projectId: string, request: ResultImportRequest | ToolsPackageImportRequest) =>
   requestJson<ReportResult>(base(projectId) + "/results/preview", { method: "POST", body: JSON.stringify(request) });
-export const confirmReportResult = (projectId: string, request: ResultImportRequest) =>
+export const confirmReportResult = (projectId: string, request: ResultImportRequest | ToolsPackageImportRequest) =>
   requestJson<ReportAuthoringState>(base(projectId) + "/results/confirm", { method: "POST", body: JSON.stringify(request) });
 
 export type ResultTargets = { output_sha256: string; result_id: string;

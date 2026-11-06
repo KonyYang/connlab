@@ -156,27 +156,31 @@ export function useTemperatureTool() {
     return api.generateTemperatureDerating(numeric(average), deratingSettings());
   }, result => ({ derating: result }));
   const derating = () => generateDerating(state.average);
-  async function download() {
+  async function download(forReport = false) {
     const token = generation.current + 1;
-    await run('Preparing Excel...', () => api.downloadTemperatureWorkbook({ ...request(),
-      maximum_coefficients: state.maximum ? numeric(state.maximum) : null,
-      average_coefficients: state.average ? numeric(state.average) : null,
-      target_rise: state.current !== null ? parameter(state.targetRise, 'target rise') : null,
-      derating: state.derating ? deratingSettings() : null,
-      report_metadata: reportMetadata(reportInfo.values),
-    }).then(result => {
-      if (generation.current !== token) return null;
-      const fileName = result.fileName ?? 'T-rise_Derating.xlsx';
-      const url = URL.createObjectURL(result.blob);
-      const anchor = document.createElement('a');
-      anchor.href = url; anchor.download = fileName;
-      document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
-      return fileName;
-    }), downloaded => ({ downloaded }));
+    await run(forReport ? 'Preparing Report Package...' : 'Preparing Excel...', () => {
+      const payload: api.TemperatureDownloadRequest = { ...request(),
+        maximum_coefficients: state.maximum ? numeric(state.maximum) : null,
+        average_coefficients: state.average ? numeric(state.average) : null,
+        target_rise: state.current !== null ? parameter(state.targetRise, 'target rise') : null,
+        derating: state.derating ? deratingSettings() : null,
+        report_metadata: reportMetadata(reportInfo.values),
+      };
+      if (forReport && (!state.file || !state.confirmed || !state.analysis)) throw new Error('Import and confirm the original data before exporting a report package.');
+      return (forReport ? api.exportTemperatureReportPackage(state.file!, payload) : api.downloadTemperatureWorkbook(payload)).then(result => {
+        if (generation.current !== token) return null;
+        const fileName = result.fileName ?? (forReport ? 'Temperature_ReportResults.zip' : 'T-rise_Derating.xlsx');
+        const url = URL.createObjectURL(result.blob);
+        const anchor = document.createElement('a');
+        anchor.href = url; anchor.download = fileName;
+        document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+        return fileName;
+      });
+    }, downloaded => ({ downloaded }));
   }
   return { state, load, changeData, correctRegion, confirm, analyze, zeroIntercept,
     cancelPending: () => { generation.current += 1; setState(old => ({ ...old, busy: null })); },
-    editParameter, current, derating, download, reportInfo,
+    editParameter, current, derating, download, exportForReport: () => download(true), reportInfo,
     editReportInfo: (key: keyof ReportInfoFields, value: string) => {
       reportInfo.edit(key, value);
       setState(old => ({ ...old, downloaded: null }));

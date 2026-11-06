@@ -53,3 +53,9 @@ export const calculateTemperatureCurrent = (coefficients: Coefficients, targetRi
 export const generateTemperatureDerating = (coefficients: Coefficients, settings: DeratingSettings) =>
   requestJson<DeratingAnalysis>(`${base}/derating`, post({ coefficients, ...settings }));
 export const downloadTemperatureWorkbook = (request: TemperatureDownloadRequest) => requestBlobResponse(`${base}/download`, post(request));
+export function exportTemperatureReportPackage(file: File, request: TemperatureDownloadRequest) {
+  const body = new FormData();
+  body.append('file', file);
+  body.append('request', JSON.stringify(request));
+  return requestBlobResponse(`${base}/export-package`, { method: 'POST', body });
+}
