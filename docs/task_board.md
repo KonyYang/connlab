@@ -323,11 +323,11 @@
   "tasks": {
     "TASK_REPORT_TOOLS_BRIDGE_20261107": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
       "branch": "codex/report-tools-bridge",
       "resources": [],
-      "integrated_head": "224bfea236d9e7d26bcb4136f3f04d14dd1a0ee9",
+      "integrated_head": "3fbd82b474bcec505e1487ad8ba6e390b25bfa4e",
       "task": {
         "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
         "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
@@ -362,7 +362,7 @@
         "risk_reasons": [],
         "activation_head": "72d78b14766b2e0276a03462828f8b5b5ed8231d",
         "started_at": "2026-11-06T21:06:29.254660Z",
-        "updated_at": "2026-11-06T21:50:06.392282Z",
+        "updated_at": "2026-11-06T21:57:03.578963Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -372,7 +372,61 @@
           "summary": "User requested continuing the same task to repair the isolated Word automation harness and complete page-by-page visual acceptance; real reports, templates and project data remain read-only.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
+          "subject": "ea7434e293ab61d3522857368748e8297b77d70e",
+          "changed_paths": [
+            "docs/operational/report_tools_bridge_20261107.md"
+          ],
+          "scope_ok": true,
+          "summary": "Batches 1-2 remain implemented and locally integrated. Native Word visual acceptance is now complete for the isolated synthetic baseline (1 page) and actual Tools-to-Report output (2 pages). The former blocker was an incorrect Application.Hwnd check in the temporary QA helper, not a Word installation failure. No real reports/templates/project data changed; no publication or push.",
+          "validation": [
+            {
+              "summary": "Product and test bytes mechanically identical to previously validated 33d133c75a1ca1e8489314fc4eb2daed9d0d68ab. Prior backend 451 passed (10 office_integration deselected), frontend 276 plus final CSS-affected 217 passed, tsc/Vite build and isolated Tools-to-Report browser/export checks remain valid. This revision changes only acceptance documentation and an ignored temporary QA helper.",
+              "name": "Prior affected backend/frontend/API/browser validation retained",
+              "status": "passed"
+            },
+            {
+              "summary": "Read-only synthetic baseline 1 page and browser-generated temperature working copy 2 pages exported via Word. Primary and separate reviewer inspected all 3 rendered pages: preserved fixed wording/header/footer; readable results/measurement table/notes/curve/legend; no clipping or overlap. Both input DOCX SHA-256 unchanged. Not certification of all real templates.",
+              "name": "Native Microsoft Word per-page visual acceptance",
+              "status": "passed"
+            },
+            {
+              "summary": "Final nested-cleanup helper exported 2 pages with exit 0. Correct Document.ActiveWindow.Hwnd matched owned process; old Application.Hwnd was null in the same healthy instance. Re-exported page pixels exactly match reviewed pages; no WINWORD process remained. Existing Word instances are not terminated.",
+              "name": "Corrected helper cleanup regression",
+              "status": "passed"
+            },
+            {
+              "summary": "git diff --check passed; final revision changes only operational acceptance guide plus writer-owned board history. Standards: deterministic COM cleanup and isolation respected. Spec: every representative page reviewed, no real-file writes or business changes. Scope and limitations explicitly recorded.",
+              "name": "Exact scope and documentation review",
+              "status": "passed"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Primary fixed the temporary Word QA helper and self-reviewed cleanup; product implementation and tests unchanged from prior completion."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Existing proportional matrix retained on identical product/test bytes. Native Word export, all-page visual inspection, unchanged input hashes and final cleanup/pixel regression completed this revision; no repeated full matrix."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Separate audit_report_ui context independently inspected all 3 pages and helper ownership. Its cleanup finding was fixed with nested finally; primary checked the final diff and repeated export/pixel comparison."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "ea7434e293ab61d3522857368748e8297b77d70e",
+            "primary_before": "945135a2be303fed31fc209e442143ef691d67f6",
+            "integrated_head": "3fbd82b474bcec505e1487ad8ba6e390b25bfa4e",
+            "recovered": false
+          }
+        }
       }
     }
   }
