@@ -296,11 +296,11 @@
   "tasks": {
     "TASK_MECHANICAL_FOLDER_20261106": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\mechanical-folder-summary\\connlab",
       "branch": "feature/mechanical-folder-summary",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "6f7cfcffcab5f884ec173d99a7b38fcf5619aff9",
       "task": {
         "task_id": "TASK_MECHANICAL_FOLDER_20261106",
         "summary": "Generate mechanical summaries from a folder with evidence-bound review and approved layouts",
@@ -325,9 +325,75 @@
         "risk_reasons": [],
         "activation_head": "4c92bf81942fca8084ffdc73cd9d210db00f1abe",
         "started_at": "2026-11-06T00:12:40.232332Z",
-        "updated_at": "2026-11-06T00:49:23.831589Z",
+        "updated_at": "2026-11-06T01:10:43.577194Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "task_id": "TASK_MECHANICAL_FOLDER_20261106",
+          "changed_paths": [
+            "backend/api/routes_tools_mechanical_summary.py",
+            "backend/application/mechanical_summary_folder.py",
+            "backend/infrastructure/files/mechanical_summary_folder.py",
+            "backend/infrastructure/office/mechanical_summary_folder.py",
+            "docs/mechanical_summary_tool.md",
+            "frontend/src/api/mechanicalSummary.ts",
+            "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
+            "frontend/src/features/tools/MechanicalSummaryTool.tsx",
+            "frontend/src/features/tools/mechanicalSummaryReview.ts",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/tools.css",
+            "tests/integration/test_mechanical_summary_folder_output.py",
+            "tests/unit/test_mechanical_summary_folder.py"
+          ],
+          "summary": "Folder selection now recognizes mechanical records, requests only missing project-specific confirmations, and generates an editable XLSX preserving effective source data, curves, approved report tables and eight information fields.",
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "Affected Python matrix: 38 passed. Final pagination fix: all 4 folder output/API tests passed, including new native Excel curve-pixel regression."
+            },
+            {
+              "status": "passed",
+              "summary": "Frontend: 22 tests passed; TypeScript and Vite production build passed. No frontend edits after validation."
+            },
+            {
+              "status": "passed",
+              "summary": "Final committed writer validated on 031/032 copies: 11 sheets, 175 raw cells, 36 recalculated formulas, 88 metadata fields, 18 images; native XLS curve pixels unchanged; all 30 original source hashes unchanged. All sheets rendered; paginated 031 hold curve rechecked."
+            },
+            {
+              "status": "passed",
+              "summary": "Real browser: 032 folder review and download, reload and automatic repeat download, 031 mapping isolation, desktop and 594px layouts. Actual Windows API download regression passed. Final pagination-only change covered by native output regression."
+            },
+            {
+              "status": "passed",
+              "summary": "Exact diff reviewed, no project mappings hardcoded in production, original APIs retained, sources read-only, git diff --check clean."
+            }
+          ],
+          "version": 1,
+          "scope_ok": true,
+          "schema": "connlab.sol-task-report",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "b5328e733c43919772ec6ace460755a0a8ce3711",
+            "primary_before": "e63f64c679710117ca46b5139de0dfda5760ec1e",
+            "integrated_head": "6f7cfcffcab5f884ec173d99a7b38fcf5619aff9",
+            "recovered": false
+          },
+          "subject": "b5328e733c43919772ec6ace460755a0a8ce3711",
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "summary": "Focused separate pass by same agent, not an independent agent. Reviewed provenance, original data and native formulas, missing fields, source/project binding, Office cleanup and UI lifecycle; bounded findings fixed."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Same-agent QA on committed state: bounded complete test matrix, browser download and real-project copy checks; final pagination finding received targeted regression and rerender."
+            },
+            "developer": {
+              "status": "passed",
+              "summary": "Same agent implemented in scoped worktree with coherent RED/GREEN regression slices."
+            }
+          }
+        }
       }
     }
   }
