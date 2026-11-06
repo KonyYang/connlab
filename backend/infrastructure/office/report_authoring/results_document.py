@@ -9,7 +9,7 @@ from lxml import etree
 from backend.infrastructure.office.office_protected_document_gateway import ProtectedWordPackageGateway
 from backend.infrastructure.office.report_authoring.word_copy import NS, text
 from backend.infrastructure.office.report_authoring.region_parts import remove_replaced_region_parts, R
-from backend.infrastructure.office.report_authoring.pagination import protect_table_starts
+from backend.infrastructure.office.report_authoring.pagination import protect_table_starts, reflow_headings, protect_reflow_headings
 
 
 def node(name):
@@ -124,119 +124,172 @@ class ReportResultsDocument:
     def inspect(self, source: Path, result):
         with self.protected.readable_copy(source) as readable, ZipFile(readable) as package:
             root = etree.fromstring(package.read('word/document.xml'))
-            _, rows, appendices = _parts(root, result)
-            blocks = _temperature_evidence_blocks(root, result)
+            return self.inspect_xml(root, result)
+
+    def inspect_xml(self, root, result):
+        _, rows, appendices = _parts(root, result)
+        blocks = _temperature_evidence_blocks(root, result)
         return {'result_rows': rows, 'appendix_tables': appendices, 'evidence_blocks': blocks,
             'unreconciled_temperature_evidence': any(block['temperature_evidence'] for block in blocks)}
 
-    def update(self, source: Path, output: Path, result, *, result_table, result_row, appendix_table, appendix_title,
-               evidence_start=None, evidence_end=None):
+    def prepare_update(self, root, result, **target):
+        """Resolve every original XML element before any batch member mutates the tree."""
+        return prepare_result_update(root, result, **target)
+
+    def update(self, source: Path, output: Path, result, **target):
+        # Preserve the established single-update pagination behavior. A batch
+        # explicitly limits its layout changes to the selected result tables.
+        return self.update_many(source, output, [{'result': result, 'target': target}], paginate_all_groups=True)
+
+    def update_many(self, source: Path, output: Path, updates, *, paginate_all_groups=False):
+        """Reuse the single-item renderer while keeping original node references stable."""
         if output.exists():
             raise ValueError('The output already exists; source reports are never overwritten.')
-        region_selected = evidence_start is not None or evidence_end is not None
-        if not region_selected:
-            appendix_title = result_appendix_title(result, appendix_title)
         with self.protected.readable_copy(source) as readable, ZipFile(readable) as package:
             root = etree.fromstring(package.read('word/document.xml'))
-            tables, rows, appendices = _parts(root, result)
-            evidence = _temperature_evidence_blocks(root, result)
-            if not region_selected and any(block['temperature_evidence'] for block in evidence):
-                raise ValueError('Old temperature evidence exists in this Group. Select and replace its complete region instead of appending a competing appendix.')
-            if not any(row['table_index'] == result_table and row['row_index'] == result_row for row in rows):
-                raise ValueError('The selected result row does not match the confirmed Group and Step.')
-            if appendix_table is not None and not any(item['table_index'] == appendix_table for item in appendices):
-                raise ValueError('Choose an existing appendix table or explicitly add a new appendix.')
-            if region_selected:
-                allowed = {block['block_index']: block for block in evidence}
-                if evidence_start is None or evidence_end is None or evidence_start > evidence_end or appendix_table is not None:
-                    raise ValueError('Select one complete temperature evidence region, not an appendix and a region together.')
-                if any(index not in allowed for index in range(evidence_start, evidence_end + 1)):
-                    raise ValueError('The temperature evidence region must stay after this Group result table and before the next section.')
-                if any(allowed[index]['protected_other_step'] for index in range(evidence_start, evidence_end + 1)):
-                    raise ValueError('The selected region includes another confirmed Step. Select only this Step evidence; complex multi-Step layouts require separate mapping.')
-                if not any(allowed[index]['temperature_evidence'] or allowed[index]['owned_current_result'] for index in range(evidence_start, evidence_end + 1)):
-                    raise ValueError('Select the temperature measurement region, including its table, curve and associated old conclusion.')
-                markers = [block['block_index'] for block in evidence if block['temperature_evidence']]
-                if markers and (evidence_start > min(markers) or evidence_end < max(markers)):
-                    raise ValueError('The selected region must include the complete old temperature table, curve and conclusion, not a partial replacement.')
-                if not any(allowed[index]['kind'] in {'tbl', 'sdt'} for index in range(evidence_start, evidence_end + 1)):
-                    raise ValueError('The temperature region must contain its measurement table or an existing generated result region.')
-            table = tables[result_table][0]
-            cells = table.findall('w:tr', NS)[result_row].findall('w:tc', NS)
-            headers = _headers(table)
-            if len(cells) < len(headers):
-                raise ValueError('Merged result cells need manual mapping; no report was changed.')
-            set_text(cells[headers.index('result')], summary(result))
-            set_text(cells[headers.index('comment')], {'pass': 'Pass', 'fail': 'Fail', 'not_applicable': 'N/A', 'pending': ''}[result['outcome']])
-            tag = 'connlab-report-result:' + result['result_id']
-            section = node('sdt')
-            properties = node('sdtPr')
-            marker = node('tag')
-            marker.set(f'{{{NS["w"]}}}val', tag)
-            properties.append(marker)
-            alias = node('alias'); alias.set(f'{{{NS["w"]}}}val', _step_identity(result)); properties.append(alias)
-            section.append(properties)
-            content = node('sdtContent')
-            if region_selected:
-                heading = node('p')
-                set_text(heading, f"Temperature Rise Measurements — Group {result['target']['group_label']}, Step {result['target']['step_token']} (°C)")
-                content.append(heading)
-            content.append(measurement_table(result))
-            for line in result_notes(result):
-                paragraph = node('p'); set_text(paragraph, line); content.append(paragraph)
-            section.append(content)
-            style_generated_section(section, tables[appendix_table][0] if appendix_table is not None else table)
-            body = root.find('w:body', NS)
+            prepared = [self.prepare_update(root, item['result'], **item['target']) for item in updates]
+            flowing_headings = reflow_headings(root, {item['table'] for item in prepared}) if not paginate_all_groups else []
+            for index, first in enumerate(prepared):
+                for second in prepared[index + 1:]:
+                    if any(left is right or left in right.iterancestors() or right in left.iterancestors()
+                           for left in first['writes'] for right in second['writes']):
+                        raise ValueError('Batch result targets overlap; review the mappings before writing.')
             removed_ids = set()
-            if region_selected:
-                for block in list(body)[evidence_start:evidence_end + 1]:
-                    removed_ids.update(value for item in block.iter() for key, value in item.attrib.items() if key.startswith('{'+R+'}'))
-                    body.remove(block)
-                body.insert(evidence_start, section)
-            elif appendix_table is None:
-                heading = node('p')
-                set_text(heading, appendix_title)
-                paragraph_properties = node('pPr'); paragraph_properties.append(node('pageBreakBefore')); paragraph_properties.append(node('keepNext'))
-                heading.insert(0, paragraph_properties)
-                style_generated_section(heading, table)
-                insertion = next((i for i, block in enumerate(body) if 'End of Report' in text(block)),
-                    len(body) - 1 if len(body) and body[-1].tag == node('sectPr').tag else len(body))
-                body.insert(insertion, heading)
-                body.insert(insertion + 1, section)
-            else:
-                old_table, heading = tables[appendix_table]
-                if sum(item[1] is heading for item in tables) != 1:
-                    raise ValueError('This appendix heading covers several tables. Add a separate appendix instead of relabeling unrelated results.')
-                set_text(heading, appendix_title)
-                parent = old_table.getparent()
-                if parent.tag == node('sdtContent').tag:
-                    old_section = parent.getparent()
-                    old_section.getparent().replace(old_section, section)
-                else:
-                    parent.replace(old_table, section)
-            pagination_groups = protect_table_starts(root)
-            buffer = BytesIO()
+            for item in prepared:
+                removed_ids.update(apply_prepared_result(root, item))
+            pagination_groups = protect_table_starts(root,
+                target_tables=None if paginate_all_groups else {item['table'] for item in prepared})
+            protect_reflow_headings(flowing_headings)
+            pagination_groups.extend(label for label, _ in flowing_headings if label not in pagination_groups)
             parts = {info.filename: package.read(info.filename) for info in package.infolist()}
             parts['word/document.xml'] = etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
             parts = remove_replaced_region_parts(parts, removed_ids)
+            buffer = BytesIO()
             with ZipFile(buffer, 'w', ZIP_DEFLATED) as updated:
                 for info in package.infolist():
                     if info.filename in parts:
                         updated.writestr(info, parts[info.filename])
         with TemporaryDirectory(prefix='connlab-result-') as directory:
-            plain = Path(directory)/'result.docx'
+            plain = Path(directory) / 'result.docx'
             plain.write_bytes(buffer.getvalue())
-            if result['kind'] == 'temperature':
-                if self.temperature_chart is None:
-                    raise ValueError('The editable temperature curve writer is unavailable.')
-                charted = Path(directory)/'charted.docx'
-                self.temperature_chart(plain, charted, result['data']['analysis'], tag)
-                plain = charted
+            for index, item in enumerate(updates):
+                result = item['result']
+                if result['kind'] == 'temperature':
+                    if self.temperature_chart is None:
+                        raise ValueError('The editable temperature curve writer is unavailable.')
+                    charted = Path(directory) / f'charted-{index}.docx'
+                    self.temperature_chart(plain, charted, result['data']['analysis'],
+                        'connlab-report-result:' + result['result_id'])
+                    plain = charted
             protection = self.protected.stage_editable_copy(source, output)
             output.write_bytes(plain.read_bytes())
             self.protected.restore_password_protection(output, protection)
         return {'pagination_groups': pagination_groups}
 
+
+def prepare_result_update(root, result, *, result_table, result_row, appendix_table, appendix_title,
+                          evidence_start=None, evidence_end=None):
+    region_selected = evidence_start is not None or evidence_end is not None
+    if not region_selected:
+        appendix_title = result_appendix_title(result, appendix_title)
+    tables, rows, appendices = _parts(root, result)
+    evidence = _temperature_evidence_blocks(root, result)
+    if not region_selected and any(block['temperature_evidence'] for block in evidence):
+        raise ValueError('Old temperature evidence exists in this Group. Select and replace its complete region instead of appending a competing appendix.')
+    if not any(row['table_index'] == result_table and row['row_index'] == result_row for row in rows):
+        raise ValueError('The selected result row does not match the confirmed Group and Step.')
+    if appendix_table is not None and not any(item['table_index'] == appendix_table for item in appendices):
+        raise ValueError('Choose an existing appendix table or explicitly add a new appendix.')
+    if region_selected:
+        allowed = {block['block_index']: block for block in evidence}
+        if evidence_start is None or evidence_end is None or evidence_start > evidence_end or appendix_table is not None:
+            raise ValueError('Select one complete temperature evidence region, not an appendix and a region together.')
+        if any(index not in allowed for index in range(evidence_start, evidence_end + 1)):
+            raise ValueError('The temperature evidence region must stay after this Group result table and before the next section.')
+        if any(allowed[index]['protected_other_step'] for index in range(evidence_start, evidence_end + 1)):
+            raise ValueError('The selected region includes another confirmed Step. Select only this Step evidence; complex multi-Step layouts require separate mapping.')
+        if not any(allowed[index]['temperature_evidence'] or allowed[index]['owned_current_result'] for index in range(evidence_start, evidence_end + 1)):
+            raise ValueError('Select the temperature measurement region, including its table, curve and associated old conclusion.')
+        markers = [block['block_index'] for block in evidence if block['temperature_evidence']]
+        if markers and (evidence_start > min(markers) or evidence_end < max(markers)):
+            raise ValueError('The selected region must include the complete old temperature table, curve and conclusion, not a partial replacement.')
+        if not any(allowed[index]['kind'] in {'tbl', 'sdt'} for index in range(evidence_start, evidence_end + 1)):
+            raise ValueError('The temperature region must contain its measurement table or an existing generated result region.')
+    table = tables[result_table][0]
+    cells = table.findall('w:tr', NS)[result_row].findall('w:tc', NS)
+    headers = _headers(table)
+    if len(cells) < len(headers):
+        raise ValueError('Merged result cells need manual mapping; no report was changed.')
+
+    appendix = tables[appendix_table] if appendix_table is not None else None
+    if appendix is not None and sum(item[1] is appendix[1] for item in tables) != 1:
+        raise ValueError('This appendix heading covers several tables. Add a separate appendix instead of relabeling unrelated results.')
+    blocks = list(root.find('w:body', NS))[evidence_start:evidence_end + 1] if region_selected else []
+    writes = [cells[headers.index('result')], cells[headers.index('comment')]]
+    if blocks:
+        writes.extend(blocks)
+    elif appendix is not None:
+        old_table, heading = appendix
+        container = old_table.getparent().getparent() if old_table.getparent().tag == node('sdtContent').tag else old_table
+        writes.extend([container, heading])
+    return {'result': result, 'table': table, 'cells': cells, 'headers': headers,
+        'appendix': appendix, 'appendix_table': appendix_table, 'appendix_title': appendix_title,
+        'region_selected': region_selected, 'blocks': blocks, 'writes': writes}
+
+
+def apply_prepared_result(root, prepared):
+    result, table, cells, headers = (prepared[key] for key in ('result', 'table', 'cells', 'headers'))
+    appendix_table, appendix_title, region_selected = (
+        prepared[key] for key in ('appendix_table', 'appendix_title', 'region_selected'))
+    set_text(cells[headers.index('result')], summary(result))
+    set_text(cells[headers.index('comment')], {'pass': 'Pass', 'fail': 'Fail', 'not_applicable': 'N/A', 'pending': ''}[result['outcome']])
+    tag = 'connlab-report-result:' + result['result_id']
+    section = node('sdt')
+    properties = node('sdtPr')
+    marker = node('tag')
+    marker.set(f'{{{NS["w"]}}}val', tag)
+    properties.append(marker)
+    alias = node('alias'); alias.set(f'{{{NS["w"]}}}val', _step_identity(result)); properties.append(alias)
+    section.append(properties)
+    content = node('sdtContent')
+    if region_selected:
+        heading = node('p')
+        set_text(heading, f"Temperature Rise Measurements — Group {result['target']['group_label']}, Step {result['target']['step_token']} (°C)")
+        content.append(heading)
+    content.append(measurement_table(result))
+    for line in result_notes(result):
+        paragraph = node('p'); set_text(paragraph, line); content.append(paragraph)
+    section.append(content)
+    style_generated_section(section, prepared['appendix'][0] if appendix_table is not None else table)
+    body = root.find('w:body', NS)
+    removed_ids = set()
+    if region_selected:
+        insertion = body.index(prepared['blocks'][0])
+        for block in prepared['blocks']:
+            removed_ids.update(value for item in block.iter() for key, value in item.attrib.items() if key.startswith('{'+R+'}'))
+            body.remove(block)
+        body.insert(insertion, section)
+    elif appendix_table is None:
+        heading = node('p')
+        set_text(heading, appendix_title)
+        paragraph_properties = node('pPr'); paragraph_properties.append(node('pageBreakBefore')); paragraph_properties.append(node('keepNext'))
+        heading.insert(0, paragraph_properties)
+        style_generated_section(heading, table)
+        insertion = next((i for i, block in enumerate(body) if 'End of Report' in text(block)),
+            len(body) - 1 if len(body) and body[-1].tag == node('sectPr').tag else len(body))
+        body.insert(insertion, heading)
+        body.insert(insertion + 1, section)
+    else:
+        old_table, heading = prepared['appendix']
+        set_text(heading, appendix_title)
+        parent = old_table.getparent()
+        if parent.tag == node('sdtContent').tag:
+            old_section = parent.getparent()
+            old_section.getparent().replace(old_section, section)
+        else:
+            parent.replace(old_table, section)
+
+    return removed_ids
 
 def summary(result):
     data = result['data']

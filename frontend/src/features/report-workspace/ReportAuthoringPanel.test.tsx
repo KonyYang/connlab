@@ -139,6 +139,7 @@ async function startPendingFactUpdate(pending: ReturnType<typeof deferred<api.Re
   fireEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
   await screen.findByText('Approved.docx', { selector: 'span' });
   fireEvent.change(screen.getByLabelText('Source file'), { target: { files: [new File(['x'], 'next.docx')] } });
+  fireEvent.click(screen.getByText('Advanced individual updates'));
   fireEvent.click(screen.getByText('Preview confirmed text replacements'));
   fireEvent.click(await screen.findByText('Apply to a new working copy'));
   return view;

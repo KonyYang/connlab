@@ -1,0 +1,38 @@
+.report-batch {
+  container: report-batch / inline-size;
+  min-width: 0;
+  margin: 16px 0 24px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.report-batch button { max-width: 100%; white-space: normal; margin: 8px 0; }
+.report-batch h5 { font-size: 1em; margin: 12px 0 8px; }
+.report-batch fieldset { min-width: 0; margin: 16px 0; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; }
+.report-batch legend { font-weight: 600; padding: 0 6px; }
+.report-batch-section, .report-batch-plan { margin-top: 16px; border-top: 1px solid var(--color-border); padding-top: 12px; }
+.report-batch summary { cursor: pointer; font-weight: 600; }
+.report-batch-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.report-batch label { display: grid; min-width: 0; gap: 6px; font-weight: 500; }
+.report-batch select, .report-batch input:not([type="checkbox"]), .report-batch textarea {
+  box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px;
+  border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-ink);
+  background: var(--color-surface); font: inherit;
+}
+.report-batch label.report-batch-check { display: flex; align-items: flex-start; gap: 10px; font-weight: 400; margin: 8px 0; }
+.report-batch-check input[type="checkbox"] {
+  flex: 0 0 18px; width: 18px; min-width: 18px; height: 18px; min-height: 18px; margin: 3px 0 0;
+  accent-color: var(--color-primary);
+}
+.report-batch small { display: block; color: var(--color-ink-muted); font-size: .875em; }
+.report-batch-table-wrap { min-width: 0; overflow-x: auto; }
+.report-batch table { width: 100%; border-collapse: collapse; }
+.report-batch th, .report-batch td { padding: 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-border); }
+.report-batch th { background: var(--color-surface); }
+.report-batch-wide { grid-column: 1 / -1; }
+.report-batch-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.report-batch-advanced { margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+.report-batch-advanced > summary { cursor: pointer; font-weight: 600; }
+@container report-batch (min-width: 700px) { .report-batch-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

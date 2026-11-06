@@ -1449,6 +1449,11 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
     from backend.infrastructure.storage.repositories.project import ProjectRepository
     from backend.infrastructure.office.report_authoring.word_copy import ReportCopyWriter
     from backend.infrastructure.office.report_authoring.results_document import ReportResultsDocument
+    from backend.infrastructure.office.report_authoring.batch_document import ReportBatchDocument
+    from backend.application.report_authoring.inventory import ReportInventory
+    from backend.infrastructure.files.report_evidence_inventory import ReportEvidenceInventory
+    from backend.infrastructure.project_library.files import LibraryFiles
+    from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
     from backend.infrastructure.office.report_authoring.temperature_chart import insert_temperature_chart
     from backend.infrastructure.office.report_authoring.photo_editor import ReportPhotoEditor
     from backend.infrastructure.office.report_authoring.customer_copy import CustomerReportCopy
@@ -1480,11 +1485,14 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
         drafts=get_report_draft_workspace(settings), writer=ReportCopyWriter(),
         sections=WorkingReportSections(sources=get_customer_report_source_reader(session, settings),
             datasets=get_current_report_update_service(session), writer=TestReportDocumentGateway(),
+            dataset_store=ResultDatasetRepository(session),
             workspaces=ProjectOfficialWorkspaceRepository(session), drafts=get_report_draft_workspace(settings),
             equipment_reader=EquipmentIdDocumentReader(), equipment_copies=get_tools_equipment_report_service(session)),
         tools_packages=ReportToolsPackage(ToolsTemperatureService(TemperatureWorkbookGateway()), analyze_folder,
             temperature_request_validator=lambda value: DownloadTemperatureRequest.model_validate(value).model_dump()),
         result_writer=ReportResultsDocument(temperature_chart=insert_temperature_chart),
+        batch_writer=ReportBatchDocument(temperature_chart=insert_temperature_chart),
+        inventory=ReportInventory(ReportEvidenceInventory(LibraryFiles(settings), ProjectLibraryRepository(session))),
         photos=ReportPhotoEditor(),
         customer=CustomerReportCopy(converter=CustomerReportDocumentGateway(),
             template=lambda: resolve_customer_report_template_path(get_test_report_template_resource_store(session)),

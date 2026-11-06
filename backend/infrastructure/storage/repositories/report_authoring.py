@@ -22,7 +22,7 @@ class ReportAuthoringRepository:
             tuple(ReportSource(**item) for item in data["sources"]),
             tuple(ReportMapping(**{**item, "sample_ids": tuple(item["sample_ids"])}) for item in data["mappings"]),
             data.get("base_source_id"), tuple(data.get("outputs", [])), tuple(data.get("results", [])),
-            tuple(data.get('customer_outputs', [])))
+            tuple(data.get('customer_outputs', [])), data.get('assembly_plan'))
 
     def save(self, state: ReportAuthoringState, expected_revision: int) -> ReportAuthoringState:
         if self.get(state.project_id).revision != expected_revision:

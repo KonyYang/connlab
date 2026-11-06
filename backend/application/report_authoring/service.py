@@ -11,7 +11,7 @@ from backend.domain.report_authoring import (
 
 
 class ReportAuthoringService:
-    def __init__(self, *, repository, assets, inspect_upload, project_context, drafts=None, writer=None, results=None, result_writer=None, photos=None, customer=None, sections=None, tools_packages=None):
+    def __init__(self, *, repository, assets, inspect_upload, project_context, drafts=None, writer=None, results=None, result_writer=None, photos=None, customer=None, sections=None, tools_packages=None, batch_writer=None, inventory=None):
         self.repository = repository
         self.assets = assets
         self.inspect_upload = inspect_upload
@@ -24,6 +24,9 @@ class ReportAuthoringService:
         self.customer = customer
         self.sections = sections
         self.tools_packages = tools_packages
+        self.inventory = inventory
+        from backend.application.report_authoring.assembly import ReportAssembly
+        self.assembly = ReportAssembly(self, batch_writer)
 
     def state(self, project_id):
         context = self.project_context(project_id)
@@ -32,7 +35,7 @@ class ReportAuthoringService:
         mappings = tuple(replace(item, status="pending") if item.matrix_id and item.matrix_id != context["matrix_id"] else item
                          for item in state.mappings)
         current = replace(state, mappings=mappings)
-        fingerprint = self._review_context_sha256(current, context)
+        fingerprint = self._review_context_sha256(current, context, self._llcr_review_context(current, context))
         outputs = []
         for output in current.customer_outputs:
             recorded = output.get('recorded_audit') or output.get('audit')
@@ -43,7 +46,11 @@ class ReportAuthoringService:
                     'audit': {**recorded, 'passed': False, 'issues': [*recorded['issues'], issue]}})
             else:
                 outputs.append(output)
-        return replace(current, customer_outputs=tuple(outputs)), context
+        plan = current.assembly_plan
+        if plan and plan.get('status') == 'prepared' and not self.assembly.is_current(current, context, plan):
+            plan = {**plan, 'can_apply': False, 'issues': [*plan['issues'],
+                'Report sources or decisions changed after preview. Prepare a new batch preview.']}
+        return replace(current, customer_outputs=tuple(outputs), assembly_plan=plan), context
 
     def _editable(self, project_id, expected_revision):
         state, context = self.state(project_id)
@@ -51,22 +58,86 @@ class ReportAuthoringService:
             raise ReportAuthoringConflict("Report sources changed. Reload before saving.")
         return state, context
 
-    def add_source(self, project_id, *, role, file_name, content, expected_revision):
+    def coverage(self, project_id):
+        from backend.application.report_authoring.coverage import report_coverage
+        from backend.application.report_authoring.llcr_projection import (
+            applied_dataset_evidence, coverage_results, dataset_sha256, describe_dataset,
+        )
+
+        state, context = self.state(project_id)
+        errors = {}
+        for result in state.results:
+            try:
+                self._confirmed_result(state, context, result['result_id'])
+            except (ValueError, LookupError, OSError) as exc:
+                errors[result['result_id']] = str(exc) if isinstance(exc, ValueError) else 'Retained result source is unavailable. Review its source copy.'
+        dataset, reason = self.sections.current_llcr_dataset(project_id, context['matrix_id']) if self.sections else (
+            None, 'No confirmed LLCR dataset is available.')
+        projected = coverage_results(dataset) if dataset else ()
+        applied = list(self.active_result_ids(state))
+        evidence = applied_dataset_evidence(state.outputs)
+        if (dataset and evidence and evidence['dataset_id'] == dataset.dataset_id
+                and evidence['sha256'] in {None, dataset_sha256(dataset)}):
+            applied.extend(item['result_id'] for item in projected)
+        result = report_coverage(state, context, applied_result_ids=applied,
+            result_errors=errors, projected_results=projected)
+        return {**result, 'llcr_dataset': describe_dataset(dataset) if dataset else None,
+                'llcr_unavailable_reason': reason}
+
+    def add_source(self, project_id, *, role, file_name, content, expected_revision, source_locator=""):
         state, context = self._editable(project_id, expected_revision)
+        source = self._source_candidate(state, context, role, file_name, content, source_locator)
+        if source is None:
+            return state
+        self.assets.retain(project_id, source, content)
+        return self.repository.save(self._with_source(state, source), expected_revision)
+
+    def _source_candidate(self, state, context, role, file_name, content, source_locator):
         if role not in SOURCE_ROLES:
             raise ValueError("Choose a supported report source role.")
         report_dl = self.inspect_upload(file_name, content, role, context["dl_number"])
         if role == 'tools_result_package':
             self.tools_packages.inspect(content)
         digest = sha256(content).hexdigest()
-        if any(item.sha256 == digest and item.role == role for item in state.sources):
-            return state
-        source = ReportSource(uuid4().hex, role, file_name, digest, len(content), self._now(), report_dl)
-        self.assets.retain(project_id, source, content)
-        previous = {item.source_id for item in state.sources if item.file_name.casefold() == file_name.casefold() and item.role == role}
+        family = (role, file_name.casefold(), source_locator)
+        latest = next((item for item in reversed(state.sources) if self._source_family(item) == family), None)
+        # Selecting historical bytes is a new source version, not a no-op:
+        # deduplicate only against this origin's current version.
+        if latest is not None and latest.sha256 == digest:
+            return None
+        return ReportSource(uuid4().hex, role, file_name, digest, len(content), self._now(), report_dl, source_locator)
+
+    @staticmethod
+    def _source_family(source):
+        return source.role, source.file_name.casefold(), source.source_locator
+
+    def _with_source(self, state, source):
+        previous = {item.source_id for item in state.sources if self._source_family(item) == self._source_family(source)}
         mappings = tuple(replace(item, status="pending", confirmed_by="", confirmed_at="")
                          if item.source_id in previous else item for item in state.mappings)
-        return self.repository.save(replace(state, sources=(*state.sources, source), mappings=mappings), expected_revision)
+        return replace(state, sources=(*state.sources, source), mappings=mappings)
+
+    def retain_inventory(self, project_id, request):
+        state, context = self._editable(project_id, request['expected_revision'])
+        prepared, total, updated = [], 0, state
+        for item in request['items']:
+            data = self.inventory.read_selected(project_id, root_token=request['root_token'],
+                relative_path=item['relative_path'], file_token=item['file_token'])
+            total += len(data['content'])
+            if total > 256 * 1024 * 1024:
+                raise ValueError('Select report sources totaling no more than 256 MB per batch.')
+            source = self._source_candidate(updated, context, item['role'], data['file_name'],
+                                            data['content'], data['source_locator'])
+            if source is not None:
+                prepared.append((source, data['content']))
+                updated = self._with_source(updated, source)
+        # Validate every selected format/role/package before any durable revision.
+        # One save avoids a successful prefix surviving a later validation failure.
+        if not prepared:
+            return state
+        for source, content in prepared:
+            self.assets.retain(project_id, source, content)
+        return self.repository.save(updated, state.revision)
 
     def save_mapping(self, project_id, *, expected_revision, mapping_id="", **values):
         state, context = self._editable(project_id, expected_revision)
@@ -362,7 +433,7 @@ class ReportAuthoringService:
         if result['matrix_id'] != context['matrix_id']:
             raise ReportAuthoringConflict('The result refers to an older Matrix. Review its Group and Step again.')
         source = self._source(state, result['source_id'])
-        latest = next(item for item in reversed(state.sources) if item.role == source.role and item.file_name.casefold() == source.file_name.casefold())
+        latest = next(item for item in reversed(state.sources) if self._source_family(item) == self._source_family(source))
         if latest.source_id != source.source_id:
             raise ReportAuthoringConflict('A newer source file was uploaded. Review and import its measurements again.')
         self.assets.read(state.project_id, source)
@@ -481,12 +552,22 @@ class ReportAuthoringService:
                         issues.append({'code': 'old_temperature_evidence', 'location': key, 'message': 'Old temperature table, curve or conclusion remains in this Group. Replace the explicit evidence region; content-review approval cannot bypass this check.', 'sha256': None})
             except (ValueError, LookupError):
                 issues.append({'code': 'stale_result', 'location': key, 'message': 'An applied result no longer matches the retained source or current Matrix.', 'sha256': None})
+        llcr_context = self._llcr_review_context(state, context)
+        if llcr_context:
+            if (not llcr_context['applied_sha256'] or llcr_context['applied_dataset_id'] != llcr_context['current_dataset_id']
+                    or llcr_context['applied_sha256'] != llcr_context['current_sha256']
+                    or llcr_context.get('recorded_sha256') not in {None, llcr_context['applied_sha256']}):
+                issues.append({'code': 'stale_llcr_result', 'location': 'llcr', 'message':
+                    'Applied LLCR no longer matches the current confirmed dataset and Matrix. Review and update the Internal Report before checking this customer copy.', 'sha256': None})
+            if llcr_context['pending']:
+                issues.append({'code': 'pending_llcr_decision', 'location': 'llcr', 'message':
+                    'Applied LLCR engineering acceptance remains not determined. Resolve its decision before delivery.', 'sha256': None})
         audit.update(passed=not issues, issues=issues, output_sha256=artifact.sha256,
             checked_at=self._now(), checked_by=request['reviewed_by'],
             sensitive_terms=request['sensitive_terms'], forbidden_project_ids=forbidden,
             reviewed_parts=request['reviewed_parts'], disclosure_scope_confirmed=request['disclosure_scope_confirmed'])
         audit['content_review_sha256'] = request.get('content_review_sha256')
-        audit['review_context_sha256'] = self._review_context_sha256(state, context)
+        audit['review_context_sha256'] = self._review_context_sha256(state, context, llcr_context)
         record = {**output, 'audit': audit, 'status': 'package_checked' if audit['passed'] else 'needs_review'}
         record.pop('recorded_audit', None)
         return self.repository.save(replace(state, customer_outputs=tuple(record if item['output_id'] == output['output_id'] else item for item in state.customer_outputs)), request['expected_revision'])
@@ -507,18 +588,19 @@ class ReportAuthoringService:
         for output in reversed(state.outputs):
             if output['operation'] == 'prepare_base':
                 break
-            if output['operation'] != 'result_update':
+            if output['operation'] not in {'result_update', 'batch_assembly'}:
                 continue
-            result_id = output['evidence']['result_id']
-            result = results[result_id]
-            key = tuple(result['target'][field] for field in ('group_id', 'row_id', 'step_token'))
-            if key not in targets:
-                active.append(result_id)
-                targets.add(key)
+            ids = output['evidence'].get('result_ids', []) if output['operation'] == 'batch_assembly' else [output['evidence']['result_id']]
+            for result_id in ids:
+                result = results[result_id]
+                key = tuple(result['target'][field] for field in ('group_id', 'row_id', 'step_token'))
+                if key not in targets:
+                    active.append(result_id)
+                    targets.add(key)
         return list(reversed(active))
 
     @classmethod
-    def _review_context_sha256(cls, state, context):
+    def _review_context_sha256(cls, state, context, llcr_context=None):
         active_ids = set(cls.active_result_ids(state))
         results = [item for item in state.results if item['result_id'] in active_ids]
         used_sources = {item.source_id for item in state.mappings} | {item['source_id'] for item in results}
@@ -526,14 +608,28 @@ class ReportAuthoringService:
             used_sources.add(state.base_source_id)
         latest = {}
         for source in state.sources:
-            latest[(source.role, source.file_name.casefold())] = source.source_id
-        dependencies = [{"source_id": source.source_id, 'latest_source_id': latest[(source.role, source.file_name.casefold())]}
+            latest[cls._source_family(source)] = source.source_id
+        dependencies = [{"source_id": source.source_id, 'latest_source_id': latest[cls._source_family(source)]}
             for source in state.sources if source.source_id in used_sources]
         facts = {'matrix_id': context['matrix_id'], 'base_source_id': state.base_source_id,
             'internal_sha256': state.outputs[-1]['artifact']['sha256'] if state.outputs else None,
             'working_output_id': state.outputs[-1]['output_id'] if state.outputs else None,
             'mappings': [asdict(item) for item in state.mappings], 'result_ids': sorted(active_ids), 'sources': dependencies}
+        if llcr_context is not None:
+            facts['llcr'] = llcr_context
         return sha256(json.dumps(facts, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+    def _llcr_review_context(self, state, context):
+        from backend.application.report_authoring.llcr_projection import applied_dataset_evidence
+
+        evidence = applied_dataset_evidence(state.outputs)
+        if not evidence:
+            return None
+        if self.sections is None:
+            return {'applied_dataset_id': evidence['dataset_id'], 'applied_sha256': None,
+                    'current_dataset_id': None, 'current_sha256': None, 'pending': True}
+        return {**self.sections.llcr_review_context(state.project_id, evidence['dataset_id'], context['matrix_id']),
+                'recorded_sha256': evidence['sha256']}
 
     def _updated_copy(self, state, context, output, operation, expected_revision, generate, revalidate, evidence):
         artifact = ReportSource(**output["artifact"])
@@ -552,10 +648,15 @@ class ReportAuthoringService:
             generate_copy, validate_retained_source, matrix_id=context["matrix_id"], make_current=False)
         content = result.file_path.read_bytes()
         unchanged = changed[0] is False or sha256(content).hexdigest() == artifact.sha256
-        # Selecting equipment is a durable decision even when its rendered rows
-        # were already current. Repeated identical decisions still create no version.
+        # Selecting equipment or a new LLCR authority is durable even if its
+        # rendered rows are identical. Repeated identical decisions add no version.
         new_selection = operation == 'equipment_update' and (
             output['operation'] != operation or output.get('evidence') != evidence)
+        if operation == 'llcr_update':
+            from backend.application.report_authoring.llcr_projection import applied_dataset_evidence
+            previous = applied_dataset_evidence(state.outputs)
+            new_selection = (previous is None or previous['dataset_id'] != evidence['dataset_revision_id']
+                or previous['sha256'] not in {None, evidence['llcr_dataset_sha256']})
         if unchanged and not new_selection:
             return state
         updated = ReportSource(result.report_revision_id, "working_copy", result.file_name,

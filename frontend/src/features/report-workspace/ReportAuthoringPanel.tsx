@@ -6,6 +6,7 @@ import { ReportToolsPackageImport } from "./ReportToolsPackageImport";
 import { ReportResultUpdate } from "./ReportResultUpdate";
 import { ReportPhotoSlots } from "./ReportPhotoSlots";
 import { ReportCustomerCopy } from "./ReportCustomerCopy";
+import { ReportBatchPreparation } from './ReportBatchPreparation';
 import {
   getReportAuthoring, uploadReportSource, saveReportMapping, selectReportBase, downloadReportArtifact,
   type ReportAuthoringState, type ReportSourceRole, type ReportMapping, type ReportMappingInput,
@@ -223,11 +224,15 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
         <h3 id={`${panelId}-heading-1`} ref={element => { sectionHeadings.current[1] = element; }} tabIndex={-1}>2. Update report content</h3>
         <button type="button" className="report-preparation-back" onClick={backToSteps}>Back to report steps</button>
         {!latest && <p className="report-preparation-guidance">Choose a report base before updating content.</p>}
-        <ReportFactUpdates projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportBatchPreparation projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportToolsPackageImport key={`tools-${projectId}`} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportResultsImport key={projectId} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <details className="report-batch-advanced"><summary>Advanced individual updates</summary>
+        <p>Use these compatibility tools only for a single targeted update. Prepare report batch above combines selected updates into one new working copy.</p>
+        <ReportFactUpdates projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportResultUpdate projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportPhotoSlots projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        </details>
         </section>
         <section className="report-preparation-region" id={`${panelId}-section-2`} aria-labelledby={`${panelId}-heading-2`}>
         <h3 id={`${panelId}-heading-2`} ref={element => { sectionHeadings.current[2] = element; }} tabIndex={-1}>3. Review customer copy</h3>

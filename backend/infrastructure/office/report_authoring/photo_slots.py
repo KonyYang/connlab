@@ -96,15 +96,19 @@ def _caption(node) -> str:
     return (properties[0].get("descr") or properties[0].get("name") or "Photo") if properties else "Photo"
 
 
+def photo_occurrences(document):
+    """Keep the occurrence IDs shared by inspection, replacement and batch overlap checks."""
+    return {f'photo-{index + 1}': node
+        for index, node in enumerate(document.xpath('//a:blip | //v:imagedata', namespaces=NS))
+        if not node.xpath('ancestor::w:del | ancestor::w:moveFrom', namespaces=NS)}
+
+
 def _slots(parts):
     document = _xml(parts[DOCUMENT])
     relationships = _xml(parts[RELS])
     by_id = {item.get("Id"): item for item in relationships}
     slots = []
-    for index, node in enumerate(document.xpath("//a:blip | //v:imagedata", namespaces=NS)):
-        if node.xpath("ancestor::w:del | ancestor::w:moveFrom", namespaces=NS):
-            continue
-        slot_id = f"photo-{index + 1}"
+    for slot_id, node in photo_occurrences(document).items():
         relationship = by_id.get(node.get("{" + NS["r"] + "}embed") or node.get("{" + NS["r"] + "}id"))
         target = _relationship_target(relationship)
         shapes = node.xpath("ancestor::wp:inline[1] | ancestor::wp:anchor[1]", namespaces=NS)
@@ -200,6 +204,21 @@ def replace_photo_slots(source: Path, output: Path, replacements: list[PhotoRepl
     source, output = Path(source), Path(output)
     if output.exists() or output.resolve() == source.resolve():
         raise FileExistsError("Photo update requires a new, independent output path.")
+    result, changed = _render_photo_replacements(source, replacements, expected_source_sha256)
+    if sha256(source.read_bytes()).hexdigest() != expected_source_sha256:
+        raise ValueError("Report changed while preparing photos; no output was written.")
+    with output.open("xb") as stream:
+        stream.write(result)
+    return PhotoUpdateResult(bool(changed), sha256(result).hexdigest(), tuple(changed))
+
+
+def preview_photo_replacements(source, replacements, *, expected_source_sha256):
+    """Exercise the same image/crop safety checks without writing a report."""
+    _, changed = _render_photo_replacements(source, replacements, expected_source_sha256)
+    return tuple(changed)
+
+
+def _render_photo_replacements(source, replacements, expected_source_sha256):
     raw, items, parts = _package(source)
     if sha256(raw).hexdigest() != expected_source_sha256:
         raise ValueError("Report changed; refresh the photo preview.")
@@ -262,8 +281,4 @@ def replace_photo_slots(source: Path, output: Path, replacements: list[PhotoRepl
         result = buffer.getvalue()
     else:
         result = raw
-    if sha256(source.read_bytes()).hexdigest() != expected_source_sha256:
-        raise ValueError("Report changed while preparing photos; no output was written.")
-    with output.open("xb") as stream:
-        stream.write(result)
-    return PhotoUpdateResult(bool(changed), sha256(result).hexdigest(), tuple(changed))
+    return result, changed
