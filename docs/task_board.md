@@ -335,15 +335,15 @@
         ],
         "activation_head": "037366f20706be433d041d4e6f3e95457af8d91e",
         "started_at": "2026-11-06T14:45:06.834531Z",
-        "updated_at": "2026-11-06T14:48:09.155630Z",
+        "updated_at": "2026-11-06T15:08:53.086337Z",
         "checkpoint": {
-          "status": "running",
           "schema": "connlab.sol-task-checkpoint",
-          "summary": "Independent Planner completed source-backed design. Developer /root/materials_tools_developer is implementing in tmp/materials-tools-worktree, branch codex/materials-tools-20261106 at base037366f2. Full scope: safe material-folder saving and Settings root, preserve Intake autosave, standalone complete Matrix/Fee Tools without DB projects, retire temporary lifecycle UI with non-destructive legacy recovery. Independent review/QA and local integration remain. No push/publication or real business mutations.",
+          "stage": "development",
+          "status": "running",
           "version": 1,
-          "task_id": "TASK_MATERIALS_TOOLS_20261106",
+          "summary": "Material save slice implemented with 7 developer tests GREEN and Settings/Intake UI WIP. Original Matrix editor now has explicit standalone seed/import/export/session adapter; first independent-entry RED/GREEN test passed. Developer continues Fee shared session/import/export and legacy recovery. Early independent reviewer found residual project method/record actions and save-state mismatch; fixes pending. Worktree tmp/materials-tools-worktree remains uncommitted; do not integrate or claim complete. No real business files changed; no push/publication.",
           "requires_user": false,
-          "stage": "development"
+          "task_id": "TASK_MATERIALS_TOOLS_20261106"
         },
         "report": null
       }
