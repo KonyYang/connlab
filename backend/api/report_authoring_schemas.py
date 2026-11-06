@@ -110,6 +110,50 @@ class PhotoUpdateRequest(BaseModel):
     assignments: list[PhotoAssignment] = Field(min_length=1, max_length=100)
 
 
+class InventorySelection(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    relative_path: str = Field(min_length=1, max_length=2000)
+    file_token: str = Field(pattern=r'^[0-9a-f]{64}$')
+    role: Literal['original', 'layout_reference', 'specification', 'temperature', 'cr', 'mechanical', 'photo', 'evidence', 'tools_result_package']
+
+
+class InventoryRetainRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    expected_revision: int = Field(ge=0)
+    root_token: str = Field(pattern=r'^[0-9a-f]{64}$')
+    items: list[InventorySelection] = Field(min_length=1, max_length=50)
+
+
+class BatchResultSelection(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    result_id: str = Field(min_length=1, max_length=64)
+    result_table: int | None = Field(default=None, ge=0, le=10000)
+    result_row: int | None = Field(default=None, ge=1, le=20000)
+    appendix_table: int | None = Field(default=None, ge=0, le=10000)
+    appendix_title: str = Field(default='', max_length=500)
+    evidence_start: int | None = Field(default=None, ge=0, le=20000)
+    evidence_end: int | None = Field(default=None, ge=0, le=20000)
+    evidence_selection_confirmed: bool = False
+
+
+class AssemblyPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    expected_revision: int = Field(ge=0)
+    output_id: str = Field(min_length=1, max_length=64)
+    output_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    mapping_ids: list[str] = Field(default_factory=list, max_length=100)
+    results: list[BatchResultSelection] = Field(default_factory=list, max_length=100)
+    assignments: list[PhotoAssignment] = Field(default_factory=list, max_length=100)
+    llcr_dataset_id: str | None = Field(default=None, min_length=1, max_length=100)
+
+
+class AssemblyApplyRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    expected_revision: int = Field(ge=0)
+    plan_id: str = Field(pattern=r'^[0-9a-f]{32}$')
+    preview_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+
+
 class CustomerCopyRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
     expected_revision: int = Field(ge=0)

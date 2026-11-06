@@ -19,6 +19,7 @@ class ReportSource:
     size_bytes: int
     created_at: str
     report_dl: str = ""
+    source_locator: str = ""
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,7 @@ class ReportAuthoringState:
     outputs: tuple[dict, ...] = ()
     results: tuple[dict, ...] = ()
     customer_outputs: tuple[dict, ...] = ()
+    assembly_plan: dict | None = None
 
 
 def validate_mapping(mapping: ReportMapping) -> None:

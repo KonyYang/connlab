@@ -78,6 +78,10 @@ class ReportDraftWorkspace:
         folder, metadata = self._record(project_id, revision)
         if metadata["expires_at"] <= self._clock():
             raise ValueError("The draft download expired. Select the report and update again.")
+        return self._verified_artifact(folder, metadata, revision)
+
+    @staticmethod
+    def _verified_artifact(folder, metadata, revision):
         name = metadata["file_name"]
         path = folder / name
         _safe_path(path)
@@ -97,18 +101,46 @@ class ReportDraftWorkspace:
                 continue
             try:
                 checked, metadata = self._record(project_id, folder.name)
+                # This cache does not know whether the authoring DB registered a
+                # batch. Keep its recovery evidence until registration is proven.
+                if "operation_id" in metadata:
+                    continue
                 if metadata["expires_at"] <= self._clock() and checked.resolve().parent == project.resolve():
                     shutil.rmtree(checked)
             except (OSError, ValueError):
                 _LOGGER.debug("Retaining an unavailable report cache revision %s", folder.name, exc_info=True)
 
-    def update(self, project_id, dl_number, source, generate, revalidate, *, matrix_id=None, make_current=True):
+    def update(self, project_id, dl_number, source, generate, revalidate, *, matrix_id=None, make_current=True,
+               operation_id=None, operation_sha256=None):
         source = Path(source)
         _safe_path(source)
         before = _fingerprint(source)
         project = self._project(project_id)
+        if operation_id is not None:
+            if (make_current or not isinstance(operation_id, str) or not re.fullmatch(r"[a-f0-9]{32}", operation_id)
+                    or not isinstance(operation_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", operation_sha256)):
+                raise ValueError("A recoverable batch needs an exact copy-only operation identity and plan fingerprint.")
+            existing = project / operation_id
+            _safe_path(existing)
+            if existing.exists():
+                try:
+                    recorded_folder, recorded = self._record(project_id, operation_id)
+                except (OSError, ValueError, KeyError) as exc:
+                    raise ValueError("An interrupted or incomplete batch copy is retained. Review it and prepare a new plan; it will not be overwritten.") from exc
+                if any(recorded.get(key) != value for key, value in {
+                    "operation_id": operation_id, "operation_sha256": operation_sha256,
+                    "source_sha256": before, "matrix_id": matrix_id, "dl_number": dl_number,
+                }.items()):
+                    raise ValueError("The completed batch belongs to different source or plan inputs.")
+                # Download expiry is not proof that a completed business operation
+                # was registered. Exact operation/source checks above authorize recovery.
+                recovered = self._verified_artifact(recorded_folder, recorded, operation_id)
+                revalidate()
+                if _fingerprint(source) != before:
+                    raise ValueError("The source report changed during batch recovery.")
+                return recovered
         self._prune(project_id, source.parent)
-        revision = uuid4().hex
+        revision = operation_id or uuid4().hex
         folder = project / revision
         folder.mkdir(parents=True, exist_ok=False)
         name = re.sub(r"(?:[ _-]draft)?(?: \(\d+\))?$", "", source.stem, flags=re.IGNORECASE).rstrip()
@@ -131,7 +163,14 @@ class ReportDraftWorkspace:
             metadata = {"owner": _OWNER, "project_id": project_id, "dl_number": dl_number, "file_name": output.name,
                         "sha256": _fingerprint(output), "matrix_id": matrix_id,
                         "expires_at": self._clock() + self._retention}
-            (folder / "revision.json").write_text(json.dumps(metadata), encoding="utf-8")
+            if operation_id is not None:
+                metadata.update(operation_id=operation_id, operation_sha256=operation_sha256, source_sha256=before)
+            pending = folder / "revision.pending"
+            with pending.open("x", encoding="utf-8") as stream:
+                json.dump(metadata, stream)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(pending, folder / "revision.json")
             result = self.read_revision(project_id, revision)
             if not make_current:
                 return result

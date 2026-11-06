@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from copy import deepcopy
+from dataclasses import asdict
 from datetime import datetime
 from decimal import Decimal
+from hashlib import sha256
+import json
 import os
 from pathlib import Path
 import re
@@ -27,7 +30,7 @@ from docx.oxml.ns import qn
 from docx.shared import Pt
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
-from lxml.etree import XMLSyntaxError
+from lxml.etree import XMLSyntaxError, tostring
 
 from backend.application.confirmed_matrix_test_record_preview_service import (
     is_llcr_test_item,
@@ -170,6 +173,13 @@ class TestReportDocumentGateway:
             shutil.copy2(temporary, target)
         return target
 
+    def preview_llcr_results(self, *, source_path: Path, dataset: ResultDatasetRevision) -> dict:
+        """Resolve the same managed targets and appendix contract without writing a copy."""
+        with self._protected_package_gateway.readable_copy(Path(source_path)) as readable:
+            document = Document(readable)
+            resolved = _resolve_llcr_update(document, dataset)
+            return resolved['preview']
+
     def synchronize_llcr_results(
         self,
         *,
@@ -198,41 +208,14 @@ class TestReportDocumentGateway:
                 temporary,
             )
             document = Document(temporary)
-            result_tables = _result_tables_by_group(document)
-            updates = []
-            for entry in dataset.payload.entries:
-                group_key = _report_group_key(entry.group_label)
-                tables = result_tables.get(group_key, ())
-                matches = []
-                for table in tables:
-                    for row in table.rows[1:]:
-                        if len(row.cells) < 6:
-                            continue
-                        if (
-                            _normalized(row.cells[0].text) == _normalized(entry.matrix_step_token)
-                            and is_llcr_test_item(row.cells[1].text)
-                            and _normalized(row.cells[2].text) == _normalized(entry.requirement)
-                        ):
-                            matches.append(row)
-                if len(matches) != 1:
-                    raise ValueError(
-                        "Unable to uniquely locate the LLCR report target for "
-                        f"Group {entry.group_label} Step {entry.matrix_step_token}."
-                    )
-                row = matches[0]
-                expected_result = _llcr_report_result(entry)
-                expected_comment = (entry.confirmed_outcome or "").title()
-                if (
-                    _normalized(row.cells[4].text) != _normalized(expected_result)
-                    or _normalized(row.cells[5].text) != _normalized(expected_comment)
-                ):
-                    updates.append((row, expected_result, expected_comment))
+            resolved = _resolve_llcr_update(document, dataset)
+            updates = resolved['updates']
             for row, expected_result, expected_comment in updates:
                 for cell, value in zip(row.cells[4:6], (expected_result, expected_comment), strict=True):
                     if cell.text != value:
                         _set_cell_text(cell, value)
-            summary_rows = _llcr_summary_rows(dataset)
-            appendix_changed = not _appendix_a_is_current(document, summary_rows)
+            summary_rows = resolved['summary_rows']
+            appendix_changed = resolved['appendix_changed']
             if appendix_changed:
                 _replace_appendix_a(document, summary_rows)
             if updates or appendix_changed:
@@ -766,6 +749,77 @@ def _fill_revision_table(table: Table, report: TestReportDraftData) -> None:
         _set_cell_text(cell, value)
 
 
+def llcr_dataset_sha256(dataset: ResultDatasetRevision) -> str:
+    def decimal_text(value):
+        if isinstance(value, Decimal):
+            return str(value)
+        raise TypeError(f'Unsupported dataset value: {type(value).__name__}')
+    return sha256(json.dumps(asdict(dataset), sort_keys=True, separators=(',', ':'),
+        ensure_ascii=False, allow_nan=False, default=decimal_text).encode('utf-8')).hexdigest()
+
+
+def _resolve_llcr_update(document, dataset):
+    """One target resolver for single updates and read-only batch preflight."""
+    if dataset.dataset_type != 'llcr' or dataset.validation_status != 'confirmed':
+        raise ValueError('A confirmed LLCR ResultDataset revision is required.')
+    result_tables = _result_tables_by_group(document)
+    tables = document.element.body.xpath('./w:tbl | ./w:sdt/w:sdtContent/w:tbl')
+    updates, rows, guards, visited = [], [], [], set()
+    for entry in dataset.payload.entries:
+        matches = [(table, index, row) for table in result_tables.get(_report_group_key(entry.group_label), ())
+            for index, row in enumerate(table.rows[1:], 1) if len(row.cells) >= 6
+            and _normalized(row.cells[0].text) == _normalized(entry.matrix_step_token)
+            and is_llcr_test_item(row.cells[1].text)
+            and _normalized(row.cells[2].text) == _normalized(entry.requirement)]
+        if len(matches) != 1:
+            raise ValueError('Unable to uniquely locate the LLCR report target for '
+                f'Group {entry.group_label} Step {entry.matrix_step_token}.')
+        table, row_index, row = matches[0]
+        if row._tr in visited:
+            raise ValueError('The LLCR dataset addresses the same report row more than once.')
+        visited.add(row._tr)
+        expected_result, expected_comment = _llcr_report_result(entry), _llcr_report_comment(entry)
+        changed = (_normalized(row.cells[4].text) != _normalized(expected_result)
+            or _normalized(row.cells[5].text) != _normalized(expected_comment))
+        if changed:
+            updates.append((row, expected_result, expected_comment))
+        rows.append({'result_id': entry.result_id, 'group_label': entry.group_label,
+            'step_token': entry.matrix_step_token, 'table_index': tables.index(table._tbl), 'row_index': row_index,
+            'requirement': entry.requirement, 'current_result': row.cells[4].text, 'current_comment': row.cells[5].text,
+            'new_result': expected_result, 'new_comment': expected_comment, 'changed': changed})
+        guards.append(('match', table.rows[0]._tr))
+        guards.extend(('match', cell._tc) for cell in row.cells[:3])
+        guards.extend(('write', cell._tc) for cell in row.cells[4:6])
+        heading = next((sibling for sibling in table._tbl.itersiblings(preceding=True)
+            if sibling.tag == qn('w:p') and re.fullmatch(r'Group\s+(.+?)\s+Test Results',
+                Paragraph(sibling, document._body).text.strip(), re.I)), None)
+        if heading is not None:
+            guards.append(('match', heading))
+    summary_rows = _llcr_summary_rows(dataset)
+    heading, table, _, anchor = _appendix_a_target(document, summary_rows)
+    appendix_changed = not _appendix_a_is_current(document, summary_rows)
+    if heading is not None:
+        guards.append(('appendix', heading._p))
+        guards.append(('appendix', table._tbl))
+    else:
+        guards.append(('anchor', anchor))
+    seen_guards, regions = set(), []
+    for role, element in guards:
+        path = document.element.getroottree().getpath(element)
+        if path not in seen_guards:
+            regions.append({'role': role, 'xpath': path, 'sha256': sha256(tostring(element, method='c14n')).hexdigest()})
+            seen_guards.add(path)
+    preview = {'dataset_id': dataset.dataset_id, 'revision': dataset.revision,
+        'source_sha256': dataset.source.sha256, 'dataset_sha256': llcr_dataset_sha256(dataset), 'rows': rows,
+        'appendix': {'identifier': 'A', 'action': 'create' if heading is None else 'update' if appendix_changed else 'reuse',
+            'heading_block_index': list(document.element.body).index(heading._p) if heading is not None else None,
+            'table_index': tables.index(table._tbl) if table is not None else None, 'summary_rows': len(summary_rows),
+            'sha256': sha256(tostring(heading._p, method='c14n') + tostring(table._tbl, method='c14n')).hexdigest()
+                if heading is not None else None},
+        'guard_regions': regions, 'changed': bool(updates or appendix_changed)}
+    return {'updates': updates, 'summary_rows': summary_rows, 'appendix_changed': appendix_changed, 'preview': preview}
+
+
 def _result_tables_by_group(document) -> dict[str, tuple[Table, ...]]:
     collected: dict[str, list[Table]] = {}
     current_group: str | None = None
@@ -803,6 +857,11 @@ def _llcr_report_result(entry) -> str:
     return f"{label} ≤{value}mΩ"
 
 
+def _llcr_report_comment(entry: LlcrResultEntry) -> str:
+    # An unresolved engineering decision belongs in review UI, not the report conclusion.
+    return '' if entry.confirmed_outcome == 'not_determined' else (entry.confirmed_outcome or '').title()
+
+
 def _audit_llcr_sync(path: Path, dataset: ResultDatasetRevision) -> None:
     document = Document(path)
     result_tables = _result_tables_by_group(document)
@@ -816,7 +875,7 @@ def _audit_llcr_sync(path: Path, dataset: ResultDatasetRevision) -> None:
             and _normalized(row.cells[0].text) == _normalized(entry.matrix_step_token)
             and is_llcr_test_item(row.cells[1].text)
             and row.cells[4].text == expected
-            and row.cells[5].text == (entry.confirmed_outcome or "").title()
+            and row.cells[5].text == _llcr_report_comment(entry)
         ]
         if len(matches) != 1:
             raise ValueError(
@@ -953,10 +1012,7 @@ def _appendix_a_region(document) -> tuple[Paragraph | None, Table | None]:
     return heading, table
 
 
-def _replace_appendix_a(
-    document,
-    rows: tuple[LlcrSummaryRow, ...],
-) -> None:
+def _appendix_a_target(document, rows):
     if not rows:
         raise ValueError("Appendix A requires at least one LLCR Summary row.")
     old_heading, old_table = _appendix_a_region(document)
@@ -969,11 +1025,7 @@ def _replace_appendix_a(
                 "Existing Appendix A layout or Group/Stage mapping differs from the LLCR dataset. "
                 "Review the appendix before updating; the original report was not changed."
             )
-        for row, values in mapped:
-            for cell, value in zip(row.cells[2:], values[2:], strict=True):
-                if cell.text != value:
-                    _set_cell_text(cell, value)
-        return
+        return old_heading, old_table, mapped, None
     anchor = next(
         (paragraph._p for paragraph in document.paragraphs
          if re.match(r"^Appendix\s+[B-Z]\s*:", paragraph.text.strip(), re.IGNORECASE)),
@@ -987,6 +1039,20 @@ def _replace_appendix_a(
         )
     if anchor is None:
         raise ValueError("Internal report End of Report anchor is missing.")
+    return None, None, None, anchor
+
+
+def _replace_appendix_a(
+    document,
+    rows: tuple[LlcrSummaryRow, ...],
+) -> None:
+    old_heading, _, mapped, anchor = _appendix_a_target(document, rows)
+    if old_heading is not None:
+        for row, values in mapped:
+            for cell, value in zip(row.cells[2:], values[2:], strict=True):
+                if cell.text != value:
+                    _set_cell_text(cell, value)
+        return
 
     heading = document.add_paragraph()
     heading.paragraph_format.space_after = Pt(4)

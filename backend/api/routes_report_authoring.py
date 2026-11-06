@@ -11,6 +11,7 @@ from backend.domain.report_authoring import ReportAuthoringConflict
 from backend.api.report_authoring_schemas import PhotoUpdateRequest
 from backend.api.report_authoring_schemas import CustomerCopyRequest, CustomerCheckRequest
 from backend.api.report_authoring_schemas import AdoptWorkingCopyRequest, WorkingLlcrRequest
+from backend.api.report_authoring_schemas import InventoryRetainRequest, AssemblyPreviewRequest, AssemblyApplyRequest
 
 
 router = APIRouter(prefix="/api/projects/{project_id}/report-workspace/authoring")
@@ -58,6 +59,49 @@ def upload_source(project_id: str, role: str = Form(...), expected_revision: int
         raise HTTPException(413, f"Report evidence exceeds the {limit} MB limit.")
     try:
         service.add_source(project_id, role=role, file_name=file.filename or "", content=content, expected_revision=expected_revision)
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.get("/coverage")
+def coverage(project_id: str, service=Depends(get_report_authoring_service)):
+    try:
+        return service.coverage(project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.get('/inventory')
+def inventory(project_id: str, service=Depends(get_report_authoring_service)):
+    try:
+        return service.inventory.scan(project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/inventory/retain', dependencies=[Depends(require_project_folder_write_slot)])
+def retain_inventory(project_id: str, request: InventoryRetainRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.retain_inventory(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/assembly/preview', dependencies=[Depends(require_project_folder_write_slot)])
+def preview_assembly(project_id: str, request: AssemblyPreviewRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.assembly.preview(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/assembly/apply', dependencies=[Depends(require_project_folder_write_slot)])
+def apply_assembly(project_id: str, request: AssemblyApplyRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.assembly.apply(project_id, request.model_dump())
         return _state(service, project_id)
     except (LookupError, ValueError, OSError) as exc:
         raise _error(exc) from exc

@@ -4,10 +4,11 @@ from hashlib import sha256
 from pathlib import Path
 
 from backend.domain.report_authoring import ReportAuthoringConflict
+from backend.application.report_authoring.llcr_projection import dataset_sha256
 
 
 class WorkingReportSections:
-    def __init__(self, *, sources, datasets, writer, workspaces, drafts, equipment_reader, equipment_copies):
+    def __init__(self, *, sources, datasets, writer, workspaces, drafts, equipment_reader, equipment_copies, dataset_store=None):
         self.sources = sources
         self.datasets = datasets
         self.writer = writer
@@ -15,6 +16,40 @@ class WorkingReportSections:
         self.drafts = drafts
         self.equipment_reader = equipment_reader
         self.equipment_copies = equipment_copies
+        self.dataset_store = dataset_store
+
+    def current_llcr_dataset(self, project_id, matrix_id):
+        datasets = self.dataset_store.list_datasets(project_id) if self.dataset_store else ()
+        if not datasets:
+            return None, 'No confirmed LLCR dataset is available. Import and confirm LLCR results first.'
+        latest = datasets[-1]
+        try:
+            dataset = self.datasets.require_current_llcr_dataset(project_id, latest.dataset_id)
+            if dataset.confirmed_matrix_id != matrix_id:
+                raise ValueError('The LLCR dataset belongs to another confirmed Matrix.')
+        except ValueError as exc:
+            return None, str(exc)
+        return dataset, ''
+
+    def selected_llcr_dataset(self, project_id, dataset_id, matrix_id):
+        dataset, reason = self.current_llcr_dataset(project_id, matrix_id)
+        if dataset is None:
+            raise ReportAuthoringConflict(reason)
+        if dataset.dataset_id != dataset_id:
+            raise ReportAuthoringConflict('A newer confirmed LLCR dataset is available. Review and select it explicitly.')
+        return dataset
+
+    def llcr_review_context(self, project_id, dataset_id, matrix_id):
+        applied = self.dataset_store.get_dataset(dataset_id) if self.dataset_store else None
+        if applied is not None and applied.project_id != project_id:
+            applied = None
+        current, reason = self.current_llcr_dataset(project_id, matrix_id)
+        return {'applied_dataset_id': dataset_id,
+            'applied_sha256': dataset_sha256(applied) if applied else None,
+            'current_dataset_id': current.dataset_id if current else None,
+            'current_sha256': dataset_sha256(current) if current else None,
+            'unavailable_reason': reason,
+            'pending': any(item.confirmed_outcome == 'not_determined' for item in applied.payload.entries) if applied else True}
 
     def current_source(self, project_id):
         source = self.sources.get_current_report(project_id)
@@ -40,7 +75,8 @@ class WorkingReportSections:
         def revalidate():
             if self.datasets.require_current_llcr_dataset(project_id, dataset_id) != dataset:
                 raise ReportAuthoringConflict('LLCR data changed during the update. Reload and try again.')
-        return generate, revalidate, {'dataset_revision_id': dataset_id, 'matrix_id': matrix_id}
+        return generate, revalidate, {'dataset_revision_id': dataset_id, 'matrix_id': matrix_id,
+                                     'llcr_dataset_sha256': dataset_sha256(dataset)}
 
     def equipment_path(self, project_id):
         workspace = self.workspaces.get_by_project(project_id)
