@@ -327,7 +327,7 @@
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
       "branch": "codex/report-tools-bridge",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "224bfea236d9e7d26bcb4136f3f04d14dd1a0ee9",
       "task": {
         "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
         "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
@@ -362,8 +362,16 @@
         "risk_reasons": [],
         "activation_head": "72d78b14766b2e0276a03462828f8b5b5ed8231d",
         "started_at": "2026-11-06T21:06:29.254660Z",
-        "updated_at": "2026-11-06T21:41:46.350444Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-06T21:50:06.392282Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
+          "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
+          "stage": "revision",
+          "status": "running",
+          "summary": "User requested continuing the same task to repair the isolated Word automation harness and complete page-by-page visual acceptance; real reports, templates and project data remain read-only.",
+          "requires_user": false
+        },
         "report": null
       }
     }
