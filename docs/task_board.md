@@ -311,7 +311,44 @@
       "closed_at": "2026-11-06T05:01:56.900493Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_MATERIALS_TOOLS_20261107": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab\\tmp\\materials-tools-resume",
+      "branch": "codex/materials-tools-resume-20261107",
+      "resources": [
+        "materials-tools-isolated-tests"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_MATERIALS_TOOLS_20261107",
+        "summary": "Resume materials saving and standalone Matrix/Fee tools final review and local integration",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Resume original full materials-only Intake and standalone planning goal using retained developer commit 5f5361f; no real business data mutation; no push or publication.",
+        "scope_paths": [
+          "backend/api",
+          "backend/application",
+          "backend/domain",
+          "backend/infrastructure",
+          "backend/shared",
+          "frontend/src",
+          "tests",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/materials_tools_plan.md"
+        ],
+        "risk_reasons": [
+          "Filesystem material copying and broad project lifecycle boundary change"
+        ],
+        "activation_head": "7e320067ce996b188dfe602eccaf4822788a1586",
+        "started_at": "2026-11-06T20:23:58.473934Z",
+        "updated_at": "2026-11-06T20:23:58.473934Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
