@@ -323,11 +323,11 @@
   "tasks": {
     "TASK_REPORT_TOOLS_BRIDGE_20261107": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
       "branch": "codex/report-tools-bridge",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "224bfea236d9e7d26bcb4136f3f04d14dd1a0ee9",
       "task": {
         "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
         "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
@@ -362,9 +362,98 @@
         "risk_reasons": [],
         "activation_head": "72d78b14766b2e0276a03462828f8b5b5ed8231d",
         "started_at": "2026-11-06T21:06:29.254660Z",
-        "updated_at": "2026-11-06T21:41:46.350444Z",
+        "updated_at": "2026-11-06T21:44:21.006112Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "33d133c75a1ca1e8489314fc4eb2daed9d0d68ab",
+            "primary_before": "4f4c56c4d7b0a61a61bf494c732dc786f3632cda",
+            "integrated_head": "224bfea236d9e7d26bcb4136f3f04d14dd1a0ee9",
+            "recovered": false
+          },
+          "summary": "Batches 1-2 implemented: one persistent report working-copy lineage; reviewed mechanical and temperature Tools packages import into Report without column remapping. Isolated tests, page smoke and artifact integrity pass. Native Word pagination remains unverified: COM ownership HWND unavailable. No real reports/templates/project data modified; no formal release or push.",
+          "scope_ok": true,
+          "schema": "connlab.sol-task-report",
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/api/report_authoring_schemas.py",
+            "backend/api/routes_report_authoring.py",
+            "backend/api/routes_tools_mechanical_summary.py",
+            "backend/api/routes_tools_temperature.py",
+            "backend/application/report_authoring/sections.py",
+            "backend/application/report_authoring/service.py",
+            "backend/application/report_tools_package.py",
+            "backend/domain/report_authoring.py",
+            "backend/infrastructure/files/report_authoring_assets.py",
+            "backend/infrastructure/office/report_authoring/results_document.py",
+            "docs/operational/report_tools_bridge_20261107.md",
+            "frontend/src/api/mechanicalSummary.test.ts",
+            "frontend/src/api/mechanicalSummary.ts",
+            "frontend/src/api/reportAuthoring.ts",
+            "frontend/src/api/temperature.test.ts",
+            "frontend/src/api/temperature.ts",
+            "frontend/src/features/report-workspace/reportAuthoringPanel.css",
+            "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
+            "frontend/src/features/report-workspace/ReportToolsPackageImport.test.tsx",
+            "frontend/src/features/report-workspace/ReportToolsPackageImport.tsx",
+            "frontend/src/features/report-workspace/ReportWorkingCopy.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/features/temperature/temperature.css",
+            "frontend/src/features/temperature/useTemperatureTool.ts",
+            "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
+            "frontend/src/features/tools/MechanicalSummaryTool.tsx",
+            "frontend/src/pages/TemperatureRisePage.reportPackage.test.tsx",
+            "frontend/src/pages/TemperatureRisePage.test.tsx",
+            "frontend/src/pages/TemperatureRisePage.tsx",
+            "tests/integration/test_report_tools_import_api.py",
+            "tests/integration/test_report_working_copy_api.py",
+            "tests/integration/test_tools_report_package_api.py",
+            "tests/unit/report_authoring/test_tools_results_document.py",
+            "tests/unit/test_report_tools_package.py"
+          ],
+          "validation": [
+            {
+              "name": "Backend affected matrix",
+              "status": "passed",
+              "summary": "451 passed; 10 office_integration deselected; 70.95s. Backend/tests byte-identical to tested cca8f2be384c4eeadc2a16c5b80a9beedcfa4015 after final CSS-only correction and authorized release cleanup merge."
+            },
+            {
+              "name": "Frontend affected matrix",
+              "status": "passed",
+              "summary": "20 files/276 tests passed before final CSS fix; final affected 12 files/217 tests passed on exact subject,16.52s."
+            },
+            {
+              "name": "Production typecheck and build",
+              "status": "passed",
+              "summary": "npm.cmd run build (tsc -b + Vite),exit0,9.49s; no chunk warning."
+            },
+            {
+              "name": "Isolated browser and artifact acceptance",
+              "status": "passed",
+              "summary": "Separate ports5186/8796 and fixture DB: base upload,Tools export ZIP,Report import,preview/confirm,update copy,download,reload persistence.566/1280 UI checked.Original fixture SHA unchanged; actual exported ZIP CRC/source/workbook SHA match. Word structural/data checks passed; native Word visual rendering not verified."
+            }
+          ],
+          "subject": "33d133c75a1ca1e8489314fc4eb2daed9d0d68ab",
+          "version": 1,
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "summary": "Separate focused review context inspected root backend+Report UI+scope+safety; findings fixed. Its own Tools UI self-reviewed; root reviewed final CSS with actual browser click-target regression. No unresolved finding."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Separate executor ran bounded complete matrix once; final CSS-only affected checks repeated on exact subject. Executor authored original package backend, not claimed as independent review of own code. Word visual validation explicitly outstanding."
+            },
+            "developer": {
+              "status": "passed",
+              "summary": "Root and bounded subagents implemented/self-reviewed with regression RED/GREEN; root retained integration ownership."
+            }
+          }
+        }
       }
     }
   }
