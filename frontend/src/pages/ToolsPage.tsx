@@ -12,6 +12,9 @@ import { MechanicalSummaryTool } from "../features/tools/MechanicalSummaryTool";
 import { EncryptionTool } from "../features/tools/EncryptionTool";
 import { ToolsFeedback, ToolsFeedbackTarget } from "../features/tools/ToolsFeedback";
 import "../tools.css";
+import { MatrixEditorWorkspace } from '../features/matrix-editor/MatrixEditorWorkspace';
+import { ToolsFeeWorkspace } from '../features/tools/ToolsFeeWorkspace';
+import { clearPlanningSession } from '../api/toolsPlanning';
 
 type ToolKey = "customer-report";
 
@@ -32,6 +35,8 @@ const CUSTOMER_REPORT_POLL_DELAY_MS = 750;
 export function ToolsPage({
   onOpenTemperatureRise = () => { window.location.assign('/tools/temperature-rise'); },
 }: { onOpenTemperatureRise?: () => void } = {}): ReactElement {
+  const [planning, setPlanning] = useState<'matrix' | 'fee' | null>(() => new URLSearchParams(window.location.search).has('planning') ? 'matrix' : null);
+  const [planningKey,setPlanningKey] = useState(0);
   const [state, setState] = useState(INITIAL_STATE);
   const [feedbackTarget, setFeedbackTarget] = useState<HTMLDivElement | null>(null);
   const runningTools = useRef(new Set<ToolKey>());
@@ -102,9 +107,16 @@ export function ToolsPage({
     }
   }
 
+  if (planning === 'matrix') return <><div className="tools-planning-actions"><button type="button" onClick={() => {
+    if (window.confirm('Clear this Tools Matrix and its fee estimate? Download any files you want to retain first.')) {
+      clearPlanningSession(); setPlanningKey(value=>value+1);
+    }
+  }}>New planning Matrix</button></div><MatrixEditorWorkspace key={planningKey} standalone projectId="" onBackToWorkbench={()=>setPlanning(null)} onEvaluateFees={()=>setPlanning('fee')} /></>;
+  if (planning === 'fee') return <ToolsFeeWorkspace onBack={()=>setPlanning('matrix')} />;
   return (
     <ToolsFeedbackTarget value={feedbackTarget}><section className="tools-page" aria-label="Tools">
       <div className="tools-grid" role="group" aria-label="Tool actions">
+        <article className="tools-action-group" aria-label="Matrix and Fee planning"><button type="button" className="primary-action tools-picker-action" onClick={()=>setPlanning('matrix')}>Matrix and Fee planning</button></article>
         <EquipmentListTool />
         <MechanicalSummaryTool />
         <article className="tools-action-group" aria-label="Temperature Rise">

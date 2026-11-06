@@ -9,6 +9,10 @@ const member: LibraryMember = { member_id: "same-id", project_id: "project-1", l
 const linked: LegacyProjectRecord = { record_id: "same-id", name: "Renamed project", number: "DL-2026-01-001", number_evidence: [], folder_path: "D:/projects/linked", notes: [], revision: 1, imported_at: "", updated_at: "" };
 
 describe("project catalog identity and filtering", () => {
+  it('does not include retained temporary work or its linked library copy in Projects', () => {
+    const temporary = {...row,display_project_id_kind:'temporary' as const,has_registered_ltr:false};
+    expect(buildProjectCatalog([{row:temporary,lifecycle:null}],[member],[])).toEqual([]);
+  });
   it("combines only a known workspace identity, retaining title/path search and same-LTR independent records", () => {
     const catalog = buildProjectCatalog([{ row, lifecycle: null }], [member, { ...member, member_id: "unclaimed", project_id: null }], [linked]);
     expect(catalog.map(item => item.key)).toEqual(["project:project-1", "member:unclaimed", "linked:same-id"]);

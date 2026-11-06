@@ -1,3 +1,5 @@
+import { previewIntakeMaterials, saveIntakeMaterials } from "../api/intakeMaterials";
+vi.mock("../api/intakeMaterials", () => ({previewIntakeMaterials: vi.fn(),saveIntakeMaterials:vi.fn(),openMaterialsFolder:vi.fn()}));
 import { useState } from "react";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -73,27 +75,28 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     vi.unstubAllGlobals();
   });
 
-  it('captures current form, sample and setup edits immediately without waiting for draft autosave', async () => {
+  it('saves materials without navigating away or discarding current form edits', async () => {
+    HTMLDialogElement.prototype.showModal = function() { this.setAttribute('open', ''); };
+    vi.mocked(previewIntakeMaterials).mockResolvedValue({root:'D:/Materials',folder_name:'Email subject',files:['request.msg','request.docx']});
+    vi.mocked(saveIntakeMaterials).mockResolvedValue({path:'D:/Materials/Email subject',folder_name:'Email subject',files:['request.msg','request.docx']});
     const user = userEvent.setup();
     render(<Harness />);
     const phone = await screen.findByDisplayValue('123456');
     const quantity = screen.getByLabelText('Quantity row 1');
-    vi.mocked(updateIntakeCaseReviewFields).mockClear();
-    await user.clear(phone);
-    await user.type(phone, '999');
-    await user.clear(quantity);
-    await user.type(quantity, '7');
-    await user.click(screen.getByRole('button', { name: 'Create Temporary Project' }));
-    await waitFor(() => expect(createTemporaryProject).toHaveBeenCalledOnce());
-    const payload = vi.mocked(createTemporaryProject).mock.calls[0][0];
-    expect(payload.intake_snapshot).toEqual(expect.objectContaining({
-      version: 1, source_case_id: 'case-1', selected_form_asset_id: 'asset-1',
-      fields: expect.objectContaining({ phone: '999', email: 'bob@example.test', manufacturing_site: 'DG', project_type: 'Qualification' }),
-      samples: [expect.objectContaining({ part_number: 'PN-1', quantity: '7', material: 'Copper' })],
-      requested_testing_rows: activeCase.requested_testing_rows,
-      project_setup: expect.objectContaining({ project_leader: 'Lab User', lab_performing_tests: 'Dongguan', test_type_in_sheet: 'Qualification' }),
-    }));
-    expect(updateIntakeCaseReviewFields).not.toHaveBeenCalled();
+    await user.clear(phone); await user.type(phone, '999');
+    await user.clear(quantity); await user.type(quantity, '7');
+    await user.click(screen.getByRole('button', {name:'Save materials'}));
+    const folder = await screen.findByLabelText('Folder name');
+    await waitFor(() => expect(document.activeElement).toBe(folder));
+    await user.click(screen.getByRole('button', {name:'Save', exact:true}));
+    await screen.findByText('Saved to D:/Materials/Email subject');
+    await user.click(screen.getByRole('button', {name:'Close', exact:true}));
+    expect((phone as HTMLInputElement).value).toBe('999');
+    expect((quantity as HTMLInputElement).value).toBe('7');
+    expect(locationAssign).not.toHaveBeenCalled();
+    expect(createTemporaryProject).not.toHaveBeenCalled();
+    expect(completeNewProject).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button',{name:'Create Temporary Project'})).toBeNull();
   });
 
   it('uses the local profile for a new unassigned project and sends that leader to completion', async () => {

@@ -136,6 +136,7 @@ class ProjectResponse(BaseModel):
     test_item: str | None = None
     temporary_source_asset_ids: list[str] = Field(default_factory=list)
     temporary_notes: str | None = None
+    is_legacy_temporary: bool = False
     registry_state: str = "active"
     registry_revision: int = 0
 
@@ -627,6 +628,7 @@ def _to_response(
 ) -> ProjectResponse:
     """Convert a project domain object to an API response DTO."""
     return ProjectResponse(
+        is_legacy_temporary=bool(registry_row and registry_row.display_project_id_kind == "temporary"),
         project_id=project.project_id,
         library_member_id=registry_row.library_member_id if registry_row else None,
         registry_state=project.registry_state,

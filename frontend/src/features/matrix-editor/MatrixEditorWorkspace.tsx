@@ -1,4 +1,6 @@
-﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from "react";
+import { importPlanningMatrix } from '../tools/preparePlanningImport';
+import { loadPlanningSeed, savePlanningDraft, suggestPlanningMethods, planningExportApis } from "../../api/toolsPlanning";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import { useMatrixEditorContext } from "./useMatrixEditorContext";
@@ -95,6 +97,8 @@ import {
 import "../../workbench.css";
 
 type MatrixEditorWorkspaceProps = {
+  standalone?: boolean;
+  onEvaluateFees?: () => void;
   projectId: string;
   onBackToWorkbench: () => void;
   onOpenContactMeasurementSetup?: () => void;
@@ -166,11 +170,13 @@ function contactRecordType(testItem: string): "LLCR" | "CR" | null {
 }
 
 export function MatrixEditorWorkspace({
+  standalone = false,
+  onEvaluateFees,
   projectId,
   onBackToWorkbench,
 }: MatrixEditorWorkspaceProps): ReactElement {
   const topBarActionsRoot = useTopBarActionsRoot();
-  const model = useMatrixEditorContext(projectId);
+  const model = useMatrixEditorContext(projectId, standalone);
   const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(model.lifecycle);
   const isLifecycleReadonly = lifecycleReadonlyView.readonly;
   const [editableRows, setEditableRows] = useState<EditableMatrixRow[]>(() => buildInitialMatrixRows());
@@ -290,6 +296,7 @@ export function MatrixEditorWorkspace({
   };
 
   const matrixImport = useMatrixImportWorkflow({
+    standaloneImport: standalone ? importPlanningMatrix : undefined,
     projectId,
     readonlyMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : null,
     onCommitted: ({ response }) => {
@@ -315,6 +322,8 @@ export function MatrixEditorWorkspace({
   } = matrixImport;
 
   const draftPersistence = useMatrixDraftPersistence({
+    saveDraft: standalone ? savePlanningDraft : undefined,
+    standalone,
     currentPayload: currentSavePayload,
     currentSignature: currentSaveSignature,
     draftLoading,
@@ -345,7 +354,7 @@ export function MatrixEditorWorkspace({
       setScheduleWorkspace(null);
       setScheduleMessage("");
       try {
-        const seed: MatrixEditorSessionSeed = await fetchMatrixEditorSession(projectId);
+        const seed: MatrixEditorSessionSeed = standalone ? loadPlanningSeed() : await fetchMatrixEditorSession(projectId);
         if (cancelled) {
           return;
         }
@@ -404,6 +413,7 @@ export function MatrixEditorWorkspace({
         setConfirmActiveMessage("");
         setActiveAuthorityConfirmed(false);
         try {
+          if (standalone) return;
           const schedule = await fetchProjectSchedule(projectId);
           if (cancelled) return;
           setScheduleWorkspace(schedule);
@@ -681,7 +691,7 @@ export function MatrixEditorWorkspace({
     selectedGroupPreviewNotes.sampleNote ?? (sampleMarker ? `${sampleMarker[0]}` : null),
     selectedGroupSampleMergeNote,
   ].filter((note): note is string => Boolean(note));
-  const hasProjectId = projectId.trim().length > 0;
+  const hasProjectId = standalone || projectId.trim().length > 0;
   const selectedDraftGroupIds = new Set(
     currentSavePayload.groups
       .filter((group) => group.is_selected)
@@ -734,12 +744,12 @@ export function MatrixEditorWorkspace({
     })),
     schedulePlan
   ), [editableRows, groupColumns, schedulePlan]);
-  const matrixXlsxExport = useMatrixEditorXlsxExport(projectId);
+  const matrixXlsxExport = useMatrixEditorXlsxExport(projectId, standalone ? planningExportApis : undefined);
   const hasXlsxExportRows = useMemo(() => editableRows.some((row) => !row.isSampleRow &&
     groupColumns.some((group) => group.isSelected && (row.groups[group.id] ?? "").trim().length > 0)),
   [editableRows, groupColumns]);
   const getMatrixXlsxExportRequest = () => buildMatrixEditorXlsxExportRequest({
-    projectReference,
+    projectReference: standalone ? "Planning" : projectReference,
     groups: groupColumns,
     rows: editableRows,
     sampleValues,
@@ -813,6 +823,8 @@ export function MatrixEditorWorkspace({
     saveState === "error" ||
     Boolean(savedEditorDraftId);
   const methodVersionSync = useMatrixMethodVersionSync({
+    suggest: standalone ? suggestPlanningMethods : undefined,
+    planning: standalone,
     projectId,
     rows: editableRows.filter((row) => !row.isSampleRow).map((row) => ({ row_id: row.id, method: row.method })),
     currentSignature: currentSaveSignature,
@@ -835,6 +847,7 @@ export function MatrixEditorWorkspace({
       saveState === "error" ||
       Boolean(savedEditorDraftId));
   const publishDisabledReason =
+    standalone ? (hasMatrixValidationError || hasMatrixDayError ? groupIdentityErrorMessage || groupNameErrorMessage || stepTokenErrorMessage || "Check Matrix values." : pointValidation || (!hasAnyStepTokenValue ? "Add at least one test step." : "")) :
     isLifecycleReadonly
       ? lifecycleReadonlyView.message
       : !hasProjectId
@@ -918,7 +931,7 @@ export function MatrixEditorWorkspace({
       <button type="button" onClick={onBackToWorkbench}>Back to Workbench</button>
     </section>;
   }
-  if (model.loading || !model.project || draftLoading) {
+  if (model.loading || (!standalone && !model.project) || draftLoading) {
     return <p role="status">Loading Matrix…</p>;
   }
 
@@ -1419,6 +1432,7 @@ export function MatrixEditorWorkspace({
   };
 
   const onConfirmMatrix = async (): Promise<void> => {
+    if (standalone) {if (await draftPersistence.retainPlanning()) onEvaluateFees?.(); return;}
     if (isLifecycleReadonly) {
       setConfirmActiveMessage(lifecycleReadonlyView.message);
       return;
@@ -1515,8 +1529,8 @@ export function MatrixEditorWorkspace({
   const matrixCommandbar = (
     <div aria-label="Matrix actions" className="matrix-editor-commandbar">
       <div className="matrix-editor-commandbar-context">
-        <p className="matrix-editor-project-identity" title={matrixEditorIdentityLine}>
-          {matrixEditorIdentityLine}
+        <p className="matrix-editor-project-identity" title={standalone ? "Standalone planning" : matrixEditorIdentityLine}>
+          {standalone ? "Standalone planning" : matrixEditorIdentityLine}
         </p>
       </div>
       <div className="matrix-editor-commandbar-actions">
@@ -1537,7 +1551,7 @@ export function MatrixEditorWorkspace({
             }
           }}
         />
-        <button
+        {!standalone && <><button
           type="button"
           disabled={
             isLifecycleReadonly || !canGenerateTestRecord || testRecordState === "loading"
@@ -1556,7 +1570,7 @@ export function MatrixEditorWorkspace({
           onClick={() => void onGenerateTestStatusPreview()}
         >
           {testStatusState === "loading" ? "Generating..." : "Test Status"}
-        </button>
+        </button></>}
       </div>
     </div>
   );
@@ -2238,7 +2252,7 @@ export function MatrixEditorWorkspace({
             readOnly={isLifecycleReadonly || confirmActiveState === "loading"}
             onProfileChange={(nextProfile) => { markUnsaved(); setPointProfile(nextProfile); }}
             onOverridesChange={(nextOverrides) => { markUnsaved(); setPointOverrides(nextOverrides); }}
-            recordActions={{
+            recordActions={standalone ? undefined : {
               ir_dwv: (
                 <LlcrCrRecordDownloadAction projectId={projectId} recordType="ir_dwv"
                   getDraftRequest={getLlcrCrDraftRequest} matrixHasPendingChanges={hasMatrixAuthorityChanges} />
@@ -2291,10 +2305,10 @@ export function MatrixEditorWorkspace({
         aria-label="Matrix editor completion actions"
         className="matrix-editor-completion-dock"
       >
-        <span>{completionStatusMessage}</span>
+        <span>{standalone ? "Planning session — export files to keep a copy." : completionStatusMessage}</span>
         <div className="matrix-editor-completion-actions">
-          <button type="button" disabled={confirmActiveState === "loading"} onClick={() => void draftPersistence.cancel()}>
-            Cancel
+          <button type="button" disabled={confirmActiveState === "loading"} onClick={() => standalone ? void draftPersistence.retainPlanning().then(saved => {if(saved) onBackToWorkbench();}) : void draftPersistence.cancel()}>
+            {standalone ? "Back" : "Cancel"}
           </button>
           <button
             className="matrix-editor-primary-action"
@@ -2303,7 +2317,7 @@ export function MatrixEditorWorkspace({
             type="button"
             onClick={() => void onConfirmMatrix()}
           >
-            {confirmActiveState === "loading" ? "Confirming..." : "Confirm Matrix"}
+            {standalone ? "Fee Evaluation" : confirmActiveState === "loading" ? "Confirming..." : "Confirm Matrix"}
           </button>
         </div>
       </footer>

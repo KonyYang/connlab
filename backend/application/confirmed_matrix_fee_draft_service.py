@@ -71,7 +71,6 @@ class ConfirmedMatrixFeeDraftService:
         if snapshot is None:
             raise ConfirmedMatrixFeeDraftNotFoundError("Active confirmed matrix not found.")
         library = self._rule_library or load_active_fee_rule_library()
-        warnings = _root_warnings(snapshot)
         effective_contact_plan = (
             self._contact_measurement_adapter.get_effective(command.project_id)
             if self._contact_measurement_adapter is not None
@@ -80,56 +79,70 @@ class ConfirmedMatrixFeeDraftService:
         effective_point_profile = effective_matrix_point_profile(snapshot)
         if effective_point_profile is None and self._contact_point_profile_adapter is not None:
             effective_point_profile = self._contact_point_profile_adapter.get_effective(command.project_id)
-        groups = build_groups(
-            snapshot=snapshot,
-            library=library,
+        return build_fee_draft_from_snapshot(
+            snapshot=snapshot, library=library,
             effective_contact_plan=effective_contact_plan,
             effective_point_profile=effective_point_profile,
         )
-        manual_line_items = (
-            build_report_preparation_line(
-                snapshot=snapshot,
-                rule_version_id=library.version.version_id,
-                rule=next(
-                    (rule for rule in library.rules if rule.rule_id == "fee_rule_report_preparation"),
-                    None,
-                ),
+
+
+def build_fee_draft_from_snapshot(*, snapshot, library, effective_contact_plan=None,
+                                  effective_point_profile=None):
+    """Pure calculation shared by authoritative projects and standalone planning.
+
+    The caller owns persistence; this function never establishes authority.
+    """
+    warnings = _root_warnings(snapshot)
+    groups = build_groups(
+        snapshot=snapshot,
+        library=library,
+        effective_contact_plan=effective_contact_plan,
+        effective_point_profile=effective_point_profile,
+    )
+    manual_line_items = (
+        build_report_preparation_line(
+            snapshot=snapshot,
+            rule_version_id=library.version.version_id,
+            rule=next(
+                (rule for rule in library.rules if rule.rule_id == "fee_rule_report_preparation"),
+                None,
             ),
-        )
-        line_items = tuple(
-            item
-            for group in groups
-            for item in (*group.manual_line_items, *group.line_items)
-        ) + manual_line_items
-        review_required_count = sum(1 for item in line_items if item.review_required)
-        calculated_values = [item.testing_fee for item in line_items if item.testing_fee is not None]
-        total_fee = (
-            sum(calculated_values, Decimal("0"))
-            if calculated_values and review_required_count == 0 and not warnings
-            else None
-        )
-        draft = FeeEvaluationDraft(
-            header=FeeEvaluationHeader(
-                project_id=snapshot.version.project_id,
-                confirmed_matrix_id=snapshot.version.confirmed_matrix_id,
-                confirmed_revision=snapshot.version.confirmed_revision,
-                pricing_rule_version_id=library.version.version_id,
-                pricing_source_file_name=library.version.source_file_name,
-                pricing_source_hash=library.version.source_hash,
-                pricing_effective_from=snapshot.version.sample_received_date,
-                generated_at=_now_iso(),
-            ),
-            draft_status=_draft_status(groups, warnings, manual_line_items),
-            total_fee=total_fee,
-            review_required_count=review_required_count + len(warnings),
-            groups=groups,
-            manual_line_items=manual_line_items,
-            warnings=tuple(warnings),
-        )
-        return ConfirmedMatrixFeeAuthorityBuildResult(
-            draft=draft,
-            confirmed_matrix=snapshot,
-            rule_library=library,
-            effective_measurement_plan=effective_contact_plan,
-            effective_point_profile=effective_point_profile,
-        )
+        ),
+    )
+    line_items = tuple(
+        item
+        for group in groups
+        for item in (*group.manual_line_items, *group.line_items)
+    ) + manual_line_items
+    review_required_count = sum(1 for item in line_items if item.review_required)
+    calculated_values = [item.testing_fee for item in line_items if item.testing_fee is not None]
+    total_fee = (
+        sum(calculated_values, Decimal("0"))
+        if calculated_values and review_required_count == 0 and not warnings
+        else None
+    )
+    draft = FeeEvaluationDraft(
+        header=FeeEvaluationHeader(
+            project_id=snapshot.version.project_id,
+            confirmed_matrix_id=snapshot.version.confirmed_matrix_id,
+            confirmed_revision=snapshot.version.confirmed_revision,
+            pricing_rule_version_id=library.version.version_id,
+            pricing_source_file_name=library.version.source_file_name,
+            pricing_source_hash=library.version.source_hash,
+            pricing_effective_from=snapshot.version.sample_received_date,
+            generated_at=_now_iso(),
+        ),
+        draft_status=_draft_status(groups, warnings, manual_line_items),
+        total_fee=total_fee,
+        review_required_count=review_required_count + len(warnings),
+        groups=groups,
+        manual_line_items=manual_line_items,
+        warnings=tuple(warnings),
+    )
+    return ConfirmedMatrixFeeAuthorityBuildResult(
+        draft=draft,
+        confirmed_matrix=snapshot,
+        rule_library=library,
+        effective_measurement_plan=effective_contact_plan,
+        effective_point_profile=effective_point_profile,
+    )

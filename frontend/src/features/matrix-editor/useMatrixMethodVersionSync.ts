@@ -8,6 +8,8 @@ type MethodRow = { row_id: string; method: string };
 type MethodUpdate = Pick<MatrixMethodVersionSuggestion, "row_id" | "current_method" | "proposed_method">;
 
 type MatrixMethodVersionSyncInputs = {
+  suggest?: typeof suggestMatrixMethodVersions;
+  planning?: boolean;
   projectId: string;
   rows: MethodRow[];
   currentSignature: string;
@@ -16,6 +18,8 @@ type MatrixMethodVersionSyncInputs = {
 };
 
 export function useMatrixMethodVersionSync({
+  suggest = suggestMatrixMethodVersions,
+  planning = false,
   projectId,
   rows,
   currentSignature,
@@ -45,7 +49,7 @@ export function useMatrixMethodVersionSync({
     const requestedSignature = currentSignature;
     const requestedRows = rows.map((row) => ({ ...row }));
     try {
-      const result = await suggestMatrixMethodVersions(projectId, { rows: requestedRows });
+      const result = await suggest(projectId, { rows: requestedRows });
       if (latestProjectIdRef.current !== projectId || latestSignatureRef.current !== requestedSignature) {
         throw new Error("Matrix changed while checking Method versions. Run the update again.");
       }
@@ -61,7 +65,7 @@ export function useMatrixMethodVersionSync({
       onApply(updates.map(({ row_id, current_method, proposed_method }) => ({
         row_id, current_method, proposed_method,
       })));
-      setMessage(`${updates.length} Method version${updates.length === 1 ? "" : "s"} updated in the Matrix draft. Confirm Matrix when ready.`);
+      setMessage(`${updates.length} Method version${updates.length === 1 ? "" : "s"} updated in the Matrix draft.${planning ? "" : " Confirm Matrix when ready."}`);
     } catch (caught) {
       setError((caught as Error).message || "Unable to update Method versions.");
     } finally {

@@ -13,6 +13,7 @@ export type SettingsResourceConfig = {
 };
 
 export const SHARED_RESOURCE_CONFIGS: SettingsResourceConfig[] = [
+  {resourceType: "temporary_materials_root", label: "Temporary materials folder", category: "Default locations", expectedKind: "Folder", registryBacked: true},
   {
     resourceType: "ltr_workbook",
     label: "LTR registration workbook",

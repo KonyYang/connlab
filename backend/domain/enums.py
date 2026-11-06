@@ -154,6 +154,7 @@ class ExternalResourceType(StrEnum):
     PROJECT_FOLDER_TEMPLATE = "project_folder_template"
     PROJECT_OUTPUT_ROOT = "project_output_root"
     OFFICIAL_PUBLIC_DRIVE_ROOT = "official_public_drive_root"
+    TEMPORARY_MATERIALS_ROOT = "temporary_materials_root"
     STANDARD_RECORD_EXCEL = "standard_record_excel"
     EQUIPMENT_CALIBRATION_EXCEL = "equipment_calibration_excel"
     IR_DWV_RECORD_TEMPLATE = "ir_dwv_record_template"

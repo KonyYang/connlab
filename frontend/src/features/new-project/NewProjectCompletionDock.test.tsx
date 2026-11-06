@@ -16,7 +16,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
         values={values}
         onChange={vi.fn()}
         onComplete={vi.fn()}
-        onCreateTemporaryProject={vi.fn()}
+        onSaveMaterials={vi.fn()}
       />
     );
 
@@ -39,7 +39,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
         values={values}
         onChange={vi.fn()}
         onComplete={vi.fn()}
-        onCreateTemporaryProject={vi.fn()}
+        onSaveMaterials={vi.fn()}
       />
     );
 
@@ -58,7 +58,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
         values={values}
         onChange={vi.fn()}
         onComplete={vi.fn()}
-        onCreateTemporaryProject={vi.fn()}
+        onSaveMaterials={vi.fn()}
       />
     );
 
@@ -67,10 +67,10 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
     expect(alert.closest(".new-project-completion-dock")).toBeTruthy();
   });
 
-  it("shows compact busy status and prevents Apply/temporary actions while loading", async () => {
+  it("shows compact busy status and prevents Apply/materials actions while loading", async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
-    const onCreateTemporaryProject = vi.fn();
+    const onSaveMaterials = vi.fn();
     render(
       <NewProjectCompletionDock
         completionDisabled={true}
@@ -81,7 +81,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
         values={values}
         onChange={vi.fn()}
         onComplete={onComplete}
-        onCreateTemporaryProject={onCreateTemporaryProject}
+        onSaveMaterials={onSaveMaterials}
       />
     );
 
@@ -92,7 +92,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
     );
 
     const applyButton = screen.getByRole("button", { name: /Applying LTR number/ });
-    const temporaryButton = screen.getByRole("button", { name: "Create Temporary Project" });
+    const temporaryButton = screen.getByRole("button", { name: "Save materials" });
     expect((applyButton as HTMLButtonElement).disabled).toBe(true);
     expect((temporaryButton as HTMLButtonElement).disabled).toBe(true);
 
@@ -100,7 +100,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
     await user.click(temporaryButton);
 
     expect(onComplete).not.toHaveBeenCalled();
-    expect(onCreateTemporaryProject).not.toHaveBeenCalled();
+    expect(onSaveMaterials).not.toHaveBeenCalled();
   });
 });
 

@@ -7,7 +7,8 @@ import "./feeFormImport.css";
 const fieldLabels: Record<string, string> = {unitPrice: "Unit Price", unitType: "Unit Type", baseFee: "Base Fee",
   spendTime: "Man-hour", units: "Units", discount: "Discount (%)", notes: "Notes"};
 
-export function FeeFormImportControl({projectId, rows, disabled, onApply}: {
+export function FeeFormImportControl({projectId, rows, disabled, onApply, inspectFile = inspectFeeForm, planning = false}: {
+  inspectFile?: typeof inspectFeeForm; planning?: boolean;
   projectId: string; rows: FeeEvaluationPreviewRow[]; disabled: boolean; onApply: (changes: FeeImportChange[]) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -44,7 +45,7 @@ export function FeeFormImportControl({projectId, rows, disabled, onApply}: {
     setError("");
     setSelections({});
     try {
-      const result = await inspectFeeForm(projectId, file);
+      const result = await inspectFile(projectId, file);
       if (generation !== request.current) return;
       setSource(result.rows);
       setBaseline(signature);
@@ -61,7 +62,7 @@ export function FeeFormImportControl({projectId, rows, disabled, onApply}: {
     <dialog ref={dialog} className="fee-form-import-dialog" aria-labelledby="fee-import-title"
       onCancel={close} onClose={() => { if (open) close(); }}>
       <h3 id="fee-import-title">Import Fee Form</h3>
-      <p>Review before applying. Only the current draft changes; Confirm is still required for Fee authority.</p>
+      <p>{planning ? "Review before applying. Only this Tools estimate changes." : "Review before applying. Only the current draft changes; Confirm is still required for Fee authority."}</p>
       <label>Import mode<select aria-label="Import mode" value={mode}
         onChange={event => { setMode(event.target.value as FeeImportMode); setSelections({}); }}>
         <option value="matrix">Same Matrix — restore fee rows</option>
@@ -94,7 +95,7 @@ export function FeeFormImportControl({projectId, rows, disabled, onApply}: {
             </div>)}</td>
           </tr>)}</tbody></table></div>
         <button type="button" className="is-primary" disabled={disabled || stale || busy || !plan.changes.length}
-          onClick={() => { if (disabled || stale) return; onApply(plan.changes); setMessage(`${plan.changes.length} rows imported into draft. Review and use Confirm for Fee authority.`); close(); }}>
+          onClick={() => { if (disabled || stale) return; onApply(plan.changes); setMessage(planning ? `${plan.changes.length} rows imported into estimate.` : `${plan.changes.length} rows imported into draft. Review and use Confirm for Fee authority.`); close(); }}>
           Apply {plan.changes.length} rows to draft
         </button>
       </>}
