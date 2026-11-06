@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_MATERIALS_TOOLS_20261107",
-    "tier": "high_risk",
-    "subject": "98cce66f778d6ef98fc09b1fc403edd8af1c5fd7",
-    "summary": "Resume materials saving and standalone Matrix/Fee tools final review and local integration",
+    "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
+    "tier": "standard",
+    "subject": "ea7434e293ab61d3522857368748e8297b77d70e",
+    "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing the completed materials saving and standalone Matrix/Fee tools task on 2026-11-07. Preserve integrated local commits. Persistent local-only instruction remains: no push or publication; publish-close intentionally omitted.",
-    "closed_at": "2026-11-06T21:01:34.514404Z"
+    "decision_ref": "User explicitly confirmed closing the completed report working-copy and Tools bridge task, including native Word visual acceptance. Preserve all local commits; no push or publication. Local close only; --publish-close intentionally omitted.",
+    "closed_at": "2026-11-06T21:58:12.773252Z"
   },
   "retained_history": [
     {
@@ -318,118 +318,18 @@
       "disposition": "cancelled",
       "decision_ref": "User requested closing the current task on 2026-11-07. Stop before final independent review, QA and integration. Preserve development commit 5f5361faf4839e7628488058454366a7a8275912 on codex/materials-tools-20261106 and its worktree. Local close only; no push or publication; not accepted as complete.",
       "closed_at": "2026-11-06T16:06:14.113769Z"
+    },
+    {
+      "task_id": "TASK_MATERIALS_TOOLS_20261107",
+      "tier": "high_risk",
+      "subject": "98cce66f778d6ef98fc09b1fc403edd8af1c5fd7",
+      "summary": "Resume materials saving and standalone Matrix/Fee tools final review and local integration",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing the completed materials saving and standalone Matrix/Fee tools task on 2026-11-07. Preserve integrated local commits. Persistent local-only instruction remains: no push or publication; publish-close intentionally omitted.",
+      "closed_at": "2026-11-06T21:01:34.514404Z"
     }
   ],
-  "tasks": {
-    "TASK_REPORT_TOOLS_BRIDGE_20261107": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
-      "branch": "codex/report-tools-bridge",
-      "resources": [],
-      "integrated_head": "3fbd82b474bcec505e1487ad8ba6e390b25bfa4e",
-      "task": {
-        "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
-        "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Batches 1 and 2 only. Existing isolated working-copy pipeline, optional portable Tools result packages and Report mapping; no temperature math changes, real business writes, official release or push.",
-        "scope_paths": [
-          "backend/api/dependencies.py",
-          "backend/api/report_authoring_schemas.py",
-          "backend/api/routes_report_authoring.py",
-          "backend/api/routes_tools_mechanical_summary.py",
-          "backend/api/routes_tools_temperature.py",
-          "backend/application/mechanical_summary_folder.py",
-          "backend/application/report_authoring",
-          "backend/application/report_tools_package.py",
-          "backend/application/tools_temperature_service.py",
-          "backend/domain/report_authoring.py",
-          "backend/infrastructure/files",
-          "backend/infrastructure/office",
-          "backend/interfaces",
-          "docs/operational",
-          "frontend/src/api",
-          "frontend/src/features/report-workspace",
-          "frontend/src/features/temperature",
-          "frontend/src/features/tools",
-          "frontend/src/pages/TemperatureRisePage.reportPackage.test.tsx",
-          "frontend/src/pages/TemperatureRisePage.test.tsx",
-          "frontend/src/pages/TemperatureRisePage.tsx",
-          "frontend/src/styles",
-          "tests"
-        ],
-        "risk_reasons": [],
-        "activation_head": "72d78b14766b2e0276a03462828f8b5b5ed8231d",
-        "started_at": "2026-11-06T21:06:29.254660Z",
-        "updated_at": "2026-11-06T21:57:03.578963Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User requested continuing the same task to repair the isolated Word automation harness and complete page-by-page visual acceptance; real reports, templates and project data remain read-only.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
-          "subject": "ea7434e293ab61d3522857368748e8297b77d70e",
-          "changed_paths": [
-            "docs/operational/report_tools_bridge_20261107.md"
-          ],
-          "scope_ok": true,
-          "summary": "Batches 1-2 remain implemented and locally integrated. Native Word visual acceptance is now complete for the isolated synthetic baseline (1 page) and actual Tools-to-Report output (2 pages). The former blocker was an incorrect Application.Hwnd check in the temporary QA helper, not a Word installation failure. No real reports/templates/project data changed; no publication or push.",
-          "validation": [
-            {
-              "summary": "Product and test bytes mechanically identical to previously validated 33d133c75a1ca1e8489314fc4eb2daed9d0d68ab. Prior backend 451 passed (10 office_integration deselected), frontend 276 plus final CSS-affected 217 passed, tsc/Vite build and isolated Tools-to-Report browser/export checks remain valid. This revision changes only acceptance documentation and an ignored temporary QA helper.",
-              "name": "Prior affected backend/frontend/API/browser validation retained",
-              "status": "passed"
-            },
-            {
-              "summary": "Read-only synthetic baseline 1 page and browser-generated temperature working copy 2 pages exported via Word. Primary and separate reviewer inspected all 3 rendered pages: preserved fixed wording/header/footer; readable results/measurement table/notes/curve/legend; no clipping or overlap. Both input DOCX SHA-256 unchanged. Not certification of all real templates.",
-              "name": "Native Microsoft Word per-page visual acceptance",
-              "status": "passed"
-            },
-            {
-              "summary": "Final nested-cleanup helper exported 2 pages with exit 0. Correct Document.ActiveWindow.Hwnd matched owned process; old Application.Hwnd was null in the same healthy instance. Re-exported page pixels exactly match reviewed pages; no WINWORD process remained. Existing Word instances are not terminated.",
-              "name": "Corrected helper cleanup regression",
-              "status": "passed"
-            },
-            {
-              "summary": "git diff --check passed; final revision changes only operational acceptance guide plus writer-owned board history. Standards: deterministic COM cleanup and isolation respected. Spec: every representative page reviewed, no real-file writes or business changes. Scope and limitations explicitly recorded.",
-              "name": "Exact scope and documentation review",
-              "status": "passed"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Primary fixed the temporary Word QA helper and self-reviewed cleanup; product implementation and tests unchanged from prior completion."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Existing proportional matrix retained on identical product/test bytes. Native Word export, all-page visual inspection, unchanged input hashes and final cleanup/pixel regression completed this revision; no repeated full matrix."
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Separate audit_report_ui context independently inspected all 3 pages and helper ownership. Its cleanup finding was fixed with nested finally; primary checked the final diff and repeated export/pixel comparison."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "ea7434e293ab61d3522857368748e8297b77d70e",
-            "primary_before": "945135a2be303fed31fc209e442143ef691d67f6",
-            "integrated_head": "3fbd82b474bcec505e1487ad8ba6e390b25bfa4e",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
