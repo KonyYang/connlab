@@ -65,3 +65,31 @@ Manual XLSX/CSV result mapping remains available for non-Tools summaries.
 
 The final verification counts and material caveats are recorded in the task completion report;
 this document is a feature boundary and operator guide, not another task protocol.
+
+### Native Word visual verification — 2026-11-07
+
+Completed with the isolated synthetic baseline and the actual working-copy output downloaded in
+the Tools-to-Report browser smoke. Microsoft Word exported the baseline (1 page) and updated report
+(2 pages); every page was rendered and inspected by the primary agent and a separate reviewer.
+
+| Page | Visual result |
+| --- | --- |
+| Baseline 1 | Fixed wording, Group table, Appendix A heading, header and footer intact. Large whitespace is intentional in this synthetic fixture. |
+| Updated 1 | Original wording/header/footer preserved; added result text wraps within its narrow cell without clipping or overlap. |
+| Updated 2 | Appendix B measurement table, source-row references, Max/Avg values, coefficient notes, complete curve and legend readable and inside page bounds. |
+
+The earlier automation blocker was in the temporary QA helper, not evidence of a broken Word
+installation: it read `Word.Application.Hwnd` before opening a document. Word exposes the handle on
+`Document.ActiveWindow.Hwnd`. The corrected helper opens only the isolated copy read-only, verifies
+its window belongs to the newly attributed automation process, exports, and closes without saving.
+Nested cleanup guarantees that a document-close/options error still attempts the owned application's
+Quit and COM release; it never terminates pre-existing Word processes. A final export with this
+cleanup produced pixel-identical pages and left no owned Word process running.
+
+Both input DOCX SHA-256 values remained unchanged: baseline
+`c6e34c087146f2d3336f16772a5500a7f9bdab06ed12d01fd6a67b4fb226cb03`, updated copy
+`0264e8ac1cbe64b282246f72ec2e2e91fa0c059b6eb4653fe95a36226b3dee78`.
+Local PDFs, page images, inventory and helper are under `tmp/word_tools_visual_20261107/` in the
+primary checkout; these disposable QA artifacts are not product files. No real reports, templates
+or project data were changed. This closes representative sample pagination acceptance, not visual
+certification of every real template or automatic approval/publication of laboratory results.
