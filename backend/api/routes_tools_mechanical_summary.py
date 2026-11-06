@@ -89,3 +89,52 @@ def generate(files: list[UploadFile] = File(...), manifest: str = Form(...)):
                         headers={'Content-Disposition': 'attachment; filename="Mechanical_Summary.xlsx"'})
     except (ValueError, TypeError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+# Folder workflow keeps the existing per-file API available for older callers.
+def _folder_analysis(files, review):
+    from backend.infrastructure.files.mechanical_summary_folder import analyze_folder
+    from backend.application.mechanical_summary_folder import apply_review
+    if not 1 <= len(files) <= 200:
+        raise ValueError('Select a folder with at most 200 PDF/Excel files.')
+    sources = []
+    total = 0
+    for file in files:
+        content = file.file.read(25 * 1024 * 1024 + 1)
+        total += len(content)
+        if total > 150 * 1024 * 1024:
+            raise ValueError('Select a smaller test-results folder (up to 150 MB).')
+        sources.append((file.filename or '', content))
+    analysis = analyze_folder(sources)
+    return sources, apply_review(analysis, json.loads(review) if review else None)
+
+
+@router.post('/folder/preview')
+def preview_folder(files: list[UploadFile] = File(...), review: str = Form('')):
+    try:
+        _, analysis = _folder_analysis(files, review)
+        return analysis
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post('/folder/generate')
+def generate_folder(files: list[UploadFile] = File(...), review: str = Form('')):
+    from datetime import datetime, timedelta, timezone
+    from backend.infrastructure.office.mechanical_summary_folder import generate_folder_workbook
+    try:
+        sources, analysis = _folder_analysis(files, review)
+        if not analysis['ready']:
+            raise ValueError('Complete the unresolved source mappings and report results before generating.')
+        try:
+            output = generate_folder_workbook(sources, analysis)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).exception('Mechanical folder workbook generation failed')
+            raise HTTPException(status_code=503, detail='Could not create the workbook. Check that Microsoft Excel is available, close any Excel dialogs, and retry. Original files were not changed.') from exc
+        stamp = datetime.now(timezone(timedelta(hours=8))).strftime('%Y%m%d_%H%M%S_%f')
+        prefix = analysis['project'] + ' ' if analysis['project'] else ''
+        name = f'{prefix}Mechanical Force Summary_{stamp}.xlsx'
+        return Response(content=output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        headers={'Content-Disposition': f'attachment; filename="{name}"'})
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
