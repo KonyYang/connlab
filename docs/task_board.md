@@ -363,8 +363,16 @@
         "risk_reasons": [],
         "activation_head": "5db93f26a56b340f829a2f6a1deb4e849cc7885e",
         "started_at": "2026-11-06T22:06:25.578287Z",
-        "updated_at": "2026-11-06T22:31:52.444586Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-06T22:33:35.543642Z",
+        "checkpoint": {
+          "stage": "batch_development",
+          "requires_user": false,
+          "summary": "Isolated inventory 38 tests, coverage 6 tests, cross-day copy recovery 13 tests, DB-gap/replay API 4 tests and batch/single pagination 18 tests passed in focused runs. Existing LLCR dataset integration now being added to fulfill batch 3 rather than narrowing supported categories. Complete plan retained in docs/operational/report_automation_plan_20261107.md. Worktree changes uncommitted; final focused review, QA, browser and native Word acceptance remain. No real-file writes or push.",
+          "status": "running",
+          "task_id": "TASK_REPORT_BATCH_ASSEMBLY_20261107",
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1
+        },
         "report": null
       }
     }
