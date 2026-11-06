@@ -21,10 +21,11 @@ function loadingContext(projectId: string): EditorContext {
 }
 
 /** Matrix session data loads separately; folder/output preparation belongs to Workbench. */
-export function useMatrixEditorContext(projectId: string) {
+export function useMatrixEditorContext(projectId: string, standalone = false) {
   const [context, setContext] = useState(() => loadingContext(projectId));
   const [reload, setReload] = useState(0);
   useEffect(() => {
+    if (standalone) {setContext({...loadingContext(projectId), loading:false}); return;}
     let active = true;
     setContext(loadingContext(projectId));
     void Promise.all([
@@ -43,7 +44,7 @@ export function useMatrixEditorContext(projectId: string) {
       }
     });
     return () => { active = false; };
-  }, [projectId, reload]);
+  }, [projectId, reload, standalone]);
 
   return {
     ...(context.projectId === projectId ? context : loadingContext(projectId)),

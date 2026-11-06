@@ -24,58 +24,39 @@ the base number's annual sheet. Revalidate the confirmed target/base state under
 transaction; a missing base, duplicate target, or stale row blocks the write. An associated append
 never replaces the base row.
 
-## Temporary-project formal registration
+## Request materials and independent planning
 
-An active no-LTR Project can apply for a formal number from its Workbench without
-creating another Project or returning to Intake. The internal `project_id`, Matrix
-drafts/authority, fee records, source materials and reports remain attached to the
-same aggregate. Conversion does not create folders or start public-drive sync.
+New Project now uses **Save materials**, not Create Temporary Project. The Settings
+Temporary materials folder must be an existing ordinary directory. A preview lists
+the original email/application and attachments and an editable email-derived folder
+name. Saving exclusively creates that child folder and copies originals; it never
+merges with an existing folder, clears Intake, applies an LTR, or creates a Project.
+On copy failure, retained partial files are reported and never silently deleted.
+Intake editing/autosave and the formal Apply LTR workflow remain unchanged.
 
-Creating a temporary project from Intake freezes the complete current editor
-fields, sample rows, requested-testing rows and project setup into a versioned
-`ProjectTemporaryContext.intake_snapshot_json`. The click captures visible source
-values plus current editor refs immediately; it does not wait for draft autosave,
-confirm the original case or write it back. Human notes stay separate. Nullable
-additive migration preserves legacy rows. The project stays DRAFT and owns its
-projected ApplicationForm/SampleInfo; unresolved optional planning quantities
-stay in the raw snapshot and do not block creation. The frozen JSON is portable
-without its provenance case or source asset rows.
+Tools provides the shared Matrix editor with import/export, groups, steps, schedule,
+points and method-version checking, and associated editable Fee Evaluation using the
+same fee rules and workbook format. Matrix/Fee values live in the current browser
+session; exports retain file copies. No hidden Project, Matrix authority, Fee authority,
+or business database records are created. Matrix changes keep the prior fee estimate
+and edits until explicit recalculation. Project-specific record/report publication
+and lifecycle actions are not exposed by this independent workspace.
 
-Legacy temporary projects without snapshots recover only through explicitly
-linked source asset IDs and the corresponding selected-form cases. A case bound
-to another project or rejected is excluded; title similarity and newest-case
-selection are not authority. Identical complete facts can share provenance, but
-differing candidates require an explicit comparison/selection or explicit manual
-continuation. Preparation is read-only. Confirmed Basic Information and current
-manual form values win; source facts fill absent `None` fields without replacing
-explicit blanks, existing form identity or sample rows. A selected full legacy
-snapshot is frozen on the same project only during confirmed registration.
+Legacy no-LTR projects remain stored, but are excluded from normal Projects catalogs.
+Their former workspace URLs display a read-only recovery screen. Users can download
+all retained Matrix/Fee edit data, or explicitly replace the Tools session with the
+retained Matrix and safely matched pricing edits. Missing groups, steps and inactive
+fees are reported as retained but not imported; an incomplete Matrix does not block
+recovery-file download. Formal registration proceeds through normal Intake.
 
-`/api/projects/{project_id}/ltr-registration` prepares current confirmed Basic
-Information (then draft/form/temporary fallback), previews the actual proposed
-number and workbook row, and commits the acknowledged intent. Specified existing
-numbers use the existing replacement comparison; associated suffixes retain their
-base row. Another local current owner blocks conversion; historical associations
-are not silently transferred. Closed/hidden or previously formal inconsistent
-projects must be reopened/restored/corrected first.
+Historical `ProjectTemporaryContext.intake_snapshot_json`, conversion API and
+`ltr_registration` journals are retained for data compatibility and interrupted
+historical write recovery. They are not current creation/conversion UI. The old
+journal still records the original project and frozen workbook intent; this change
+neither rewrites nor removes those records, source material, or existing authority.
 
-A dedicated local `ltr_registration` journal retains the original project,
-metadata/source signature, workbook path, number decision and preview token.
-Under the workbook lock, number and row fingerprints are revalidated before any
-mutation; the actual complete A:Q result is journaled before Save. If Excel saves
-but the local transaction fails, retry compares the original physical row and
-only completes the missing local binding. A different row, duplicate number,
-workbook location or changed project source blocks recovery; retry never silently
-allocates another number. The local commit is completed before returning success,
-and the journal remains available across request/process failures.
-Before the first workbook mutation, the selected legacy source is revalidated
-inside the workbook lock. Once a workbook write may have happened, recovery uses
-the complete frozen intent rather than depending on later edits or removal of
-the original Intake case; current project authority changes remain protected.
-
-Validation uses disposable SQLite stores and isolated workbook boundaries; no real
-public LTR workbook is mutated by automated tests. Existing Basic Information
-versions remain immutable and are not re-confirmed by conversion.
+Validation uses isolated directories and SQLite stores. No real public workbook or
+business project folder is changed by the tests.
 
 ## Domain ownership
 

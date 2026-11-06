@@ -17,6 +17,8 @@ import { deriveReadonlyApiErrorMessage } from "../project-lifecycle/projectLifec
 export type MatrixDraftSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 type MatrixDraftPersistenceOptions = {
+  saveDraft?: typeof saveMatrixEditorSessionDraft;
+  standalone?: boolean;
   currentPayload: ProjectMatrixDraftSaveRequest;
   currentSignature: string;
   draftLoading: boolean;
@@ -52,7 +54,7 @@ function parseRequestError(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function buildSessionDraftSaveRequest(
+export function buildSessionDraftSaveRequest(
   currentPayload: ProjectMatrixDraftSaveRequest,
   sourcePreview: MatrixPreviewResponse | null,
   expectedActiveConfirmedMatrixId: string | null,
@@ -106,6 +108,8 @@ function buildSessionDraftSaveRequest(
 }
 
 export function useMatrixDraftPersistence({
+  saveDraft = saveMatrixEditorSessionDraft,
+  standalone = false,
   currentPayload,
   currentSignature,
   draftLoading,
@@ -190,11 +194,11 @@ export function useMatrixDraftPersistence({
     }
     if (
       !hasUnsavedChanges ||
-      !projectId.trim() ||
-      (!activeConfirmedMatrixId && (!sourceImportId || !sourceSnapshotId) && !hasManualMatrixContent) ||
+      (!standalone && !projectId.trim()) ||
+      (!standalone && !activeConfirmedMatrixId && (!sourceImportId || !sourceSnapshotId) && !hasManualMatrixContent) ||
       draftLoading ||
       Boolean(readonlyMessage) ||
-      Boolean(saveBlockedReason) ||
+      (!standalone && Boolean(saveBlockedReason)) ||
       recoveryInProgress ||
       cancellingRef.current ||
       isCancelling
@@ -214,7 +218,7 @@ export function useMatrixDraftPersistence({
       durationAuthoritiesRef.current,
     );
     setSaveState("dirty");
-    autosaveTimeoutRef.current = window.setTimeout(() => {
+    const saveCurrentDraft = () => {
       if (cancellingRef.current) {
         return;
       }
@@ -222,7 +226,7 @@ export function useMatrixDraftPersistence({
       autosaveAbortControllerRef.current?.abort();
       const autosaveAbortController = new AbortController();
       autosaveAbortControllerRef.current = autosaveAbortController;
-      const saveRequest = saveMatrixEditorSessionDraft(projectId, request, {
+      const saveRequest = saveDraft(projectId, request, {
         signal: autosaveAbortController.signal,
       })
         .then((response) => {
@@ -256,7 +260,9 @@ export function useMatrixDraftPersistence({
           }
         });
       autosaveInFlightRef.current = saveRequest;
-    }, AUTOSAVE_DELAY_MS);
+    };
+    if (standalone) saveCurrentDraft();
+    else autosaveTimeoutRef.current = window.setTimeout(saveCurrentDraft, AUTOSAVE_DELAY_MS);
     return () => {
       if (autosaveTimeoutRef.current !== null) {
         window.clearTimeout(autosaveTimeoutRef.current);
@@ -264,6 +270,7 @@ export function useMatrixDraftPersistence({
       }
     };
   }, [
+    standalone,
     activeConfirmedMatrixId,
     activeConfirmedRevision,
     currentSignature,
@@ -418,7 +425,7 @@ export function useMatrixDraftPersistence({
     setSaveState("saving");
     const controller = new AbortController();
     autosaveAbortControllerRef.current = controller;
-    const saveRequest = saveMatrixEditorSessionDraft(projectId, request, { signal: controller.signal });
+    const saveRequest = saveDraft(projectId, request, { signal: controller.signal });
     autosaveInFlightRef.current = saveRequest;
     try {
       const response = await saveRequest;
@@ -504,7 +511,23 @@ export function useMatrixDraftPersistence({
     }
   };
 
+  const retainPlanning = async (): Promise<boolean> => {
+    if (!standalone) return false;
+    invalidatePendingAutosave();
+    try {
+      const response = await saveDraft(projectId, buildSessionDraftSaveRequest(
+        currentPayloadRef.current, sourcePreviewRef.current, null, null,
+        sourceImportId, sourceSnapshotId, durationAuthoritiesRef.current));
+      acceptSavedDraft(response, currentSignatureRef.current);
+      return true;
+    } catch (error) {
+      setSaveState('error'); onErrorRef.current(parseRequestError(error, 'Unable to retain this Tools Matrix. Export it before leaving.'));
+      return false;
+    }
+  };
+
   return {
+    retainPlanning,
     acceptImportedDraft,
     acceptNoChange,
     activeAuthoritySourceImportId,

@@ -1,3 +1,4 @@
+import { SaveMaterialsDialog } from "../features/intake/SaveMaterialsDialog";
 import {
   useEffect,
   useMemo,
@@ -9,7 +10,6 @@ import {
 import {
   ApiRequestError,
   ensureNewProjectApplicationDraft,
-  createTemporaryProject,
   getIntakeCaseReview,
   getIntakePackageDetail,
   getNewProjectCompletionOptions,
@@ -27,8 +27,7 @@ import {
   type IntakePackageImport,
   type IntakePrecheckLookupOptions,
   type IntakeAsset,
-  type NewProjectCompletionOptions,
-  type CreateTemporaryProjectInput
+  type NewProjectCompletionOptions
 } from "../api/client";
 import { NewProjectApplicationEditor } from "../features/new-project/NewProjectApplicationEditor";
 import {
@@ -147,8 +146,8 @@ export function IntakeInboxPage({
     labPerformingTests: "Dongguan"
   });
   const [completionSetupError, setCompletionSetupError] = useState<string | null>(null);
-  const [temporaryCreating, setTemporaryCreating] = useState(false);
-  const [temporaryError, setTemporaryError] = useState<string | null>(null);
+  const [materialsOpen, setMaterialsOpen] = useState(false);
+
   const fieldValuesRef = useRef<Record<string, string>>({});
   const sampleRowsRef = useRef<PrecheckSampleRow[]>([]);
   const requestedTestingRowsRef = useRef<PrecheckRequestedTestingRow[]>([]);
@@ -895,40 +894,6 @@ export function IntakeInboxPage({
     }
   }
 
-  async function handleCreateTemporaryProject(): Promise<void> {
-    if (intakeInteractionLocked) {
-      return;
-    }
-    setTemporaryCreating(true);
-    setTemporaryError(null);
-    try {
-      const created = await createTemporaryProject(
-        temporaryProjectPayload({
-          packageImport,
-          directWordName,
-          fieldValues: {
-            ...Object.fromEntries((activeCase?.fields ?? []).map(field => [field.key, editableValue(field.value)])),
-            ...fieldValuesRef.current,
-          },
-          sampleRows: sampleRowsRef.current,
-          requestedTestingRows: requestedTestingRowsRef.current,
-          setupValues: setupValuesRef.current,
-          visibleAttachmentAssets,
-          sourceCaseId: activeCase?.case_id ?? null,
-          selectedFormAssetId: activeCase?.selected_form_asset_id ?? null
-        })
-      );
-      onSessionChange(EMPTY_INTAKE_SESSION);
-      onProjectCreated(created.project_id);
-    } catch (error) {
-      setTemporaryError(
-        error instanceof Error ? error.message : "Unable to create temporary project."
-      );
-    } finally {
-      setTemporaryCreating(false);
-    }
-  }
-
   return (
     <section className="intake-workflow new-project-single-page">
       <div className="new-project-single-grid">
@@ -1048,7 +1013,7 @@ export function IntakeInboxPage({
         </main>
       </div>
 
-      {temporaryError ? <p className="intake-error">{temporaryError}</p> : null}
+      {materialsOpen && packageImport && <SaveMaterialsDialog packageId={packageImport.package_id} onClose={() => setMaterialsOpen(false)} />}
 
       {specifiedLtrWorkbookPreview ? (
         <SpecifiedLtrWorkbookAuthorityPreviewPanel
@@ -1083,7 +1048,6 @@ export function IntakeInboxPage({
             Boolean(activeCase.confirmed_project_id)
           }
           missingKeys={setupMissingKeys}
-          temporaryCreating={temporaryCreating}
           values={setupValues}
           onChange={(values) => {
             if (values.projectLeader !== setupValuesRef.current.projectLeader) leaderTouched.current = true;
@@ -1093,18 +1057,19 @@ export function IntakeInboxPage({
             setCompletionSetupError(null);
           }}
           onComplete={() => void completeProject()}
-          onCreateTemporaryProject={() => void handleCreateTemporaryProject()}
+          onSaveMaterials={() => setMaterialsOpen(true)}
         />
       ) : (
         <div className="step-footer new-project-completion-dock new-project-completion-dock-empty">
           <span />
           <button
             className="secondary-action"
-            disabled={temporaryCreating || completionLoading || editorLoading || localDuplicateActive}
+            disabled={!packageImport || completionLoading || editorLoading || localDuplicateActive}
+            title={!packageImport ? "Import an email or application form first." : "Save the imported email and attachments"}
             type="button"
-            onClick={() => void handleCreateTemporaryProject()}
+            onClick={() => setMaterialsOpen(true)}
           >
-            {temporaryCreating ? "Creating..." : "Create Temporary Project"}
+            Save materials
           </button>
         </div>
       )}
@@ -1215,69 +1180,6 @@ function projectSetupPayload(
   if (preserveBlankLeader && !values.projectLeader.trim()) payload.project_leader = '';
   assignText(payload, "lab_performing_tests", values.labPerformingTests);
   return payload;
-}
-
-function temporaryProjectPayload({
-  packageImport,
-  directWordName,
-  fieldValues,
-  sampleRows,
-  requestedTestingRows,
-  setupValues,
-  visibleAttachmentAssets,
-  sourceCaseId,
-  selectedFormAssetId
-}: {
-  packageImport: IntakePackageImport | null;
-  directWordName: string | null;
-  fieldValues: Record<string, string>;
-  sampleRows: PrecheckSampleRow[];
-  requestedTestingRows: PrecheckRequestedTestingRow[];
-  setupValues: NewProjectSetupConfirmationValues;
-  visibleAttachmentAssets: IntakeAsset[];
-  sourceCaseId: string | null;
-  selectedFormAssetId: string | null;
-}): CreateTemporaryProjectInput {
-  const requestSummary = firstText(
-    packageImport?.subject,
-    packageImport?.source_original_name,
-    directWordName,
-    "Temporary planning project"
-  );
-  const requestor = firstText(
-    fieldValues.requester,
-    fieldValues.requestor,
-    packageImport?.sender_name,
-    packageImport?.sender_email
-  );
-  return {
-    request_summary: requestSummary,
-    sample_description: firstText(setupValues.sampleDescription, requestSummary),
-    test_item: firstText(setupValues.testItem, requestedTestingText(requestedTestingRows)),
-    requestor,
-    source_asset_ids: [...new Set([...visibleAttachmentAssets.map((asset) => asset.asset_id), ...(selectedFormAssetId ? [selectedFormAssetId] : [])])],
-    intake_snapshot: {
-      version: 1,
-      fields: { ...fieldValues },
-      samples: sampleRows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value ?? '')]))),
-      requested_testing_rows: requestedTestingRows.map(row => ({ ...row })),
-      project_setup: {
-        ltr_mode: setupValues.ltrMode, specified_ltr_number: setupValues.specifiedLtrNumber,
-        test_item: setupValues.testItem, sample_description: setupValues.sampleDescription,
-        test_type_in_sheet: setupValues.testTypeInSheet, project_leader: setupValues.projectLeader,
-        lab_performing_tests: setupValues.labPerformingTests,
-      },
-      source_case_id: sourceCaseId,
-      selected_form_asset_id: selectedFormAssetId,
-    },
-    notes: packageImport
-      ? firstText(
-          packageImport.source_original_name,
-          packageImport.subject,
-          packageImport.package_id
-        )
-      : directWordName
-  };
 }
 
 function firstText(...values: Array<string | null | undefined>): string | null {

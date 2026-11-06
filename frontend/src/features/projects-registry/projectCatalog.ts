@@ -16,7 +16,7 @@ export function buildProjectCatalog(registry: ProjectRegistryLifecycleRow[], mem
     if (member.project_id && !member.is_history) byProject.set(member.project_id, [...(byProject.get(member.project_id) ?? []), member]);
   }
   const rows: ProjectCatalogRow[] = registry
-    .filter(entry => !entry.row.registry_state || entry.row.registry_state === "active")
+    .filter(entry => entry.row.display_project_id_kind !== "temporary" && (!entry.row.registry_state || entry.row.registry_state === "active"))
     .map(entry => ({ kind: "registered", key: `project:${entry.row.project_id}`, entry, members: byProject.get(entry.row.project_id) ?? [] }));
   for (const member of members) {
     // Only verified identities combine rows. Retained workspaces must not reappear through their folder entry.

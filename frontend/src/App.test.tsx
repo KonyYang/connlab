@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { listLegacyProjects, getLegacyProject } from "./api/legacyProjects";
-import { listProjectRegistryRows } from "./api/client";
-vi.mock("./api/client", async () => ({ ...await vi.importActual<typeof import("./api/client")>("./api/client"), listProjectRegistryRows: vi.fn(), getProjectLifecycle: vi.fn().mockRejectedValue(new Error("Lifecycle unavailable")) }));
+import { getProject, listProjectRegistryRows } from "./api/client";
+vi.mock("./api/client", async () => ({ ...await vi.importActual<typeof import("./api/client")>("./api/client"), getProject: vi.fn(), listProjectRegistryRows: vi.fn(), getProjectLifecycle: vi.fn().mockRejectedValue(new Error("Lifecycle unavailable")) }));
 import * as libraryApi from "./api/projectLibrary";
 
 vi.mock("./api/projectLibrary", async () => ({
@@ -19,6 +19,10 @@ vi.mock("./pages/ProjectMatrixEditorPage", () => ({ ProjectMatrixEditorPage: ({ 
 beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear(); localStorage.clear();
+  vi.mocked(getProject).mockImplementation(async projectId => ({
+    project_id: projectId, product_name: "Connector", requestor: "Lab",
+    status: "active", is_legacy_temporary: false,
+  }));
   vi.mocked(listProjectRegistryRows).mockResolvedValue([]);
   vi.mocked(libraryApi.getLibraryRuntime).mockResolvedValue({ library_root: "D:/test-library", projects_root: "D:/test-library/projects", data_root: "D:/test-library/data", database_path: "D:/test-library/data/connlab.sqlite3", configured: true, format_version: 1 });
   vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [] });

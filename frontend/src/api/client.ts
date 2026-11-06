@@ -45,6 +45,7 @@ export function resumeProjectFolderGeneration(projectId: string, operationId: st
 }
 
 export type Project = {
+  is_legacy_temporary?: boolean;
   library_member_id?: string | null;
   project_id: string;
   registry_state?: "active" | "trash" | "history";
@@ -1161,6 +1162,7 @@ export type ExternalResourceType =
   | "project_folder_template"
   | "project_output_root"
   | "official_public_drive_root"
+  | "temporary_materials_root"
   | "standard_record_excel"
   | "equipment_calibration_excel"
   | "ir_dwv_record_template";

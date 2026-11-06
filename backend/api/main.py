@@ -24,6 +24,8 @@ from backend.api.routes_folder import router as folder_router
 from backend.api.routes_project_file_encryption import (
     router as project_file_encryption_router,
 )
+from backend.api.routes_tools_matrix import router as tools_matrix_router
+from backend.api.routes_intake_materials import router as intake_materials_router
 from backend.api.routes_intake import router as intake_router
 from backend.api.routes_intake_review import router as intake_review_router
 from backend.api.routes_lookup import router as lookup_router
@@ -226,6 +228,7 @@ _include_project_router(diagnostics_router)
 _include_project_router(folder_router)
 _include_project_router(project_file_encryption_router)
 _include_project_router(intake_router)
+_include_project_router(intake_materials_router)
 _include_project_router(intake_review_router)
 _include_project_router(lookup_router)
 _include_project_router(lookup_options_router)
@@ -259,6 +262,7 @@ _include_project_router(test_report_draft_router)
 _include_project_router(report_workspace_router)
 _include_project_router(report_authoring_router)
 _include_project_router(tools_router)
+_include_project_router(tools_matrix_router)
 app.include_router(project_library_router)
 app.include_router(tools_legacy_projects_router)
 app.include_router(legacy_projects_router)

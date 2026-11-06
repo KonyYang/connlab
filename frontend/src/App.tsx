@@ -1,3 +1,4 @@
+import { LegacyPlanningBoundary } from './features/tools/LegacyPlanningBoundary';
 import { lazy, Suspense, useEffect, useRef, useState, type ReactElement } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import { RouteLoadBoundary } from "./components/layout/RouteLoadBoundary";
@@ -392,6 +393,8 @@ export default function App(): ReactElement {
           }}
         />
       )}
+      {isProjectWorkspaceRoute(route) && 'projectId' in route ? <LegacyPlanningBoundary key={route.projectId} projectId={route.projectId}
+        onTools={()=>navigate('/tools?planning=matrix')} onIntake={()=>navigate('/intake')}>
       {route.name === "projectDetail" && (
         <ProjectWorkbenchPage
           projectId={route.projectId}
@@ -454,6 +457,7 @@ export default function App(): ReactElement {
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
         />
       )}
+      </LegacyPlanningBoundary> : null}
       {route.name === "settings" && <SettingsPage />}
       {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} />}
       {route.name === "projectLibraryImport" && <ProjectLibraryImport onOpenSettings={() => navigate("/settings")} onBack={() => navigate("/projects")} onViewLibrary={() => navigate("/projects")} onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}`)} onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} onLegacyPreview={() => navigate(`/projects/import/link${importSuffix}`)} />}

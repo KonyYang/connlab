@@ -37,7 +37,7 @@ describe("ToolsPage", () => {
   it("orders the tool actions by the laboratory workflow", async () => {
     render(<ToolsPage />);
     expect(screen.getAllByRole("button").map(button => button.textContent?.trim())).toEqual([
-      "Updated Report Equipments", "Mechanical Summary", "Drawing T-rise",
+      "Matrix and Fee planning", "Updated Report Equipments", "Mechanical Summary", "Drawing T-rise",
       "Generate Customer Report", "Encrypt File", "Batch Encrypt Files",
     ]);
     fireEvent.change(screen.getByLabelText("Select mechanical test folder"), {

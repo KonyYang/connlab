@@ -9,11 +9,10 @@ type NewProjectCompletionDockProps = {
   completionText: string;
   disabled: boolean;
   missingKeys: Set<string>;
-  temporaryCreating?: boolean;
   values: NewProjectSetupConfirmationValues;
   onChange: (values: NewProjectSetupConfirmationValues) => void;
   onComplete: () => void;
-  onCreateTemporaryProject?: () => void;
+  onSaveMaterials?: () => void;
 };
 
 export function NewProjectCompletionDock({
@@ -23,11 +22,10 @@ export function NewProjectCompletionDock({
   completionText,
   disabled,
   missingKeys,
-  temporaryCreating = false,
   values,
   onChange,
   onComplete,
-  onCreateTemporaryProject
+  onSaveMaterials
 }: NewProjectCompletionDockProps): ReactElement {
   const update = (patch: Partial<NewProjectSetupConfirmationValues>) =>
     onChange({ ...values, ...patch });
@@ -111,14 +109,14 @@ export function NewProjectCompletionDock({
       ) : null}
 
       <div className="new-project-dock-summary">
-        {onCreateTemporaryProject ? (
+        {onSaveMaterials ? (
           <button
             className="secondary-action"
-            disabled={temporaryCreating || completionLoading || disabled}
+            disabled={completionLoading || disabled}
             type="button"
-            onClick={onCreateTemporaryProject}
+            onClick={onSaveMaterials}
           >
-            {temporaryCreating ? "Creating..." : "Create Temporary Project"}
+            Save materials
           </button>
         ) : null}
 

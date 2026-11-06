@@ -31,6 +31,7 @@ type MatrixImportCommit = {
 };
 
 type UseMatrixImportWorkflowOptions = {
+  standaloneImport?: (preview: MatrixPreviewResponse) => Promise<MatrixImportCommitResponse>;
   projectId: string;
   readonlyMessage: string | null;
   onCommitted: (result: MatrixImportCommit) => void;
@@ -110,6 +111,7 @@ function importLocatorSnapshotsMatch(
 }
 
 export function useMatrixImportWorkflow({
+  standaloneImport,
   projectId,
   readonlyMessage,
   onCommitted,
@@ -230,7 +232,7 @@ export function useMatrixImportWorkflow({
     try {
       const nextPreview = await previewProjectTestPlanMatrixFromPath({
         source_path: sourcePath,
-        project_id: projectId,
+        project_id: standaloneImport ? undefined : projectId,
       });
       setPreview(nextPreview);
       setPreviewPdfToken(nextPreview.preview_pdf_token ?? null);
@@ -281,6 +283,7 @@ export function useMatrixImportWorkflow({
   };
 
   const chooseSource = async (): Promise<void> => {
+    if (standaloneImport) {openUploadPicker(); return;}
     if (readonlyMessage) {
       setError(readonlyMessage);
       return;
@@ -368,14 +371,14 @@ export function useMatrixImportWorkflow({
       return null;
     }
     const nextPreview = importFile
-      ? await previewProjectTestPlanMatrixFromUpload(importFile, projectId, {
+      ? await previewProjectTestPlanMatrixFromUpload(importFile, standaloneImport ? undefined : projectId, {
           pageNumber: parsedLocator.pageNumber,
           pageTableIndex: parsedLocator.tableIndex,
           tableTextQuery: parsedLocator.snapshot.keyword || null,
         })
       : await previewProjectTestPlanMatrixFromPath({
           source_path: importSourcePath as string,
-          project_id: projectId,
+          project_id: standaloneImport ? undefined : projectId,
           page_number: parsedLocator.pageNumber,
           page_table_index: parsedLocator.tableIndex,
           table_text_query: parsedLocator.snapshot.keyword || null,
@@ -417,7 +420,7 @@ export function useMatrixImportWorkflow({
   ): Promise<void> => {
     let response: MatrixImportCommitResponse;
     try {
-      response = await commitMatrixImport(projectId, {
+      response = standaloneImport ? await standaloneImport(nextPreview) : await commitMatrixImport(projectId, {
         source_document_path: nextPreview.source_document_path,
         source_document_name: nextPreview.source_document_name,
         source_format: nextPreview.source_format,
@@ -525,7 +528,7 @@ export function useMatrixImportWorkflow({
     setImportingPreview(true);
     setOpeningPreview(true);
     try {
-      const nextPreview = await previewProjectTestPlanMatrixFromUpload(file, projectId);
+      const nextPreview = await previewProjectTestPlanMatrixFromUpload(file, standaloneImport ? undefined : projectId);
       setPreview(nextPreview);
       setPreviewPdfToken(nextPreview.preview_pdf_token ?? null);
       applyPreviewLocator(nextPreview);

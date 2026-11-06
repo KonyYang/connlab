@@ -137,6 +137,8 @@ class ExternalResourceService:
         path = resource.path
         if resource.resource_type is ExternalResourceType.PROJECT_FOLDER_TEMPLATE:
             return _folder_template_failure(path)
+        if resource.resource_type is ExternalResourceType.TEMPORARY_MATERIALS_ROOT:
+            return _directory_failure(path, "Temporary materials folder")
         if resource.resource_type is ExternalResourceType.PROJECT_OUTPUT_ROOT:
             return _directory_failure(path, "Project output root")
         if resource.resource_type is ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT:
