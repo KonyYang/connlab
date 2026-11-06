@@ -92,3 +92,30 @@ def test_complete_folder_api_returns_named_editable_workbook():
         assert book['Contact Retention']['J8'].value==2890
         assert book['Contact Retention']['J10'].value==2930
     finally:book.close()
+
+
+@pytest.mark.office_integration
+def test_paginated_pdf_keeps_curve_above_second_page_statistics():
+    from reportlab.pdfgen import canvas
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+    pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
+    output=BytesIO(); page=canvas.Canvas(output)
+    for i,line in enumerate(['DL-2026-09-031','Retention Force','Fmax','1 #1 2890 11.6','2 #2 2970 11.5']):
+        page.drawString(35,790-i*18,line)
+    page.showPage();page.setFont('STSong-Light',12)
+    page.drawString(35,720,'序列曲线:')
+    page.setFillColorRGB(1,0,0);page.rect(50,500,250,160,fill=1,stroke=0)
+    page.setFillColorRGB(0,0,0);page.drawString(35,450,'数据统计:')
+    page.setFont('Helvetica',12);page.drawString(35,420,'n = 2');page.save()
+    sources=[('DL-2026-09-031 retention.pdf',output.getvalue())]
+    analysis=analyze_folder(sources)
+    assert analysis['ready']
+    book=load_workbook(BytesIO(generate_folder_workbook(sources,analysis)))
+    try:
+        images=book['Contact Retention']._images
+        assert len(images)==2
+        with PILImage.open(BytesIO(images[1]._data())) as image:
+            red_pixels=sum(count for count,(r,g,b) in image.convert('RGB').getcolors(image.width*image.height) if r>220 and g<30 and b<30)
+        assert red_pixels>1000, 'The second-page curve must not be cropped above the statistics heading'
+    finally:book.close()

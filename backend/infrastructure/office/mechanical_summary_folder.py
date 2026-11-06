@@ -219,10 +219,11 @@ def _pdf_images(sheet, content, root, index):
     with pdfplumber.open(BytesIO(content)) as document:
         for p, page in enumerate(document.pages):
             words = page.extract_words()
-            headings = [w['top'] for w in words if '试验结果' in w['text'] or '数据统计' in w['text']]
+            headings = [w['top'] for w in words if any(label in w['text'] for label in ('试验结果', '序列曲线', '数据统计'))]
+            # A continuation page can start with the curve before its statistics.
             crop_top = max(0, min(headings)-4) if headings else 0
             # Preserve original curve pixels and instrument statistics. Remove only
-            # the introductory form above the first actual measurement heading.
+            # the introductory form above the first result, curve or statistics heading.
             content_bottoms = [w['bottom'] for w in words if crop_top <= w['top'] < page.height - 50]
             content_bottoms += [item['bottom'] for item in page.images if item['top'] >= crop_top]
             crop_bottom = min(page.height, max(content_bottoms) + 14) if content_bottoms else page.height
