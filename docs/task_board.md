@@ -329,7 +329,45 @@
       "closed_at": "2026-11-06T21:01:34.514404Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REPORT_BATCH_ASSEMBLY_20261107": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
+      "branch": "codex/report-batch-assembly-20261107",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_BATCH_ASSEMBLY_20261107",
+        "summary": "Report batch 3: controlled evidence inventory, Matrix coverage and one-copy batch assembly",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Read-only controlled project evidence inventory, Matrix coverage/conflicts, unified preview and atomic batch application of existing confirmed facts/results/photo assignments to one new working copy. Preserve existing sources/revisions/recovery; isolated testing only. No new result categories, temperature math, real-file writes, automatic publication or push.",
+        "scope_paths": [
+          "backend/application/report_authoring",
+          "backend/domain/report_authoring.py",
+          "backend/api/report_authoring_schemas.py",
+          "backend/api/routes_report_authoring.py",
+          "backend/api/dependencies.py",
+          "backend/infrastructure/office/report_authoring",
+          "backend/infrastructure/files",
+          "backend/interfaces",
+          "backend/infrastructure/storage/repositories/report_authoring.py",
+          "frontend/src/api/reportAuthoring.ts",
+          "frontend/src/api/reportAuthoringBatch.ts",
+          "frontend/src/features/report-workspace",
+          "tests",
+          "docs/operational"
+        ],
+        "risk_reasons": [],
+        "activation_head": "5db93f26a56b340f829a2f6a1deb4e849cc7885e",
+        "started_at": "2026-11-06T22:06:25.578287Z",
+        "updated_at": "2026-11-06T22:06:25.578287Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
