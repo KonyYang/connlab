@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_TEMPORARY_FORMAL_20261105",
-    "tier": "high_risk",
-    "subject": "ee9f7f990efb37f7e2f3e5c4596519eeb39eaeec",
-    "summary": "Register a formal LTR on an existing temporary project without losing its data",
+    "task_id": "TASK_MECHANICAL_FOLDER_20261106",
+    "tier": "standard",
+    "subject": "b5328e733c43919772ec6ace460755a0a8ce3711",
+    "summary": "Generate mechanical summaries from a folder with evidence-bound review and approved layouts",
     "disposition": "completed",
-    "decision_ref": "User requested closing the current task. Local close only under persistent no-push/no-publication instruction; latest draft and folder redesign remains discussion only.",
-    "closed_at": "2026-11-05T23:57:51.361754Z"
+    "decision_ref": "User explicitly requested closing the completed mechanical folder summary task. Preserve local commits; no push or publication under the persistent session preference.",
+    "closed_at": "2026-11-06T05:01:56.900493Z"
   },
   "retained_history": [
     {
@@ -291,112 +291,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly authorized local Close of completed LTR Excel Save fix and starting temporary-to-formal conversion; preserve commits, no push or publication.",
       "closed_at": "2026-11-05T14:15:10.369920Z"
+    },
+    {
+      "task_id": "TASK_TEMPORARY_FORMAL_20261105",
+      "tier": "high_risk",
+      "subject": "ee9f7f990efb37f7e2f3e5c4596519eeb39eaeec",
+      "summary": "Register a formal LTR on an existing temporary project without losing its data",
+      "disposition": "completed",
+      "decision_ref": "User requested closing the current task. Local close only under persistent no-push/no-publication instruction; latest draft and folder redesign remains discussion only.",
+      "closed_at": "2026-11-05T23:57:51.361754Z"
     }
   ],
-  "tasks": {
-    "TASK_MECHANICAL_FOLDER_20261106": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\mechanical-folder-summary\\connlab",
-      "branch": "feature/mechanical-folder-summary",
-      "resources": [],
-      "integrated_head": "6f7cfcffcab5f884ec173d99a7b38fcf5619aff9",
-      "task": {
-        "task_id": "TASK_MECHANICAL_FOLDER_20261106",
-        "summary": "Generate mechanical summaries from a folder with evidence-bound review and approved layouts",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Folder discovery, source analysis, unresolved mapping input, preserved raw data and curves, approved result tables and eight metadata fields; validate isolated 031/032 copies.",
-        "scope_paths": [
-          "backend/api/routes_tools_mechanical_summary.py",
-          "backend/application/mechanical_summary_folder.py",
-          "backend/infrastructure/files/mechanical_summary_folder.py",
-          "backend/infrastructure/office/mechanical_summary_folder.py",
-          "docs/mechanical_summary_tool.md",
-          "frontend/src/api/mechanicalSummary.ts",
-          "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
-          "frontend/src/features/tools/MechanicalSummaryTool.tsx",
-          "frontend/src/features/tools/mechanicalSummaryReview.ts",
-          "frontend/src/pages/ToolsPage.test.tsx",
-          "frontend/src/tools.css",
-          "tests/integration/test_mechanical_summary_folder_output.py",
-          "tests/unit/test_mechanical_summary_folder.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "4c92bf81942fca8084ffdc73cd9d210db00f1abe",
-        "started_at": "2026-11-06T00:12:40.232332Z",
-        "updated_at": "2026-11-06T01:10:43.577194Z",
-        "checkpoint": null,
-        "report": {
-          "task_id": "TASK_MECHANICAL_FOLDER_20261106",
-          "changed_paths": [
-            "backend/api/routes_tools_mechanical_summary.py",
-            "backend/application/mechanical_summary_folder.py",
-            "backend/infrastructure/files/mechanical_summary_folder.py",
-            "backend/infrastructure/office/mechanical_summary_folder.py",
-            "docs/mechanical_summary_tool.md",
-            "frontend/src/api/mechanicalSummary.ts",
-            "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
-            "frontend/src/features/tools/MechanicalSummaryTool.tsx",
-            "frontend/src/features/tools/mechanicalSummaryReview.ts",
-            "frontend/src/pages/ToolsPage.test.tsx",
-            "frontend/src/tools.css",
-            "tests/integration/test_mechanical_summary_folder_output.py",
-            "tests/unit/test_mechanical_summary_folder.py"
-          ],
-          "summary": "Folder selection now recognizes mechanical records, requests only missing project-specific confirmations, and generates an editable XLSX preserving effective source data, curves, approved report tables and eight information fields.",
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "Affected Python matrix: 38 passed. Final pagination fix: all 4 folder output/API tests passed, including new native Excel curve-pixel regression."
-            },
-            {
-              "status": "passed",
-              "summary": "Frontend: 22 tests passed; TypeScript and Vite production build passed. No frontend edits after validation."
-            },
-            {
-              "status": "passed",
-              "summary": "Final committed writer validated on 031/032 copies: 11 sheets, 175 raw cells, 36 recalculated formulas, 88 metadata fields, 18 images; native XLS curve pixels unchanged; all 30 original source hashes unchanged. All sheets rendered; paginated 031 hold curve rechecked."
-            },
-            {
-              "status": "passed",
-              "summary": "Real browser: 032 folder review and download, reload and automatic repeat download, 031 mapping isolation, desktop and 594px layouts. Actual Windows API download regression passed. Final pagination-only change covered by native output regression."
-            },
-            {
-              "status": "passed",
-              "summary": "Exact diff reviewed, no project mappings hardcoded in production, original APIs retained, sources read-only, git diff --check clean."
-            }
-          ],
-          "version": 1,
-          "scope_ok": true,
-          "schema": "connlab.sol-task-report",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "b5328e733c43919772ec6ace460755a0a8ce3711",
-            "primary_before": "e63f64c679710117ca46b5139de0dfda5760ec1e",
-            "integrated_head": "6f7cfcffcab5f884ec173d99a7b38fcf5619aff9",
-            "recovered": false
-          },
-          "subject": "b5328e733c43919772ec6ace460755a0a8ce3711",
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "summary": "Focused separate pass by same agent, not an independent agent. Reviewed provenance, original data and native formulas, missing fields, source/project binding, Office cleanup and UI lifecycle; bounded findings fixed."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Same-agent QA on committed state: bounded complete test matrix, browser download and real-project copy checks; final pagination finding received targeted regression and rerender."
-            },
-            "developer": {
-              "status": "passed",
-              "summary": "Same agent implemented in scoped worktree with coherent RED/GREEN regression slices."
-            }
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
