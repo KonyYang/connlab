@@ -302,7 +302,45 @@
       "closed_at": "2026-11-05T23:57:51.361754Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_MATERIALS_TOOLS_20261106": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab\\tmp\\materials-tools-worktree",
+      "branch": "codex/materials-tools-20261106",
+      "resources": [
+        "materials-tools-isolated-tests"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_MATERIALS_TOOLS_20261106",
+        "summary": "Replace temporary-project creation with material folders and standalone Matrix/Fee tools",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Preserve existing Intake autosave and formal registration. Replace temporary creation UI with safe material saving and configurable directory/editable email-derived folder name. Move temporary Matrix editing and linked Fee Evaluation into Tools without database-managed projects. Retain existing user data; no push or publication; isolated tests only.",
+        "scope_paths": [
+          "backend/api",
+          "backend/application",
+          "backend/domain",
+          "backend/infrastructure",
+          "backend/shared",
+          "frontend/src",
+          "tests",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/materials_tools_plan.md"
+        ],
+        "risk_reasons": [
+          "Decouple project-bound Matrix and Fee workflows while preserving formal-project authority",
+          "Filesystem material copying and legacy temporary-project entry retirement require safety checks"
+        ],
+        "activation_head": "037366f20706be433d041d4e6f3e95457af8d91e",
+        "started_at": "2026-11-06T14:45:06.834531Z",
+        "updated_at": "2026-11-06T14:45:06.834531Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
