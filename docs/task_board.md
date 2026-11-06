@@ -308,25 +308,24 @@
         "route": "sol_build_review_qa",
         "scope": "Folder discovery, source analysis, unresolved mapping input, preserved raw data and curves, approved result tables and eight metadata fields; validate isolated 031/032 copies.",
         "scope_paths": [
-          "backend/application/mechanical_summary.py",
+          "backend/api/routes_tools_mechanical_summary.py",
           "backend/application/mechanical_summary_folder.py",
           "backend/infrastructure/files/mechanical_summary_folder.py",
           "backend/infrastructure/office/mechanical_summary_folder.py",
-          "backend/api/routes_tools_mechanical_summary.py",
+          "docs/mechanical_summary_tool.md",
           "frontend/src/api/mechanicalSummary.ts",
-          "frontend/src/features/tools/MechanicalSummaryTool.tsx",
           "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
+          "frontend/src/features/tools/MechanicalSummaryTool.tsx",
           "frontend/src/features/tools/mechanicalSummaryReview.ts",
           "frontend/src/pages/ToolsPage.test.tsx",
           "frontend/src/tools.css",
-          "tests/unit/test_mechanical_summary_folder.py",
-          "tests/integration/test_mechanical_summary_folder.py",
-          "docs/mechanical_summary_tool.md"
+          "tests/integration/test_mechanical_summary_folder_output.py",
+          "tests/unit/test_mechanical_summary_folder.py"
         ],
         "risk_reasons": [],
         "activation_head": "4c92bf81942fca8084ffdc73cd9d210db00f1abe",
         "started_at": "2026-11-06T00:12:40.232332Z",
-        "updated_at": "2026-11-06T00:12:40.232332Z",
+        "updated_at": "2026-11-06T00:49:23.831589Z",
         "checkpoint": null,
         "report": null
       }
