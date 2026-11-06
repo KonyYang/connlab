@@ -343,8 +343,16 @@
         ],
         "activation_head": "7e320067ce996b188dfe602eccaf4822788a1586",
         "started_at": "2026-11-06T20:23:58.473934Z",
-        "updated_at": "2026-11-06T20:23:58.473934Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-06T20:32:38.308148Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "requires_user": false,
+          "version": 1,
+          "stage": "qa",
+          "task_id": "TASK_MATERIALS_TOOLS_20261107",
+          "summary": "Resumed retained implementation into clean-base worktree tmp/materials-tools-resume. Subject 267408ab29a9ba912bb171bce43d31d77249ed27 independently reviewed Standards/Spec PASS. QA backend 199 passed; frontend initial 374 passed/11 fixture failures/1 opt-in profiler skipped, fixture fixes committed and developer targeted 36 passed. QA final targeted/build and isolated browser in progress. No real business writes, no push/publication; not integrated.",
+          "status": "running"
+        },
         "report": null
       }
     }
