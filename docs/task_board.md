@@ -335,8 +335,16 @@
         ],
         "activation_head": "037366f20706be433d041d4e6f3e95457af8d91e",
         "started_at": "2026-11-06T14:45:06.834531Z",
-        "updated_at": "2026-11-06T14:45:06.834531Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-06T14:48:09.155630Z",
+        "checkpoint": {
+          "status": "running",
+          "schema": "connlab.sol-task-checkpoint",
+          "summary": "Independent Planner completed source-backed design. Developer /root/materials_tools_developer is implementing in tmp/materials-tools-worktree, branch codex/materials-tools-20261106 at base037366f2. Full scope: safe material-folder saving and Settings root, preserve Intake autosave, standalone complete Matrix/Fee Tools without DB projects, retire temporary lifecycle UI with non-destructive legacy recovery. Independent review/QA and local integration remain. No push/publication or real business mutations.",
+          "version": 1,
+          "task_id": "TASK_MATERIALS_TOOLS_20261106",
+          "requires_user": false,
+          "stage": "development"
+        },
         "report": null
       }
     }
