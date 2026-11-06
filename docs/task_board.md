@@ -320,7 +320,54 @@
       "closed_at": "2026-11-06T16:06:14.113769Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REPORT_TOOLS_BRIDGE_20261107": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
+      "branch": "codex/report-tools-bridge",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
+        "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Batches 1 and 2 only. Existing isolated working-copy pipeline, optional portable Tools result packages and Report mapping; no temperature math changes, real business writes, official release or push.",
+        "scope_paths": [
+          "backend/api/dependencies.py",
+          "backend/api/report_authoring_schemas.py",
+          "backend/api/routes_report_authoring.py",
+          "backend/api/routes_tools_mechanical_summary.py",
+          "backend/api/routes_tools_temperature.py",
+          "backend/application/mechanical_summary_folder.py",
+          "backend/application/report_authoring",
+          "backend/application/report_tools_package.py",
+          "backend/application/tools_temperature_service.py",
+          "backend/domain/report_authoring.py",
+          "backend/infrastructure/files",
+          "backend/infrastructure/office",
+          "backend/interfaces",
+          "docs/operational",
+          "frontend/src/api",
+          "frontend/src/features/report-workspace",
+          "frontend/src/features/temperature",
+          "frontend/src/features/tools",
+          "frontend/src/pages/TemperatureRisePage.reportPackage.test.tsx",
+          "frontend/src/pages/TemperatureRisePage.test.tsx",
+          "frontend/src/pages/TemperatureRisePage.tsx",
+          "frontend/src/styles",
+          "tests"
+        ],
+        "risk_reasons": [],
+        "activation_head": "72d78b14766b2e0276a03462828f8b5b5ed8231d",
+        "started_at": "2026-11-06T21:06:29.254660Z",
+        "updated_at": "2026-11-06T21:41:46.350444Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
