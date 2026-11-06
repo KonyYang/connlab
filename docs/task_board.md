@@ -314,13 +314,13 @@
   "tasks": {
     "TASK_MATERIALS_TOOLS_20261107": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\materials-tools-resume",
       "branch": "codex/materials-tools-resume-20261107",
       "resources": [
         "materials-tools-isolated-tests"
       ],
-      "integrated_head": null,
+      "integrated_head": "1c2adeafb177b4fbd20c27069fd49b85e1614320",
       "task": {
         "task_id": "TASK_MATERIALS_TOOLS_20261107",
         "summary": "Resume materials saving and standalone Matrix/Fee tools final review and local integration",
@@ -343,7 +343,7 @@
         ],
         "activation_head": "7e320067ce996b188dfe602eccaf4822788a1586",
         "started_at": "2026-11-06T20:23:58.473934Z",
-        "updated_at": "2026-11-06T20:32:38.308148Z",
+        "updated_at": "2026-11-06T20:56:36.443648Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "requires_user": false,
@@ -353,7 +353,117 @@
           "summary": "Resumed retained implementation into clean-base worktree tmp/materials-tools-resume. Subject 267408ab29a9ba912bb171bce43d31d77249ed27 independently reviewed Standards/Spec PASS. QA backend 199 passed; frontend initial 374 passed/11 fixture failures/1 opt-in profiler skipped, fixture fixes committed and developer targeted 36 passed. QA final targeted/build and isolated browser in progress. No real business writes, no push/publication; not integrated.",
           "status": "running"
         },
-        "report": null
+        "report": {
+          "subject": "98cce66f778d6ef98fc09b1fc403edd8af1c5fd7",
+          "changed_paths": [
+            "backend/api/main.py",
+            "backend/api/routes_intake_materials.py",
+            "backend/api/routes_project.py",
+            "backend/api/routes_tools_matrix.py",
+            "backend/application/confirmed_matrix_fee_draft_service.py",
+            "backend/application/external_resource_service.py",
+            "backend/application/intake_materials_service.py",
+            "backend/application/local_path_picker_service.py",
+            "backend/application/material_names.py",
+            "backend/application/tools_fee_export_service.py",
+            "backend/application/tools_legacy_recovery.py",
+            "backend/application/tools_matrix_planning.py",
+            "backend/application/tools_matrix_snapshot.py",
+            "backend/domain/enums.py",
+            "backend/infrastructure/files/materials_copy_gateway.py",
+            "backend/infrastructure/office/tools_fee_download_gateway.py",
+            "docs/PROJECT_CONTEXT.md",
+            "docs/materials_tools_plan.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/api/client.ts",
+            "frontend/src/api/intakeMaterials.ts",
+            "frontend/src/api/toolsPlanning.ts",
+            "frontend/src/features/fee-evaluation/FeeFormImportControl.tsx",
+            "frontend/src/features/intake/SaveMaterialsDialog.tsx",
+            "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+            "frontend/src/features/matrix-editor/useMatrixDraftPersistence.ts",
+            "frontend/src/features/matrix-editor/useMatrixEditorContext.ts",
+            "frontend/src/features/matrix-editor/useMatrixImportWorkflow.ts",
+            "frontend/src/features/matrix-editor/useMatrixMethodVersionSync.ts",
+            "frontend/src/features/new-project/NewProjectCompletionDock.test.tsx",
+            "frontend/src/features/new-project/NewProjectCompletionDock.tsx",
+            "frontend/src/features/projects-registry/projectCatalog.test.ts",
+            "frontend/src/features/projects-registry/projectCatalog.ts",
+            "frontend/src/features/settings/settingsResourceConfig.ts",
+            "frontend/src/features/tools/LegacyPlanningBoundary.test.tsx",
+            "frontend/src/features/tools/LegacyPlanningBoundary.tsx",
+            "frontend/src/features/tools/StandaloneMatrix.test.tsx",
+            "frontend/src/features/tools/ToolsFeeWorkspace.test.tsx",
+            "frontend/src/features/tools/ToolsFeeWorkspace.tsx",
+            "frontend/src/features/tools/planningFee.fixture.json",
+            "frontend/src/features/tools/preparePlanningImport.ts",
+            "frontend/src/pages/IntakeInboxPage.test.tsx",
+            "frontend/src/pages/IntakeInboxPage.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/pages/ToolsPage.tsx",
+            "tests/integration/test_tools_planning_api.py",
+            "tests/unit/test_intake_materials_service.py",
+            "tests/unit/test_tools_matrix_planning.py"
+          ],
+          "version": 1,
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "method": "Independent materials_tools_planner context established full scope and boundaries; retained plan reused for resumed goal."
+            },
+            "qa": {
+              "status": "passed",
+              "method": "Independent materials_tools_qa executed selected backend/frontend matrices, final affected tests/build and isolated Playwright acceptance; resources cleaned; QA_REPORT.md preserved."
+            },
+            "integrator": {
+              "status": "passed",
+              "method": "Root inspected source/contracts/logs/screenshots, requirement evidence, exact Git subject/scope/cleanliness and board-only primary divergence; ordinary local merge delegated to writer."
+            },
+            "developer": {
+              "status": "passed",
+              "method": "Independent materials_tools_developer implemented with RED/GREEN and targeted checks; bounded QA fixes committed."
+            },
+            "reviewer": {
+              "status": "passed",
+              "method": "Independent materials_tools_reviewer Standards/Spec PASS on98cce66f including all bounded deltas; 5 focused logic checks passed."
+            }
+          },
+          "scope_ok": true,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "98cce66f778d6ef98fc09b1fc403edd8af1c5fd7",
+            "primary_before": "037929e33073c10d8208a973308a9039945592f0",
+            "integrated_head": "1c2adeafb177b4fbd20c27069fd49b85e1614320",
+            "recovered": false
+          },
+          "schema": "connlab.sol-task-report",
+          "validation": [
+            {
+              "result": "199 passed: real materials copies, full SQLite invariance, Matrix/Fee XLSX roundtrips, resources and affected formal fee/session regression.",
+              "name": "Backend isolated regression",
+              "status": "passed"
+            },
+            {
+              "result": "385 selected behavioral tests have passing evidence after fixture corrections; one unchanged opt-in profiler skipped. Final product change revalidated with 109 affected tests and TypeScript/Vite production build.",
+              "name": "Frontend affected regression and build",
+              "status": "passed"
+            },
+            {
+              "result": "1440x1000 and 648x804: materials save/focus/Escape/no-overwrite/40-attachment scroll/Intake edits retained; Settings reload; Matrix edit/import/export/method error; Fee edit/import/export/reentry/refresh/recalc; new planning cancel/clear; legacy recovery; formal smoke. API fixtures isolated; real file and DB behavior verified separately by integration tests. Native COM/picker/Explorer not re-exercised.",
+              "name": "Isolated browser acceptance",
+              "status": "passed"
+            },
+            {
+              "result": "Final subject clean; product bytes match tested79c0365, final commit docs only. Primary product unchanged since base7e320067, only board transitions. Exact diff in scope and diff --check passes. No real business data mutation; no push/publication.",
+              "name": "Integrator exact-state audit",
+              "status": "passed"
+            }
+          ],
+          "task_id": "TASK_MATERIALS_TOOLS_20261107",
+          "summary": "Save request materials without creating temporary projects; standalone shared Matrix and linked Fee tools retain browser edits and export files; existing Intake recovery and formal registration retained."
+        }
       }
     }
   }
