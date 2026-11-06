@@ -27,7 +27,15 @@ Isolated file-copy byte equality and conflict/path safety; Intake state preserva
 - Shared formal fee engine regression included in a 38-test passing batch. Existing frontend formal persistence lifecycle: 9 passing cases above.
 - TypeScript build checked; final exact-state verification and independent review/QA evidence are recorded by the main task workflow.
 
-## Acceptance and remaining verification
-Independent Reviewer and QA run after the fixed developer commit. QA should exercise desktop browser layout/focus/Escape, Settings directory picker, Word/PDF/XLSX Matrix import and method-version resource errors, Matrix→Fee→Matrix navigation, Fee import comparison/download, legacy URL recovery and formal project smoke paths. Developer checks cover actual native XLSX roundtrip; Word/PDF/Office COM parsing continues through the established adapters and requires the configured runtime for interactive checks.
+## Final verification (2026-11-07)
+The retained implementation was resumed locally after the prior task was cancelled. Independent review passed on `79c0365c30aa9a16a294da218b00289474ee3675`, including the follow-up test-fixture updates and the new-planning button layout fix. Review and QA were separate contexts.
+
+- Backend QA: 199 tests passed, including real isolated file copies, SQLite invariance, Matrix/Fee XLSX roundtrips, resource configuration, and affected formal-project regression.
+- Frontend QA: the selected 385 behavior tests passed after correcting two outdated test fixtures. The existing opt-in Matrix performance diagnostic remained skipped. After the final UI change, 109 affected tests were rerun successfully; the production build passed.
+- Isolated browser: Matrix edits, samples and points, method-resource error feedback, Matrix import/export, Fee edits and import comparison, navigation and refresh retention, explicit recalculation, and new-planning cancel/clear behavior passed. No planning operation called a project API.
+- Intake browser: editable email-derived folder name, initial focus, Escape, successful save/open action, duplicate-name refusal, and preservation of edited phone/quantity on the same page passed. Forty attachments remained scrollable with Save/Cancel reachable at 648×804.
+- Settings path editing survived refresh. Legacy URLs exposed recovery/download only, copied retained data into Tools, and did not expose Apply LTR. Formal Matrix still exposed Confirm Matrix and did not expose New planning Matrix.
+
+Browser API responses were isolated fixtures; they prove UI interaction and request routing, not a live business-server transaction. Real filesystem/SQLite/XLSX behavior was checked separately through backend integration tests. Native Office COM and the Windows directory-picker dialog were not re-exercised; their existing adapters remain in use. No real business data was modified. Test logs and screenshots are retained in `tmp/materials-tools-resume/tmp/qa-materials-tools` in the primary repository.
 
 The Tools session is per browser tab, not a new managed project registry. Export before closing the browser for durable files. Original materials are copied unchanged; Intake field edits remain in existing Intake autosave rather than being silently rewritten into application files. A partially failed materials save requires checking the reported folder and choosing a new name. No real business file was overwritten, and no push or release was performed.
