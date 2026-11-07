@@ -7,6 +7,7 @@ import pytest
 
 from backend.api.dependencies import get_project_folder_required_forms_service, get_settings
 from backend.shared.config import Settings
+from backend.infrastructure.storage.database import create_engine, init_db
 from backend.api.main import app
 from backend.application.project_folder_required_forms_service import (
     RequiredFormPreviewItem,
@@ -20,11 +21,18 @@ from backend.domain import ProjectClosureType, ProjectLifecycleState, ProjectOut
 
 @pytest.fixture(autouse=True)
 def _isolated_generation_storage(tmp_path):
+    database_path = tmp_path / "fixture.sqlite"
+    engine = create_engine(f"sqlite:///{database_path.as_posix()}")
+    # The real write guard reads this database independently of the stubbed service.
+    init_db(engine)
     app.dependency_overrides[get_settings] = lambda: Settings(
         data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
-        templates_dir=tmp_path / "templates", database_path=tmp_path / "fixture.sqlite")
-    yield
-    app.dependency_overrides.pop(get_settings, None)
+        templates_dir=tmp_path / "templates", database_path=database_path)
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+        engine.dispose()
 
 
 def test_required_forms_preview_api_returns_project_folder_contract() -> None:
