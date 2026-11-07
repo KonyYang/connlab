@@ -257,12 +257,24 @@ Do not use a dated snapshot as a substitute for the code.
 - `Review and save` binds the selected Internal Report and matching customer projection to server
   content/coverage/disclosure checks and each exact Word/PDF all-page review. Current-project retained
   content may receive one explicit exact-version review; cross-project inherited regions and detected
-  conflicts still need scoped evidence. Unused source candidates do not revoke valid checks.
+  conflicts still need scoped evidence. Known initialized Conclusions/personnel placeholders remain
+  location-specific incomplete blockers and cannot be acknowledged away. Historical revision notes
+  containing "draft" alone are not a blocker. Unused source candidates do not revoke valid checks.
 - Explicit save reuses report staging/History protections and writes the reviewed bytes, never regenerates.
   A bounded report-delivery receipt is the sole filesystem recovery authority; authoring JSON retains
   its approved intent and projected receipts. Partial saves stay visible and block separate project
   writes until the same operation is resumed. Saving current project files is not formal issuance.
   Customer Word preview reuses the existing renderer with its own exact output/PDF identity.
+  Staging/History paths are recorded before file actions; History receives complete old bytes, never an
+  empty reservation. Unproven staging ownership fails closed and preserves files. Completed replay
+  retains report/History bytes, identity and modification times; identical internal receipt metadata
+  may be atomically rewritten. Saved-pair status does not approve a later working version.
+- Batch 6 part 1 development and independent acceptance are complete, awaiting local integration and
+  user-confirmed closure. Isolated native Word acceptance covered all six Internal and three Customer
+  pages, real Windows file-lock partial save, same-database process restart and same-operation resume.
+  This does not qualify a release package or second computer. Existing batch UI cannot yet choose
+  pre-existing appendix targets; the accepted case bound them through the public API, not a UI-only
+  assembly path. See `docs/operational/report_delivery_controlled_save_20261107.md` for evidence/bounds.
 
 - Update report content includes source-bound semantic region review, confirmed batch photo mappings,
   figure-number changes and retained Word/PDF visual previews. These operate on the selected working

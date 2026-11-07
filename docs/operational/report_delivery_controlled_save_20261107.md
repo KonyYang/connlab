@@ -1,6 +1,6 @@
 # 第6批第一部分：交付检查与受控保存
 
-状态：实施中；真实资料只读，隔离数据库和文件验证，不推送、不自动正式发行。
+状态：第6批第一部分开发与独立验收完成，待本地集成／用户验收关闭；真实资料只读，隔离数据库和文件验证，不推送、不自动正式发行。第二部分发行包／异机验收未实施。
 
 ## 范围
 
@@ -23,8 +23,36 @@
 
 项目writer guard在原锁内以配置数据库的只读短连接检查pending投影，不改变请求session的提交/退出顺序，不建DB、目录、租约或迁移。各文件完成后投影durable提交，整套完成后才释放receipt阻塞。来源/Matrix/实际PDF或目标字节变化使旧保存预览失效。
 
-开发切片已验证真实子进程在硬链接后`os._exit`，重启仅补登记；相同字节但不同inode不被认领；receipt不可变意图/越界staging被拒绝。公开API由真实来源/结果/审核接口建立成功配对，不手工制造passed状态；Word/转换仅在开发测试的外部边界替身，不能替代QA实际Word验收。
+开发切片已验证真实子进程在归档及目标硬链接后`os._exit`，重启按已登记身份续跑；相同字节但不同inode不被认领；receipt不可变意图/越界staging被拒绝。公开API由真实来源/结果/审核接口建立成功配对，不手工制造passed状态；开发测试的Word／转换边界替身与下述QA真实Word验收分别记录。
 
 QA发现的动作前空History窗口已修复：先记录本operation唯一staging及History路径，再创建staging并登记其inode；复制后刷盘和核验，完整旧文件以hardlink进入History后才撤下旧目标，不再生成空History占位。staged receipt写失败可复用同一临时文件，归档与新目标hardlink后真实进程退出均可恢复。若进程在staging创建与inode登记之间中断，保留唯一已知路径并明确阻塞，不猜测归属、不另建文件或盲删。
 
-待独立Reviewer、QA完整受影响矩阵、实际页面/客户Word逐页验收及本地集成。任何业务待核继续pending，不自动正式发行。
+明确初始化占位（本系统Conclusions待写句、`[To be assigned]`、`[To be confirmed]`）以具体Word区域位置列为`content_incomplete`；整稿内容确认返回422且不推进版本。历史修订说明出现draft一词不因此失效，不擅自要求所有签名／空白表格都填写。
+
+## 独立验收记录与证据边界
+
+精确产品／测试subject：`97ac12a7e9f0e2880f505dd2ac1e663d87ef8814`。Reviewer与独立QA已完成相关审查／验收；本次文档收尾不改变产品或测试字节，尚未宣称已集成或已关闭。
+
+| 检查 | 实际结果 |
+|---|---|
+| 初轮受影响Python矩阵 | d822：488通过、6失败；6项legacy API夹具缺少隔离DB，不隐去失败。02a仅修复真实隔离DB夹具。 |
+| 最终97ac受影响重验 | workspace／delivery／document-review共39通过，pytest39.34秒；包括此前失败文件的10项。经Reviewer核对复用其余未变化的已通过检查。488与39有重叠，不能相加为独立测试总数，亦不是全仓pytest重跑。 |
+| 前端／构建 | Report Workspace 15文件／140测试通过；TypeScript与Vite构建通过，顺序运行。Starlette/httpx既有弃用提示非断言失败。 |
+| 真实Word | 正常页面触发Microsoft Word只读渲染；Internal6页、Customer3页各自产生精确PDF。独立QA与Reviewer分别查看全部9页，无目标标题／表格孤立、截断或重叠；已有模板留白／窄列不被宣传为通用最佳版式。 |
+| 保密检查 | 用户通过页面逐项审核实际PNG与2个静态PBrush OLE部件的精确哈希；未激活OLE或宏。结论仅限这些具体部件，不自动批准任意嵌入对象或所有材料字段。 |
+| 显式确认与真实失败 | 打开保存确认后Escape不写文件／状态；真实Win32客户文件占用使Internal committed、Customer archiving，页面如实显示partial与同操作Resume，不显示整套成功。 |
+| 跨进程恢复与重放 | 停止并重启同DB／run，partial与operation不变；释放测试锁后页面Resume完成同一操作。已保存Internal的mtime与archive路径不变；两份保存SHA等于各自审核稿，History等于旧文件，无空档案／重复归档／stage遗留。completed resume返回200，revision28与完整公开状态不变。 |
+| 原资料与保真 | 最终198份原资料／历史与本批隔离副本及2份登记模板哈希不变。032保留工作稿全文字节一致；031加密容器SHA变化但60个解密OOXML部件逐个字节一致（032为56个），不能仅因加密容器差异判定内容变动。 |
+
+验收成功案例为独立合成项目，人工明确完成虚构的Purpose／Conclusions／人员等字段；这不是软件自动撰写这些业务结论的证明。真实032／031来源可保真载入，但未确认的旧测量、Pass及特殊接受仍待核，覆盖不完整时禁止保存。
+
+保留失败证据：completed replay的一次QA探针已通过公开状态相等比较，但额外要求内部receipt文件mtime不变而失败。原失败未删除；复核证明receipt原始SHA不变、输出与History的字节／inode／mtime／路径均不变。内部相同字节的原子metadata重写不属于用户文件重生成，不为该非阻塞项扩大修改。
+
+保留证据位于本机`tmp/report_batch6_20261107/`：`final_qa.md`为独立PASS；`qa_97ac12a7/`保留自动测试日志；`actual_visual/`保留各自DOCX／PDF／全页PNG与哈希清单；`root_ui_acceptance.md`为实际操作记录；`actual_saved_pair_150614.json`、`actual_completed_resume_durable_verification.json`及`final_actual_visual_sha_verification.json`核对保存、重放与最终渲染字节。较早progress文档明确只是当时进度，最终结论以`final_qa.md`为准。只正常退出本批拥有的API／Vite／测试锁，证据及数据库保留。
+
+## 剩余边界
+
+- 第二部分发行包／异机Office、路径和资源验证未实施；本机隔离验收不替代异机资格。
+- 既有批量装配UI不能指定已存在的结果／附录目标；本次经明确交接，用公开preview／apply绑定唯一实际目标，表格数9→9、无重复附录。因此不宣称全部装配为纯页面路径。相关交互与既有复选框尺寸留后续，不混入当前产品修复。
+- 受控保存不是两文件与数据库的全原子事务；partial／恢复保护是实际契约。无法证明staging归属仍停止并保留文件，需要查核，不自动清理。
+- 正式实验室发行、未确认的业务决定及真实项目资料覆盖均不在本批授权内。最终用户验收关闭另行确认。
