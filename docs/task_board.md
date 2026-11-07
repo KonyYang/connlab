@@ -14,11 +14,11 @@
   "last_closed": {
     "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
     "tier": "high_risk",
-    "subject": "d22ae1f5bb5ba104e0d78bd144dc669117c2f30b",
+    "subject": "15d9208be47f26f1b0354d3f04aab55c779f9eb8",
     "summary": "Report automation batch 5: approved-original coverage, batch photo candidates and confirmation, figure numbering/reference checks, and version-bound Word visual preview.",
-    "disposition": "cancelled",
-    "decision_ref": "User explicitly requested task closure on 2026-11-07. Stop batch 5 before final browser and all-page Word acceptance and integration. Preserve clean candidate 360d100ee330e9c06168dd1daea7de8c641d74e4 in the isolated resumed branch and all test evidence. QA reports 288 Python and 137 frontend tests passed plus build; full acceptance remains incomplete. No integration, push, cleanup or real file changes.",
-    "closed_at": "2026-11-07T04:14:15.094568Z"
+    "disposition": "completed",
+    "decision_ref": "User explicitly authorized autonomous acceptance and local close after batch5 completion. Independent code review, QA matrices, actual publicUI/API and all63 final Word pages passed; bounded pagination repair approved and verified. Preserve all local commits/evidence; no push or publication; publish-close intentionally omitted.",
+    "closed_at": "2026-11-07T05:05:58.880106Z"
   },
   "retained_history": [
     {
@@ -363,212 +363,18 @@
       "disposition": "cancelled",
       "decision_ref": "User explicitly requested task closure while batch 5 remains unfinished. Stop implementation; retain 12 modified and 13 untracked files in isolated worktree and all test evidence. No integration, deletion, reset, restore, stash or push. Final QA, browser and Word visual acceptance remain incomplete.",
       "closed_at": "2026-11-07T03:39:19.537465Z"
+    },
+    {
+      "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
+      "tier": "high_risk",
+      "subject": "d22ae1f5bb5ba104e0d78bd144dc669117c2f30b",
+      "summary": "Report automation batch 5: approved-original coverage, batch photo candidates and confirmation, figure numbering/reference checks, and version-bound Word visual preview.",
+      "disposition": "cancelled",
+      "decision_ref": "User explicitly requested task closure on 2026-11-07. Stop batch 5 before final browser and all-page Word acceptance and integration. Preserve clean candidate 360d100ee330e9c06168dd1daea7de8c641d74e4 in the isolated resumed branch and all test evidence. QA reports 288 Python and 137 frontend tests passed plus build; full acceptance remains incomplete. No integration, push, cleanup or real file changes.",
+      "closed_at": "2026-11-07T04:14:15.094568Z"
     }
   ],
-  "tasks": {
-    "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
-      "branch": "codex/report-batch5-final-acceptance-20261107",
-      "resources": [],
-      "integrated_head": "ad18b550aea326a6a9b620d025f610d13e45ba88",
-      "task": {
-        "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
-        "summary": "Report automation batch 5: approved-original coverage, batch photo candidates and confirmation, figure numbering/reference checks, and version-bound Word visual preview.",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Implement complete batch 5 and applicable sections 8/11 of report_automation_plan_20261107.md in the existing Report Workspace, using isolated data/copies. Real reports/templates/project materials read-only; no push, no formal publication, no batch6 expansion. User authorized autonomous acceptance and local task close after verified completion.",
-        "scope_paths": [
-          "backend/api/dependencies.py",
-          "backend/api/report_authoring_schemas.py",
-          "backend/api/routes_report_authoring.py",
-          "backend/application/report_authoring/assembly.py",
-          "backend/application/report_authoring/document_review.py",
-          "backend/application/report_authoring/photo_plan.py",
-          "backend/application/report_authoring/service.py",
-          "backend/infrastructure/office/report_authoring/batch_document.py",
-          "backend/infrastructure/office/report_authoring/document_review.py",
-          "backend/infrastructure/office/report_authoring/visual_preview.py",
-          "backend/infrastructure/office/report_authoring/word_copy.py",
-          "backend/infrastructure/office/word_document_gateway.py",
-          "docs/PROJECT_CONTEXT.md",
-          "docs/operational/report_automation_plan_20261107.md",
-          "docs/operational/report_template_photos_preview_20261107.md",
-          "frontend/src/api/reportAuthoring.ts",
-          "frontend/src/api/reportAuthoringBatch.ts",
-          "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
-          "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
-          "frontend/src/features/report-workspace/ReportDocumentReview.test.tsx",
-          "frontend/src/features/report-workspace/ReportDocumentReview.tsx",
-          "frontend/src/features/report-workspace/ReportPhotoPlan.test.tsx",
-          "frontend/src/features/report-workspace/ReportPhotoPlan.tsx",
-          "frontend/src/features/report-workspace/ReportVisualPreview.test.tsx",
-          "frontend/src/features/report-workspace/ReportVisualPreview.tsx",
-          "frontend/src/features/report-workspace/reportAuthoringPanel.css",
-          "tests/integration/test_report_document_review_api.py",
-          "tests/unit/report_authoring/test_document_review.py",
-          "tests/unit/report_authoring/test_photo_plan.py",
-          "tests/unit/report_authoring/test_visual_preview.py",
-          "tests/unit/test_word_document_gateway.py"
-        ],
-        "risk_reasons": [
-          "Native Word fidelity, cross-project original coverage and executable Office rendering require independent review and QA."
-        ],
-        "activation_head": "75d9eb36512f67d4ee22eda070876f0e527b11ad",
-        "started_at": "2026-11-07T04:33:36.854373Z",
-        "updated_at": "2026-11-07T05:05:19.294268Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
-          "stage": "final_visual_revalidation",
-          "status": "running",
-          "summary": "User approved word_copy.py scope; productionwriter amendment completed. Clean reviewed fix cdaf429b818f6f0782cb6c949e90570856a8b6bd adds bounded flowing-heading protection and publicAPI regression, Developer34passed. IndependentQA rerendering021 layout on new process/final bytes and checking all pages; original288/137/build and032/031/synthetic evidence retained by product-path equivalence. No integration/push/real writes.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
-          "subject": "15d9208be47f26f1b0354d3f04aab55c779f9eb8",
-          "summary": "Batch5: scoped original-content review, confirmed batch photo plans, precise figure/reference numbering, immutable version-bound Word preview; bounded reference-result pagination repair. Isolated acceptance only; no real-file mutation or formal release.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/report_authoring_schemas.py",
-            "backend/api/routes_report_authoring.py",
-            "backend/application/report_authoring/assembly.py",
-            "backend/application/report_authoring/document_review.py",
-            "backend/application/report_authoring/photo_plan.py",
-            "backend/application/report_authoring/service.py",
-            "backend/infrastructure/office/report_authoring/batch_document.py",
-            "backend/infrastructure/office/report_authoring/document_review.py",
-            "backend/infrastructure/office/report_authoring/visual_preview.py",
-            "backend/infrastructure/office/report_authoring/word_copy.py",
-            "backend/infrastructure/office/word_document_gateway.py",
-            "docs/PROJECT_CONTEXT.md",
-            "docs/operational/report_automation_plan_20261107.md",
-            "docs/operational/report_template_photos_preview_20261107.md",
-            "frontend/src/api/reportAuthoring.ts",
-            "frontend/src/api/reportAuthoringBatch.ts",
-            "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
-            "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
-            "frontend/src/features/report-workspace/ReportDocumentReview.test.tsx",
-            "frontend/src/features/report-workspace/ReportDocumentReview.tsx",
-            "frontend/src/features/report-workspace/ReportPhotoPlan.test.tsx",
-            "frontend/src/features/report-workspace/ReportPhotoPlan.tsx",
-            "frontend/src/features/report-workspace/ReportVisualPreview.test.tsx",
-            "frontend/src/features/report-workspace/ReportVisualPreview.tsx",
-            "frontend/src/features/report-workspace/reportAuthoringPanel.css",
-            "tests/integration/test_report_document_review_api.py",
-            "tests/unit/report_authoring/test_document_review.py",
-            "tests/unit/report_authoring/test_photo_plan.py",
-            "tests/unit/report_authoring/test_visual_preview.py",
-            "tests/unit/test_word_document_gateway.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "kind": "related_full_matrix",
-              "subject": "360d100ee330e9c06168dd1daea7de8c641d74e4",
-              "summary": "288 Python, 137 frontend, typecheck/build passed; bytes-equivalent recovery plus affected delta retested.",
-              "evidence": {
-                "path": "D:\\PythonProject\\connlab\\tmp\\report_batch5_20261107\\qa_360d100e\\matrix.json",
-                "raw_sha256": "37a686a48822cebebf4903d19879a1b336a25d3c7a128af2d3314e1e5fed393f"
-              }
-            },
-            {
-              "status": "passed",
-              "kind": "final_affected_matrix",
-              "subject": "cdaf429b818f6f0782cb6c949e90570856a8b6bd",
-              "summary": "52 independent Python tests after local pagination fix; final subject is docs-only successor.",
-              "evidence": {
-                "path": "D:\\PythonProject\\connlab\\tmp\\report_batch5_20261107\\qa_cdaf429b\\matrix.json",
-                "raw_sha256": "0ec5c530c60a6c1a3faae3469e4073761e5c960b76a1eddc64a7efc37437bc4c"
-              }
-            },
-            {
-              "status": "passed",
-              "kind": "actual_product_ui",
-              "summary": "032 base/photo comparison/confirmation/batch/Word preview/reload, visually_reviewed without content approval.",
-              "evidence": {
-                "path": "D:\\PythonProject\\connlab\\tmp\\report_batch5_20261107\\browser_acceptance_c9f1dc0c.md",
-                "raw_sha256": "e039aefb93cc5656cf7768f1089a7be497755cf7e0f85901bcbd3b5f78a85a0d"
-              }
-            },
-            {
-              "status": "passed",
-              "kind": "actual_word_all_pages_and_inputs",
-              "summary": "4 final PDF cases, 63 pages inspected; final021 orphan headings fixed;198 original/copied inputs SHA unchanged. Final8793 drain logged two nonfatal IUnknown release diagnostics despite successful exact PDF/HTTP200 and no new leaked Word; retained as residual, not hidden.",
-              "evidence": {
-                "path": "D:\\PythonProject\\connlab\\tmp\\report_batch5_20261107\\finalQA.md",
-                "raw_sha256": "7053dd9470048b2a970822fa505b4da5c958afc96f96dd1d295008f089dd2e02"
-              },
-              "shutdown_evidence": {
-                "path": "D:\\PythonProject\\connlab\\tmp\\report_batch5_20261107\\service_shutdown.md",
-                "raw_sha256": "ed47f9bfdc10241464feff27e00ddc9ce0d18d2f05e504a7cf95a9c77943c7d2"
-              }
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "identity": "/root/batch5_planner",
-              "ref": "docs/operational/report_automation_plan_20261107.md",
-              "summary": "Independent original planning context; retained scope batch5 and applicable sections8/11."
-            },
-            "developer": {
-              "status": "passed",
-              "identity": "/root/batch5_developer",
-              "subject": "cdaf429b818f6f0782cb6c949e90570856a8b6bd",
-              "docs_subject": "15d9208be47f26f1b0354d3f04aab55c779f9eb8",
-              "summary": "Implemented candidate and bounded RED/GREEN fix,34 affected Developer checks, clean final commits."
-            },
-            "reviewer": {
-              "status": "passed",
-              "identity": "/root",
-              "summary": "Independent exact candidate and bounded-fix reviews plus final docs-only diff review.",
-              "refs": [
-                {
-                  "path": "D:\\PythonProject\\connlab\\tmp\\report_batch5_20261107\\review_360d100e.md",
-                  "raw_sha256": "2b4acd3059cf75ee2bffabe21261004914efb2e13c29e458d4ebd7a5fe1c3e1d"
-                },
-                {
-                  "path": "D:\\PythonProject\\connlab\\tmp\\report_batch5_20261107\\review_cdaf429b.md",
-                  "raw_sha256": "9af26154d0bfbccb07af8733b8668dfc0ac49bd5dd083ad228983992f4f1e479"
-                }
-              ]
-            },
-            "qa": {
-              "status": "passed",
-              "identity": "/root/batch5_qa",
-              "subject": "cdaf429b818f6f0782cb6c949e90570856a8b6bd",
-              "ref": {
-                "path": "D:\\PythonProject\\connlab\\tmp\\report_batch5_20261107\\finalQA.md",
-                "raw_sha256": "7053dd9470048b2a970822fa505b4da5c958afc96f96dd1d295008f089dd2e02"
-              },
-              "summary": "Independent full/delta automated verification, actual API and all-page Word checks; final docs-only successor."
-            },
-            "integrator": {
-              "status": "passed",
-              "identity": "/root/batch5_integrator",
-              "subject": "15d9208be47f26f1b0354d3f04aab55c779f9eb8",
-              "summary": "Independent exact identity/scope/Git topology/clean worktrees/raw-evidence verification; actual integration remains pending until writer call succeeds."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "15d9208be47f26f1b0354d3f04aab55c779f9eb8",
-            "primary_before": "6a57fd9380be6f85b41e720f5d993c418f470ed0",
-            "integrated_head": "ad18b550aea326a6a9b620d025f610d13e45ba88",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
