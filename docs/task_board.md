@@ -383,7 +383,56 @@
       "closed_at": "2026-11-07T05:05:58.880106Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_FOLDER_PARTIAL_GENERATION_20261107": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\folder-partial-generation\\connlab",
+      "branch": "codex/folder-partial-generation-20261107",
+      "resources": [
+        "folder-partial-isolated-tests"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_FOLDER_PARTIAL_GENERATION_20261107",
+        "summary": "Generate independent project folder outputs despite individual artifact failures and summarize missing outputs",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Keep project identity, directory, authority race, publication recovery and explicit Backup/Rebuild protections. Separate per-output readiness and safe generation failures; persist and display partial outcomes. Local only; isolated test files; no push or publication.",
+        "scope_paths": [
+          "backend/api/project_folder_preflight.py",
+          "backend/api/project_folder_generation_composition.py",
+          "backend/api/project_folder_generation_outputs.py",
+          "backend/api/routes_project_folder_generation.py",
+          "backend/application/project_folder_generation_service.py",
+          "backend/application/project_folder_generation_outcome.py",
+          "backend/application/project_folder_required_forms_service.py",
+          "backend/infrastructure/files/project_folder_required_forms_gateway.py",
+          "backend/infrastructure/files/generation_journal.py",
+          "backend/infrastructure/files/recoverable_output_publisher.py",
+          "frontend/src/api/client.ts",
+          "frontend/src/features/project-workbench",
+          "tests/unit/test_project_folder_generation_service.py",
+          "tests/unit/test_project_folder_required_forms_service.py",
+          "tests/unit/test_project_folder_generation_outcome.py",
+          "tests/integration/test_project_folder_generation_api.py",
+          "tests/integration/test_project_folder_generation_complete_chain.py",
+          "tests/integration/test_project_folder_generation_recovery.py",
+          "tests/integration/test_project_folder_generation_write_guard.py",
+          "tests/integration/test_project_folder_required_forms_api.py",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [
+          "Changes external-file generation and durable partial/recovery semantics; existing files and confirmed authorities must remain protected."
+        ],
+        "activation_head": "19e8073bff43737bf8955ca6cac84f26e4f88430",
+        "started_at": "2026-11-07T11:52:04.329246Z",
+        "updated_at": "2026-11-07T11:52:04.329246Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
