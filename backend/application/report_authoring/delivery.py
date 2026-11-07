@@ -29,6 +29,21 @@ class ReportDelivery:
             'findings': review['findings'], 'numbering': review['numbering']})
 
     @staticmethod
+    def _incomplete_content(review):
+        # Only explicit initialization markers, not historical uses of "draft"
+        # or speculative business rules about signatures and blank table cells.
+        markers = ('Conclusions will be completed after testing and review',
+                   '[To be assigned]', '[To be confirmed]')
+        issues = []
+        for region in review['regions']:
+            text = ' '.join(region['text'].casefold().split())
+            for marker in markers:
+                if marker.casefold() in text:
+                    issues.append({'code': 'content_incomplete', 'location': region['region_id'],
+                        'message': f"Replace the unfilled report placeholder '{marker}' in {region['kind']} ({region['region_id']}) before saving. Retained-content confirmation cannot waive it."})
+        return issues
+
+    @staticmethod
     def _visual(output):
         preview = output.get('visual_preview') or {}
         return (preview.get('output_sha256') == output['artifact']['sha256']
@@ -57,6 +72,8 @@ class ReportDelivery:
             issues.append({'code': code, 'message': message})
         service.assets.read(project_id, ReportSource(**output['artifact']))
         review = service.document_review.inspect(project_id, output['output_id'], state.revision)
+        incomplete = self._incomplete_content(review)
+        issues.extend(incomplete)
         coverage = service.coverage(project_id)
         if not coverage['complete']:
             issue('coverage_incomplete', 'Some Matrix results or evidence are missing or need confirmation.')
@@ -65,7 +82,7 @@ class ReportDelivery:
         if review['base_role'] == 'layout_reference':
             if not review['complete']:
                 issue('inherited_content', 'Confirm inherited regions against this project evidence before saving.')
-        elif output.get('content_review', {}).get('content_sha256') != self._content_stamp(state, context, review):
+        elif not incomplete and output.get('content_review', {}).get('content_sha256') != self._content_stamp(state, context, review):
             issue('content_review_required', 'Review the retained content of this exact project report.')
         if not self._visual(output):
             issue('internal_visual_required', 'Inspect every page of this exact Internal Report Word preview.')
@@ -164,6 +181,9 @@ class ReportDelivery:
             raise ValueError('Review retained content on the Internal Report, not its customer copy.')
         if review['base_role'] != 'original' or request['review_sha256'] != review['review_sha256']:
             raise ReportAuthoringConflict('Only the current project original can use this retained-content confirmation. Review its exact version.')
+        incomplete = self._incomplete_content(review)
+        if incomplete:
+            raise ValueError(' '.join(item['message'] for item in incomplete))
         if review['findings'] or not review['numbering']['ready']:
             raise ValueError('Resolve detected content conflicts before recording retained-content review.')
         record = {'review_sha256': review['review_sha256'], 'confirmed_by': request['confirmed_by'],

@@ -1,6 +1,60 @@
 from tests.integration.test_report_authoring_api import lab, upload, BASE
 from tests.integration.test_report_batch_assembly_api import prepared_results, preview_batch
 from tests.integration.test_internal_report_generation_api import official_report
+import pytest
+
+
+def retain_original_note(monkeypatch, note):
+    from io import BytesIO
+    from docx import Document
+    from tests.integration import test_report_batch_assembly_api as batches
+    original_upload = batches.upload
+    def with_note(lab, **values):
+        if values.get('role', 'original') == 'original':
+            document = Document(BytesIO(values['content']))
+            document.add_paragraph(note)
+            stream = BytesIO(); document.save(stream)
+            values['content'] = stream.getvalue()
+        return original_upload(lab, **values)
+    monkeypatch.setattr(batches, 'upload', with_note)
+
+
+@pytest.mark.parametrize('note', [
+    'DRAFT — Conclusions will be completed after testing and review.',
+    'Project leader: [To be assigned]', 'Requestor: [To be confirmed]',
+])
+def test_initialized_placeholders_block_delivery_and_cannot_be_waived_by_whole_report_review(lab, monkeypatch, note):
+    retain_original_note(monkeypatch, note)
+    state, _ = prepared_results(lab)
+    preview = preview_batch(lab, state).json(); plan = preview['assembly_plan']
+    applied = lab['client'].post(BASE+'/assembly/apply', json={'expected_revision': preview['revision'],
+        'plan_id': plan['plan_id'], 'preview_sha256': plan['preview_sha256']})
+    assert applied.status_code == 200, applied.text
+    state = applied.json(); output = state['outputs'][-1]
+    assert lab['client'].get(BASE+'/coverage').json()['complete']
+    review = lab['client'].get(BASE+f"/outputs/{output['output_id']}/document-review",
+        params={'expected_revision': state['revision']}).json()
+    before = lab['client'].get(BASE+'/delivery').json()
+    incomplete = [item for item in before['issues'] if item['code'] == 'content_incomplete']
+    assert incomplete, before['issues']
+    assert any('word/document.xml:' in item['message'] for item in incomplete)
+    rejected = lab['client'].post(BASE+'/delivery/content-review', json={'expected_revision': state['revision'],
+        'output_id': output['output_id'], 'output_sha256': output['artifact']['sha256'],
+        'review_sha256': review['review_sha256'], 'confirmed_by': 'QA',
+        'notes': 'A complete-looking Matrix cannot waive initialized report placeholders'})
+    assert rejected.status_code == 422, rejected.text
+    assert lab['client'].get(BASE).json() == state
+    after = lab['client'].get(BASE+'/delivery').json()
+    assert any(item['code'] == 'content_incomplete' for item in after['issues'])
+    assert not after['can_save']
+
+
+def test_historical_initial_draft_revision_note_is_not_an_unfilled_placeholder(lab, monkeypatch):
+    retain_original_note(monkeypatch, 'Revision history: Initial draft—not released.')
+    state, _, _ = ready_pair(lab, monkeypatch)
+    preview = lab['client'].get(BASE+'/delivery').json()
+    assert preview['can_save'], preview['issues']
+    assert state['outputs'][-1]['content_review']
 
 
 def ready_pair(lab, monkeypatch):
