@@ -108,7 +108,65 @@ def resolve_theme_colors(tree, theme):
                 item.set(f'{{{W}}}{direct_attr}', value); del item.attrib[f'{{{W}}}{theme_attr}']
 
 
-def fit_selected_region(blocks, body, container):
+def scale_table_text(table, ratio, styles, source_styles):
+    indexed = {style.get(f'{{{W}}}styleId'): style for style in styles.findall(f'{{{W}}}style')}
+    def style_size(identity, name, seen=()):
+        if not identity or identity not in indexed or identity in seen: return None
+        style = indexed[identity]; size = style.find(f'{{{W}}}rPr/{{{W}}}{name}')
+        if size is not None: return size.get(f'{{{W}}}val')
+        parent = style.find(f'{{{W}}}basedOn')
+        return style_size(parent.get(f'{{{W}}}val'), name, (*seen, identity)) if parent is not None else None
+    for paragraph in table.findall('.//{%s}p' % W):
+        paragraph_style = paragraph.find(f'{{{W}}}pPr/{{{W}}}pStyle')
+        paragraph_id = paragraph_style.get(f'{{{W}}}val') if paragraph_style is not None else None
+        for run in paragraph.findall(f'{{{W}}}r'):
+            if run.find(f'{{{W}}}t') is None: continue
+            props = run.find(f'{{{W}}}rPr')
+            if props is None: props = etree.Element(f'{{{W}}}rPr'); run.insert(0, props)
+            character = props.find(f'{{{W}}}rStyle')
+            character_id = character.get(f'{{{W}}}val') if character is not None else None
+            for name in ('sz', 'szCs'):
+                size = props.find(f'{{{W}}}{name}')
+                value = size.get(f'{{{W}}}val') if size is not None else style_size(character_id, name) or style_size(paragraph_id, name)
+                if value is None or int(value) <= 0:
+                    raise ValueError('An adopted table font size cannot be resolved for proportional fitting.')
+                if size is None: size = etree.SubElement(props, f'{{{W}}}{name}')
+                # Word stores half-points; round down so glyphs cannot outgrow the reduced grid.
+                size.set(f'{{{W}}}val', str(max(1, int(int(value) * ratio))))
+        for spacing in paragraph.findall(f'{{{W}}}pPr/{{{W}}}spacing'):
+            for name in ('before', 'after', *(['line'] if spacing.get(f'{{{W}}}lineRule') in {'exact', 'atLeast'} else [])):
+                if spacing.get(f'{{{W}}}{name}') is not None:
+                    spacing.set(f'{{{W}}}{name}', str(max(0, int(int(spacing.get(f'{{{W}}}{name}')) * ratio))))
+    props = table.find(f'{{{W}}}tblPr'); margins = props.find(f'{{{W}}}tblCellMar')
+    if margins is None:
+        selected = props.find(f'{{{W}}}tblStyle')
+        style = indexed.get(selected.get(f'{{{W}}}val')) if selected is not None else next((item for item in source_styles.findall(f'{{{W}}}style') if item.get(f'{{{W}}}type') == 'table' and item.get(f'{{{W}}}default') == '1'), None)
+        inherited = style.find(f'{{{W}}}tblPr/{{{W}}}tblCellMar') if style is not None else None
+        if inherited is None:
+            raise ValueError('The adopted table cell margins cannot be resolved for proportional fitting.')
+        margins = deepcopy(inherited); props.append(margins)
+    for margin_set in [margins, *table.findall('.//{%s}tcMar' % W)]:
+        for margin in margin_set:
+            if margin.get(f'{{{W}}}type', 'dxa') != 'dxa':
+                raise ValueError('The adopted table uses unsupported proportional cell margins.')
+            margin.set(f'{{{W}}}w', str(max(0, int(int(margin.get(f'{{{W}}}w', '0')) * ratio))))
+    for height in table.findall('.//{%s}trHeight' % W):
+        height.set(f'{{{W}}}val', str(max(1, int(int(height.get(f'{{{W}}}val', '0')) * ratio))))
+
+
+def scale_chart_text(raw, ratio):
+    tree = xml(raw)
+    default = tree.find(f'{{{C}}}txPr/{{{A}}}p/{{{A}}}pPr/{{{A}}}defRPr')
+    if default is None or int(default.get('sz', '0')) <= 0:
+        raise ValueError('The native chart default font size cannot be resolved for proportional fitting.')
+    for element in tree.iter():
+        if element.tag in {f'{{{A}}}rPr', f'{{{A}}}defRPr', f'{{{A}}}endParaRPr'} and element.get('sz') is not None:
+            if int(element.get('sz')) <= 0: raise ValueError('The native chart font size is invalid.')
+            element.set('sz', str(max(1, int(int(element.get('sz')) * ratio))))
+    return serialized(tree)
+
+
+def fit_selected_region(blocks, body, container, styles, source_styles):
     """Constrain adopted fixed tables and inline drawings to this target section only."""
     owner = container
     while owner.getparent() is not body:
@@ -127,6 +185,7 @@ def fit_selected_region(blocks, body, container):
     available = int(page.get(f'{{{W}}}w', '0')) - sum(int(margins.get(f'{{{W}}}{name}', '0')) for name in ('left', 'right', 'gutter'))
     if available <= 0:
         raise ValueError('The target body width is invalid.')
+    chart_scales = {}
     for block in blocks:
         if block.findall('.//{%s}anchor' % WP) or block.findall('.//{%s}pict' % W):
             raise ValueError('Floating or legacy drawings cannot be safely fitted to the target body.')
@@ -149,6 +208,7 @@ def fit_selected_region(blocks, body, container):
             if measured <= 0 or limit <= 0: raise ValueError('The adopted table width is invalid.')
             if measured <= limit: continue
             ratio = limit / measured
+            scale_table_text(table, ratio, styles, source_styles)
             for element in [*grid, *table.findall('.//{%s}tcW' % W)]:
                 if element.tag == f'{{{W}}}tcW' and element.get(f'{{{W}}}type', 'dxa') != 'dxa':
                     raise ValueError('Scaling this adopted table requires explicit cell widths.')
@@ -174,10 +234,16 @@ def fit_selected_region(blocks, body, container):
             if limit <= 0: raise ValueError('The adopted drawing paragraph has no available width.')
             if cx > limit:
                 ratio = limit / cx
+                for chart in inline.findall('.//{%s}chart' % C):
+                    identity = chart.get(f'{{{R}}}id')
+                    if identity in chart_scales and chart_scales[identity] != ratio:
+                        raise ValueError('One native chart has incompatible adopted display sizes.')
+                    chart_scales[identity] = ratio
                 extent.set('cx', str(limit)); extent.set('cy', str(max(1, int(cy * ratio))))
                 for drawing_extent in inline.findall(f'.//{{{A}}}xfrm/{{{A}}}ext'):
                     for name in ('cx', 'cy'):
                         drawing_extent.set(name, str(max(1, int(int(drawing_extent.get(name, '0')) * ratio))))
+    return chart_scales
 
 
 class LinkedReportRegion:
@@ -318,7 +384,15 @@ class LinkedReportRegion:
             container = etree.SubElement(section, f'{{{W}}}sdtContent')
             index = next((i for i, block in enumerate(body) if 'End of Report' in text(block)), len(body) - 1)
             body.insert(max(index, 0), section)
-        fit_selected_region(blocks, body, container)
+        chart_scales = fit_selected_region(blocks, body, container, xml(target['word/styles.xml']), xml(source['word/styles.xml']))
+        scaled_parts = {}
+        for relation in data['relationships']:
+            if relation['Id'] not in chart_scales: continue
+            child = relationship_target('word/document.xml', relation['Target']); ratio = chart_scales[relation['Id']]
+            if child in scaled_parts and scaled_parts[child] != ratio:
+                raise ValueError('One native chart part has incompatible adopted display sizes.')
+            if child not in scaled_parts:
+                source[child] = scale_chart_text(source[child], ratio); scaled_parts[child] = ratio
         rels = xml(target['word/_rels/document.xml.rels'])
         for relation in list(rels):
             if relation.get('TargetMode') != 'External' and posixpath.normpath(posixpath.join('word', relation.get('Target', ''))).startswith(prefix):

@@ -75,6 +75,9 @@ def linked_source():
         for index, value in enumerate(('0', '26')):
             etree.SubElement(etree.SubElement(cache, f'{{{c}}}pt', idx=str(index)), f'{{{c}}}v').text = value
     etree.SubElement(chart, f'{{{c}}}externalData').set(f'{{{r}}}id', 'rIdExternal')
+    text_properties = etree.SubElement(chart, f'{{{c}}}txPr')
+    a = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    etree.SubElement(etree.SubElement(etree.SubElement(text_properties, f'{{{a}}}p'), f'{{{a}}}pPr'), f'{{{a}}}defRPr', sz='1000')
     parts['word/charts/chart1.xml'] = etree.tostring(chart)
     parts['word/charts/_rels/chart1.xml.rels'] = (f'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdExternal" Type="{r}/oleObject" Target="file:///never-read/source.xlsx" TargetMode="External"/></Relationships>').encode()
     content_types = etree.fromstring(parts['[Content_Types].xml'])
@@ -176,6 +179,8 @@ def test_adopted_fixed_table_and_native_chart_fit_six_inches_without_changing_ch
     table.find(f'{{{W}}}tblPr/{{{W}}}tblW').attrib.update({f'{{{W}}}type': 'dxa', f'{{{W}}}w': '10095'})
     for column, width in zip(table.find(f'{{{W}}}tblGrid'), (5000, 5095)): column.set(f'{{{W}}}w', str(width))
     for row in table.findall(f'{{{W}}}tr'):
+        properties = etree.SubElement(row, f'{{{W}}}trPr')
+        etree.SubElement(properties, f'{{{W}}}trHeight', {f'{{{W}}}val': '300', f'{{{W}}}hRule': 'atLeast'})
         for cell, width in zip(row.findall(f'{{{W}}}tc'), (5000, 5095)):
             cell.find(f'{{{W}}}tcPr/{{{W}}}tcW').set(f'{{{W}}}w', str(width))
     chart = body[2].find(f'.//{{{C}}}chart'); run = chart.getparent(); run.remove(chart)
@@ -209,11 +214,35 @@ def test_adopted_fixed_table_and_native_chart_fit_six_inches_without_changing_ch
         assert int(extent.get('cx')) <= 8640 * 635
         assert int(extent.get('cy')) / int(extent.get('cx')) == pytest.approx(3600450 / 6324600, abs=1e-6)
         chart_name = next(name for name in archive.namelist() if name.endswith('/chart1.xml'))
-        assert archive.read(chart_name) == control.read(chart_name)
+        scaled_chart = etree.fromstring(archive.read(chart_name)); original_chart = etree.fromstring(control.read(chart_name))
+        sizes = scaled_chart.xpath('//@sz'); original_sizes = original_chart.xpath('//@sz')
+        assert sizes and all(int(size) < int(original) for size, original in zip(sizes, original_sizes))
+        assert [etree.tostring(series, method='c14n') for series in scaled_chart.findall(f'.//{{{C}}}ser')] == [etree.tostring(series, method='c14n') for series in original_chart.findall(f'.//{{{C}}}ser')]
+        for chart_tree in (scaled_chart, original_chart):
+            for element in chart_tree.iter():
+                if element.tag in {f'{{{A}}}rPr', f'{{{A}}}defRPr', f'{{{A}}}endParaRPr'}: element.attrib.pop('sz', None)
+        assert etree.tostring(scaled_chart, method='c14n') == etree.tostring(original_chart, method='c14n')
+        assert all(int(size.get(f'{{{W}}}val')) < 22 for size in table.findall(f'.//{{{W}}}rPr/{{{W}}}sz'))
+        assert table.findall(f'.//{{{W}}}rPr/{{{W}}}sz')
+        assert all(int(height.get(f'{{{W}}}val')) < 300 for height in table.findall(f'.//{{{W}}}trHeight'))
+        assert int(table.find(f'{{{W}}}tblPr/{{{W}}}tblCellMar/{{{W}}}left').get(f'{{{W}}}w')) < 108
         for name in ('word/header1.xml', 'word/theme/theme1.xml'):
             assert archive.read(name) == before[name]
         assert etree.tostring(root.find(f'{{{W}}}body/{{{W}}}sectPr')) == etree.tostring(etree.fromstring(before['word/document.xml']).find(f'{{{W}}}body/{{{W}}}sectPr'))
     assert stream.getvalue() == original
+    # No geometric shrink means no font override or source-chart byte change.
+    from base64 import b64decode, b64encode
+    with ZipFile(wide) as archive:
+        assert archive.read(chart_name) == b64decode(data['parts']['word/charts/chart1.xml'])
+    from copy import deepcopy
+    unresolved = deepcopy(data); styles = etree.fromstring(b64decode(unresolved['parts']['word/styles.xml']))
+    for element in list(styles.iter()):
+        if element.tag in {f'{{{W}}}sz', f'{{{W}}}szCs'}: element.getparent().remove(element)
+    unresolved['parts']['word/styles.xml'] = b64encode(etree.tostring(styles)).decode()
+    unsafe = tmp_path/'unresolved.docx'; Document().save(unsafe); before = unsafe.read_bytes()
+    with pytest.raises(ValueError, match='font size'):
+        reader.append(unsafe, unresolved, 'unresolved-size')
+    assert unsafe.read_bytes() == before
 
 
 def test_floating_adopted_drawing_is_rejected_without_changing_target(tmp_path):
@@ -227,3 +256,12 @@ def test_floating_adopted_drawing_is_rejected_without_changing_target(tmp_path):
     with pytest.raises(ValueError, match='Floating'):
         reader.append(target, data, 'unsupported-placement')
     assert target.read_bytes() == before
+
+
+def test_native_chart_with_unknown_default_font_size_is_not_guessed():
+    from backend.infrastructure.office.report_authoring.linked_region import scale_chart_text, C, A
+    with ZipFile(BytesIO(linked_source())) as archive:
+        chart = etree.fromstring(archive.read('word/charts/chart1.xml'))
+    chart.find(f'{{{C}}}txPr/{{{A}}}p/{{{A}}}pPr/{{{A}}}defRPr').attrib.pop('sz')
+    with pytest.raises(ValueError, match='font size'):
+        scale_chart_text(etree.tostring(chart), 0.85)
