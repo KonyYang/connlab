@@ -2,10 +2,14 @@
 from dataclasses import replace
 from hashlib import sha256
 import json
+import logging
 from pathlib import Path
 from uuid import uuid4
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.domain.report_authoring import ReportAuthoringConflict, ReportSource
+
+logger = logging.getLogger(__name__)
 
 
 def digest(value):
@@ -104,7 +108,10 @@ class ReportDelivery:
         else:
             try:
                 workspace = self.workspace.snapshot(project_id)
-            except (ValueError, OSError, LookupError) as exc:
+            except OSError:
+                logger.exception('Report delivery destination cannot be read for project %s', project_id)
+                issue('workspace_unavailable', 'The project report folder cannot be read. Check folder access and inspect again.')
+            except (ValueError, LookupError) as exc:
                 issue('workspace_unavailable', str(exc))
         context_hash = digest({'review': self._content_stamp(state, context, review), 'coverage': coverage,
             'internal': output['artifact']['sha256'], 'internal_visual': output.get('visual_preview'),
@@ -231,8 +238,9 @@ class ReportDelivery:
                     current_path=Path(item['current']) if item['current'] else None, expected_current_sha256=item['old_sha256'],
                     target_path=Path(item['target']), history_root=Path(item['history_root']), persist=persist,
                     pre_publish=validate, receipt=self.receipts.item(project_id, operation_id, item['role']))
-            except (OSError, RuntimeError, ValueError) as exc:
-                raise ReportAuthoringConflict(f"{item['role'].title()} report save is unfinished. Close any open Word file, then resume this operation. {exc}") from exc
+            except (OSError, RuntimeError, ValueError, SQLAlchemyError) as exc:
+                logger.exception('Report delivery %s stopped at %s for project %s', operation_id, item['role'], project_id)
+                raise ReportAuthoringConflict(f"{item['role'].title()} report save is unfinished. Close any open Word file, check storage access, then resume this operation. If recovery reports a changed identity, retain all files for review.") from exc
         record = self.receipts.read(project_id, operation_id)
         now, _ = service.state(project_id)
         final = service.repository.save_durable(replace(now, delivery={**self._public_receipt(record), 'status': 'completed',

@@ -108,6 +108,7 @@ def test_customer_failure_retains_saved_internal_and_resume_only_finishes_custom
     monkeypatch.setattr(ReportPublicationGateway, 'publish_regenerated_current', occupied)
     failed = lab['client'].post(BASE+'/delivery/save', json=save_request(state, preview))
     assert failed.status_code == 409, failed.text
+    assert str(local) not in failed.text
     saved_bytes, saved_time = old.read_bytes(), old.stat().st_mtime_ns
     pending = lab['client'].get(BASE+'/delivery').json()['operation']
     assert pending['status'] == 'saving'
