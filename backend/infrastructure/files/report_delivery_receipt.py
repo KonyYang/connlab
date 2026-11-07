@@ -166,6 +166,20 @@ class DeliveryFileReceipt:
         self.receipts._write(self.project_id, record)
         return item
 
+    def verify_saved(self, files):
+        item = self.load()
+        if item['status'] not in {'published', 'committed', 'unchanged'}:
+            raise CurrentReportFileConflictError('This report has not finished saving.')
+        target = safe_path(item['target'])
+        if (not target.is_file() or identity(target) != item['target_identity']
+                or files.fingerprint(target) != item['sha256']):
+            raise CurrentReportFileConflictError('The saved report changed outside this operation.')
+        if item.get('archive'):
+            archive = safe_path(item['archive'])
+            if (not archive.is_file() or identity(archive) != item['old_identity']
+                    or files.fingerprint(archive) != item['old_sha256']):
+                raise CurrentReportFileConflictError('The saved History file changed outside this operation.')
+
     def publish(self, files, *, source_path, expected_source_sha256, current_path,
                 expected_current_sha256, target_path, history_root, persist, pre_publish=None):
         from backend.infrastructure.files.report_publication_gateway import _reserve_archive_path, ReportFilePublicationResult
@@ -202,7 +216,9 @@ class DeliveryFileReceipt:
             if current == target and expected_current_sha256 == expected_source_sha256:
                 result = ReportFilePublicationResult(target, expected_source_sha256, False, None)
                 persist(result)
-                self.update(status='unchanged', target_identity=identity(target))
+                if not matches(target, item['old_identity'], expected_source_sha256):
+                    raise CurrentReportFileConflictError('The unchanged report was edited while recording its save state.')
+                self.update(status='unchanged', target_identity=item['old_identity'])
                 return result
             descriptor, name = tempfile.mkstemp(prefix='.report-', suffix='.stage', dir=target.parent)
             os.close(descriptor)
@@ -254,6 +270,7 @@ class DeliveryFileReceipt:
             raise CurrentReportFileConflictError('The saved History file changed outside this operation.')
         result = ReportFilePublicationResult(target, expected_source_sha256, item['status'] != 'unchanged', archive)
         persist(result)
+        self.verify_saved(files)
         self.update(status='committed' if item['status'] != 'unchanged' else 'unchanged')
         if staging and staging.exists():
             if not matches(staging, item['staging_identity'], expected_source_sha256):

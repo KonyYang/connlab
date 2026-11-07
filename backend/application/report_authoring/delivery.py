@@ -121,6 +121,13 @@ class ReportDelivery:
         pending_projection = state.delivery and state.delivery.get('status') != 'completed'
         operation_matches = bool(operation and operation.get('output_id') == output['output_id']
             and operation.get('customer_output_id') == selected and operation.get('basis_sha256') == context_hash)
+        if operation_matches and operation.get('status') == 'completed':
+            try:
+                prior = self.receipts.read(project_id, operation['operation_id'])
+                for item in prior['items']:
+                    self.receipts.item(project_id, prior['operation_id'], item['role']).verify_saved(self.files)
+            except (LookupError, ValueError, OSError, RuntimeError):
+                operation_matches = False
         return {'can_save': not issues and not active and not pending_projection, 'issues': issues, 'output_id': output['output_id'],
             'output_sha256': output['artifact']['sha256'], 'customer_output_id': selected,
             'preview_sha256': preview_hash, 'review_sha256': review['review_sha256'],
@@ -241,9 +248,13 @@ class ReportDelivery:
                 logger.exception('Report delivery %s stopped at %s for project %s', operation_id, item['role'], project_id)
                 raise ReportAuthoringConflict(f"{item['role'].title()} report save is unfinished. Close any open Word file, check storage access, then resume this operation. If recovery reports a changed identity, retain all files for review.") from exc
         record = self.receipts.read(project_id, operation_id)
+        for item in record['items']:
+            self.receipts.item(project_id, operation_id, item['role']).verify_saved(self.files)
         now, _ = service.state(project_id)
         final = service.repository.save_durable(replace(now, delivery={**self._public_receipt(record), 'status': 'completed',
             'intent_sha256': record['intent_sha256'], 'confirmed_by': approved['confirmed_by'],
             'saved_at': service._now(), 'formal_release': False, 'preview_sha256': approved['preview_sha256']}), now.revision)
+        for item in record['items']:
+            self.receipts.item(project_id, operation_id, item['role']).verify_saved(self.files)
         self.receipts.complete(project_id, operation_id)
         return final

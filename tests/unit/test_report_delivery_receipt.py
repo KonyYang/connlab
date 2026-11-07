@@ -105,3 +105,23 @@ def test_projection_read_never_creates_missing_database_or_parent(tmp_path):
     with pytest.raises(OSError, match='unavailable'):
         ReportAuthoringRepository.read_delivery_projection(SimpleNamespace(database_path=missing), 'P1')
     assert not missing.parent.exists()
+
+
+def test_foreign_edit_during_metadata_commit_is_not_reported_saved(tmp_path):
+    folder = tmp_path/'project'; folder.mkdir()
+    source = tmp_path/'source.docx'; source.write_bytes(b'new reviewed')
+    target = folder/'Report.docx'; target.write_bytes(b'old reviewed')
+    files = ReportPublicationGateway(); store = ReportDeliveryReceipts(tmp_path/'receipts')
+    old_hash = files.fingerprint(target); new_hash = files.fingerprint(source)
+    store.begin('P1', 'd'*32, {'signature': 'approved'}, [{'role': 'internal', 'source': str(source),
+        'sha256': new_hash, 'target': str(target), 'current': str(target), 'old_sha256': old_hash,
+        'history_root': str(folder/'History')}])
+    def foreign_write(_):
+        target.write_bytes(b'foreign manual edit during commit')
+    with pytest.raises(RuntimeError, match='changed outside'):
+        files.publish_regenerated_current(source_path=source, expected_source_sha256=new_hash,
+            current_path=target, expected_current_sha256=old_hash, target_path=target,
+            history_root=folder/'History', persist=foreign_write, receipt=store.item('P1','d'*32,'internal'))
+    assert target.read_bytes() == b'foreign manual edit during commit'
+    assert store.read('P1','d'*32)['items'][0]['status'] == 'published'
+    assert [p.read_bytes() for p in (folder/'History').glob('*.docx')] == [b'old reviewed']
