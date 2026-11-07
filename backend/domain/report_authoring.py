@@ -55,6 +55,7 @@ class ReportAuthoringState:
     results: tuple[dict, ...] = ()
     customer_outputs: tuple[dict, ...] = ()
     assembly_plan: dict | None = None
+    delivery: dict | None = None
 
 
 def validate_mapping(mapping: ReportMapping) -> None:

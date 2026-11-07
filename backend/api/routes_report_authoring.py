@@ -8,21 +8,72 @@ from backend.api.dependencies import get_report_authoring_service
 from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.api.report_authoring_schemas import MappingRequest, SelectBaseRequest, ResultImportRequest, FactUpdateRequest, ResultUpdateRequest
 from backend.domain.report_authoring import ReportAuthoringConflict
+from backend.application.current_report_update_service import CurrentReportFileConflictError
 from backend.api.report_authoring_schemas import PhotoUpdateRequest
 from backend.api.report_authoring_schemas import CustomerCopyRequest, CustomerCheckRequest
 from backend.api.report_authoring_schemas import AdoptWorkingCopyRequest, WorkingLlcrRequest
 from backend.api.report_authoring_schemas import InventoryRetainRequest, AssemblyPreviewRequest, AssemblyApplyRequest
 from backend.api.report_authoring_schemas import DocumentReviewRequest, PhotoPlanRequest, RegionReviewRequest, VisualPageReviewRequest
+from backend.api.report_authoring_schemas import DeliveryPreviewRequest, DeliverySaveRequest, DeliveryResumeRequest, DeliveryContentReviewRequest
 
 
 router = APIRouter(prefix="/api/projects/{project_id}/report-workspace/authoring")
 logger = logging.getLogger(__name__)
 
 
+def _delivery_preview(service, project_id, request=None):
+    result = service.delivery.preview(project_id, request) if request else service.delivery.status(project_id)
+    return {key: value for key, value in result.items() if not key.startswith('_')}
+
+
+@router.get('/delivery')
+def delivery_status(project_id: str, service=Depends(get_report_authoring_service)):
+    try:
+        return _delivery_preview(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/delivery/preview')
+def delivery_preview(project_id: str, request: DeliveryPreviewRequest, service=Depends(get_report_authoring_service)):
+    try:
+        return _delivery_preview(service, project_id, request.model_dump())
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/delivery/content-review', dependencies=[Depends(require_project_folder_write_slot)])
+def delivery_content_review(project_id: str, request: DeliveryContentReviewRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.delivery.confirm_content(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/delivery/save', dependencies=[Depends(require_project_folder_write_slot)])
+def delivery_save(project_id: str, request: DeliverySaveRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.delivery.save(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/delivery/resume', dependencies=[Depends(require_project_folder_write_slot)])
+def delivery_resume(project_id: str, request: DeliveryResumeRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.delivery.save(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
 def _state(service, project_id):
     state, context = service.state(project_id)
     payload = asdict(state)
     payload["context"] = context
+    payload['delivery'] = service.delivery.public_projection(state.delivery)
     payload['applied_result_ids'] = service.active_result_ids(state)
     for source in payload["sources"]:
         source["download_url"] = f"/api/projects/{quote(project_id, safe='')}/report-workspace/authoring/sources/{source['source_id']}/download"
@@ -33,6 +84,8 @@ def _state(service, project_id):
 
 
 def _error(exc):
+    if isinstance(exc, CurrentReportFileConflictError):
+        return HTTPException(409, str(exc))
     if isinstance(exc, LookupError):
         return HTTPException(404, "Report evidence is not available in this project.")
     if isinstance(exc, ReportAuthoringConflict):

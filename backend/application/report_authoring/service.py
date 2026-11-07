@@ -11,7 +11,7 @@ from backend.domain.report_authoring import (
 
 
 class ReportAuthoringService:
-    def __init__(self, *, repository, assets, inspect_upload, project_context, drafts=None, writer=None, results=None, result_writer=None, photos=None, customer=None, sections=None, tools_packages=None, batch_writer=None, inventory=None, document_inspector=None, visual_renderer=None):
+    def __init__(self, *, repository, assets, inspect_upload, project_context, drafts=None, writer=None, results=None, result_writer=None, photos=None, customer=None, sections=None, tools_packages=None, batch_writer=None, inventory=None, document_inspector=None, visual_renderer=None, delivery_workspace=None, delivery_receipts=None, delivery_files=None):
         self.repository = repository
         self.assets = assets
         self.inspect_upload = inspect_upload
@@ -31,6 +31,8 @@ class ReportAuthoringService:
         from backend.application.report_authoring.photo_plan import ReportPhotoPlan
         self.document_review = ReportDocumentReview(self, document_inspector, visual_renderer)
         self.photo_plan = ReportPhotoPlan(self)
+        from backend.application.report_authoring.delivery import ReportDelivery
+        self.delivery = ReportDelivery(self, delivery_workspace, delivery_receipts, delivery_files)
 
     def state(self, project_id):
         context = self.project_context(project_id)
@@ -667,6 +669,9 @@ class ReportAuthoringService:
             'internal_sha256': state.outputs[-1]['artifact']['sha256'] if state.outputs else None,
             'working_output_id': state.outputs[-1]['output_id'] if state.outputs else None,
             'mappings': [asdict(item) for item in state.mappings], 'result_ids': sorted(active_ids), 'sources': dependencies}
+        facts['report_evidence'] = [{'output_id': item['output_id'], 'evidence': item.get('evidence'),
+            'region_decisions': item.get('region_decisions', [])}
+            for item in state.outputs]
         if llcr_context is not None:
             facts['llcr'] = llcr_context
         return sha256(json.dumps(facts, sort_keys=True, ensure_ascii=False).encode()).hexdigest()

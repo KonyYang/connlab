@@ -104,12 +104,17 @@ class ReportPublicationGateway:
         history_root: Path,
         persist: Callable[[ReportFilePublicationResult], None],
         pre_publish: Callable[[], None] | None = None,
+        receipt=None,
     ) -> ReportFilePublicationResult:
         """Replace a validated fresh report and retain recovery until metadata commits.
 
         Explicit regeneration always archives, including byte-identical output. The
         archive is also the rollback copy when the metadata transaction fails.
         """
+        if receipt is not None:
+            return receipt.publish(self, source_path=source_path, expected_source_sha256=expected_source_sha256,
+                current_path=current_path, expected_current_sha256=expected_current_sha256,
+                target_path=target_path, history_root=history_root, persist=persist, pre_publish=pre_publish)
         source, target = Path(source_path), Path(target_path)
         current = Path(current_path) if current_path is not None else None
         if target.suffix.casefold() != ".docx" or not target.parent.is_dir():

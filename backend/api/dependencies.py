@@ -1464,6 +1464,8 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
     from backend.application.report_authoring.results import ReportResultReader
     from backend.infrastructure.office.report_authoring.linked_region import LinkedReportRegion
     from backend.application.tools_temperature_service import ToolsTemperatureService
+    from backend.infrastructure.files.report_delivery_workspace import ReportDeliveryWorkspace
+    from backend.infrastructure.files.report_delivery_receipt import ReportDeliveryReceipts
     from backend.infrastructure.office.temperature_workbook_gateway import TemperatureWorkbookGateway
 
     def context(project_id):
@@ -1482,6 +1484,18 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
                 "step_token": str(token.sequence) + (token.suffix_note or "")}
                 for item in matrix.cells for token in parse_step_tokens(item.cell_value)[0]] if matrix else []}
 
+    delivery_files = ReportPublicationGateway()
+    def delivery_metadata(project_id):
+        from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
+        with Session(bind=session.get_bind()) as fresh:
+            get_project_lifecycle_write_guard(fresh).require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE)
+            workspace = ProjectOfficialWorkspaceRepository(fresh).get_by_project(project_id)
+            configured = _active_resource_path(ExternalResourceRepository(fresh), ExternalResourceType.PROJECT_OUTPUT_ROOT)
+            basic = ProjectBasicInformationRepository(fresh).get_latest_confirmed(project_id)
+            matrix = ConfirmedMatrixAuthorityRepository(fresh).get_active_by_project(project_id)
+            return {'workspace': workspace, 'configured_root': configured,
+                'context': {'basic': str(basic), 'matrix': matrix.version.confirmed_matrix_id if matrix else None}}
+
     return ReportAuthoringService(repository=ReportAuthoringRepository(session),
         assets=ReportAuthoringAssets(settings.data_dir / "report_authoring_assets"),
         inspect_upload=inspect_upload, project_context=context,
@@ -1497,6 +1511,8 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
         batch_writer=ReportBatchDocument(temperature_chart=insert_temperature_chart),
         document_inspector=ReportDocumentInspector(),
         visual_renderer=WordReportPreview(),
+        delivery_workspace=ReportDeliveryWorkspace(delivery_metadata, delivery_files),
+        delivery_receipts=ReportDeliveryReceipts(settings.data_dir / 'report_delivery'), delivery_files=delivery_files,
         inventory=ReportInventory(ReportEvidenceInventory(LibraryFiles(settings), ProjectLibraryRepository(session))),
         photos=ReportPhotoEditor(),
         customer=CustomerReportCopy(converter=CustomerReportDocumentGateway(),
