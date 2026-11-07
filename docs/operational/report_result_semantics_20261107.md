@@ -1,6 +1,7 @@
 # Report automation batch 4 — result meaning and scoped adoption
 
-Status: implementation and Developer targeted validation complete; independent review/QA pending. Not accepted or published.
+Status: implementation, independent review/QA, page smoke and Word visual acceptance complete;
+awaiting User acceptance and explicit Close. Not closed or published.
 
 Task: `TASK_REPORT_RESULT_SEMANTICS_20261107`. Batch 3 was accepted and locally closed.
 This batch extends the existing retained source → confirmed result → batch preview → working-copy
@@ -63,8 +64,8 @@ RED/GREEN slices: qualitative writer initially lacked its data summary branch; n
 initially had no adapter; exact fact targeting initially lacked target lookup. Targeted tests now
 cover each public chain, XLSX → confirm → reopen → batch Word, stale adopted source versions,
 repeat native region replacement, scoped customer checks and customer native-curve restoration.
-Developer targeted results will be recorded after final-byte validation below. Independent QA and
-Word/page acceptance are deliberately not claimed here.
+Developer evidence below records implementation checks; final independent validation and observed
+page/Word acceptance are recorded separately, with their exact code subjects.
 
 ### Developer evidence (2026-11-07)
 
@@ -88,8 +89,48 @@ Word/page acceptance are deliberately not claimed here.
   execution; no Git or file state changed in that failed invocation.
 - Self-review Standards: no unresolved blocker; new adapters are bounded existing-chain modules,
   not a general framework. Spec: all five slices have public form/API/output support. Review risks
-  remain native Word rendering on representative reports and independent regression coverage.
+  identified for subsequent independent review were representative native Word rendering and
+  regression coverage; those checks are now completed as recorded below.
 
 Actual 032B reference inspection by the orchestrator found the native curve links an external OLE
 workbook, not an embedded one. Frozen caches are complete. The original X-axis title/300-tick visual
 overlap remains a source-chart limitation; this task does not redesign or refit the source chart.
+
+### Final independent acceptance evidence (2026-11-07)
+
+- Final tested code subject, read from Git:
+  `71ec4b339f75ad52beef3c2bc5f0e32fe8073da0`. This document-only follow-up does not change runtime
+  or test bytes. Independent final diff review closed the findings concerning chart series `c:v`,
+  dangling document-level references, HSL theme colors, hidden identity auditing, and native-region
+  font/geometry adaptation. Unsupported footnote/bookmark references fail explicitly.
+- Independent full QA on `ba8ade70b3ab7fd7ffeb170f2aa38da876846e83`: Python 598 passed (86.43s),
+  frontend 290 passed (15.47s), production build passed (6.8s). Two explicitly deselected legacy
+  mechanical Excel/Office specialist tests were `test_pdf_only_summary_has_no_empty_placeholder_sheet`
+  and `test_generate_from_reviewed_inputs_without_project`; they are not Word tests.
+- After the width fix at `7f0fda1ccfaca1af7fabafa3a50332faf4349d45`, independent affected validation:
+  181 passed (141.23s). After final proportional-font/shared-chart fixes, independent affected QA on
+  the final code subject: 48 passed (34.75s). Log in the primary repository:
+  `tmp/report_semantics_20261107/qa_71ec4b33/python.log`. These targeted reruns supplement the full
+  matrix rather than claiming it ran again on every follow-up.
+- Page smoke used the unchanged UI from `ba8ade70`: four result types previewed, confirmed, assembled
+  together into one new working copy, reloaded and downloaded. Saved public state: revision 12,
+  two outputs (initial plus batch), four results all retaining pending business outcomes. Replaying
+  the same plan returned HTTP 200 without changing state, bytes or files. Evidence:
+  `tmp/report_semantics_20261107/qa_ba8ade70/ui_final_state.json` and `ui_final_audit.json`.
+- The final code regenerated the same saved public UI state to
+  `tmp/report_semantics_20261107/final_layout_v3/ui_batch_updated_layout.docx` and its PDF.
+  All seven Word-rendered pages were reviewed individually: no new clipping or split numeric
+  readings; the chart title no longer has the newly introduced overlap. The 6-inch target's long
+  450-column heading still wraps, without missing text or values. This is not a claim of pixel-perfect
+  layout on arbitrary templates.
+- Narrow-target adaptation scales copied table geometry/text and explicit native-chart font sizes
+  together. Chart XML is therefore not wholly byte-identical when scaled; cache, series and trendline
+  data remain unchanged. Target header/footer/theme bytes remain unchanged, and the source hash was
+  rechecked successfully. The source chart's existing X-axis title/300-tick overlap remains unchanged.
+
+Remaining boundaries: source applicability and project Pass/Fail still require business decisions;
+unsupported floating structures, numbering or unresolved fonts are rejected instead of guessed.
+The desktop UI was usable at 1440px; an approximately 560px window uses horizontal scrolling and
+was not expanded into a responsive redesign. Isolated services on 8798/5188 were stopped; the real
+5173 development page was untouched. Real reports/templates/project materials were not modified.
+No push or formal publication occurred. Final task closure remains subject to User acceptance.
