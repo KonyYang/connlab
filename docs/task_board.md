@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
+    "task_id": "TASK_REPORT_BATCH_ASSEMBLY_20261107",
     "tier": "standard",
-    "subject": "ea7434e293ab61d3522857368748e8297b77d70e",
-    "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
+    "subject": "a2c926a3bec1b9711b9de69285fad92ced895595",
+    "summary": "Report batch 3: controlled evidence inventory, Matrix coverage and one-copy batch assembly",
     "disposition": "completed",
-    "decision_ref": "User explicitly confirmed closing the completed report working-copy and Tools bridge task, including native Word visual acceptance. Preserve all local commits; no push or publication. Local close only; --publish-close intentionally omitted.",
-    "closed_at": "2026-11-06T21:58:12.773252Z"
+    "decision_ref": "User explicitly accepted and closed batch 3 and authorized starting batch 4. Preserve local commits; no push, publication or real business file changes.",
+    "closed_at": "2026-11-07T01:23:17.767261Z"
   },
   "retained_history": [
     {
@@ -327,165 +327,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested closing the completed materials saving and standalone Matrix/Fee tools task on 2026-11-07. Preserve integrated local commits. Persistent local-only instruction remains: no push or publication; publish-close intentionally omitted.",
       "closed_at": "2026-11-06T21:01:34.514404Z"
+    },
+    {
+      "task_id": "TASK_REPORT_TOOLS_BRIDGE_20261107",
+      "tier": "standard",
+      "subject": "ea7434e293ab61d3522857368748e8297b77d70e",
+      "summary": "Unify report working copy and bridge reviewed mechanical/temperature Tools outputs into Report",
+      "disposition": "completed",
+      "decision_ref": "User explicitly confirmed closing the completed report working-copy and Tools bridge task, including native Word visual acceptance. Preserve all local commits; no push or publication. Local close only; --publish-close intentionally omitted.",
+      "closed_at": "2026-11-06T21:58:12.773252Z"
     }
   ],
-  "tasks": {
-    "TASK_REPORT_BATCH_ASSEMBLY_20261107": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
-      "branch": "codex/report-batch-assembly-20261107",
-      "resources": [],
-      "integrated_head": "4de04a22c28dd66f64a72f8b1b0035c5e04bdbee",
-      "task": {
-        "task_id": "TASK_REPORT_BATCH_ASSEMBLY_20261107",
-        "summary": "Report batch 3: controlled evidence inventory, Matrix coverage and one-copy batch assembly",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Read-only controlled project evidence inventory, Matrix coverage/conflicts, unified preview and atomic batch application of existing confirmed facts/results/photo assignments to one new working copy. Preserve existing sources/revisions/recovery; isolated testing only. No new result categories, temperature math, real-file writes, automatic publication or push.",
-        "scope_paths": [
-          "backend/api/dependencies.py",
-          "backend/api/report_authoring_schemas.py",
-          "backend/api/routes_report_authoring.py",
-          "backend/application/report_authoring",
-          "backend/domain/report_authoring.py",
-          "backend/infrastructure/files",
-          "backend/infrastructure/office/report_authoring",
-          "backend/infrastructure/office/test_report_document_gateway.py",
-          "backend/infrastructure/storage/repositories/report_authoring.py",
-          "backend/interfaces",
-          "docs/operational",
-          "frontend/src/api/reportAuthoring.ts",
-          "frontend/src/api/reportAuthoringBatch.ts",
-          "frontend/src/features/report-workspace",
-          "tests"
-        ],
-        "risk_reasons": [],
-        "activation_head": "5db93f26a56b340f829a2f6a1deb4e849cc7885e",
-        "started_at": "2026-11-06T22:06:25.578287Z",
-        "updated_at": "2026-11-06T23:31:23.256317Z",
-        "checkpoint": {
-          "stage": "batch_development",
-          "requires_user": false,
-          "summary": "Isolated inventory 38 tests, coverage 6 tests, cross-day copy recovery 13 tests, DB-gap/replay API 4 tests and batch/single pagination 18 tests passed in focused runs. Existing LLCR dataset integration now being added to fulfill batch 3 rather than narrowing supported categories. Complete plan retained in docs/operational/report_automation_plan_20261107.md. Worktree changes uncommitted; final focused review, QA, browser and native Word acceptance remain. No real-file writes or push.",
-          "status": "running",
-          "task_id": "TASK_REPORT_BATCH_ASSEMBLY_20261107",
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_REPORT_BATCH_ASSEMBLY_20261107",
-          "subject": "a2c926a3bec1b9711b9de69285fad92ced895595",
-          "summary": "Batch 3 delivered: controlled material inventory, Matrix evidence coverage, exact preview and one-copy assembly of existing facts/results/LLCR/photos. Isolated QA, browser download/reload and 43-page native Word review passed. Local integration only; no push, formal issuance or real-file changes. Batches 4-6 remain deferred.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/report_authoring_schemas.py",
-            "backend/api/routes_report_authoring.py",
-            "backend/application/report_authoring/assembly.py",
-            "backend/application/report_authoring/coverage.py",
-            "backend/application/report_authoring/inventory.py",
-            "backend/application/report_authoring/llcr_projection.py",
-            "backend/application/report_authoring/sections.py",
-            "backend/application/report_authoring/service.py",
-            "backend/domain/report_authoring.py",
-            "backend/infrastructure/files/report_draft_workspace.py",
-            "backend/infrastructure/files/report_evidence_inventory.py",
-            "backend/infrastructure/office/report_authoring/batch_document.py",
-            "backend/infrastructure/office/report_authoring/pagination.py",
-            "backend/infrastructure/office/report_authoring/photo_slots.py",
-            "backend/infrastructure/office/report_authoring/results_document.py",
-            "backend/infrastructure/office/test_report_document_gateway.py",
-            "backend/infrastructure/storage/repositories/report_authoring.py",
-            "docs/operational/report_automation_plan_20261107.md",
-            "docs/operational/report_batch_assembly_20261107.md",
-            "frontend/src/api/reportAuthoring.ts",
-            "frontend/src/api/reportAuthoringBatch.ts",
-            "frontend/src/features/report-workspace/ReportAuthoringPanel.test.tsx",
-            "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
-            "frontend/src/features/report-workspace/ReportBatchPreparation.css",
-            "frontend/src/features/report-workspace/ReportBatchPreparation.test.tsx",
-            "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
-            "frontend/src/features/report-workspace/ReportBatchPreparationInventory.tsx",
-            "frontend/src/features/report-workspace/ReportBatchPreparationSelections.tsx",
-            "tests/integration/test_report_batch_assembly_api.py",
-            "tests/integration/test_report_batch_llcr_api.py",
-            "tests/integration/test_report_inventory_api.py",
-            "tests/integration/test_report_preparation_coverage.py",
-            "tests/unit/report_authoring/test_batch_copy_recovery.py",
-            "tests/unit/report_authoring/test_batch_document.py",
-            "tests/unit/report_authoring/test_batch_llcr_document.py",
-            "tests/unit/report_authoring/test_inventory.py"
-          ],
-          "validation": [
-            {
-              "name": "Affected Python matrix",
-              "status": "passed",
-              "subject": "a2c926a3bec1b9711b9de69285fad92ced895595",
-              "passed": 560,
-              "office_deselected": 2,
-              "seconds": 115.73,
-              "warning": "Existing Starlette/httpx deprecation only"
-            },
-            {
-              "name": "Affected frontend Vitest matrix",
-              "status": "passed",
-              "subject": "a2c926a3bec1b9711b9de69285fad92ced895595",
-              "files": 23,
-              "passed": 315,
-              "seconds": 15.48
-            },
-            {
-              "name": "TypeScript and production build",
-              "status": "passed",
-              "subject": "a2c926a3bec1b9711b9de69285fad92ced895595",
-              "seconds": 6.4,
-              "warnings": []
-            },
-            {
-              "name": "Isolated actual Report UI and API",
-              "status": "passed",
-              "details": "Controlled source retain, LLCR+CR exact preview, pending decisions, generate one version, browser download, reload revision 9; 2 outputs total from initial 1; source SHA and mtime unchanged.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\report_batch_visual_20261107\\final_acceptance.json"
-            },
-            {
-              "name": "Native Word visual acceptance",
-              "status": "passed",
-              "pages": 43,
-              "details": "Cable031 20 pages, SoftBusbar032 20 pages, actual browser LLCR+CR download 3 pages. Cable heading reflow fixed; final representative DOCX bytes equal reviewed renders. Owned Word instances closed, source bytes unchanged.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\report_batch_visual_20261107"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "mode": "Astra main work unit with bounded implementation helpers"
-            },
-            "reviewer": {
-              "status": "passed",
-              "mode": "Focused root review plus separate-context application/inventory/pagination review; own implementation was not claimed independently reviewed",
-              "standards_blockers": 0,
-              "spec_blockers": 0
-            },
-            "qa": {
-              "status": "passed",
-              "mode": "One complete affected Python and frontend QA pass on clean exact subject, separate execution contexts; actual browser and Word checks by root and separate page reviewer"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "a2c926a3bec1b9711b9de69285fad92ced895595",
-            "primary_before": "1e16c7fcb87d653ed1d1bbcef12fbbdc5cfeb61d",
-            "integrated_head": "4de04a22c28dd66f64a72f8b1b0035c5e04bdbee",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
