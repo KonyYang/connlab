@@ -269,8 +269,9 @@ Do not use a dated snapshot as a substitute for the code.
   empty reservation. Unproven staging ownership fails closed and preserves files. Completed replay
   retains report/History bytes, identity and modification times; identical internal receipt metadata
   may be atomically rewritten. Saved-pair status does not approve a later working version.
-- Batch 6 part 1 development and independent acceptance are complete, awaiting local integration and
-  user-confirmed closure. Isolated native Word acceptance covered all six Internal and three Customer
+- Batch 6 part 1 development and independent acceptance are complete. Autonomous acceptance and local
+  closure are authorized for this task; primary board/Git establish actual integration/closure, with
+  no push. Isolated native Word acceptance covered all six Internal and three Customer
   pages, real Windows file-lock partial save, same-database process restart and same-operation resume.
   This does not qualify a release package or second computer. Existing batch UI cannot yet choose
   pre-existing appendix targets; the accepted case bound them through the public API, not a UI-only
