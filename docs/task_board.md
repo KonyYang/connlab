@@ -386,7 +386,7 @@
   "tasks": {
     "TASK_FOLDER_PARTIAL_GENERATION_20261107": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\folder-partial-generation\\connlab",
       "branch": "codex/folder-partial-generation-20261107",
       "resources": [
@@ -427,117 +427,17 @@
         ],
         "activation_head": "19e8073bff43737bf8955ca6cac84f26e4f88430",
         "started_at": "2026-11-07T11:52:04.329246Z",
-        "updated_at": "2026-11-07T13:03:01.286950Z",
-        "checkpoint": null,
-        "report": {
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "method": "Independent /root/folder_partial_reviewer completed Standards and Spec review at final cf78e011 with no unresolved findings. Earlier P1 junction and P2 material-collection findings were reproduced in isolated directories and fixed; final focused regressions passed."
-            },
-            "developer": {
-              "status": "passed",
-              "method": "Independent /root/folder_partial_developer implemented coherent RED/GREEN slices and corrections. Public-seam RED reproduced missing IR template, writer failure, missing Application, stale recovered issues, material suppression and unsafe redirected paths; targeted GREEN preceded immutable commits."
-            },
-            "planner": {
-              "status": "passed",
-              "method": "Independent /root/folder_partial_planner inspected actual preflight, runner, required-forms dependencies, contact kinds, recovery boundaries and test seams."
-            },
-            "qa": {
-              "status": "passed",
-              "method": "Independent /root/folder_partial_qa ran the complete relevant matrix, identified 8 task-related failures now fixed and revalidated (final 68 passed/1 skipped), and proved 7 remaining API failures on an unchanged baseline. Full backend matrix is not all green. Frontend 169 plus 2 acceptance checks and production build passed. No real Office COM or browser E2E; isolated Office fakes and filesystem fixtures only."
-            },
-            "integrator": {
-              "status": "passed",
-              "method": "Independent /root/folder_partial_integrator verified immutable subject, clean roots, exact scope, baseline divergence and actual QA logs. Serial integration is pending the sole writer; no manual merge, reset, push, release or task close."
-            }
-          },
-          "validation": [
-            {
-              "result": "On cf78e011: 68 passed, 1 skipped in 192.18s. Covers the 8 corrected failures, selected Required Forms, source failures, partial completion, recovery, target/context races and junction/ancestor guards. One Windows file-symlink test skipped for privilege WinError 1314; actual junction/ancestor tests passed.",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf78e011-final.log",
-              "name": "Final affected backend validation",
-              "status": "passed"
-            },
-            {
-              "result": "169 tests passed (152 + 17). Frontend tree unchanged from tested cf141ba5 to cf78e011, verified by Git diff.",
-              "evidence": [
-                "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-frontend.log",
-                "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-model.log"
-              ],
-              "name": "Frontend regression validation",
-              "status": "passed"
-            },
-            {
-              "result": "2 QA-only component acceptance tests passed; partial summary retained across remount and no generation restart. This is not browser E2E.",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-ui-acceptance.log",
-              "name": "Independent UI acceptance",
-              "status": "passed"
-            },
-            {
-              "result": "TypeScript and Vite production build passed. No frontend byte changes since the tested subject.",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-build.log",
-              "name": "Production frontend build",
-              "status": "passed"
-            },
-            {
-              "result": "With an unavailable IR template, five other output records/files were retained, partial issues persisted, and repeated observation/resume did not rewrite successful files. Uses isolated SQLite/files and fake Office boundary; real IR workbook generation and path protections are covered.",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-filesystem.log",
-              "name": "Isolated filesystem acceptance",
-              "status": "passed"
-            },
-            {
-              "observed_failures": 7,
-              "result": "The COMPARISON passed: the same 7 API 503 failures reproduced on unchanged baseline product/tests (19e8073; primary has board-only changes). The two API suites themselves remain failed (7 failed, 3 passed); these failures are NOT counted as passed and the full backend matrix is NOT claimed green.",
-              "name": "Baseline comparison of seven API fixture failures",
-              "evidence": "D:/PythonProject/connlab/tmp/qa-folder-partial-baseline-19e8073-api.log",
-              "baseline_subject": "19e8073bff43737bf8955ca6cac84f26e4f88430",
-              "status": "passed"
-            },
-            {
-              "result": "Separate Integrator verified exact cf78e011 subject, clean task and master, 21 exact changed paths equal reserved scope, activation ancestry, board-only primary divergence, and git diff --check. No repeated test run.",
-              "name": "Integrator subject, scope and diff checks",
-              "status": "passed"
-            }
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "cf78e011423b5f9e2762e05383afef985cf48123",
-            "primary_before": "4e12b0af188fcab518d2127494eca18dd74b1130",
-            "integrated_head": "8f54757acee5f74757daf886d57b406b32c05af1",
-            "recovered": false
-          },
-          "changed_paths": [
-            "backend/api/project_folder_generation_composition.py",
-            "backend/api/project_folder_preflight.py",
-            "backend/api/routes_project_folder_generation.py",
-            "backend/application/project_application_form_write_back_service.py",
-            "backend/application/project_folder_generation_outcome.py",
-            "backend/application/project_folder_generation_service.py",
-            "backend/application/project_folder_required_forms_service.py",
-            "backend/application/project_request_material_collection_service.py",
-            "backend/application/project_request_material_collection_types.py",
-            "backend/infrastructure/files/recoverable_output_publisher.py",
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/api/client.ts",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-            "frontend/src/features/project-workbench/useProjectRuntimeConsoleModel.ts",
-            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
-            "tests/integration/test_project_folder_generation_api.py",
-            "tests/integration/test_project_folder_generation_complete_chain.py",
-            "tests/integration/test_project_folder_generation_recovery.py",
-            "tests/unit/test_project_folder_required_forms_service.py",
-            "tests/unit/test_project_request_material_collection_service.py"
-          ],
-          "schema": "connlab.sol-task-report",
+        "updated_at": "2026-11-07T13:40:44.076255Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
-          "subject": "cf78e011423b5f9e2762e05383afef985cf48123",
           "task_id": "TASK_FOLDER_PARTIAL_GENERATION_20261107",
-          "summary": "Independent project-folder output preparation failures now retain successful outputs and persist a visible missing-output summary. Missing Application sources do not suppress valid email/PDF collection. Target, ancestor, context and publication-recovery safety remain fail-closed. Local-only delivery. The initial full backend matrix was NOT all green: 7 API failures were reproduced on the unchanged baseline and remain failures, excluded from passing counts; the 8 task-related failures were fixed and affected validation rerun.",
-          "scope_ok": true
-        }
+          "stage": "revision",
+          "status": "running",
+          "summary": "User approved fixing the observed release-test fixture database mismatch and building a local browser package; keep prior accepted partial-generation behavior and safety assertions, no push, no publication, no real business data mutation.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
