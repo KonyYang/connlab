@@ -4,11 +4,56 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+import sys
+from types import SimpleNamespace
 from docx import Document
 
 import backend.infrastructure.office.word_document_gateway as word_gateway_module
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
+
+
+@pytest.mark.parametrize('window_pids, prior_ids, expected_ownership, should_quit', [
+    ([999, 999], [100], [999], True), ([100], [100], [], False),
+    ([999], [100, 999], [], False), ([999, 100], [100], [999, None], False),
+])
+def test_preview_owns_window_not_nonexistent_application_hwnd(tmp_path, monkeypatch, window_pids, prior_ids, expected_ownership, should_quit):
+    calls = []
+    options = SimpleNamespace(UpdateLinksAtOpen=True, UpdateLinksAtPrint=True, UpdateFieldsAtPrint=True)
+    document = SimpleNamespace(Windows=SimpleNamespace(Item=lambda _: SimpleNamespace(Hwnd=55)), ReadOnly=True,
+        Close=lambda **kwargs: calls.append(('close', kwargs)), Repaginate=lambda: calls.append(('paginate',)),
+        ExportAsFixedFormat=lambda target, *_: Path(target).write_bytes(b'%PDF-isolated'))
+    def opened(*args, **kwargs):
+        assert word.AutomationSecurity == 3 and options.UpdateLinksAtOpen is False
+        assert options.UpdateLinksAtPrint is False and options.UpdateFieldsAtPrint is False
+        if args:
+            assert args[1:4] == (False, True, False)
+        calls.append(('open', kwargs))
+        return document
+    documents = SimpleNamespace(Count=0, Add=opened, Open=opened)
+    word = SimpleNamespace(Documents=documents, Options=options, Quit=lambda: calls.append(('quit',)))
+    client = SimpleNamespace(DispatchEx=lambda _: word, GetObject=lambda _: SimpleNamespace(ExecQuery=lambda _:
+        [SimpleNamespace(ProcessId=999, ExecutablePath='C:/Office/WINWORD.EXE', CommandLine='WINWORD.EXE /Automation -Embedding')]))
+    monkeypatch.setitem(sys.modules, 'pythoncom', SimpleNamespace(CoInitialize=lambda: None, CoUninitialize=lambda: calls.append(('uninit',))))
+    monkeypatch.setitem(sys.modules, 'win32com', SimpleNamespace(client=client))
+    monkeypatch.setitem(sys.modules, 'win32com.client', client)
+    windows = iter(window_pids)
+    monkeypatch.setitem(sys.modules, 'win32process', SimpleNamespace(EnumProcesses=lambda: prior_ids, GetWindowThreadProcessId=lambda _: (1, next(windows))))
+    source = tmp_path / 'copy.docx'; source.write_bytes(b'isolated')
+    ownership = []
+    if should_quit:
+        WordDocumentGateway().export_preview_pdf(source, tmp_path / 'preview.pdf', on_owned_word=ownership.append)
+        assert (tmp_path / 'preview.pdf').read_bytes() == b'%PDF-isolated'
+    else:
+        with pytest.raises(OfficeAutomationUnavailable, match='private Word window|new Word automation server|read-only report window'):
+            WordDocumentGateway().export_preview_pdf(source, tmp_path / 'preview.pdf', on_owned_word=ownership.append)
+    assert ownership == expected_ownership
+    assert (('quit',) in calls) == should_quit
+    assert options.UpdateLinksAtOpen is True
+    assert options.UpdateLinksAtPrint is True and options.UpdateFieldsAtPrint is True
+    assert source.read_bytes() == b'isolated'
+    if 999 in prior_ids:
+        assert not any(call[0] == 'open' for call in calls)
 
 
 def test_read_word_document_uses_protected_package_access(tmp_path: Path) -> None:

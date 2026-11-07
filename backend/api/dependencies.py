@@ -1450,6 +1450,8 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
     from backend.infrastructure.office.report_authoring.word_copy import ReportCopyWriter
     from backend.infrastructure.office.report_authoring.results_document import ReportResultsDocument
     from backend.infrastructure.office.report_authoring.batch_document import ReportBatchDocument
+    from backend.infrastructure.office.report_authoring.document_review import ReportDocumentInspector
+    from backend.infrastructure.office.report_authoring.visual_preview import WordReportPreview
     from backend.application.report_authoring.inventory import ReportInventory
     from backend.infrastructure.files.report_evidence_inventory import ReportEvidenceInventory
     from backend.infrastructure.project_library.files import LibraryFiles
@@ -1493,6 +1495,8 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
             temperature_request_validator=lambda value: DownloadTemperatureRequest.model_validate(value).model_dump()),
         result_writer=ReportResultsDocument(temperature_chart=insert_temperature_chart),
         batch_writer=ReportBatchDocument(temperature_chart=insert_temperature_chart),
+        document_inspector=ReportDocumentInspector(),
+        visual_renderer=WordReportPreview(),
         inventory=ReportInventory(ReportEvidenceInventory(LibraryFiles(settings), ProjectLibraryRepository(session))),
         photos=ReportPhotoEditor(),
         customer=CustomerReportCopy(converter=CustomerReportDocumentGateway(),

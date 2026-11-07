@@ -92,7 +92,7 @@ class WordDocumentGateway:
             raise FileNotFoundError(f"Word document does not exist: {path}")
         return _read_table_locations_with_com(path)
 
-    def export_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+    def export_preview_pdf(self, source_path: Path, output_pdf_path: Path, *, on_owned_word=None) -> Path:
         """Export one `.docx` source file to a PDF preview via Word COM."""
         path = Path(source_path)
         output = Path(output_pdf_path)
@@ -102,8 +102,13 @@ class WordDocumentGateway:
             raise FileNotFoundError(f"Word document does not exist: {path}")
         if output.suffix.lower() != ".pdf":
             raise ValueError(f"Preview output must be a .pdf file: {output}")
+        if output.exists():
+            raise FileExistsError('Word preview requires a new output file; existing previews are immutable.')
         output.parent.mkdir(parents=True, exist_ok=True)
-        _export_pdf_with_com(path, output)
+        if on_owned_word is None:
+            _export_pdf_with_com(path, output)
+        else:
+            _export_pdf_with_com(path, output, on_owned_word=on_owned_word)
         return output
 
     def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
@@ -398,7 +403,7 @@ def _read_table_locations_with_com(path: Path) -> tuple[WordTableLocation, ...]:
         pythoncom.CoUninitialize()
 
 
-def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
+def _export_pdf_with_com(source_path: Path, output_pdf_path: Path, *, on_owned_word=None) -> None:
     """Export one Word document to PDF through Microsoft Word COM."""
     try:
         import pythoncom  # type: ignore[import-not-found]
@@ -412,28 +417,73 @@ def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
     pythoncom.CoInitialize()
     word = None
     document = None
+    owned_word = on_owned_word is None
+    old_options = {}
     try:
+        if on_owned_word:
+            import win32process
+            prior_processes = set(win32process.EnumProcesses())
         word = win32com.client.DispatchEx("Word.Application")
+        if on_owned_word:
+            # Word exposes Window.Hwnd, not Application.Hwnd. Identify the new
+            # automation server first, then cross-check the opened copy's window.
+            processes = win32com.client.GetObject('winmgmts:').ExecQuery(
+                "SELECT ProcessId, ExecutablePath, CommandLine FROM Win32_Process WHERE Name='WINWORD.EXE'")
+            candidates = [int(item.ProcessId) for item in processes
+                if int(item.ProcessId) not in prior_processes
+                and Path(str(item.ExecutablePath or '')).name.casefold() == 'winword.exe'
+                and re.search(r'/Automation\s+-Embedding', str(item.CommandLine or ''), re.I)]
+            if len(candidates) != 1:
+                raise OfficeAutomationUnavailable('Cannot uniquely identify the new Word automation server; existing Word was not touched.')
+            pid = candidates[0]
+            if word.Documents.Count != 0:
+                raise OfficeAutomationUnavailable('Unexpected documents in the automation instance; no report was opened.')
         word.Visible = False
         word.DisplayAlerts = 0
-        document = word.Documents.Open(
-            str(source),
-            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
-            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
-            ReadOnly=True,
-            AddToRecentFiles=False,
-        )
-        document.ExportAsFixedFormat(
-            OutputFileName=str(output),
-            ExportFormat=wd_export_format_pdf,
-            OpenAfterExport=False,
-        )
-    finally:
-        if document is not None:
+        word.AutomationSecurity = 3
+        for option in ('UpdateLinksAtOpen', 'UpdateLinksAtPrint', 'UpdateFieldsAtPrint'):
+            old_options[option] = getattr(word.Options, option)
+            setattr(word.Options, option, False)
+        if on_owned_word:
+            # A private, never-saved blank document exposes Word.Window.Hwnd.
+            # Do not arm timeout termination until COM object and PID agree.
+            document = word.Documents.Add(Visible=False)
+            _, probe_pid = win32process.GetWindowThreadProcessId(int(document.Windows.Item(1).Hwnd))
+            if probe_pid != pid:
+                raise OfficeAutomationUnavailable('The private Word window does not match the new automation process.')
+            owned_word = True
+            on_owned_word(pid)
             document.Close(SaveChanges=False)
-        if word is not None:
-            word.Quit()
-        pythoncom.CoUninitialize()
+            document = None
+        document = word.Documents.Open(
+            str(source), False, True, False, OFFICE_DOCUMENT_PASSWORD,
+        )
+        if on_owned_word:
+            _, document_pid = win32process.GetWindowThreadProcessId(int(document.Windows.Item(1).Hwnd))
+            read_only = bool(document.ReadOnly)
+            if document_pid != pid:
+                owned_word = False
+                on_owned_word(None)
+                raise OfficeAutomationUnavailable(f'The read-only report window does not match the owned Word process: expected_pid={pid}, document_pid={document_pid}, read_only={read_only}.')
+            if not read_only:
+                raise OfficeAutomationUnavailable(f'Word did not honor read-only opening: expected_pid={pid}, document_pid={document_pid}, read_only={read_only}. The owned copy will be closed without saving.')
+        document.Repaginate()
+        document.ExportAsFixedFormat(str(output), wd_export_format_pdf, False)
+    finally:
+        try:
+            if document is not None:
+                document.Close(SaveChanges=False)
+        finally:
+            try:
+                if word is not None:
+                    try:
+                        for option, value in old_options.items():
+                            setattr(word.Options, option, value)
+                    finally:
+                        if owned_word:
+                            word.Quit()
+            finally:
+                pythoncom.CoUninitialize()
 
 
 def _convert_legacy_doc_to_docx_with_com(source_path: Path, output_path: Path) -> None:

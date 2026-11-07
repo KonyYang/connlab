@@ -8,6 +8,7 @@ import { ReportResultUpdate } from "./ReportResultUpdate";
 import { ReportPhotoSlots } from "./ReportPhotoSlots";
 import { ReportCustomerCopy } from "./ReportCustomerCopy";
 import { ReportBatchPreparation } from './ReportBatchPreparation';
+import { ReportDocumentReview } from './ReportDocumentReview';
 import {
   getReportAuthoring, uploadReportSource, saveReportMapping, selectReportBase, downloadReportArtifact,
   getReportFactTargets, type ReportFactLocation,
@@ -257,6 +258,7 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
         <button type="button" className="report-preparation-back" onClick={backToSteps}>Back to report steps</button>
         {!latest && <p className="report-preparation-guidance">Choose a report base before updating content.</p>}
         <ReportBatchPreparation projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportDocumentReview projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportToolsPackageImport key={`tools-${projectId}`} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportEvidenceResults key={`evidence-${projectId}`} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportResultsImport key={projectId} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />

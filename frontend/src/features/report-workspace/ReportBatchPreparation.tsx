@@ -26,6 +26,8 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
   const [choices, setChoices] = useState<Record<string, ResultChoice>>({});
   const [mappingIds, setMappingIds] = useState<string[]>([]);
   const [llcrDatasetId, setLlcrDatasetId] = useState('');
+  const [usePhotoPlan, setUsePhotoPlan] = useState(false);
+  const [renumberFigures, setRenumberFigures] = useState(false);
   const [assignments, setAssignments] = useState<Record<string, ReportAssemblyPhoto>>({});
   const [inspected, setInspected] = useState(false);
   const [readErrors, setReadErrors] = useState<string[]>([]);
@@ -47,6 +49,7 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
     setInventory(null); setCoverage(null); setRetainedSelection({}); setTargets({}); setTargetErrors({}); setSlots([]);
     setChoices({}); setMappingIds([]); setLlcrDatasetId(''); setAssignments({}); setInspected(false); setReadErrors([]); setError('');
     setBusy(false); setConfirmed(false); setDraftChanged(false);
+    setUsePhotoPlan(false); setRenumberFigures(false);
   }, [identity]);
   useEffect(() => () => { epoch.current++; releaseCurrent.current?.(); }, []);
 
@@ -115,7 +118,7 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
     const slot = slots.find(item => item.slot_id === assignment.slot_id);
     return !slot?.supported || ((slot.rotation !== 0 || slot.flip_horizontal || slot.flip_vertical) && !assignment.accept_slot_transform);
   });
-  const hasSelection = mappingIds.length + selectedResults.length + Object.keys(assignments).length > 0 || !!llcrDatasetId;
+  const hasSelection = mappingIds.length + selectedResults.length + Object.keys(assignments).length > 0 || !!llcrDatasetId || usePhotoPlan || renumberFigures;
   const invalidLlcr = !!llcrDatasetId && coverage?.llcr_dataset?.dataset_id !== llcrDatasetId;
   const previewReady = inspected && !!output?.artifact?.sha256 && hasSelection && !invalidResult && !invalidPhoto && !invalidLlcr;
 
@@ -124,6 +127,8 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
     const request: ReportAssemblyRequest = { expected_revision: state.revision, output_id: output.output_id,
       output_sha256: output.artifact.sha256, mapping_ids: mappingIds,
       results: selectedRequests.filter((item): item is NonNullable<typeof item> => item !== null), assignments: Object.values(assignments),
+      ...(usePhotoPlan && output.photo_plan ? { photo_plan_id: output.photo_plan.plan_id } : {}),
+      ...(renumberFigures ? { renumber_figures: true } : {}),
       ...(llcrDatasetId ? { llcr_dataset_id: llcrDatasetId } : {}) };
     await run(async isCurrent => {
       const next = await previewReportAssembly(projectId, request);
@@ -152,12 +157,17 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
       onRetain={() => void retain()} />
     {inspected && !output && <p>Choose a report base before preparing content updates. Retained material copies remain available.</p>}
     {inspected && output && <>
+      {output.photo_plan && <label className="report-batch-check"><input type="checkbox" checked={usePhotoPlan} disabled={locked || Object.keys(assignments).length > 0}
+        onChange={event => { changed(); setUsePhotoPlan(event.target.checked); }} />Use saved confirmed photo mapping ({output.photo_plan.assignments.length} slots)</label>}
+      <label className="report-batch-check"><input type="checkbox" checked={renumberFigures} disabled={locked}
+        onChange={event => { changed(); setRenumberFigures(event.target.checked); }} />Renumber supported photo captions and exact references in visible order</label>
+      <p>Inspect the figure preview in Approved original, photos and Word preview. Ambiguous floating order and field references stay pending.</p>
       <ReportBatchPreparationSelections state={state} mappingIds={mappingIds} onMappings={ids => { changed(); setMappingIds(ids); }}
         choices={choices} targets={targets} targetErrors={targetErrors} slots={slots} assignments={assignments} disabled={locked}
         llcr={{ dataset: coverage?.llcr_dataset || null, unavailableReason: coverage?.llcr_unavailable_reason || '', selectedId: llcrDatasetId,
           onSelect: id => { changed(); setLlcrDatasetId(id); } }}
         onResult={(id, choice) => { changed(); setChoices(previous => ({ ...previous, [id]: choice })); }}
-        onPhoto={(id, assignment) => { changed(); setAssignments(previous => { const next = { ...previous }; if (assignment) next[id] = assignment; else delete next[id]; return next; }); }} />
+        onPhoto={(id, assignment) => { changed(); setUsePhotoPlan(false); setAssignments(previous => { const next = { ...previous }; if (assignment) next[id] = assignment; else delete next[id]; return next; }); }} />
       {invalidResult && <p role="status">Choose the result location and complete evidence destination for each selected result.</p>}
       {invalidPhoto && <p role="status">Review the selected photo slot and its rotation/flips before previewing.</p>}
       <button type="button" disabled={locked || !previewReady} onClick={() => void preview()}>Preview selected updates</button>

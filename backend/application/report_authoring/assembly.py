@@ -22,6 +22,8 @@ class ReportAssembly:
             return False
         if context != plan.get('context_snapshot'):
             return False
+        if plan.get('request', {}).get('photo_plan_id') != (state.outputs[-1].get('photo_plan', {}).get('plan_id') if plan.get('request', {}).get('photo_plan_id') else None):
+            return False
         sources = {item.source_id: item for item in state.sources}
         for recorded in plan.get('source_snapshots', []):
             source = sources.get(recorded['source_id'])
@@ -52,12 +54,17 @@ class ReportAssembly:
         service.assets.read(project_id, artifact)
         if artifact.sha256 != request['output_sha256']:
             raise ReportAuthoringConflict('The report changed after selecting batch updates. Reload its working copy.')
-        if not any(request.get(key) for key in ('mapping_ids', 'results', 'assignments', 'llcr_dataset_id')):
+        if not any(request.get(key) for key in ('mapping_ids', 'results', 'assignments', 'llcr_dataset_id', 'photo_plan_id', 'renumber_figures')):
             raise ValueError('Choose at least one confirmed fact, result or photo replacement.')
         dataset = service.sections.selected_llcr_dataset(project_id, request['llcr_dataset_id'], context['matrix_id']) if request.get('llcr_dataset_id') else None
         facts = service.preview_facts(project_id, {'expected_revision': state.revision,
             'output_id': output['output_id'], 'mapping_ids': request.get('mapping_ids', [])})
         replacements = [{key: item[key] for key in ('old', 'new', 'target') if key in item} for item in facts['changes']]
+        path = service.assets.path(project_id, artifact)
+        numbering = service.document_review.inspector.numbering(path) if request.get('renumber_figures') else None
+        if numbering:
+            if not numbering['ready']:
+                raise ValueError('Figure numbering needs review: ' + '; '.join(item['message'] for item in numbering['issues']))
         results, seen = [], set()
         for selection in request.get('results', []):
             key = selection['result_id']
@@ -75,18 +82,23 @@ class ReportAssembly:
                 target = None
             results.append({'result': result, 'target': target})
         photos, photo_sources = [], []
-        for assignment in request.get('assignments', []):
+        assignments = request.get('assignments', [])
+        if request.get('photo_plan_id'):
+            if assignments:
+                raise ValueError('Use the confirmed photo plan or individual replacements, not both.')
+            assignments = service.photo_plan.assignments(state, context, output, request['photo_plan_id'])
+        for assignment in assignments:
             source = service._source(state, assignment['source_id'])
             if source.role != 'photo':
                 raise ValueError('Choose a retained photo source for each report slot.')
             photos.append({name: value for name, value in assignment.items() if name != 'source_id'} |
                           {'content': service.assets.read(project_id, source)})
             photo_sources.append({'source_id': source.source_id, 'sha256': source.sha256})
-        path = service.assets.path(project_id, artifact)
         llcr = {'llcr_dataset': dataset} if dataset is not None else {}
-        document_plan = self.writer.preview(path, fact_replacements=replacements, results=results, photos=photos, **llcr)
+        document_plan = self.writer.preview(path, fact_replacements=replacements, results=results, photos=photos,
+            **({'figure_numbering': numbering} if numbering else {}), **llcr)
         input_facts = {'matrix': context, 'facts': facts, 'results': [item['result'] for item in results],
-                       'photos': photo_sources, 'document_plan': document_plan,
+                       'photos': photo_sources, 'document_plan': document_plan, 'numbering': numbering,
                        'llcr_dataset_sha256': dataset_sha256(dataset) if dataset else None}
         return output, path, facts, replacements, results, photos, document_plan, dataset, digest(input_facts)
 
@@ -110,6 +122,8 @@ class ReportAssembly:
         used_sources = {item['result']['source_id'] for item in results}
         used_sources.update(item['source_id'] for item in facts['mapping_snapshots'])
         used_sources.update(item['source_id'] for item in selected.get('assignments', []))
+        if selected.get('photo_plan_id'):
+            used_sources.update(item['source_id'] for item in output['photo_plan']['assignments'])
         plan = {'plan_id': uuid4().hex, 'status': 'prepared', 'prepared_revision': state.revision + 1,
                 'base_output_id': output['output_id'], 'output_sha256': output['artifact']['sha256'],
                 'matrix_id': context['matrix_id'], 'request': selected,
@@ -144,7 +158,8 @@ class ReportAssembly:
 
         def generate(source, target):
             llcr = {'llcr_dataset': dataset} if dataset is not None else {}
-            return self.writer.update(source, target, document_plan, fact_replacements=replacements, results=results, photos=photos, **llcr)
+            return self.writer.update(source, target, document_plan, fact_replacements=replacements, results=results, photos=photos,
+                **({'figure_numbering': document_plan['figure_numbering']} if document_plan.get('figure_numbering') else {}), **llcr)
 
         def revalidate():
             current, now = service._editable(project_id, state.revision)
@@ -167,7 +182,15 @@ class ReportAssembly:
                       'result_ids': [item['result']['result_id'] for item in results],
                       'llcr_dataset_id': dataset.dataset_id if dataset else None,
                       'llcr_dataset_sha256': dataset_sha256(dataset) if dataset else None,
-                      'mapping_snapshots': facts['mapping_snapshots'], 'assignments': plan['request'].get('assignments', []),
+                      'mapping_snapshots': facts['mapping_snapshots'],
+                      'assignments': output['photo_plan']['assignments'] if plan['request'].get('photo_plan_id') else plan['request'].get('assignments', []),
+                      'photo_plan': output.get('photo_plan') if plan['request'].get('photo_plan_id') else None,
                       'document_plan': document_plan}}
+        record['evidence']['applied_photo_slots'] = service.photos.inspect(service.assets.path(project_id, artifact)) if photos else []
+        if service.document_review.inspector:
+            record['evidence']['applied_regions'] = [
+                {key: region[key] for key in ('region_id', 'sha256', 'owned_result')}
+                for region in service.document_review.inspector.inspect(service.assets.path(project_id, artifact))['regions']
+                if any((region['owned_result'] or region.get('associated_result', '')) == 'connlab-report-result:' + item['result']['result_id'] for item in results)]
         completed_plan = {**plan, 'status': 'completed', 'can_apply': False, 'applied_output_id': artifact.source_id}
         return service.repository.save(replace(state, outputs=(*state.outputs, record), assembly_plan=completed_plan), state.revision)

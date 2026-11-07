@@ -213,6 +213,55 @@ class AssemblyPreviewRequest(BaseModel):
     results: list[BatchResultSelection] = Field(default_factory=list, max_length=100)
     assignments: list[PhotoAssignment] = Field(default_factory=list, max_length=100)
     llcr_dataset_id: str | None = Field(default=None, min_length=1, max_length=100)
+    photo_plan_id: str | None = Field(default=None, pattern=r'^[0-9a-f]{32}$')
+    renumber_figures: bool = False
+
+
+class DocumentReviewRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    expected_revision: int = Field(ge=0)
+    output_id: str = Field(min_length=1, max_length=64)
+    output_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+
+
+class ConfirmedPhotoAssignment(PhotoAssignment):
+    scope: Literal['step', 'sample_overview', 'project_context'] = 'step'
+    group_id: str = Field(default='', max_length=128)
+    row_id: str = Field(default='', max_length=128)
+    step_token: str = Field(default='', max_length=64)
+    sample_ids: list[str] = Field(default_factory=list, max_length=256)
+    stage: str = Field(min_length=1, max_length=100)
+    reason: str = Field(min_length=1, max_length=2000)
+    reuse_reason: str = Field(default='', max_length=2000)
+    accept_context_change: bool = False
+
+
+class PhotoPlanRequest(DocumentReviewRequest):
+    review_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    confirmed_by: str = Field(min_length=1, max_length=255)
+    assignments: list[ConfirmedPhotoAssignment] = Field(min_length=1, max_length=100)
+
+
+class RegionDecision(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    region_id: str = Field(min_length=1, max_length=300)
+    region_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    source_id: str = Field(min_length=1, max_length=64)
+    locator: str = Field(min_length=1, max_length=2000)
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+class RegionReviewRequest(DocumentReviewRequest):
+    review_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    confirmed_by: str = Field(min_length=1, max_length=255)
+    decisions: list[RegionDecision] = Field(min_length=1, max_length=500)
+
+
+class VisualPageReviewRequest(DocumentReviewRequest):
+    preview_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    pages: list[int] = Field(min_length=1, max_length=2000)
+    confirmed_by: str = Field(min_length=1, max_length=255)
+    notes: str = Field(default='', max_length=5000)
 
 
 class AssemblyApplyRequest(BaseModel):

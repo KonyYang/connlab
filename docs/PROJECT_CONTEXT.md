@@ -254,6 +254,19 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Report Workspace presentation
 
+- Update report content includes source-bound semantic region review, confirmed batch photo mappings,
+  figure-number changes and retained Word/PDF visual previews. These operate on the selected working
+  copy, never publish it. Layout references retain unresolved inherited facts until current scoped
+  evidence is confirmed; a matching date or result tag alone does not approve other old results/Pass.
+- Photo proposals are hints, not authority. Step photos bind Matrix Group/Step; sample-overview and
+  project-context photos do not invent steps. Photo bytes, target slots and Matrix identity invalidate
+  stale mappings. Numbering changes only exact numeric spans; ambiguous floating order, fields or
+  compound-number assignments require review instead of guessed rewrites.
+- Word preview uses an owned automation process with macros/linked updates disabled and a read-only
+  retained copy. PDF assets bind the exact output SHA and are reused for download. Located changed
+  anchors guide page inspection; full-document visual confirmation remains separate from content
+  completeness and formal release. Microsoft Word/pywin32 are required on the rendering host.
+
 - Retained evidence supports qualitative Tools matrices, explicit IR/DWV cell selections and
   multi-stage direct resistance/ΔR records in the existing report batch chain. Stage and quantity,
   source observations and project acceptance are separate. Missing data never supplies Pass.

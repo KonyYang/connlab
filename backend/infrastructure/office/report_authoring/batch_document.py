@@ -52,7 +52,7 @@ class ReportBatchDocument:
         self.results_writer = ReportResultsDocument(self.protected, temperature_chart)
         self.llcr_writer = TestReportDocumentGateway(protected_package_gateway=self.protected)
 
-    def preview(self, source: Path, *, fact_replacements, results, photos, llcr_dataset=None):
+    def preview(self, source: Path, *, fact_replacements, results, photos, llcr_dataset=None, figure_numbering=None):
         source = Path(source)
         source_digest = sha256(source.read_bytes()).hexdigest()
         photo_requests = [PhotoReplacement(**photo) for photo in photos]
@@ -61,8 +61,20 @@ class ReportBatchDocument:
         plan = {'source_sha256': source_digest, 'ready': False, 'conflicts': [], 'facts': [],
             'results': [], 'photos': photo_facts, 'changes': [], 'llcr': None,
             'selection_sha256': _digest({'facts': fact_replacements, 'results': results, 'photos': photo_facts,
-                'llcr_dataset_sha256': llcr_dataset_sha256(llcr_dataset) if llcr_dataset is not None else None})}
-        if not fact_replacements and not results and not photos and llcr_dataset is None:
+                'llcr_dataset_sha256': llcr_dataset_sha256(llcr_dataset) if llcr_dataset is not None else None,
+                'figure_numbering': figure_numbering}), 'figure_numbering': figure_numbering}
+        number_edits = figure_numbering['replacements'] if figure_numbering else []
+        if figure_numbering:
+            from backend.infrastructure.office.report_authoring.document_review import ReportDocumentInspector
+            if figure_numbering != ReportDocumentInspector(self.protected).numbering(source) or not figure_numbering['ready']:
+                plan['conflicts'].append(_conflict('numbering_stale', 'Figure numbering preview changed.'))
+            for numbered in number_edits:
+                for fact in fact_replacements:
+                    old, _, target = replacement_parts(fact)
+                    if target is None or (target['part'], target['paragraph']) == (numbered['target']['part'], numbered['target']['paragraph']):
+                        plan['conflicts'].append(_conflict('target_overlap', 'Fact and figure numbering target the same paragraph; make separate reviewed updates.'))
+            plan['changes'].extend({'kind': 'numbering', 'label': f"{item['old']} → {item['new']}"} for item in number_edits)
+        if not fact_replacements and not results and not photos and llcr_dataset is None and not number_edits:
             plan['conflicts'].append(_conflict('empty_batch', 'Choose at least one confirmed change.'))
         if llcr_dataset is not None:
             try:
@@ -141,9 +153,9 @@ class ReportBatchDocument:
                     'result_id': result_id})
             for label, _ in reflow_headings(root, {item['table'] for item in prepared}):
                 plan['changes'].append({'kind': 'pagination', 'label': f'Keep {label} with its table after content reflow (explicit page breaks unchanged).'})
-            self._check_overlaps(root, prepared, fact_replacements, photos, plan)
+            self._check_overlaps(root, prepared, [*fact_replacements, *number_edits], photos, plan)
             if plan['llcr'] is not None:
-                self._check_llcr_overlaps(root, prepared, fact_replacements, photos, plan)
+                self._check_llcr_overlaps(root, prepared, [*fact_replacements, *number_edits], photos, plan)
             if photos:
                 try:
                     changed = preview_photo_replacements(readable, photo_requests,
@@ -238,20 +250,25 @@ class ReportBatchDocument:
                 plan['conflicts'].append(_conflict('target_overlap',
                     f'Fact replacement "{old}" changes an LLCR matching field, result or Appendix A anchor.'))
 
-    def update(self, source: Path, output: Path, plan, *, fact_replacements, results, photos, llcr_dataset=None):
+    def update(self, source: Path, output: Path, plan, *, fact_replacements, results, photos, llcr_dataset=None, figure_numbering=None):
         source, output = Path(source), Path(output)
         if output.exists() or output.resolve() == source.resolve():
             raise ValueError('The output already exists; batch assembly never overwrites a report.')
         if not plan.get('ready'):
             raise ValueError('Resolve the batch target conflicts before creating a report copy.')
         current_plan = self.preview(source, fact_replacements=fact_replacements, results=results, photos=photos,
-            llcr_dataset=llcr_dataset)
+            llcr_dataset=llcr_dataset, figure_numbering=figure_numbering)
         if not current_plan['ready'] or _digest(current_plan) != _digest(plan):
             raise ValueError('The report, selections or target preview changed; refresh the batch preview.')
         with TemporaryDirectory(prefix='connlab-batch-') as directory:
             directory = Path(directory)
             current = directory / 'source.docx'
-            protection = self.protected.stage_editable_copy(source, current)
+            original = source
+            if figure_numbering:
+                from backend.infrastructure.office.report_authoring.document_review import ReportDocumentInspector
+                original = directory / 'numbered.docx'
+                ReportDocumentInspector(self.protected).apply_numbering(source, original, figure_numbering)
+            protection = self.protected.stage_editable_copy(original, current)
             # Text updates do not change paragraph/table identity. Apply their frozen
             # locators before result appendices can add or remove paragraphs.
             if fact_replacements:

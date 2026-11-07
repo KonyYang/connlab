@@ -12,6 +12,7 @@ from backend.api.report_authoring_schemas import PhotoUpdateRequest
 from backend.api.report_authoring_schemas import CustomerCopyRequest, CustomerCheckRequest
 from backend.api.report_authoring_schemas import AdoptWorkingCopyRequest, WorkingLlcrRequest
 from backend.api.report_authoring_schemas import InventoryRetainRequest, AssemblyPreviewRequest, AssemblyApplyRequest
+from backend.api.report_authoring_schemas import DocumentReviewRequest, PhotoPlanRequest, RegionReviewRequest, VisualPageReviewRequest
 
 
 router = APIRouter(prefix="/api/projects/{project_id}/report-workspace/authoring")
@@ -40,6 +41,63 @@ def _error(exc):
         return HTTPException(422, str(exc))
     logger.exception("Report evidence storage failed")
     return HTTPException(503, "Report evidence cannot be read or saved. Check storage access and retry.")
+
+
+@router.get('/outputs/{output_id}/document-review')
+def document_review(project_id: str, output_id: str, expected_revision: int, service=Depends(get_report_authoring_service)):
+    try:
+        return service.document_review.inspect(project_id, output_id, expected_revision)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/photos/plan', dependencies=[Depends(require_project_folder_write_slot)])
+def photo_plan(project_id: str, request: PhotoPlanRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.photo_plan.confirm(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/document-review/regions', dependencies=[Depends(require_project_folder_write_slot)])
+def confirm_regions(project_id: str, request: RegionReviewRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.document_review.confirm_regions(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+# Sync endpoints are dispatched by FastAPI to its thread pool. Word never blocks
+# the async event loop, and the rendering adapter has its own bounded worker.
+@router.post('/visual-preview', dependencies=[Depends(require_project_folder_write_slot)])
+def visual_preview(project_id: str, request: DocumentReviewRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.document_review.render(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.get('/outputs/{output_id}/visual-preview')
+def download_visual_preview(project_id: str, output_id: str, service=Depends(get_report_authoring_service)):
+    try:
+        content, name = service.document_review.preview_content(project_id, output_id)
+        return Response(content, media_type='application/pdf', headers={
+            'Content-Disposition': f"inline; filename*=UTF-8''{quote(name, safe='')}",
+            'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-cache'})
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/visual-preview/review', dependencies=[Depends(require_project_folder_write_slot)])
+def review_visual_pages(project_id: str, request: VisualPageReviewRequest, service=Depends(get_report_authoring_service)):
+    try:
+        service.document_review.review_pages(project_id, request.model_dump())
+        return _state(service, project_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
 
 
 @router.get("")

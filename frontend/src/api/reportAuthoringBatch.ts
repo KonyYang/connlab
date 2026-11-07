@@ -33,6 +33,8 @@ export type ReportAssemblyRequest = {
   expected_revision: number; output_id: string; output_sha256: string;
   mapping_ids: string[]; results: ReportAssemblyResult[]; assignments: ReportAssemblyPhoto[];
   llcr_dataset_id?: string | null;
+  photo_plan_id?: string;
+  renumber_figures?: boolean;
 };
 export type ReportAssemblyLlcrPreview = {
   dataset_id: string; revision: number; source_sha256: string; dataset_sha256: string; changed: boolean;
