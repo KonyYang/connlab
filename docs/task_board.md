@@ -365,7 +365,80 @@
       "closed_at": "2026-11-07T03:39:19.537465Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
+      "branch": "codex/report-batch5-final-acceptance-20261107",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
+        "summary": "Report automation batch 5: approved-original coverage, batch photo candidates and confirmation, figure numbering/reference checks, and version-bound Word visual preview.",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Implement complete batch 5 and applicable sections 8/11 of report_automation_plan_20261107.md in the existing Report Workspace, using isolated data/copies. Real reports/templates/project materials read-only; no push, no formal publication, no batch6 expansion. User authorized autonomous acceptance and local task close after verified completion.",
+        "scope_paths": [
+          "backend/domain/report_authoring.py",
+          "backend/application/report_authoring/service.py",
+          "backend/application/report_authoring/assembly.py",
+          "backend/application/report_authoring/coverage.py",
+          "backend/application/report_authoring/document_review.py",
+          "backend/application/report_authoring/photo_plan.py",
+          "backend/api/dependencies.py",
+          "backend/api/report_authoring_schemas.py",
+          "backend/api/routes_report_authoring.py",
+          "backend/infrastructure/storage/repositories/report_authoring.py",
+          "backend/infrastructure/office/report_authoring/document_review.py",
+          "backend/infrastructure/office/report_authoring/visual_preview.py",
+          "backend/infrastructure/office/report_authoring/photo_slots.py",
+          "backend/infrastructure/office/report_authoring/photo_editor.py",
+          "backend/infrastructure/office/report_authoring/batch_document.py",
+          "backend/infrastructure/office/report_authoring/customer_audit.py",
+          "backend/infrastructure/office/word_document_gateway.py",
+          "backend/infrastructure/files/report_authoring_assets.py",
+          "frontend/src/api/reportAuthoring.ts",
+          "frontend/src/api/reportAuthoringBatch.ts",
+          "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
+          "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
+          "frontend/src/features/report-workspace/ReportBatchPreparationSelections.tsx",
+          "frontend/src/features/report-workspace/ReportPhotoSlots.tsx",
+          "frontend/src/features/report-workspace/ReportDocumentReview.tsx",
+          "frontend/src/features/report-workspace/ReportPhotoPlan.tsx",
+          "frontend/src/features/report-workspace/ReportVisualPreview.tsx",
+          "frontend/src/features/report-workspace/reportAuthoringPanel.css",
+          "frontend/src/features/report-workspace/ReportBatchPreparation.css",
+          "tests/unit/report_authoring/test_document_review.py",
+          "tests/unit/report_authoring/test_photo_plan.py",
+          "tests/unit/report_authoring/test_visual_preview.py",
+          "tests/unit/report_authoring/test_photo_slots.py",
+          "tests/unit/report_authoring/test_batch_document.py",
+          "tests/unit/report_authoring/test_customer_audit.py",
+          "tests/unit/report_authoring/test_report_state.py",
+          "tests/unit/test_word_document_gateway.py",
+          "tests/integration/test_report_document_review_api.py",
+          "tests/integration/test_report_batch_assembly_api.py",
+          "tests/integration/test_report_authoring_api.py",
+          "frontend/src/features/report-workspace/ReportDocumentReview.test.tsx",
+          "frontend/src/features/report-workspace/ReportPhotoPlan.test.tsx",
+          "frontend/src/features/report-workspace/ReportVisualPreview.test.tsx",
+          "frontend/src/features/report-workspace/ReportBatchPreparation.test.tsx",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/operational/report_automation_plan_20261107.md",
+          "docs/operational/report_template_photos_preview_20261107.md"
+        ],
+        "risk_reasons": [
+          "Native Word fidelity, cross-project original coverage and executable Office rendering require independent review and QA."
+        ],
+        "activation_head": "75d9eb36512f67d4ee22eda070876f0e527b11ad",
+        "started_at": "2026-11-07T04:33:36.854373Z",
+        "updated_at": "2026-11-07T04:33:36.854373Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
