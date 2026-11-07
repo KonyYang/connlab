@@ -9,6 +9,7 @@ import { ReportPhotoSlots } from "./ReportPhotoSlots";
 import { ReportCustomerCopy } from "./ReportCustomerCopy";
 import { ReportBatchPreparation } from './ReportBatchPreparation';
 import { ReportDocumentReview } from './ReportDocumentReview';
+import { ReportDelivery } from './ReportDelivery';
 import {
   getReportAuthoring, uploadReportSource, saveReportMapping, selectReportBase, downloadReportArtifact,
   getReportFactTargets, type ReportFactLocation,
@@ -275,6 +276,7 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
         {!latest ? <p className="report-preparation-guidance">Create a working copy and confirm its content before generating a customer review copy.</p>
           : !customer && <p className="report-preparation-guidance">Check the working copy, then generate a customer review copy below. No report is formally released by these checks.</p>}
         <ReportCustomerCopy projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportDelivery projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         </section>
       </>}
     </div>}

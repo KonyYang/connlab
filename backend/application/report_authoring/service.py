@@ -658,12 +658,22 @@ class ReportAuthoringService:
         active_ids = set(cls.active_result_ids(state))
         results = [item for item in state.results if item['result_id'] in active_ids]
         used_sources = {item.source_id for item in state.mappings} | {item['source_id'] for item in results}
+        ancestors = []
+        by_id = {item['output_id']: item for item in state.outputs}
+        current = state.outputs[-1] if state.outputs else None
+        while current and current not in ancestors:
+            ancestors.append(current)
+            used_sources.update(item['source_id'] for item in current.get('region_decisions', []))
+            used_sources.update(item['source_id'] for item in current.get('evidence', {}).get('assignments', []))
+            if current['operation'] == 'prepare_base':
+                break
+            current = by_id.get(current.get('parent_output_id'))
         if state.base_source_id:
             used_sources.add(state.base_source_id)
         latest = {}
         for source in state.sources:
             latest[cls._source_family(source)] = source.source_id
-        dependencies = [{"source_id": source.source_id, 'latest_source_id': latest[cls._source_family(source)]}
+        dependencies = [{"source_id": source.source_id, 'sha256': source.sha256, 'latest_source_id': latest[cls._source_family(source)]}
             for source in state.sources if source.source_id in used_sources]
         facts = {'matrix_id': context['matrix_id'], 'base_source_id': state.base_source_id,
             'internal_sha256': state.outputs[-1]['artifact']['sha256'] if state.outputs else None,
@@ -671,7 +681,7 @@ class ReportAuthoringService:
             'mappings': [asdict(item) for item in state.mappings], 'result_ids': sorted(active_ids), 'sources': dependencies}
         facts['report_evidence'] = [{'output_id': item['output_id'], 'evidence': item.get('evidence'),
             'region_decisions': item.get('region_decisions', [])}
-            for item in state.outputs]
+            for item in ancestors]
         if llcr_context is not None:
             facts['llcr'] = llcr_context
         return sha256(json.dumps(facts, sort_keys=True, ensure_ascii=False).encode()).hexdigest()

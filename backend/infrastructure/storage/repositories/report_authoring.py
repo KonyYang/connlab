@@ -11,9 +11,17 @@ class ReportAuthoringRepository:
     @staticmethod
     def read_delivery_projection(settings, project_id):
         """Independent short read; never changes the request session lifetime."""
+        import sqlite3
+        from pathlib import Path
+        from sqlalchemy import create_engine
         from sqlalchemy.orm import Session
-        from backend.infrastructure.storage.database import create_database_engine
-        engine = create_database_engine(settings)
+        database = Path(settings.database_path)
+        if not database.is_file():
+            raise OSError('Report save state is unavailable; restore the configured database before writing.')
+        # Do not call the runtime database initializer: this read must not create
+        # directories, empty databases, library lease markers or migrations.
+        engine = create_engine('sqlite://', creator=lambda: sqlite3.connect(database.as_uri() + '?mode=ro',
+            uri=True, check_same_thread=False))
         try:
             with Session(engine) as reader:
                 return ReportAuthoringRepository(reader).get(project_id).delivery

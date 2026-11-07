@@ -14,3 +14,15 @@
 ## 验收
 
 公开API与页面验证配对、审核失效、显式确认、History、重复请求、部分失败/断线恢复。文件边界验证占用、DB提交失败、身份/manifest/重解析漂移与receipt篡改。新客户Word预览实际逐页检查；保存字节等于审核字节、History等于旧文件；真实原件SHA不变。发行包和异机验收留后续。
+
+## 实现与开发验证
+
+`ReportDelivery`收口交付检查/显式保存/同操作恢复；目的地只由项目ID、已注册workspace、配置根、manifest与目录身份解析，不接收客户端文件路径。报告生成模板、费用资料不牵连保存现成成果。
+
+授权intent先durable提交现authoring JSON，再建立唯一文件receipt；若进程在两者之间中断，恢复只从已提交intent重建同operation，重新核验来源/审核/目的地。receipt记录动作前staging inode与SHA、旧目标inode、确定History位置；新目标只有同时证明owned identity+SHA才可补登记。客户项失败不撤销已保存内部项，也不把部分完成显示为全部完成。旧无receipt发布调用继续原异常回滚语义。
+
+项目writer guard在原锁内以配置数据库的只读短连接检查pending投影，不改变请求session的提交/退出顺序，不建DB、目录、租约或迁移。各文件完成后投影durable提交，整套完成后才释放receipt阻塞。来源/Matrix/实际PDF或目标字节变化使旧保存预览失效。
+
+开发切片已验证真实子进程在硬链接后`os._exit`，重启仅补登记；相同字节但不同inode不被认领；receipt不可变意图/越界staging被拒绝。公开API由真实来源/结果/审核接口建立成功配对，不手工制造passed状态；Word/转换仅在开发测试的外部边界替身，不能替代QA实际Word验收。
+
+待独立Reviewer、QA完整受影响矩阵、实际页面/客户Word逐页验收及本地集成。任何业务待核继续pending，不自动正式发行。

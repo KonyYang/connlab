@@ -131,6 +131,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const busyAction = legacyBusyAction ?? (authoringBusy ? "authoring" : !authoringState ? "load" : null);
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
+  const refreshedDelivery = useRef('');
   activeProject.current = projectId;
 
   function acceptAuthoringState(next: ReportAuthoringState) {
@@ -196,6 +197,17 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     }
     return { state: nextState, customerReport: nextCustomerReport };
   }, [projectId]);
+
+  useEffect(() => {
+    const delivery = authoringState?.delivery;
+    if (!delivery || delivery.status !== 'completed') return;
+    const identity = `${projectId}:${delivery.operation_id}`;
+    if (refreshedDelivery.current === identity) return;
+    refreshedDelivery.current = identity;
+    void refresh().catch(() => {
+      if (activeProject.current === projectId) setError('Reports were saved, but current report status could not be refreshed. Reload the page; do not generate again.');
+    });
+  }, [projectId, authoringState?.delivery?.operation_id, authoringState?.delivery?.status, refresh]);
 
   async function runAuthoringReload() {
     if (pageBusyAction || authoringOperation.current) return;

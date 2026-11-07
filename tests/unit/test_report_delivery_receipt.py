@@ -73,3 +73,35 @@ ReportPublicationGateway().publish_regenerated_current(source_path=Path(item['so
         files.publish_regenerated_current(source_path=source, expected_source_sha256=digest,
             current_path=target, expected_current_sha256=old, target_path=target, history_root=folder/'History',
             persist=lambda _: None, receipt=store.item('P1', 'b'*32, 'internal'))
+
+
+def test_receipt_rejects_changed_immutable_intent_or_uncontrolled_staging(tmp_path):
+    import json
+    folder = tmp_path/'project'; folder.mkdir()
+    source = tmp_path/'source.docx'; source.write_bytes(b'new')
+    target = folder/'Report.docx'; target.write_bytes(b'old')
+    store = ReportDeliveryReceipts(tmp_path/'receipts'); files = ReportPublicationGateway()
+    original = store.begin('P1', 'c'*32, {'signature': 'approved'}, [{
+        'role': 'internal', 'source': str(source), 'sha256': files.fingerprint(source), 'target': str(target),
+        'current': str(target), 'old_sha256': files.fingerprint(target), 'history_root': str(folder/'History')}])
+    receipt_path = next((tmp_path/'receipts').rglob('c'*32 + '.json'))
+    tampered = json.loads(receipt_path.read_text(encoding='utf-8'))
+    tampered['items'][0]['target'] = str(tmp_path/'unowned.docx')
+    receipt_path.write_text(json.dumps(tampered), encoding='utf-8')
+    with pytest.raises(RuntimeError, match='invalid'):
+        store.read('P1', 'c'*32)
+    tampered = json.loads(json.dumps(original))
+    tampered['items'][0].update(status='staged', staging=str(tmp_path/'.report-unowned.stage'))
+    receipt_path.write_text(json.dumps(tampered), encoding='utf-8')
+    with pytest.raises(RuntimeError, match='invalid'):
+        store.read('P1', 'c'*32)
+    assert target.read_bytes() == b'old'
+
+
+def test_projection_read_never_creates_missing_database_or_parent(tmp_path):
+    from types import SimpleNamespace
+    from backend.infrastructure.storage.repositories.report_authoring import ReportAuthoringRepository
+    missing = tmp_path/'absent'/'connlab.sqlite3'
+    with pytest.raises(OSError, match='unavailable'):
+        ReportAuthoringRepository.read_delivery_projection(SimpleNamespace(database_path=missing), 'P1')
+    assert not missing.parent.exists()

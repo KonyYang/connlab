@@ -2,7 +2,7 @@
 
 日期：2026-11-07
 
-状态：以下评估保留制定时基线；第 1～4 批已完成并经用户关闭。第 5 批实现及独立审查、QA、页面和 Word 逐页视觉验收已完成，进入串行集成与关闭收尾；实施边界与证据见 `report_template_photos_preview_20261107.md`。第 6 批未启动，未自动正式发行或宣称异机发布验收通过。第 4 批范围和限制见 `report_result_semantics_20261107.md`。
+状态：以下评估保留制定时基线；第 1～5 批已完成并关闭。第 6 批第一部分“交付检查与受控保存”已进入隔离实现与验收，见 `report_delivery_controlled_save_20261107.md`；发行包与异机验收尚未实施，不自动正式发行。第 4、5 批边界分别见 `report_result_semantics_20261107.md`、`report_template_photos_preview_20261107.md`。
 
 对象：`D:\PythonProject\connlab`，参考「理解项目文件夹内容」中的 DL-2026-09-032 报告工作
 

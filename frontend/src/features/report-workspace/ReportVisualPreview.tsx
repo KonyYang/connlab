@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { confirmReportVisualPages, createReportVisualPreview, downloadReportArtifact, reportVisualPreviewUrl, type ReportAuthoringState } from '../../api/reportAuthoring';
 
-export function ReportVisualPreview({ projectId, state, disabled, beginOperation, onChanged }: {
+export function ReportVisualPreview({ projectId, state, disabled, beginOperation, onChanged, outputId }: {
   projectId: string; state: ReportAuthoringState; disabled: boolean;
   beginOperation?: () => (() => void) | null; onChanged: (state: ReportAuthoringState) => void;
+  outputId?: string;
 }) {
-  const output = state.outputs.at(-1);
+  const output = outputId ? [...state.outputs, ...(state.customer_outputs || [])].find(item => item.output_id === outputId) : state.outputs.at(-1);
+  const isCustomer = state.customer_outputs?.some(item => item.output_id === output?.output_id);
   const preview = output?.visual_preview?.output_sha256 === output?.artifact?.sha256 ? output?.visual_preview : undefined;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -31,7 +33,7 @@ export function ReportVisualPreview({ projectId, state, disabled, beginOperation
   }
   if (!output?.artifact) return null;
   const identity = { expected_revision: state.revision, output_id: output.output_id, output_sha256: output.artifact.sha256 };
-  return <section className="report-visual-preview" aria-label="Word visual preview"><h5>Word visual layout</h5>
+  return <section className="report-visual-preview" aria-label={isCustomer ? 'Customer Word visual preview' : 'Word visual preview'}><h5>{isCustomer ? 'Customer Word visual layout' : 'Word visual layout'}</h5>
     <p>Microsoft Word renders an isolated read-only working copy on the server. Macros and automatic external-link updates are disabled. Original files remain unchanged.</p>
     {!preview ? <button type="button" disabled={disabled || busy} onClick={() => void run(() => createReportVisualPreview(projectId, identity))}>Render this working copy with Word</button>
       : <><p>{preview.page_count} pages · {preview.status} · exact file {preview.output_sha256.slice(0, 12)}</p>

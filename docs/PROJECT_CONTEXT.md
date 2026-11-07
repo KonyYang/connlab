@@ -254,6 +254,16 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Report Workspace presentation
 
+- `Review and save` binds the selected Internal Report and matching customer projection to server
+  content/coverage/disclosure checks and each exact Word/PDF all-page review. Current-project retained
+  content may receive one explicit exact-version review; cross-project inherited regions and detected
+  conflicts still need scoped evidence. Unused source candidates do not revoke valid checks.
+- Explicit save reuses report staging/History protections and writes the reviewed bytes, never regenerates.
+  A bounded report-delivery receipt is the sole filesystem recovery authority; authoring JSON retains
+  its approved intent and projected receipts. Partial saves stay visible and block separate project
+  writes until the same operation is resumed. Saving current project files is not formal issuance.
+  Customer Word preview reuses the existing renderer with its own exact output/PDF identity.
+
 - Update report content includes source-bound semantic region review, confirmed batch photo mappings,
   figure-number changes and retained Word/PDF visual previews. These operate on the selected working
   copy, never publish it. Layout references retain unresolved inherited facts until current scoped

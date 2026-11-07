@@ -134,6 +134,66 @@ def test_same_bytes_replaced_target_identity_is_not_silently_accepted(lab, monke
     assert not list((local/'History'/'Report').glob('*.docx'))
 
 
+def test_request_commit_still_runs_inside_project_writer_lock(lab):
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+    observed = []
+    def committed(session):
+        try:
+            with GenerationJournal(lab['settings'].data_dir/'project_folder_generation').lock('P1'):
+                observed.append(False)
+        except ValueError:
+            observed.append(True)
+    event.listen(Session, 'after_commit', committed)
+    try:
+        response = upload(lab)
+        assert response.status_code == 200, response.text
+    finally:
+        event.remove(Session, 'after_commit', committed)
+    assert observed and all(observed)
+
+
+def test_database_failure_after_visible_file_is_resumed_without_double_history(lab, monkeypatch):
+    import sqlite3
+    from sqlalchemy import event
+    state, old, local = ready_pair(lab, monkeypatch)
+    preview = lab['client'].get(BASE+'/delivery').json()
+    with lab['factory']() as session:
+        engine = session.get_bind()
+    inserts = [0]
+    def failing_commit(connection, cursor, statement, parameters, context, executemany):
+        if statement.startswith('INSERT INTO report_authoring_revisions'):
+            inserts[0] += 1
+            if inserts[0] == 2:
+                raise sqlite3.OperationalError('isolated DB failure after first report publication')
+    event.listen(engine, 'before_cursor_execute', failing_commit)
+    try:
+        failed = lab['client'].post(BASE+'/delivery/save', json=save_request(state, preview))
+    finally:
+        event.remove(engine, 'before_cursor_execute', failing_commit)
+    assert failed.status_code != 200
+    expected = lab['client'].get(state['outputs'][-1]['download_url']).content
+    assert old.read_bytes() == expected
+    current_time = old.stat().st_mtime_ns
+    operation = lab['client'].get(BASE+'/delivery').json()['operation']
+    assert operation['items'][0]['status'] == 'published'
+    resumed = lab['client'].post(BASE+'/delivery/resume', json={'operation_id': operation['operation_id']})
+    assert resumed.status_code == 200, resumed.text
+    assert resumed.json()['delivery']['status'] == 'completed'
+    assert old.stat().st_mtime_ns == current_time
+    assert len(list((local/'History'/'Report').glob('*.docx'))) == 1
+
+
+def test_unused_retained_candidate_does_not_revoke_exact_content_or_visual_review(lab, monkeypatch):
+    state, _, _ = ready_pair(lab, monkeypatch)
+    state = upload(lab, role='evidence', revision=state['revision'], name='Unused alternative.txt',
+        content=b'Unselected supporting material').json()
+    response = lab['client'].get(BASE+'/delivery')
+    assert response.status_code == 200, response.text
+    assert response.json()['can_save'], response.json()['issues']
+
+
 def test_missing_receipt_after_durable_approval_resumes_without_new_authorization(lab, monkeypatch):
     from backend.infrastructure.files.report_delivery_receipt import ReportDeliveryReceipts
     state, old, local = ready_pair(lab, monkeypatch)

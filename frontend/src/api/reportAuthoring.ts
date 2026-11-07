@@ -1,5 +1,6 @@
 import { requestJson, requestBlobResponse, type EquipmentListOneClickResult } from "./client";
 import type { ReportAssemblyPlan } from './reportAuthoringBatch';
+import type { ReportDeliveryOperation } from './reportAuthoringDelivery';
 
 export type ReportSourceRole = "original" | "layout_reference" | "specification" | "temperature" | "cr" | "mechanical" | "photo" | "evidence" | "tools_result_package";
 export type ReportSource = {
@@ -37,6 +38,7 @@ export type ReportAuthoringState = {
   customer_outputs?: CustomerReportOutput[];
   applied_result_ids?: string[];
   assembly_plan?: ReportAssemblyPlan | null;
+  delivery?: ReportDeliveryOperation | null;
 };
 export type ReportMappingInput = Omit<ReportMapping, "mapping_id" | "matrix_id" | "confirmed_at" | "confirmed_by"> & {
   expected_revision: number; mapping_id?: string; confirmed_by?: string;

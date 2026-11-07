@@ -36,7 +36,10 @@ def require_project_folder_write_slot(
         except (ValueError, OSError, RuntimeError) as exc:
             raise HTTPException(409, 'Report save recovery needs review. Retain report files and check the diagnostic record.') from exc
         from backend.infrastructure.storage.repositories.report_authoring import ReportAuthoringRepository
-        projected = ReportAuthoringRepository.read_delivery_projection(settings, project_id)
+        try:
+            projected = ReportAuthoringRepository.read_delivery_projection(settings, project_id)
+        except Exception as exc:
+            raise HTTPException(503, 'Report save recovery state cannot be read. Restore database access before writing project files.') from exc
         if (delivery is not None or (projected and projected.get('status') != 'completed')) and not request.url.path.endswith('/report-workspace/authoring/delivery/resume'):
             raise HTTPException(409, 'A reviewed report save is unfinished. Resume that save before changing project files.')
         yield

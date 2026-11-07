@@ -34,7 +34,7 @@ def identity(path):
 def safe_path(path):
     path = Path(path)
     for part in (path, *path.parents):
-        if part.exists() and (part.is_symlink() or getattr(part.stat(), 'st_file_attributes', 0) & 0x400):
+        if part.exists() and (part.is_symlink() or getattr(part.lstat(), 'st_file_attributes', 0) & 0x400):
             raise CurrentReportFileConflictError('Report storage redirects through a link. Restore its original location.')
     return path
 

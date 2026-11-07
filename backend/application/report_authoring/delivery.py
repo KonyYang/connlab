@@ -16,6 +16,15 @@ class ReportDelivery:
     def __init__(self, authoring, workspace, receipts, files):
         self.authoring, self.workspace, self.receipts, self.files = authoring, workspace, receipts, files
 
+    def _content_stamp(self, state, context, review):
+        # Unused retained candidates do not revoke an otherwise unchanged content
+        # review. Actual consumed sources are re-read separately before saving.
+        return digest({'facts': self.authoring._review_context_sha256(state, context,
+            self.authoring._llcr_review_context(state, context)),
+            'regions': [{'id': item['region_id'], 'sha256': item['sha256'], 'status': item['status'],
+                         'reasons': item['reasons']} for item in review['regions']],
+            'findings': review['findings'], 'numbering': review['numbering']})
+
     @staticmethod
     def _visual(output):
         preview = output.get('visual_preview') or {}
@@ -53,7 +62,7 @@ class ReportDelivery:
         if review['base_role'] == 'layout_reference':
             if not review['complete']:
                 issue('inherited_content', 'Confirm inherited regions against this project evidence before saving.')
-        elif output.get('content_review', {}).get('review_sha256') != review['review_sha256']:
+        elif output.get('content_review', {}).get('content_sha256') != self._content_stamp(state, context, review):
             issue('content_review_required', 'Review the retained content of this exact project report.')
         if not self._visual(output):
             issue('internal_visual_required', 'Inspect every page of this exact Internal Report Word preview.')
@@ -97,7 +106,7 @@ class ReportDelivery:
                 workspace = self.workspace.snapshot(project_id)
             except (ValueError, OSError, LookupError) as exc:
                 issue('workspace_unavailable', str(exc))
-        context_hash = digest({'review': review['review_sha256'], 'coverage': coverage,
+        context_hash = digest({'review': self._content_stamp(state, context, review), 'coverage': coverage,
             'internal': output['artifact']['sha256'], 'internal_visual': output.get('visual_preview'),
             'customer': customer, 'context': context})
         preview_hash = digest({'context': context_hash, 'workspace': workspace})
@@ -137,7 +146,7 @@ class ReportDelivery:
 
     def confirm_content(self, project_id, request):
         service = self.authoring
-        state, _, output, review = service.document_review.current(project_id, request)
+        state, context, output, review = service.document_review.current(project_id, request)
         if output in state.customer_outputs:
             raise ValueError('Review retained content on the Internal Report, not its customer copy.')
         if review['base_role'] != 'original' or request['review_sha256'] != review['review_sha256']:
@@ -145,7 +154,7 @@ class ReportDelivery:
         if review['findings'] or not review['numbering']['ready']:
             raise ValueError('Resolve detected content conflicts before recording retained-content review.')
         record = {'review_sha256': review['review_sha256'], 'confirmed_by': request['confirmed_by'],
-            'confirmed_at': service._now(), 'notes': request['notes']}
+            'confirmed_at': service._now(), 'notes': request['notes'], 'content_sha256': self._content_stamp(state, context, review)}
         return service.document_review._save_output(state, output, content_review=record)
 
     def save(self, project_id, request):
@@ -212,6 +221,7 @@ class ReportDelivery:
                     raise ReportAuthoringConflict('Report evidence changed while saving. Resume only after recovery review.')
             def persist(result):
                 nonlocal state
+                validate()
                 now, _ = service.state(project_id)
                 projected = {**(now.delivery or {}), 'status': 'saving', 'last_saved_role': item['role'],
                     'saved_sha256': result.current_sha256}
