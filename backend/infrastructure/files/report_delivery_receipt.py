@@ -14,7 +14,7 @@ import tempfile
 
 from backend.application.current_report_update_service import CurrentReportFileConflictError
 
-STAGES = {'planned', 'staged', 'archiving', 'archived', 'publishing', 'published', 'committed', 'unchanged'}
+STAGES = {'planned', 'preparing', 'copying', 'staged', 'archiving', 'archived', 'publishing', 'published', 'committed', 'unchanged'}
 INTENT_FIELDS = ('role', 'source', 'sha256', 'target', 'current', 'old_sha256', 'history_root', 'old_identity')
 
 
@@ -76,7 +76,7 @@ class ReportDeliveryReceipts:
                     raise ValueError('path')
                 if item.get('staging'):
                     staging = Path(item['staging'])
-                    if staging.parent != target.parent or not staging.name.startswith('.report-') or staging.suffix != '.stage':
+                    if staging != target.parent / f'.report-{operation_id}-{item["role"]}.stage':
                         raise ValueError('staging')
                 if item.get('archive') and Path(item['archive']).parent != history:
                     raise ValueError('archive')
@@ -220,33 +220,50 @@ class DeliveryFileReceipt:
                     raise CurrentReportFileConflictError('The unchanged report was edited while recording its save state.')
                 self.update(status='unchanged', target_identity=item['old_identity'])
                 return result
-            descriptor, name = tempfile.mkstemp(prefix='.report-', suffix='.stage', dir=target.parent)
-            os.close(descriptor)
-            staging = Path(name)
-            shutil.copy2(source, staging)
-            with staging.open('r+b') as stream:
-                os.fsync(stream.fileno())
-            if files.fingerprint(staging) != expected_source_sha256:
-                raise CurrentReportFileConflictError('The staged report changed before saving.')
-            archive = _reserve_archive_path(history, current, files._clock()) if current else None
-            item = self.update(status='staged', staging=str(staging), staging_identity=identity(staging),
-                archive=str(archive) if archive else None, archive_reservation_identity=identity(archive) if archive else None)
+            staging = target.parent / f'.report-{self.operation_id}-{self.role}.stage'
+            archive = _reserve_archive_path(history, current, files._clock(), reserve=False) if current else None
+            # Record exact paths before creating any visible file. A crash before
+            # its inode is recorded must fail closed, never choose another path.
+            item = self.update(status='preparing', staging=str(staging), archive=str(archive) if archive else None)
         staging = safe_path(item['staging']) if item.get('staging') else None
         archive = safe_path(item['archive']) if item.get('archive') else None
+        if item['status'] == 'preparing':
+            if staging.exists():
+                raise CurrentReportFileConflictError('The staging file has no recorded ownership. Retain it for recovery review.')
+            descriptor = os.open(staging, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(descriptor)
+            item = self.update(status='copying', staging_identity=identity(staging))
+        if item['status'] == 'copying':
+            if not staging.is_file() or identity(staging) != item['staging_identity']:
+                raise CurrentReportFileConflictError('The staging file ownership changed. Retain it for recovery review.')
+            if files.fingerprint(staging) != expected_source_sha256:
+                shutil.copy2(source, staging)
+            with staging.open('r+b') as stream:
+                os.fsync(stream.fileno())
+            if not matches(staging, item['staging_identity'], expected_source_sha256):
+                raise CurrentReportFileConflictError('The staged report changed before saving.')
+            item = self.update(status='staged')
         if item['status'] in {'staged', 'archiving'}:
             validate()
             if not matches(staging, item['staging_identity'], expected_source_sha256):
                 raise CurrentReportFileConflictError('The report staging file changed. Retain it for review.')
             if current:
-                if matches(archive, item['old_identity'], expected_current_sha256) and not current.exists():
-                    pass  # Previous process moved the old file after its durable intent.
-                else:
-                    if (not matches(current, item['old_identity'], expected_current_sha256)
-                            or not matches(archive, item['archive_reservation_identity'], sha256(b'').hexdigest())):
+                self.update(status='archiving')
+                if not archive.exists():
+                    if not matches(current, item['old_identity'], expected_current_sha256):
                         raise CurrentReportFileConflictError('Report or History ownership changed. Retain both for recovery review.')
-                    self.update(status='archiving')
                     validate()
-                    os.replace(current, archive)
+                    safe_path(history).mkdir(parents=True, exist_ok=True)
+                    # A hard link exposes the complete old bytes, never an empty
+                    # reservation. Its inode is already in the immutable intent.
+                    os.link(current, archive)
+                if not matches(archive, item['old_identity'], expected_current_sha256):
+                    raise CurrentReportFileConflictError('Report or History ownership changed. Retain both for recovery review.')
+                if current.exists():
+                    validate()
+                    if not matches(current, item['old_identity'], expected_current_sha256):
+                        raise CurrentReportFileConflictError('The current report changed during archiving. Retain files for review.')
+                    current.unlink()
             item = self.update(status='archived')
         if item['status'] in {'archived', 'publishing'}:
             validate()

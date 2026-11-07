@@ -468,9 +468,12 @@ def _reserve_archive_path(
     history_root: Path,
     current: Path,
     timestamp: datetime,
+    *,
+    reserve: bool = True,
 ) -> Path:
     root = Path(history_root)
-    root.mkdir(parents=True, exist_ok=True)
+    if reserve:
+        root.mkdir(parents=True, exist_ok=True)
     stamp = timestamp.strftime("%Y%m%d-%H%M%S")
     identity_match = re.match(
         r"^(DL-\d{4}-\d{2}-\d{3}(?:-CR)?)\b",
@@ -492,6 +495,10 @@ def _reserve_archive_path(
     for suffix in range(1, 10_000):
         duplicate_suffix = "" if suffix == 1 else f" ({suffix})"
         candidate = root / f"{archive_stem}{duplicate_suffix}{current.suffix}"
+        if not reserve:
+            if not candidate.exists():
+                return candidate
+            continue
         try:
             descriptor = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:

@@ -38,7 +38,8 @@ def test_saved_report_survives_metadata_failure_and_resume_does_not_rearchive(tm
     assert source.read_bytes() == b'reviewed new report'
 
 
-def test_real_process_exit_after_link_is_recovered_by_owned_identity(tmp_path):
+@pytest.mark.parametrize('crash_phase', ['archiving', 'publishing'])
+def test_real_process_exit_after_link_is_recovered_by_owned_identity(tmp_path, crash_phase):
     folder = tmp_path / 'project'; folder.mkdir()
     source = tmp_path / 'source.docx'; source.write_bytes(b'new reviewed')
     target = folder / 'Report.docx'; target.write_bytes(b'old reviewed')
@@ -55,13 +56,16 @@ from backend.infrastructure.files.report_publication_gateway import ReportPublic
 store=ReportDeliveryReceipts(Path(sys.argv[1])); item=store.read('P1','b'*32)['items'][0]
 real_link=os.link
 def crash_after_link(*args,**kwargs):
-    real_link(*args,**kwargs); os._exit(71)
+    real_link(*args,**kwargs)
+    if store.read('P1','b'*32)['items'][0]['status'] == sys.argv[2]:
+        os._exit(71)
 os.link=crash_after_link
 ReportPublicationGateway().publish_regenerated_current(source_path=Path(item['source']),expected_source_sha256=item['sha256'],current_path=Path(item['current']),expected_current_sha256=item['old_sha256'],target_path=Path(item['target']),history_root=Path(item['history_root']),persist=lambda _:None,receipt=store.item('P1','b'*32,'internal'))
 """
-    child = subprocess.run([sys.executable, '-c', script, str(tmp_path/'receipts')], check=False)
+    child = subprocess.run([sys.executable, '-c', script, str(tmp_path/'receipts'), crash_phase], check=False)
     assert child.returncode == 71
-    assert store.read('P1', 'b'*32)['items'][0]['status'] == 'publishing'
+    assert store.read('P1', 'b'*32)['items'][0]['status'] == crash_phase
+    assert [p.read_bytes() for p in (folder/'History').glob('*.docx')] == [b'old reviewed']
     files.publish_regenerated_current(source_path=source, expected_source_sha256=digest,
         current_path=target, expected_current_sha256=old, target_path=target, history_root=folder/'History',
         persist=lambda _: None, receipt=store.item('P1', 'b'*32, 'internal'))
@@ -125,3 +129,67 @@ def test_foreign_edit_during_metadata_commit_is_not_reported_saved(tmp_path):
     assert target.read_bytes() == b'foreign manual edit during commit'
     assert store.read('P1','d'*32)['items'][0]['status'] == 'published'
     assert [p.read_bytes() for p in (folder/'History').glob('*.docx')] == [b'old reviewed']
+
+
+def test_staged_receipt_write_failure_reuses_reserved_paths_without_empty_history(tmp_path, monkeypatch):
+    folder = tmp_path/'project'; folder.mkdir()
+    source = tmp_path/'source.docx'; source.write_bytes(b'new reviewed')
+    target = folder/'Report.docx'; target.write_bytes(b'old reviewed')
+    files = ReportPublicationGateway(); store = ReportDeliveryReceipts(tmp_path/'receipts')
+    old_hash = files.fingerprint(target); new_hash = files.fingerprint(source)
+    store.begin('P1', 'e'*32, {'signature': 'approved'}, [{'role': 'internal', 'source': str(source),
+        'sha256': new_hash, 'target': str(target), 'current': str(target), 'old_sha256': old_hash,
+        'history_root': str(folder/'History')}])
+    write = store._write; failed = [False]
+    def disk_full(project_id, data):
+        if data['items'][0]['status'] == 'staged' and not failed[0]:
+            failed[0] = True
+            raise OSError('one staged receipt write failed')
+        write(project_id, data)
+    monkeypatch.setattr(store, '_write', disk_full)
+    arguments = dict(source_path=source, expected_source_sha256=new_hash, current_path=target,
+        expected_current_sha256=old_hash, target_path=target, history_root=folder/'History',
+        persist=lambda _: None, receipt=store.item('P1','e'*32,'internal'))
+    with pytest.raises(OSError, match='one staged receipt'):
+        files.publish_regenerated_current(**arguments)
+    assert target.read_bytes() == b'old reviewed'
+    assert not list((folder/'History').glob('*.docx'))
+    staged = list(folder.glob('.report-*.stage'))
+    assert len(staged) == 1
+    inode, stamp = staged[0].stat().st_ino, staged[0].stat().st_mtime_ns
+    files.publish_regenerated_current(**arguments)
+    assert target.read_bytes() == b'new reviewed' and target.stat().st_ino == inode
+    assert target.stat().st_mtime_ns == stamp
+    assert [p.read_bytes() for p in (folder/'History').glob('*.docx')] == [b'old reviewed']
+    assert not list(folder.glob('.report-*.stage'))
+
+
+def test_stage_created_without_durable_identity_is_retained_and_blocks_retry(tmp_path, monkeypatch):
+    folder = tmp_path/'project'; folder.mkdir()
+    source = tmp_path/'source.docx'; source.write_bytes(b'new reviewed')
+    target = folder/'Report.docx'; target.write_bytes(b'old reviewed')
+    files = ReportPublicationGateway(); store = ReportDeliveryReceipts(tmp_path/'receipts')
+    old_hash = files.fingerprint(target); new_hash = files.fingerprint(source)
+    store.begin('P1', 'f'*32, {'signature': 'approved'}, [{'role': 'internal', 'source': str(source),
+        'sha256': new_hash, 'target': str(target), 'current': str(target), 'old_sha256': old_hash,
+        'history_root': str(folder/'History')}])
+    write = store._write
+    def identity_record_unavailable(project_id, data):
+        if data['items'][0]['status'] == 'copying':
+            raise OSError('identity receipt unavailable')
+        write(project_id, data)
+    monkeypatch.setattr(store, '_write', identity_record_unavailable)
+    arguments = dict(source_path=source, expected_source_sha256=new_hash, current_path=target,
+        expected_current_sha256=old_hash, target_path=target, history_root=folder/'History',
+        persist=lambda _: None, receipt=store.item('P1','f'*32,'internal'))
+    with pytest.raises(OSError, match='identity receipt'):
+        files.publish_regenerated_current(**arguments)
+    staged = list(folder.glob('.report-*.stage'))
+    assert len(staged) == 1 and staged[0].read_bytes() == b''
+    inode = staged[0].stat().st_ino
+    monkeypatch.setattr(store, '_write', write)
+    with pytest.raises(RuntimeError, match='no recorded ownership'):
+        files.publish_regenerated_current(**arguments)
+    assert staged[0].stat().st_ino == inode
+    assert target.read_bytes() == b'old reviewed'
+    assert not list((folder/'History').glob('*.docx'))

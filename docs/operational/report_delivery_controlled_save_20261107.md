@@ -25,4 +25,6 @@
 
 开发切片已验证真实子进程在硬链接后`os._exit`，重启仅补登记；相同字节但不同inode不被认领；receipt不可变意图/越界staging被拒绝。公开API由真实来源/结果/审核接口建立成功配对，不手工制造passed状态；Word/转换仅在开发测试的外部边界替身，不能替代QA实际Word验收。
 
+QA发现的动作前空History窗口已修复：先记录本operation唯一staging及History路径，再创建staging并登记其inode；复制后刷盘和核验，完整旧文件以hardlink进入History后才撤下旧目标，不再生成空History占位。staged receipt写失败可复用同一临时文件，归档与新目标hardlink后真实进程退出均可恢复。若进程在staging创建与inode登记之间中断，保留唯一已知路径并明确阻塞，不猜测归属、不另建文件或盲删。
+
 待独立Reviewer、QA完整受影响矩阵、实际页面/客户Word逐页验收及本地集成。任何业务待核继续pending，不自动正式发行。
