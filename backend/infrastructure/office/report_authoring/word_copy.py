@@ -100,6 +100,7 @@ class ReportCopyWriter:
                     for paragraph in root.xpath("//w:p", namespaces=NS):
                         changed += _replace_paragraph_pattern(paragraph, identity_pattern, project_dl)
                 if name == "word/document.xml":
+                    cleared_tables = set()
                     for table in root.xpath("//w:body/w:tbl", namespaces=NS):
                         rows = table.findall("w:tr", NS)
                         if not rows:
@@ -113,8 +114,15 @@ class ReportCopyWriter:
                             for index in columns:
                                 if index < len(cells):
                                     for node in cells[index].xpath(".//w:t", namespaces=NS):
+                                        if node.text:
+                                            cleared_tables.add(table)
                                         changed += bool(node.text)
                                         node.text = ""
+                    # Clearing old results can shorten the page flow and strand
+                    # a later Group heading. Preserve explicit pagination choices.
+                    # Local import avoids pagination's shared XML-helper cycle.
+                    from backend.infrastructure.office.report_authoring.pagination import reflow_headings, protect_reflow_headings
+                    protect_reflow_headings(reflow_headings(root, cleared_tables))
                     issues.append("Previous project's Result and Comment cells were cleared; no prior Pass or exception was adopted.")
                 if changed:
                     replacements[name] = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)

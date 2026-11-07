@@ -29,6 +29,44 @@ def prepared(lab):
     return state
 
 
+def test_layout_reference_clearing_keeps_only_affected_flowing_group_headings(lab):
+    doc = Document()
+    doc.sections[0].footer.paragraphs[0].text = 'E-3707'
+    doc.add_paragraph('DL-2026-05-001')
+    headings = []
+    for group in ('Aa', 'Ac', 'Ad', 'B'):
+        heading = doc.add_paragraph(f'Group {group} Test Results')
+        headings.append(heading)
+        table = doc.add_table(rows=2, cols=3)
+        for cell, label in zip(table.rows[0].cells, ('Test', 'Result', 'Comment')):
+            cell.text = label
+        table.cell(1, 0).text = 'Unchanged requirement'
+        table.cell(1, 1).text = 'Old measured result ' * 20 if group == 'Aa' else ''
+        table.cell(1, 2).text = 'Pass' if group == 'Aa' else ''
+    headings[2].paragraph_format.keep_with_next = False
+    headings[3].paragraph_format.page_break_before = True
+    doc.add_paragraph('Manual ending').paragraph_format.keep_with_next = False
+    payload = BytesIO(); doc.save(payload)
+    uploaded = upload(lab, role='layout_reference', content=payload.getvalue())
+    assert uploaded.status_code == 200, uploaded.text
+    state = uploaded.json()
+    response = lab['client'].post(BASE + '/base', json={'expected_revision': state['revision'], 'source_id': state['sources'][0]['source_id']})
+    assert response.status_code == 200, response.text
+    state = response.json()
+    output = Document(BytesIO(lab['client'].get(state['outputs'][-1]['download_url']).content))
+    actual = {p.text: p.paragraph_format for p in output.paragraphs}
+    assert actual['Group Ac Test Results'].keep_with_next is True
+    assert actual['Group Aa Test Results'].keep_with_next is None
+    assert actual['Group Ad Test Results'].keep_with_next is False
+    assert actual['Group B Test Results'].page_break_before is True
+    assert actual['Group B Test Results'].keep_with_next is None
+    assert actual['Manual ending'].keep_with_next is False
+    assert output.tables[0].cell(1, 1).text == ''
+    assert output.tables[0].cell(1, 0).text == 'Unchanged requirement'
+    retained = lab['client'].get(state['sources'][0]['download_url']).content
+    assert retained == payload.getvalue()
+
+
 def test_batch_photo_mapping_survives_reload_and_numbering_uses_one_new_copy(lab):
     state = prepared(lab)
     output = state['outputs'][-1]
