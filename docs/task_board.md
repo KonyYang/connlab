@@ -14,11 +14,11 @@
   "last_closed": {
     "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
     "tier": "high_risk",
-    "subject": "15000413ef8899eaaac44f65d5a9f2061cde9c9b",
+    "subject": "d22ae1f5bb5ba104e0d78bd144dc669117c2f30b",
     "summary": "Report automation batch 5: approved-original coverage, batch photo candidates and confirmation, figure numbering/reference checks, and version-bound Word visual preview.",
     "disposition": "cancelled",
-    "decision_ref": "User explicitly requested task closure while batch 5 remains unfinished. Stop implementation; retain 12 modified and 13 untracked files in isolated worktree and all test evidence. No integration, deletion, reset, restore, stash or push. Final QA, browser and Word visual acceptance remain incomplete.",
-    "closed_at": "2026-11-07T03:39:19.537465Z"
+    "decision_ref": "User explicitly requested task closure on 2026-11-07. Stop batch 5 before final browser and all-page Word acceptance and integration. Preserve clean candidate 360d100ee330e9c06168dd1daea7de8c641d74e4 in the isolated resumed branch and all test evidence. QA reports 288 Python and 137 frontend tests passed plus build; full acceptance remains incomplete. No integration, push, cleanup or real file changes.",
+    "closed_at": "2026-11-07T04:14:15.094568Z"
   },
   "retained_history": [
     {
@@ -354,90 +354,18 @@
       "disposition": "completed",
       "decision_ref": "User accepted batch 4 and explicitly requested task closure; retain local commits and preserve the existing no-push instruction.",
       "closed_at": "2026-11-07T02:47:48.494929Z"
+    },
+    {
+      "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
+      "tier": "high_risk",
+      "subject": "15000413ef8899eaaac44f65d5a9f2061cde9c9b",
+      "summary": "Report automation batch 5: approved-original coverage, batch photo candidates and confirmation, figure numbering/reference checks, and version-bound Word visual preview.",
+      "disposition": "cancelled",
+      "decision_ref": "User explicitly requested task closure while batch 5 remains unfinished. Stop implementation; retain 12 modified and 13 untracked files in isolated worktree and all test evidence. No integration, deletion, reset, restore, stash or push. Final QA, browser and Word visual acceptance remain incomplete.",
+      "closed_at": "2026-11-07T03:39:19.537465Z"
     }
   ],
-  "tasks": {
-    "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107": {
-      "slot": "main",
-      "state": "running",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
-      "branch": "codex/report-template-photos-preview-resumed-20261107",
-      "resources": [],
-      "integrated_head": null,
-      "task": {
-        "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
-        "summary": "Report automation batch 5: approved-original coverage, batch photo candidates and confirmation, figure numbering/reference checks, and version-bound Word visual preview.",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Implement complete batch 5 and applicable sections 8/11 of report_automation_plan_20261107.md in the existing Report Workspace, using isolated data/copies. Real reports/templates/project materials read-only; no push, no formal publication, no batch6 expansion. User authorized autonomous acceptance and local task close after verified completion.",
-        "scope_paths": [
-          "backend/domain/report_authoring.py",
-          "backend/application/report_authoring/service.py",
-          "backend/application/report_authoring/assembly.py",
-          "backend/application/report_authoring/coverage.py",
-          "backend/application/report_authoring/document_review.py",
-          "backend/application/report_authoring/photo_plan.py",
-          "backend/api/dependencies.py",
-          "backend/api/report_authoring_schemas.py",
-          "backend/api/routes_report_authoring.py",
-          "backend/infrastructure/storage/repositories/report_authoring.py",
-          "backend/infrastructure/office/report_authoring/document_review.py",
-          "backend/infrastructure/office/report_authoring/visual_preview.py",
-          "backend/infrastructure/office/report_authoring/photo_slots.py",
-          "backend/infrastructure/office/report_authoring/photo_editor.py",
-          "backend/infrastructure/office/report_authoring/batch_document.py",
-          "backend/infrastructure/office/report_authoring/customer_audit.py",
-          "backend/infrastructure/office/word_document_gateway.py",
-          "backend/infrastructure/files/report_authoring_assets.py",
-          "frontend/src/api/reportAuthoring.ts",
-          "frontend/src/api/reportAuthoringBatch.ts",
-          "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
-          "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
-          "frontend/src/features/report-workspace/ReportBatchPreparationSelections.tsx",
-          "frontend/src/features/report-workspace/ReportPhotoSlots.tsx",
-          "frontend/src/features/report-workspace/ReportDocumentReview.tsx",
-          "frontend/src/features/report-workspace/ReportPhotoPlan.tsx",
-          "frontend/src/features/report-workspace/ReportVisualPreview.tsx",
-          "frontend/src/features/report-workspace/reportAuthoringPanel.css",
-          "frontend/src/features/report-workspace/ReportBatchPreparation.css",
-          "tests/unit/report_authoring/test_document_review.py",
-          "tests/unit/report_authoring/test_photo_plan.py",
-          "tests/unit/report_authoring/test_visual_preview.py",
-          "tests/unit/report_authoring/test_photo_slots.py",
-          "tests/unit/report_authoring/test_batch_document.py",
-          "tests/unit/report_authoring/test_customer_audit.py",
-          "tests/unit/report_authoring/test_report_state.py",
-          "tests/unit/test_word_document_gateway.py",
-          "tests/integration/test_report_document_review_api.py",
-          "tests/integration/test_report_batch_assembly_api.py",
-          "tests/integration/test_report_authoring_api.py",
-          "frontend/src/features/report-workspace/ReportDocumentReview.test.tsx",
-          "frontend/src/features/report-workspace/ReportPhotoPlan.test.tsx",
-          "frontend/src/features/report-workspace/ReportVisualPreview.test.tsx",
-          "frontend/src/features/report-workspace/ReportBatchPreparation.test.tsx",
-          "docs/PROJECT_CONTEXT.md",
-          "docs/operational/report_automation_plan_20261107.md",
-          "docs/operational/report_template_photos_preview_20261107.md"
-        ],
-        "risk_reasons": [
-          "Native Word fidelity, cross-project original coverage and executable Office rendering require independent review and QA."
-        ],
-        "activation_head": "c213295de4bbd698494c3cc302bc9be7cc2c717b",
-        "started_at": "2026-11-07T03:43:41.091186Z",
-        "updated_at": "2026-11-07T04:04:32.622579Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
-          "stage": "development_and_real_word_preflight",
-          "status": "running",
-          "summary": "Resumed after explicit user goal activation. Retained WIP checkpoint f20f19f1 on original worktree / resumed branch. Developer addressing independent review findings; real Word HWND/Open compatibility preflight revealed failures and is being retested on isolated copies. Final review, complete QA, browser and all-page Word acceptance remain pending. No real materials modified; no push.",
-          "requires_user": false
-        },
-        "report": null
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
