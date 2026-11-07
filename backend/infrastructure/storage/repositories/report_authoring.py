@@ -2,12 +2,33 @@
 from dataclasses import asdict, replace
 import json
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+import logging
 from backend.domain.report_authoring import ReportAuthoringState, ReportSource, ReportMapping, ReportAuthoringConflict
 from backend.infrastructure.storage.models_report_authoring import ReportAuthoringRevisionModel
 
 
 class ReportAuthoringRepository:
+    @staticmethod
+    def read_delivery_projection(settings, project_id):
+        """Independent short read; never changes the request session lifetime."""
+        import sqlite3
+        from pathlib import Path
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        database = Path(settings.database_path)
+        if not database.is_file():
+            raise OSError('Report save state is unavailable; restore the configured database before writing.')
+        # Do not call the runtime database initializer: this read must not create
+        # directories, empty databases, library lease markers or migrations.
+        engine = create_engine('sqlite://', creator=lambda: sqlite3.connect(database.as_uri() + '?mode=ro',
+            uri=True, check_same_thread=False))
+        try:
+            with Session(engine) as reader:
+                return ReportAuthoringRepository(reader).get(project_id).delivery
+        finally:
+            engine.dispose()
+
     def __init__(self, session):
         self._session = session
 
@@ -22,7 +43,21 @@ class ReportAuthoringRepository:
             tuple(ReportSource(**item) for item in data["sources"]),
             tuple(ReportMapping(**{**item, "sample_ids": tuple(item["sample_ids"])}) for item in data["mappings"]),
             data.get("base_source_id"), tuple(data.get("outputs", [])), tuple(data.get("results", [])),
-            tuple(data.get('customer_outputs', [])), data.get('assembly_plan'))
+            tuple(data.get('customer_outputs', [])), data.get('assembly_plan'), data.get('delivery'))
+
+    def save_durable(self, state, expected_revision):
+        """Commit the receipt projection before returning a successful file save."""
+        try:
+            updated = self.save(state, expected_revision)
+            self._session.commit()
+            return updated
+        except SQLAlchemyError as exc:
+            self._session.rollback()
+            logging.getLogger(__name__).exception('Report delivery projection commit failed for %s', state.project_id)
+            raise ReportAuthoringConflict('Report save state could not be recorded. Restore database access, inspect the current save status and retry the same operation; do not regenerate reports.') from exc
+        except Exception:
+            self._session.rollback()
+            raise
 
     def save(self, state: ReportAuthoringState, expected_revision: int) -> ReportAuthoringState:
         if self.get(state.project_id).revision != expected_revision:

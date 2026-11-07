@@ -279,6 +279,27 @@ class CustomerCopyRequest(BaseModel):
     temperature_result_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
+class DeliveryPreviewRequest(DocumentReviewRequest):
+    customer_output_id: str | None = Field(default=None, max_length=64)
+
+
+class DeliverySaveRequest(DeliveryPreviewRequest):
+    customer_output_id: str = Field(min_length=1, max_length=64)
+    preview_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    confirmed_by: str = Field(min_length=1, max_length=255)
+
+
+class DeliveryResumeRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    operation_id: str = Field(pattern=r'^[0-9a-f]{32}$')
+
+
+class DeliveryContentReviewRequest(DocumentReviewRequest):
+    review_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    confirmed_by: str = Field(min_length=1, max_length=255)
+    notes: str = Field(min_length=1, max_length=5000)
+
+
 class CustomerCheckRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
     expected_revision: int = Field(ge=0)

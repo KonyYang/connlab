@@ -38,6 +38,14 @@ class ReportDocumentReview:
     def current(self, project_id, request):
         service = self.authoring
         state, context = service._editable(project_id, request['expected_revision'])
+        customer = next((item for item in state.customer_outputs if item['output_id'] == request['output_id']), None)
+        if customer:
+            if not state.outputs or customer['parent_output_id'] != state.outputs[-1]['output_id']:
+                raise ReportAuthoringConflict('The customer copy belongs to an older Internal Report. Regenerate it before review.')
+            if customer['artifact']['sha256'] != request['output_sha256']:
+                raise ReportAuthoringConflict('The selected customer copy changed.')
+            service.assets.read(project_id, ReportSource(**customer['artifact']))
+            return state, context, customer, {'complete': False, 'regions': [], 'numbering': {}, 'slots': []}
         output = service._current_output(state, request['output_id'])
         if output['artifact']['sha256'] != request.get('output_sha256', output['artifact']['sha256']):
             raise ReportAuthoringConflict('The selected report changed. Reload its working copy.')
@@ -180,6 +188,8 @@ class ReportDocumentReview:
     def confirm_regions(self, project_id, request):
         service = self.authoring
         state, context, output, review = self.current(project_id, request)
+        if output in state.customer_outputs:
+            raise ValueError('Regional content decisions apply to the Internal Report, not its customer projection.')
         if review['review_sha256'] != request['review_sha256']:
             raise ReportAuthoringConflict('The report evidence changed. Inspect again before recording regional decisions.')
         regions = {item['region_id']: item for item in [*review['regions'], *review['region_groups']]}
@@ -201,8 +211,10 @@ class ReportDocumentReview:
         return self._save_output(state, output, region_decisions=list(decisions.values()))
 
     def _save_output(self, state, output, **updates):
-        return self.authoring.repository.save(replace(state, outputs=tuple(
-            {**entry, **updates} if entry['output_id'] == output['output_id'] else entry for entry in state.outputs)), state.revision)
+        collection = 'customer_outputs' if output in state.customer_outputs else 'outputs'
+        entries = tuple({**entry, **updates} if entry['output_id'] == output['output_id'] else entry
+                        for entry in getattr(state, collection))
+        return self.authoring.repository.save(replace(state, **{collection: entries}), state.revision)
 
     def render(self, project_id, request):
         service = self.authoring
@@ -237,7 +249,7 @@ class ReportDocumentReview:
     def preview_content(self, project_id, output_id):
         service = self.authoring
         state, _ = service.state(project_id)
-        output = next((item for item in state.outputs if item['output_id'] == output_id), None)
+        output = next((item for item in (*state.outputs, *state.customer_outputs) if item['output_id'] == output_id), None)
         preview = output.get('visual_preview') if output else None
         if not preview or preview['output_sha256'] != output['artifact']['sha256']:
             raise LookupError('No Word preview is retained for this exact working version.')
