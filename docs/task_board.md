@@ -338,7 +338,80 @@
       "closed_at": "2026-11-06T21:58:12.773252Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REPORT_RESULT_SEMANTICS_20261107": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
+      "branch": "codex/report-result-semantics-20261107",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_RESULT_SEMANTICS_20261107",
+        "summary": "Report automation batch 4: scoped electrical/qualitative and related-report evidence, precise fact roles and multistage semantics.",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Implement approved batch 4 in existing Report Workspace and batch authoring chain. Isolated tests only; real business files read-only; no push or formal publication; no temperature calculation rewrite or batch5/6 expansion.",
+        "scope_paths": [
+          "backend/domain/report_authoring.py",
+          "backend/domain/report_result_semantics.py",
+          "backend/application/report_authoring/service.py",
+          "backend/application/report_authoring/results.py",
+          "backend/application/report_authoring/result_semantics.py",
+          "backend/application/report_authoring/coverage.py",
+          "backend/application/report_authoring/assembly.py",
+          "backend/application/report_authoring/sections.py",
+          "backend/application/report_tools_package.py",
+          "backend/api/report_authoring_schemas.py",
+          "backend/api/routes_report_authoring.py",
+          "backend/api/dependencies.py",
+          "backend/infrastructure/office/report_authoring/results_document.py",
+          "backend/infrastructure/office/report_authoring/batch_document.py",
+          "backend/infrastructure/office/report_authoring/word_copy.py",
+          "backend/infrastructure/office/report_authoring/linked_region.py",
+          "backend/infrastructure/office/report_authoring/customer_copy.py",
+          "backend/infrastructure/office/report_authoring/customer_audit.py",
+          "backend/infrastructure/office/report_authoring/electrical_reader.py",
+          "frontend/src/api/reportAuthoring.ts",
+          "frontend/src/api/reportAuthoringBatch.ts",
+          "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
+          "frontend/src/features/report-workspace/ReportResultsImport.tsx",
+          "frontend/src/features/report-workspace/ReportToolsPackageImport.tsx",
+          "frontend/src/features/report-workspace/ReportResultUpdate.tsx",
+          "frontend/src/features/report-workspace/ReportFactUpdates.tsx",
+          "frontend/src/features/report-workspace/ReportBatchPreparationSelections.tsx",
+          "frontend/src/features/report-workspace/ReportEvidenceResults.tsx",
+          "frontend/src/features/report-workspace/reportAuthoringPanel.css",
+          "tests/unit/test_report_authoring_schema.py",
+          "tests/unit/test_report_result_semantics.py",
+          "tests/unit/report_authoring/test_electrical_reader.py",
+          "tests/unit/report_authoring/test_linked_region.py",
+          "tests/unit/report_authoring/test_word_facts.py",
+          "tests/unit/report_authoring/test_results_document.py",
+          "tests/unit/report_authoring/test_tools_results_document.py",
+          "tests/unit/report_authoring/test_batch_document.py",
+          "tests/unit/report_authoring/test_customer_audit.py",
+          "tests/integration/test_report_authoring_api.py",
+          "tests/integration/test_report_semantic_results_api.py",
+          "frontend/src/features/report-workspace/ReportAuthoringFeatures.test.tsx",
+          "frontend/src/features/report-workspace/ReportToolsPackageImport.test.tsx",
+          "frontend/src/features/report-workspace/ReportBatchPreparation.test.tsx",
+          "frontend/src/features/report-workspace/ReportEvidenceResults.test.tsx",
+          "docs/operational/report_automation_plan_20261107.md",
+          "docs/operational/report_result_semantics_20261107.md",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [
+          "Measurement semantics and cross-project applicability require explicit pending behavior and independent verification."
+        ],
+        "activation_head": "8ad205491a542fa9e2f68f22c0d95b51a969478d",
+        "started_at": "2026-11-07T01:28:23.137017Z",
+        "updated_at": "2026-11-07T01:28:23.137017Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
