@@ -146,7 +146,7 @@ def test_qualitative_package_keeps_explicit_matrix_without_fake_numeric_applicat
     package = service(); package.mechanical_renderer = workbook_bytes
     _, content = package.export_mechanical(files, review)
     entry = package.inspect(content)['entries'][0]
-    assert entry['supported_for_report'] is False
+    assert entry['supported_for_report'] is True
     assert entry['kind'] == 'mechanical_qualitative'
     assert entry['data']['tables'][0]['results'] == [['Pass']]
     assert 'summary' not in entry['data']

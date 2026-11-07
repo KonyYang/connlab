@@ -16,7 +16,7 @@ from backend.infrastructure.office.report_authoring.photo_slots import (
 from backend.infrastructure.office.report_authoring.results_document import (
     ReportResultsDocument, measurement_table, result_notes, summary,
 )
-from backend.infrastructure.office.report_authoring.word_copy import NS, ReportCopyWriter, _paragraph_text, text
+from backend.infrastructure.office.report_authoring.word_copy import NS, ReportCopyWriter, _paragraph_text, text, replacement_parts, fact_target_matches
 from backend.infrastructure.office.report_authoring.pagination import reflow_headings
 
 
@@ -192,8 +192,10 @@ class ReportBatchDocument:
             if occurrence is not None and any(_overlaps(occurrence, write) for write in writes):
                 plan['conflicts'].append(_conflict('target_overlap',
                     f"{photo['slot_id']} is inside a result region being replaced; remove the competing photo assignment."))
-        for old, _ in fact_replacements:
-            paragraphs = [paragraph for paragraph in root.xpath('//w:p', namespaces=NS) if old in _paragraph_text(paragraph)]
+        for replacement in fact_replacements:
+            old, _, target = replacement_parts(replacement)
+            paragraphs = [paragraph for index, paragraph in enumerate(root.xpath('//w:p', namespaces=NS))
+                          if fact_target_matches('word/document.xml', index, paragraph, target) and old in _paragraph_text(paragraph)]
             if any(_overlaps(paragraph, write) for paragraph in paragraphs for write in writes):
                 plan['conflicts'].append(_conflict('target_overlap',
                     f'Fact replacement "{old}" intersects result content being rebuilt.'))
@@ -201,7 +203,7 @@ class ReportBatchDocument:
                 result = item['result']
                 generated = '\n'.join([summary(result), text(measurement_table(result)),
                     item['appendix_title'], *result_notes(result)])
-                if old in generated:
+                if target is None and old in generated:
                     plan['conflicts'].append(_conflict('target_overlap',
                         f'Fact replacement "{old}" would alter the newly generated measurement evidence.', result['result_id']))
 
@@ -228,8 +230,10 @@ class ReportBatchDocument:
             if occurrence is not None and any(_overlaps(occurrence, guard) for role, guard in guards if role != 'anchor'):
                 plan['conflicts'].append(_conflict('target_overlap',
                     f"{photo['slot_id']} intersects an LLCR target or Appendix A; choose a separate photo slot."))
-        for old, _ in fact_replacements:
-            paragraphs = [paragraph for paragraph in root.xpath('//w:p', namespaces=NS) if old in _paragraph_text(paragraph)]
+        for replacement in fact_replacements:
+            old, _, target = replacement_parts(replacement)
+            paragraphs = [paragraph for index, paragraph in enumerate(root.xpath('//w:p', namespaces=NS))
+                          if fact_target_matches('word/document.xml', index, paragraph, target) and old in _paragraph_text(paragraph)]
             if any(_overlaps(paragraph, guard) for paragraph in paragraphs for _, guard in guards):
                 plan['conflicts'].append(_conflict('target_overlap',
                     f'Fact replacement "{old}" changes an LLCR matching field, result or Appendix A anchor.'))
@@ -248,6 +252,12 @@ class ReportBatchDocument:
             directory = Path(directory)
             current = directory / 'source.docx'
             protection = self.protected.stage_editable_copy(source, current)
+            # Text updates do not change paragraph/table identity. Apply their frozen
+            # locators before result appendices can add or remove paragraphs.
+            if fact_replacements:
+                updated = directory / 'facts.docx'
+                self.facts_writer.apply_facts(current, updated, fact_replacements)
+                current = updated
             if photos:
                 photographed = directory / 'photos.docx'
                 replace_photo_slots(current, photographed, [PhotoReplacement(**item) for item in photos],
@@ -260,10 +270,6 @@ class ReportBatchDocument:
                     for item, resolved in zip(results, current_plan['results'], strict=True)]
                 evidence = self.results_writer.update_many(current, updated, updates)
                 pagination_groups = evidence['pagination_groups']
-                current = updated
-            if fact_replacements:
-                updated = directory / 'facts.docx'
-                self.facts_writer.apply_facts(current, updated, fact_replacements)
                 current = updated
             if llcr_dataset is not None:
                 updated = directory / 'llcr.docx'

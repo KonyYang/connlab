@@ -34,6 +34,34 @@ def reviewed_thumbnail(path):
         return {name: sha256(archive.read(name)).hexdigest()}
 
 
+def test_scoped_reference_does_not_whitelist_old_identity_elsewhere(tmp_path):
+    path = document(tmp_path, 'Current report')
+    doc = Document(path)
+    section = OxmlElement('w:sdt'); properties = OxmlElement('w:sdtPr'); marker = OxmlElement('w:tag')
+    from docx.oxml.ns import qn
+    marker.set(qn('w:val'), 'approved-reference'); properties.append(marker); section.append(properties)
+    content = OxmlElement('w:sdtContent'); section.append(content)
+    paragraph = OxmlElement('w:p'); run = OxmlElement('w:r'); label = OxmlElement('w:t')
+    label.text = 'Reference DL-2026-09-032B Rev A'; run.append(label); paragraph.append(run); content.append(paragraph)
+    doc.element.body.insert(0, section); doc.save(path)
+    options = {'forbidden_project_ids': ['DL-2026-09-032B'], 'reviewed_parts': reviewed_thumbnail(path),
+        'allowed_reference_regions': {'approved-reference': label.text}}
+    assert audit_customer_package(path, **options).passed
+    doc = Document(path); doc.add_paragraph('Wrong project DL-2026-09-032B'); doc.save(path)
+    assert any(issue.code == 'old_project_identity' for issue in audit_customer_package(path, **options).issues)
+    doc = Document(path); doc.paragraphs[-1].text = ''
+    instruction = OxmlElement('w:instrText'); instruction.text = 'DL-2026-09-032B'
+    doc.element.xpath('//w:sdt//w:r')[0].append(instruction)
+    doc.save(path)
+    assert any(issue.code == 'old_project_identity' for issue in audit_customer_package(path, **options).issues)
+    instruction.getparent().remove(instruction)
+    doc.element.xpath('//w:sdt')[0].set('hidden-source', 'DL-2026-09-032B'); doc.save(path)
+    assert any(issue.code == 'old_project_identity' for issue in audit_customer_package(path, **options).issues)
+    doc = Document(path); doc.paragraphs[-1].text = ''
+    doc.element.xpath('//w:sdt//w:t')[0].text += ' secretly changed'; doc.save(path)
+    assert any(issue.code == 'old_project_identity' for issue in audit_customer_package(path, **options).issues)
+
+
 def test_safe_customer_package_passes_without_changing_source(tmp_path):
     path = document(tmp_path)
     original = path.read_bytes()

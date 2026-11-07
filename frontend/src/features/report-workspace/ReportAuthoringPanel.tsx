@@ -3,12 +3,14 @@ import "./reportAuthoringPanel.css";
 import { ReportFactUpdates } from "./ReportFactUpdates";
 import { ReportResultsImport } from "./ReportResultsImport";
 import { ReportToolsPackageImport } from "./ReportToolsPackageImport";
+import { ReportEvidenceResults } from './ReportEvidenceResults';
 import { ReportResultUpdate } from "./ReportResultUpdate";
 import { ReportPhotoSlots } from "./ReportPhotoSlots";
 import { ReportCustomerCopy } from "./ReportCustomerCopy";
 import { ReportBatchPreparation } from './ReportBatchPreparation';
 import {
   getReportAuthoring, uploadReportSource, saveReportMapping, selectReportBase, downloadReportArtifact,
+  getReportFactTargets, type ReportFactLocation,
   type ReportAuthoringState, type ReportSourceRole, type ReportMapping, type ReportMappingInput,
 } from "../../api/reportAuthoring";
 
@@ -42,6 +44,8 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
   const [role, setRole] = useState<ReportSourceRole>("original");
   const [sourceId, setSourceId] = useState("");
   const [mapping, setMapping] = useState(emptyMapping);
+  const [factLocations, setFactLocations] = useState<ReportFactLocation[]>([]);
+  useEffect(() => { setFactLocations([]); }, [projectId, state?.revision, mapping.report_text]);
   const sequence = useRef(0);
   const operation = useRef<{ releaseOutside: () => void } | null>(null);
   const currentProject = useRef(projectId);
@@ -119,8 +123,20 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
 
   function edit(item: ReportMapping) {
     setSourceId(item.source_id);
-    const { mapping_id, kind, label, source_locator, value, status, reason, group_id, row_id, step_token, sample_ids, report_text } = item;
-    setMapping({ mapping_id, kind, label, source_locator, value, status, reason, group_id, row_id, step_token, sample_ids, report_text: report_text || "" });
+    const { mapping_id, kind, label, source_locator, value, status, reason, group_id, row_id, step_token, sample_ids, report_text, fact_role, report_target } = item;
+    setMapping({ mapping_id, kind, label, source_locator, value, status, reason, group_id, row_id, step_token, sample_ids, report_text: report_text || "", fact_role, report_target });
+  }
+
+  async function findFactLocations() {
+    const output = state?.outputs.at(-1);
+    if (!state || !output || !mapping.report_text) return;
+    const release = beginOperation(); if (!release) return;
+    const request = ++sequence.current; const owner = projectId;
+    try {
+      const locations = await getReportFactTargets(projectId, output.output_id, state.revision, mapping.report_text);
+      if (request === sequence.current && owner === currentProject.current) { setFactLocations(locations); setError(''); }
+    } catch (reason) { if (request === sequence.current) setError(reason instanceof Error ? reason.message : 'Unable to locate the report text.'); }
+    finally { release(); }
   }
 
   const locked = busy || disabled;
@@ -206,9 +222,25 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
           </select></label>
           <label>Sample IDs <input value={mapping.sample_ids.join(", ")} onChange={event => setMapping({ ...mapping, sample_ids: event.target.value.split(",").map(item => item.trim()).filter(Boolean) })} /></label>
           <label>Confirmed value <input value={mapping.value} onChange={event => setMapping({ ...mapping, value: event.target.value })} /></label>
-          {["identity", "specification"].includes(mapping.kind) && <label>Exact old report text (optional replacement)
-            <input value={mapping.report_text || ""} onChange={event => setMapping({ ...mapping, report_text: event.target.value })} />
-          </label>}
+          {["identity", "specification"].includes(mapping.kind) && <>
+            <label>Specification fact role<select value={mapping.fact_role || 'unspecified'} onChange={event => setMapping({ ...mapping,
+              fact_role: event.target.value as ReportMapping['fact_role'], report_target: null })}>
+              <option value="unspecified">General fact</option><option value="specification_number">Specification number</option>
+              <option value="revision">Revision</option><option value="revision_date">Revision date</option><option value="authorization_date">Authorization date</option>
+            </select></label>
+            <label>Exact old report text (optional replacement)
+              <input value={mapping.report_text || ""} onChange={event => setMapping({ ...mapping, report_text: event.target.value, report_target: null })} />
+            </label>
+            <button type="button" disabled={!state.outputs.length || !mapping.report_text} onClick={() => void findFactLocations()}>Find exact report location</button>
+            {factLocations.length > 0 && <label>Exact report location<select value={factLocations.findIndex(item => item.target.part === mapping.report_target?.part && item.target.paragraph === mapping.report_target?.paragraph)}
+              onChange={event => setMapping({ ...mapping, report_target: factLocations[Number(event.target.value)]?.target || null })}>
+              <option value={-1}>Choose one location</option>{factLocations.map((item, index) => <option key={index} value={index}>
+                {item.target.part.includes('header') ? 'Header' : item.target.part.includes('footer') ? 'Footer' : 'Body'} · {item.target.paragraph + 1}: {item.text}
+              </option>)}
+            </select></label>}
+            {mapping.report_target && <small>One exact report location selected. Identical dates elsewhere stay unchanged.</small>}
+            {mapping.fact_role?.endsWith('_date') && <p>Revision date and authorization date are different facts. Select the intended location before confirming a replacement.</p>}
+          </>}
           <label>Evidence / decision reason <textarea value={mapping.reason} onChange={event => setMapping({ ...mapping, reason: event.target.value })} /></label>
           <label><input type="checkbox" checked={mapping.status === "confirmed"} onChange={event => setMapping({ ...mapping, status: event.target.checked ? "confirmed" : "pending" })} />I have checked this mapping for this project</label>
           <p>Leave unresolved decisions pending. Previous projects' Pass and special acceptance reasons are not approvals for this project.</p>
@@ -226,6 +258,7 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
         {!latest && <p className="report-preparation-guidance">Choose a report base before updating content.</p>}
         <ReportBatchPreparation projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportToolsPackageImport key={`tools-${projectId}`} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportEvidenceResults key={`evidence-${projectId}`} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <ReportResultsImport key={projectId} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
         <details className="report-batch-advanced"><summary>Advanced individual updates</summary>
         <p>Use these compatibility tools only for a single targeted update. Prepare report batch above combines selected updates into one new working copy.</p>

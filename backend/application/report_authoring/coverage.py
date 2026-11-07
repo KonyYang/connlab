@@ -27,7 +27,10 @@ def report_coverage(state, context, *, applied_result_ids, result_errors, projec
                 reasons.append("Multiple confirmed results address this step. Choose the applicable evidence before assembly.")
             else:
                 result = relevant[0]
-                if result["outcome"] == "pending":
+                if result['data'].get('missing') or result['data'].get('selection_confirmed') is False:
+                    status = 'needs_review'
+                    reasons.append('Source measurements are incomplete or their stage/quantity mapping is not confirmed.')
+                elif result["outcome"] == "pending":
                     status = "needs_review"
                     reasons.append("Measurements are available for a review copy; engineering acceptance is still pending.")
                 elif result["outcome"] == "not_applicable":

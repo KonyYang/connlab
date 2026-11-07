@@ -50,6 +50,23 @@ def state(project_id: str, service=Depends(get_report_authoring_service)):
         raise _error(exc) from exc
 
 
+@router.get('/outputs/{output_id}/fact-targets')
+def fact_targets(project_id: str, output_id: str, expected_revision: int, old_text: str,
+                 service=Depends(get_report_authoring_service)):
+    try:
+        return service.fact_targets(project_id, output_id, expected_revision, old_text)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
+@router.get('/sources/{source_id}/region')
+def source_region(project_id: str, source_id: str, service=Depends(get_report_authoring_service)):
+    try:
+        return service.source_region(project_id, source_id)
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
 @router.post("/sources", dependencies=[Depends(require_project_folder_write_slot)])
 def upload_source(project_id: str, role: str = Form(...), expected_revision: int = Form(ge=0),
                         file: UploadFile = File(...), service=Depends(get_report_authoring_service)):

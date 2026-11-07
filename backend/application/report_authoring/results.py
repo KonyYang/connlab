@@ -5,16 +5,26 @@ from backend.domain.temperature_data import DataSelection, column_letter
 
 
 class ReportResultReader:
-    def __init__(self, workbook, temperature):
+    def __init__(self, workbook, temperature, linked_regions=None):
         self.workbook = workbook
         self.temperature = temperature
+        self.linked_regions = linked_regions
 
     def table(self, content, file_name, sheet_name=None):
         return self.workbook.read_upload(content, file_name, sheet_name=sheet_name or None)
 
     def preview(self, content, file_name, request):
+        if request['kind'] == 'external_reference':
+            return {'quantity': 'scoped_reference', 'unit': '', 'adoption': request.get('adoption')}
+        if request['kind'] == 'linked_temperature':
+            if not file_name.lower().endswith('.docx') or not request.get('linked_region') or self.linked_regions is None:
+                raise ValueError('Select the exact temperature table and native curve region in a retained DOCX.')
+            return self.linked_regions.preview(content, request['linked_region'])
         table = self.table(content, file_name, request["sheet_name"])
         kind = request["kind"]
+        if kind in {'electrical', 'resistance_stages'}:
+            from backend.application.report_authoring.result_semantics import preview_measurements
+            return preview_measurements(table, kind, request.get('semantic_selection'))
         if kind == "temperature":
             raw = request.get("temperature_selection")
             if raw is None:

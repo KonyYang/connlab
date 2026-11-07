@@ -57,7 +57,7 @@ class ReportAssembly:
         dataset = service.sections.selected_llcr_dataset(project_id, request['llcr_dataset_id'], context['matrix_id']) if request.get('llcr_dataset_id') else None
         facts = service.preview_facts(project_id, {'expected_revision': state.revision,
             'output_id': output['output_id'], 'mapping_ids': request.get('mapping_ids', [])})
-        replacements = [(item['old'], item['new']) for item in facts['changes']]
+        replacements = [{key: item[key] for key in ('old', 'new', 'target') if key in item} for item in facts['changes']]
         results, seen = [], set()
         for selection in request.get('results', []):
             key = selection['result_id']

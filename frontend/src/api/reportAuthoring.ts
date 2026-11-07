@@ -12,7 +12,13 @@ export type ReportMapping = {
   group_id: string; row_id: string; step_token: string; sample_ids: string[];
   matrix_id: string; confirmed_by: string; confirmed_at: string;
   report_text?: string;
+  fact_role?: 'unspecified' | 'specification_number' | 'revision' | 'revision_date' | 'authorization_date';
+  report_target?: ReportFactTarget | null;
 };
+export type ReportFactTarget = { part: string; paragraph: number; sha256: string };
+export type ReportFactLocation = { text: string; target: ReportFactTarget };
+export const getReportFactTargets = (projectId: string, outputId: string, revision: number, oldText: string) =>
+  requestJson<ReportFactLocation[]>(base(projectId) + `/outputs/${encodeURIComponent(outputId)}/fact-targets?expected_revision=${revision}&old_text=${encodeURIComponent(oldText)}`);
 export type ReportAuthoringOutput = {
   output_id: string; file_name: string; status: string; operation: string; issues: string[];
   download_url: string; base_source_id: string;
@@ -73,7 +79,7 @@ export const applyReportFacts = (projectId: string, outputId: string, mappingIds
 
 export type ReportTable = { file_name: string; sheet_names: string[]; sheet_name: string; rows: (string | number | boolean | null)[][] };
 export type ResultImportRequest = {
-  expected_revision: number; source_id: string; kind: "temperature" | "cr" | "mechanical";
+  expected_revision: number; source_id: string; kind: "temperature" | "cr" | "mechanical" | "mechanical_qualitative" | 'electrical' | 'resistance_stages' | 'external_reference' | 'linked_temperature';
   sheet_name: string; start_row: number; end_row: number; columns: Record<string, number>;
   sample_ids?: string[];
   unit: "mV" | "V" | "N"; quantity: "absolute" | "delta"; test_type: "mating" | "unmating" | "retention";
@@ -88,7 +94,12 @@ export type ReportResult = {
   matrix_id: string; target: ReportMatrixStep; profile: ResultImportRequest; outcome: string; acceptance_reason: string;
   preview_sha256: string; data: { sheet_name: string; unit: string; quantity: string;
     force_field?: string; withdraw_magnitude?: boolean;
-    rows?: Record<string, string | number | Record<string, string>>[];
+    raw_curves?: string[];
+    tables?: { title: string; row_heading?: string; column_heading?: string; columns: string[];
+      samples: string[]; results: string[][]; curves?: string[]; diagonal?: boolean }[];
+    rows?: Record<string, string | number | boolean | null | Record<string, string>>[];
+    missing?: boolean; selection_confirmed?: boolean;
+    adoption?: ResultAdoption; excerpt?: string; frozen_chart_count?: number;
     summary?: { min: string; max: string; average: string; stdev: string | null };
     analysis?: { points: { source_row: number | null; current: number; rises: number[]; maximum: number; average: number }[] };
   };
@@ -102,13 +113,30 @@ export type ToolsPackageImportRequest = Pick<ResultImportRequest,
   'expected_revision' | 'source_id' | 'kind' | 'group_id' | 'row_id' | 'step_token' | 'outcome' | 'acceptance_reason' | 'preview_sha256'> & {
   package_entry_id: string; sample_ids?: string[]; source_project_confirmed?: boolean;
 };
+export type SemanticRecord = { stage: string; cells: Record<string, string>; unit: string;
+  measurement?: 'ir' | 'dwv'; quantity?: 'absolute' | 'delta' | 'delta_from_absolute';
+  voltage_v?: string; duration_s?: string; condition_locator?: string };
+export type SemanticResultImportRequest = Pick<ResultImportRequest,
+  'expected_revision' | 'source_id' | 'kind' | 'group_id' | 'row_id' | 'step_token' | 'outcome' | 'acceptance_reason' | 'preview_sha256'> & {
+  sheet_name: string; semantic_selection: { type: 'electrical' | 'resistance_stages'; records: SemanticRecord[]; selection_confirmed: boolean };
+};
+export type ResultAdoption = { report_identity: string; source_version: string; source_locator: string; adopted_scope: string;
+  applicability_reason: string; adverse_observations: string; source_observations: string;
+  confirmed: boolean; customer_reference_allowed: boolean };
+export type RelatedResultImportRequest = Pick<ResultImportRequest,
+  'expected_revision' | 'source_id' | 'kind' | 'group_id' | 'row_id' | 'step_token' | 'outcome' | 'acceptance_reason' | 'preview_sha256'> & {
+  adoption: ResultAdoption; linked_region?: { start: number; end: number; freeze_external_charts: boolean };
+};
+export type ReportSourceBlock = { index: number; kind: string; text: string; tables: number; charts: number };
+export const getReportSourceRegion = (projectId: string, sourceId: string) =>
+  requestJson<ReportSourceBlock[]>(base(projectId) + `/sources/${encodeURIComponent(sourceId)}/region`);
 export const getReportToolsPackage = (projectId: string, sourceId: string) =>
   requestJson<ReportToolsPackage>(base(projectId) + `/sources/${encodeURIComponent(sourceId)}/package`);
 export const getReportSourceTable = (projectId: string, sourceId: string, sheetName = "") =>
   requestJson<ReportTable>(base(projectId) + `/sources/${encodeURIComponent(sourceId)}/table?sheet_name=${encodeURIComponent(sheetName)}`);
-export const previewReportResult = (projectId: string, request: ResultImportRequest | ToolsPackageImportRequest) =>
+export const previewReportResult = (projectId: string, request: ResultImportRequest | ToolsPackageImportRequest | SemanticResultImportRequest | RelatedResultImportRequest) =>
   requestJson<ReportResult>(base(projectId) + "/results/preview", { method: "POST", body: JSON.stringify(request) });
-export const confirmReportResult = (projectId: string, request: ResultImportRequest | ToolsPackageImportRequest) =>
+export const confirmReportResult = (projectId: string, request: ResultImportRequest | ToolsPackageImportRequest | SemanticResultImportRequest | RelatedResultImportRequest) =>
   requestJson<ReportAuthoringState>(base(projectId) + "/results/confirm", { method: "POST", body: JSON.stringify(request) });
 
 export type ResultTargets = { output_sha256: string; result_id: string;

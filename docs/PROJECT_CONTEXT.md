@@ -254,6 +254,15 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Report Workspace presentation
 
+- Retained evidence supports qualitative Tools matrices, explicit IR/DWV cell selections and
+  multi-stage direct resistance/ΔR records in the existing report batch chain. Stage and quantity,
+  source observations and project acceptance are separate. Missing data never supplies Pass.
+- Related reports require scoped source/version/location and applicability decisions. Selected DOCX
+  temperature regions retain only their safe relationship closure; complete externally linked chart
+  caches may be explicitly frozen without opening their workbook. Customer conversion preserves the
+  same adopted region and audits references only within the exact retained visible text. Date fact
+  updates can bind an exact paragraph fingerprint rather than replacing identical text globally.
+
 - Report Workspace shares the global page title/action bar, showing the registered LTR and latest
   confirmed Basic Information description/test item with existing Project fallbacks; unconfirmed
   drafts never supply that label. Optional label lookups do not block report operations.
