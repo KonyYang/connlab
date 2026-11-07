@@ -341,11 +341,11 @@
   "tasks": {
     "TASK_REPORT_RESULT_SEMANTICS_20261107": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
       "branch": "codex/report-result-semantics-20261107",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "66e651172a866d6f54c050e64b8f1e0c075d4f4f",
       "task": {
         "task_id": "TASK_REPORT_RESULT_SEMANTICS_20261107",
         "summary": "Report automation batch 4: scoped electrical/qualitative and related-report evidence, precise fact roles and multistage semantics.",
@@ -393,9 +393,143 @@
         ],
         "activation_head": "8ad205491a542fa9e2f68f22c0d95b51a969478d",
         "started_at": "2026-11-07T01:28:23.137017Z",
-        "updated_at": "2026-11-07T02:45:07.936244Z",
+        "updated_at": "2026-11-07T02:45:08.893773Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REPORT_RESULT_SEMANTICS_20261107",
+          "subject": "3b5e4bed89210e4cbbcf4827a3963f2d63b963e6",
+          "summary": "Batch 4 scoped result semantics, related-report evidence and precise fact roles implemented and independently validated; local integration only, final Close remains user-controlled.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/api/report_authoring_schemas.py",
+            "backend/api/routes_report_authoring.py",
+            "backend/application/report_authoring/assembly.py",
+            "backend/application/report_authoring/coverage.py",
+            "backend/application/report_authoring/result_semantics.py",
+            "backend/application/report_authoring/results.py",
+            "backend/application/report_authoring/service.py",
+            "backend/application/report_tools_package.py",
+            "backend/domain/report_authoring.py",
+            "backend/domain/report_result_semantics.py",
+            "backend/infrastructure/office/report_authoring/batch_document.py",
+            "backend/infrastructure/office/report_authoring/customer_audit.py",
+            "backend/infrastructure/office/report_authoring/customer_copy.py",
+            "backend/infrastructure/office/report_authoring/linked_region.py",
+            "backend/infrastructure/office/report_authoring/results_document.py",
+            "backend/infrastructure/office/report_authoring/word_copy.py",
+            "docs/PROJECT_CONTEXT.md",
+            "docs/operational/report_automation_plan_20261107.md",
+            "docs/operational/report_result_semantics_20261107.md",
+            "frontend/src/api/reportAuthoring.ts",
+            "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
+            "frontend/src/features/report-workspace/ReportEvidenceResults.test.tsx",
+            "frontend/src/features/report-workspace/ReportEvidenceResults.tsx",
+            "frontend/src/features/report-workspace/ReportToolsPackageImport.test.tsx",
+            "frontend/src/features/report-workspace/ReportToolsPackageImport.tsx",
+            "frontend/src/features/report-workspace/reportAuthoringPanel.css",
+            "tests/integration/test_report_semantic_results_api.py",
+            "tests/unit/report_authoring/test_customer_audit.py",
+            "tests/unit/report_authoring/test_linked_region.py",
+            "tests/unit/report_authoring/test_tools_results_document.py",
+            "tests/unit/report_authoring/test_word_facts.py",
+            "tests/unit/test_report_result_semantics.py",
+            "tests/unit/test_report_tools_package.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "Full affected Python matrix: 598 passed, 2 legacy mechanical Office tests deselected; code ba8ade70.",
+              "path": "D:\\PythonProject\\connlab\\tmp\\report_semantics_20261107\\qa_ba8ade70\\python.log",
+              "raw_sha256": "4419dc4be419c207c88b9e48c02287a18706fd7223d3c41d5e7f4ba7b7fbf690"
+            },
+            {
+              "status": "passed",
+              "summary": "Frontend 290 passed; unchanged after ba8ade70.",
+              "path": "D:\\PythonProject\\connlab\\tmp\\report_semantics_20261107\\qa_ba8ade70\\frontend.log",
+              "raw_sha256": "492426ceeb2912fa43bd9ce0b3d5906334d47b14e2d5c09afbe2c8db6a9d1c8d"
+            },
+            {
+              "status": "passed",
+              "summary": "Production build passed; unchanged frontend after ba8ade70.",
+              "path": "D:\\PythonProject\\connlab\\tmp\\report_semantics_20261107\\qa_ba8ade70\\build.log",
+              "raw_sha256": "d89ad35549a29264543b4ecc5c51c06469f1ad4b10ee58658bd1fe0c9d49f81f"
+            },
+            {
+              "status": "passed",
+              "summary": "Affected document regression: 181 passed on 7f0fda1c.",
+              "path": "D:\\PythonProject\\connlab\\tmp\\report_semantics_20261107\\qa_7f0fda1c\\python.log",
+              "raw_sha256": "cc8a23547e06dd7e4406544054a62c1d7b6c55ff4a9ed7b4de85ba119bd6f230"
+            },
+            {
+              "status": "passed",
+              "summary": "Final affected regression: 48 passed on exact runtime code 71ec4b33.",
+              "path": "D:\\PythonProject\\connlab\\tmp\\report_semantics_20261107\\qa_71ec4b33\\python.log",
+              "raw_sha256": "136be59383943b437d68f44d5b6bf0dc8b3a0322e7e062b182b05f4f86d4e7a3"
+            },
+            {
+              "status": "passed",
+              "summary": "Root independently reviewed all seven native Word pages from final code; UI replay and pending semantics retained; real source inputs unchanged.",
+              "manifest": "D:\\PythonProject\\connlab\\tmp\\report_semantics_20261107\\final_layout_v3\\manifest.json",
+              "manifest_raw_sha256": "13b0a333cca64cd84cacfc72a974e9a0d16924757214cf3cc3eb1e07ab67aead",
+              "output_raw_sha256": "8a0a9ed423602b58f25983e1d839200ebc0dc331a503236867ff7b69e4de5817",
+              "pdf_raw_sha256": "be2e2eef99dd21e7976648bd9396f9ae74bf9dd54040b55f51b3ab9c611e1840",
+              "source_checks": [
+                {
+                  "source": "D:\\Project Model\\DL-2026-09-032\\source\\DL-2026-09-032B CPI 450 Pack Connector T-rise Testing Report_Rev_A.docx",
+                  "copy": "D:\\PythonProject\\connlab\\tmp\\report_semantics_20261107\\inputs\\DL-2026-09-032B CPI 450 Pack Connector T-rise Testing Report_Rev_A.docx",
+                  "sha256": "f56941b02bd0fa7aab6c5a90aa166684350441f61b4b5267839e16639998a97a",
+                  "source_unchanged": true,
+                  "copy_identical": true
+                },
+                {
+                  "source": "D:\\Project Model\\DL-2026-09-032\\DL-2026-09-032 CPI-450 with Soft busbar Qualification Test (9.7)\\Test results\\DL-2026-09-032 CPI 450 with Soft Busbar IR&DWV.xlsx",
+                  "copy": "D:\\PythonProject\\connlab\\tmp\\report_semantics_20261107\\inputs\\DL-2026-09-032 CPI 450 with Soft Busbar IR&DWV.xlsx",
+                  "sha256": "3ed98744c26f19c06038eaaba9291a17692ce479d1baca59833bf1b8b780964d",
+                  "source_unchanged": true,
+                  "copy_identical": true
+                }
+              ]
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "context": "/root/batch4_planner",
+              "summary": "Independent read-only bounded batch4 plan."
+            },
+            "developer": {
+              "status": "passed",
+              "context": "/root/batch4_developer",
+              "summary": "Independent implementation, RED/GREEN and affected checks; no business-file writes."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "/root",
+              "summary": "Independent exact diff review and native Word acceptance; did not author product code/tests; all findings closed."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "/root/batch4_qa",
+              "summary": "Independent complete matrix once, then affected regression on final fixes; raw logs verified."
+            },
+            "integrator": {
+              "status": "passed",
+              "context": "/root/batch4_integrator",
+              "summary": "Independent identity, exact scope, clean HEAD, docs-only follow-up, raw evidence hashes, source guards, ancestry and primary drift checks; actual merge pending sole writer."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "3b5e4bed89210e4cbbcf4827a3963f2d63b963e6",
+            "primary_before": "02a9c8093df8d5bdb2fa53cd579aab82c9489794",
+            "integrated_head": "66e651172a866d6f54c050e64b8f1e0c075d4f4f",
+            "recovered": false
+          }
+        }
       }
     }
   }
