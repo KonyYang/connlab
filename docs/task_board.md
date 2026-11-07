@@ -433,8 +433,16 @@
         ],
         "activation_head": "75d9eb36512f67d4ee22eda070876f0e527b11ad",
         "started_at": "2026-11-07T04:33:36.854373Z",
-        "updated_at": "2026-11-07T04:33:36.854373Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-07T04:45:33.404301Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
+          "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
+          "stage": "final_visual_acceptance",
+          "status": "blocked",
+          "summary": "Candidate c9f1dc0c equals reviewed360d100e product bytes. QA288Python/137frontend/build passed; 63 actual Word pages inspected.032UI photo-plan/batch/Word/reload passed;18 unaffected pages pixel-identical, visual review recorded without content approval.021 cross-project result clearing causes orphan headings, RED publicAPI regression prepared. Await explicit approval to add existing word_copy.py to exact scope for bounded local pagination repair. Primary clean; all198inputs unchanged; no integration/push/real writes.",
+          "requires_user": true
+        },
         "report": null
       }
     }
