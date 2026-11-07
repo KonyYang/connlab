@@ -126,6 +126,11 @@ class LinkedReportRegion:
             raise ValueError('Select an ordered, bounded source report region.')
         blocks = [deepcopy(block) for block in body[start:end + 1]]
         tags = {etree.QName(node).localname for block in blocks for node in block.iter()}
+        # These IDs are scoped to the source document, not carried by r:id
+        # relationships. Copying them could bind to unrelated target content.
+        if tags & {'footnoteReference', 'endnoteReference', 'commentReference', 'commentRangeStart',
+                   'commentRangeEnd', 'bookmarkStart', 'bookmarkEnd', 'hyperlink'}:
+            raise ValueError('The selected region contains unsupported document-level references; it was not adopted.')
         if tags & {'sectPr', 'numPr', 'object', 'altChunk', 'fldSimple', 'instrText', 'ins', 'del'}:
             raise ValueError('This region has section/numbering/active or revision content requiring manual review; it was not adopted.')
         if not any(block.tag == f'{{{W}}}tbl' or block.findall('.//{%s}tbl' % W) for block in blocks):

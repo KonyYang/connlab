@@ -61,6 +61,9 @@ def test_linked_temperature_requires_acknowledgement_and_preserves_frozen_native
     assert data['frozen_chart_count'] == 1
     target = tmp_path/'target.docx'
     document = Document(); document.add_paragraph('TARGET IDENTITY'); document.save(target)
+    with ZipFile(target) as archive:
+        original_theme = archive.read('word/theme/theme1.xml')
+        original_styles = etree.fromstring(archive.read('word/styles.xml'))
     reader.append(target, data, 'linked-test')
     reader.append(target, data, 'linked-test')
     with ZipFile(target) as archive:
@@ -71,6 +74,35 @@ def test_linked_temperature_requires_acknowledgement_and_preserves_frozen_native
     assert etree.fromstring(charts[0]).find('.//{http://schemas.openxmlformats.org/drawingml/2006/chart}tx/{http://schemas.openxmlformats.org/drawingml/2006/chart}v').text == 'Max T-rise'
     assert all(b'never-read' not in value for value in all_parts.values())
     assert '26' in ''.join(Document(target).element.xpath('//w:t/text()'))
+    assert all_parts['word/theme/theme1.xml'] == original_theme
+    updated_styles = etree.fromstring(all_parts['word/styles.xml'])
+    w = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+    for original in original_styles:
+        identity = original.get(f'{{{w}}}styleId')
+        counterpart = next((style for style in updated_styles if style.tag == original.tag and style.get(f'{{{w}}}styleId') == identity), None)
+        assert counterpart is not None
+        assert etree.tostring(counterpart, method='c14n') == etree.tostring(original, method='c14n')
+
+
+@pytest.mark.parametrize('reference', ['footnoteReference', 'endnoteReference', 'commentReference',
+    'commentRangeStart', 'commentRangeEnd', 'bookmarkStart', 'bookmarkEnd', 'hyperlink'])
+def test_region_rejects_document_level_references_without_copying_or_remapping(reference):
+    raw = linked_source()
+    with ZipFile(BytesIO(raw)) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    w = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+    root = etree.fromstring(parts['word/document.xml'])
+    element = etree.SubElement(root.find(f'{{{w}}}body')[0], f'{{{w}}}{reference}')
+    element.set(f'{{{w}}}anchor' if reference == 'hyperlink' else f'{{{w}}}id', '1')
+    if reference == 'bookmarkStart': element.set(f'{{{w}}}name', 'TargetExistingBookmark')
+    parts['word/document.xml'] = etree.tostring(root)
+    stream = BytesIO()
+    with ZipFile(stream, 'w', ZIP_DEFLATED) as archive:
+        for name, content in parts.items(): archive.writestr(name, content)
+    original = stream.getvalue()
+    with pytest.raises(ValueError, match='document-level references'):
+        LinkedReportRegion().preview(original, {'start': 0, 'end': 2, 'freeze_external_charts': True})
+    assert stream.getvalue() == original
 
 
 def test_linked_region_result_writer_and_customer_supplement_use_same_native_evidence(tmp_path):
