@@ -40,6 +40,8 @@ class ReportMapping:
     confirmed_by: str = ""
     confirmed_at: str = ""
     report_text: str = ""
+    fact_role: str = "unspecified"
+    report_target: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -56,6 +58,10 @@ class ReportAuthoringState:
 
 
 def validate_mapping(mapping: ReportMapping) -> None:
+    if mapping.fact_role not in {'unspecified', 'specification_number', 'revision', 'revision_date', 'authorization_date'}:
+        raise ValueError('Choose the fact role from the supported specification fields.')
+    if mapping.status == 'confirmed' and mapping.report_text and mapping.fact_role in {'revision_date', 'authorization_date'} and not mapping.report_target:
+        raise ValueError('Select the exact report location for this date; authorization and revision dates are different facts.')
     if mapping.kind not in MAPPING_KINDS or mapping.status not in {"pending", "confirmed"}:
         raise ValueError("Choose a supported mapping type and decision state.")
     if not mapping.label.strip() or not mapping.source_locator.strip():

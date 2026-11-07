@@ -279,6 +279,12 @@ class ReportAuthoringService:
         source, content = self.source_content(project_id, source_id)
         return self.results.table(content, source.file_name, sheet_name)
 
+    def source_region(self, project_id, source_id):
+        source, content = self.source_content(project_id, source_id)
+        if source.role != 'evidence' or not source.file_name.lower().endswith('.docx'):
+            raise ValueError('Choose a retained supporting DOCX report.')
+        return self.results.linked_regions.inspect(content)
+
     def source_package(self, project_id, source_id):
         source, content = self.source_content(project_id, source_id)
         if source.role != 'tools_result_package':
@@ -319,19 +325,43 @@ class ReportAuthoringService:
     def preview_result(self, project_id, request):
         state, context = self._editable(project_id, request["expected_revision"])
         source = self._source(state, request["source_id"])
-        if source.role != request["kind"] and source.role != 'tools_result_package':
+        semantic = request['kind'] in {'electrical', 'resistance_stages'}
+        adopted = request['kind'] in {'external_reference', 'linked_temperature'}
+        if source.role != request["kind"] and source.role != 'tools_result_package' and not ((semantic or adopted) and source.role in {'evidence', 'cr'}):
             raise ValueError("Choose a source retained with the matching measurement role.")
         target = next((step for step in context["steps"] if all(step[key] == request[key] for key in ("group_id", "row_id", "step_token"))), None)
         if target is None:
             raise ValueError("Choose the result's Group and Step from the current confirmed Matrix.")
         if request["outcome"] != "pending" and not request["acceptance_reason"].strip():
             raise ValueError("Record this project's acceptance evidence before confirming an outcome.")
+        adoption = request.get('adoption')
+        if adopted and not adoption:
+            raise ValueError('Record the source report/version, exact location and scope adopted for this project.')
+        if adoption and adoption['confirmed'] and not adoption['applicability_reason'].strip():
+            raise ValueError('Explain why the referenced result applies to these project samples and conditions.')
+        if adopted and request['outcome'] != 'pending' and not adoption['confirmed']:
+            raise ValueError('Unconfirmed applicability cannot inherit an external report outcome.')
         if source.role == 'tools_result_package':
             data = self._package_result(state, context, source, request)
         else:
             if request.get('package_entry_id'):
                 raise ValueError('Package entries require a retained Tools result package.')
             data = self.results.preview(self.assets.read(project_id, source), source.file_name, request)
+        if semantic:
+            if request['outcome'] != 'pending' and (data['missing'] or not data['selection_confirmed']):
+                raise ValueError('Missing measurements or unconfirmed stage/column selections cannot be given a report outcome. Keep the decision pending.')
+            if request['kind'] == 'electrical' and any(
+                    (row.get('voltage_v') or row.get('duration_s')) and not row.get('condition_locator', '').strip() for row in data['rows']):
+                raise ValueError('Record the source location for the confirmed electrical voltage and duration.')
+        if adoption:
+            data = {**data, 'adoption': {**adoption, 'project_id': project_id, 'project_dl': context['dl_number'],
+                'source_sha256': source.sha256, 'confirmed_by': request['confirmed_by'] if adoption['confirmed'] else ''}}
+            data['adoption_notes'] = [f"Reference: {adoption['report_identity']} / {adoption['source_version']} — {adoption['source_locator']}",
+                f"Adopted scope for {context['dl_number']}: {adoption['adopted_scope']}",
+                f"Applicability basis: {adoption['applicability_reason']}",
+                *([f"Source adverse observations: {adoption['adverse_observations']}"] if adoption['adverse_observations'] else []),
+                *([f"Source observations: {adoption['source_observations']}"] if adoption['source_observations'] else []),
+                *(['Native curves use frozen source caches; external workbook links are not retained or recalculated.'] if data.get('frozen_chart_count') else [])]
         profile = {key: value for key, value in request.items() if key != "preview_sha256"}
         result = {"kind": request["kind"], "source_id": source.source_id, "source_sha256": source.sha256,
             "matrix_id": context["matrix_id"], "target": target, "profile": profile, "data": data,
@@ -366,15 +396,14 @@ class ReportAuthoringService:
                 raise ValueError("Select confirmed project/specification mappings with the exact old report text.")
             self.assets.read(project_id, self._source(state, mapping.source_id))
             snapshot = applied.get(mapping_id)
-            if snapshot and all(snapshot.get(key) == getattr(mapping, key) for key in ('source_id', 'report_text', 'value')):
+            if snapshot and all(snapshot.get(key, 'unspecified' if key == 'fact_role' else None) == getattr(mapping, key)
+                    for key in ('source_id', 'report_text', 'value', 'fact_role', 'report_target')):
                 continue
-            replacements.append((mapping.report_text, mapping.value))
+            replacements.append({'old': mapping.report_text, 'new': mapping.value, 'target': mapping.report_target})
             mappings.append(asdict(mapping))
         if not replacements:
             return {'output_sha256': artifact.sha256, 'changes': [], 'mapping_ids': [], 'mapping_snapshots': [],
                 'preview_sha256': sha256((artifact.sha256 + ':no_changes').encode()).hexdigest()}
-        if len({item[0] for item in replacements}) != len(replacements) or any(a[0] in b[0] or b[0] in a[0] for index, a in enumerate(replacements) for b in replacements[index+1:]):
-            raise ValueError("Each old report text must have one replacement, not overlapping decisions.")
         changes = self.writer.preview_facts(self.assets.path(project_id, artifact), replacements)
         result = {"output_sha256": artifact.sha256, "changes": changes, "mapping_ids": [item['mapping_id'] for item in mappings],
                   'mapping_snapshots': mappings}
@@ -389,10 +418,17 @@ class ReportAuthoringService:
         output = self._current_output(state, request["output_id"])
         if not preview['changes']:
             return state
-        replacements = [(item["old"], item["new"]) for item in preview["changes"]]
+        replacements = [{key: item[key] for key in ('old', 'new', 'target') if key in item} for item in preview['changes']]
         return self._updated_copy(state, context, output, "confirmed_facts", request["expected_revision"],
             lambda source, target: self.writer.apply_facts(source, target, replacements),
             lambda: self.preview_facts(project_id, request), {"mapping_ids": preview['mapping_ids'], 'mapping_snapshots': preview['mapping_snapshots']})
+
+    def fact_targets(self, project_id, output_id, expected_revision, old_text):
+        state, _ = self._editable(project_id, expected_revision)
+        output = self._current_output(state, output_id)
+        artifact = ReportSource(**output['artifact'])
+        self.assets.read(project_id, artifact)
+        return self.writer.fact_targets(self.assets.path(project_id, artifact), old_text)
 
     def result_targets(self, project_id, output_id, result_id, expected_revision):
         state, context = self._editable(project_id, expected_revision)
@@ -437,6 +473,8 @@ class ReportAuthoringService:
         if latest.source_id != source.source_id:
             raise ReportAuthoringConflict('A newer source file was uploaded. Review and import its measurements again.')
         self.assets.read(state.project_id, source)
+        if result['kind'] in {'external_reference', 'linked_temperature'} and not result['data'].get('adoption', {}).get('confirmed'):
+            raise ReportAuthoringConflict('This source is retained, but its applicability to this project is still pending.')
         return result
 
     def photo_slots(self, project_id, output_id, expected_revision):
@@ -486,9 +524,16 @@ class ReportAuthoringService:
             raise ReportAuthoringConflict('The reviewed Internal Report copy changed. Reload before customer conversion.')
         self.assets.read(project_id, artifact)
         temperatures = [self._confirmed_result(state, context, key) for key in request['temperature_result_ids']]
-        if any(item['kind'] != 'temperature' for item in temperatures):
+        if any(item['kind'] not in {'temperature', 'linked_temperature'} for item in temperatures):
             raise ValueError('Choose temperature results for the complete customer measurement supplement.')
         applied = set(self.active_result_ids(state))
+        # Adopted native regions are already reviewed evidence, not a request to
+        # recalculate them through the temperature Tools adapter.
+        for retained in state.results:
+            if retained['kind'] in {'external_reference', 'linked_temperature'} and retained['result_id'] in applied and retained['result_id'] not in {item['result_id'] for item in temperatures}:
+                temperatures.append(self._confirmed_result(state, context, retained['result_id']))
+        if any(item['kind'] in {'external_reference', 'linked_temperature'} and not item['data']['adoption'].get('customer_reference_allowed') for item in temperatures):
+            raise ValueError('Confirm customer disclosure permission for each adopted related-report region before conversion.')
         if any(result['result_id'] not in applied for result in temperatures):
             raise ValueError('Apply each selected temperature result to the current Internal Report copy first.')
         if any(result['kind'] == 'temperature' and result['result_id'] in applied and result['result_id'] not in request['temperature_result_ids'] for result in state.results):
@@ -512,7 +557,7 @@ class ReportAuthoringService:
         self.assets.retain(project_id, customer, content)
         record = {'output_id': customer.source_id, 'artifact': asdict(customer), 'base_source_id': state.base_source_id,
             'parent_output_id': output['output_id'], 'operation': 'customer_projection', 'status': 'needs_review',
-            'issues': ['Customer review copy only. Not formally released.'], 'temperature_result_ids': request['temperature_result_ids']}
+            'issues': ['Customer review copy only. Not formally released.'], 'temperature_result_ids': [item['result_id'] for item in temperatures]}
         return self.repository.save(replace(state, customer_outputs=(*state.customer_outputs, record)), request['expected_revision'])
 
     def customer_check(self, project_id, request):
@@ -527,8 +572,11 @@ class ReportAuthoringService:
         base = self._source(state, output['base_source_id'])
         forbidden = [base.report_dl] if base.report_dl and base.report_dl != context['dl_number'] else []
         forbidden += request['forbidden_project_ids']
+        scoped_references = [self._confirmed_result(state, context, key) for key in self.active_result_ids(state)
+            if next(item for item in state.results if item['result_id'] == key)['kind'] in {'external_reference', 'linked_temperature'}]
         audit = self.customer.audit(self.assets.path(project_id, artifact), sensitive_terms=request['sensitive_terms'],
-            forbidden_project_ids=forbidden, reviewed_parts=request['reviewed_parts'], expected_project_dl=context['dl_number'])
+            forbidden_project_ids=forbidden, reviewed_parts=request['reviewed_parts'], expected_project_dl=context['dl_number'],
+            **({'scoped_references': scoped_references} if scoped_references else {}))
         issues = list(audit['issues'])
         if not request['disclosure_scope_confirmed']:
             issues.append({'code': 'disclosure_scope_unconfirmed', 'location': 'review', 'message':

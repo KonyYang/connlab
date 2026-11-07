@@ -78,7 +78,7 @@ def _parts(root, result):
 
 
 def _temperature_evidence_blocks(root, result):
-    if result.get('kind') != 'temperature':
+    if result.get('kind') not in {'temperature', 'linked_temperature'}:
         return []
     selected_group = str(result['target']['group_label']).strip().casefold()
     active, after_result, blocks = False, False, []
@@ -181,6 +181,9 @@ class ReportResultsDocument:
                     self.temperature_chart(plain, charted, result['data']['analysis'],
                         'connlab-report-result:' + result['result_id'])
                     plain = charted
+                elif result['kind'] == 'linked_temperature':
+                    from backend.infrastructure.office.report_authoring.linked_region import LinkedReportRegion
+                    LinkedReportRegion().append(plain, result['data'], 'connlab-report-result:' + result['result_id'])
             protection = self.protected.stage_editable_copy(source, output)
             output.write_bytes(plain.read_bytes())
             self.protected.restore_password_protection(output, protection)
@@ -223,7 +226,10 @@ def prepare_result_update(root, result, *, result_table, result_row, appendix_ta
 
     appendix = tables[appendix_table] if appendix_table is not None else None
     if appendix is not None and sum(item[1] is appendix[1] for item in tables) != 1:
-        raise ValueError('This appendix heading covers several tables. Add a separate appendix instead of relabeling unrelated results.')
+        container = appendix[0].getparent()
+        if container.tag != node('sdtContent').tag or any(
+                item[1] is appendix[1] and item[0].getparent() is not container for item in tables):
+            raise ValueError('This appendix heading covers several tables. Add a separate appendix instead of relabeling unrelated results.')
     blocks = list(root.find('w:body', NS))[evidence_start:evidence_end + 1] if region_selected else []
     writes = [cells[headers.index('result')], cells[headers.index('comment')]]
     if blocks:
@@ -256,7 +262,12 @@ def apply_prepared_result(root, prepared):
         heading = node('p')
         set_text(heading, f"Temperature Rise Measurements — Group {result['target']['group_label']}, Step {result['target']['step_token']} (°C)")
         content.append(heading)
-    content.append(measurement_table(result))
+    if result['kind'] == 'mechanical_qualitative':
+        for matrix in result['data']['tables']:
+            heading = node('p'); set_text(heading, matrix['title']); content.append(heading)
+            content.append(qualitative_table(matrix))
+    else:
+        content.append(measurement_table(result))
     for line in result_notes(result):
         paragraph = node('p'); set_text(paragraph, line); content.append(paragraph)
     section.append(content)
@@ -293,6 +304,20 @@ def apply_prepared_result(root, prepared):
 
 def summary(result):
     data = result['data']
+    if result['kind'] in {'external_reference', 'linked_temperature'}:
+        return 'See the scoped related-report evidence and its explicit applicability statement.'
+    if result['kind'] in {'electrical', 'resistance_stages'}:
+        values = []
+        for row in data['rows']:
+            value = '' if row['value'] is None else f"{row.get('comparator') or ''}{row['value']} {row['unit']}"
+            label = row.get('measurement', 'ΔR' if row.get('quantity') == 'delta' else 'Absolute R')
+            values.append(f"{row['stage']} / {row['sample_id']} / {row.get('pair', '')}: {label} {value}".strip())
+        return '; '.join(values)
+    if result['kind'] == 'mechanical_qualitative':
+        return '; '.join(matrix['title'] + ': ' + ', '.join(
+            f"{sample} / {column}: {value}" for sample, row in zip(matrix['samples'], matrix['results'])
+            for column, value in zip(matrix['columns'], row) if value)
+            for matrix in data['tables'])
     if result['kind'] == 'temperature':
         measured = [p for p in data['analysis']['points'] if p['source_row'] is not None]
         return '; '.join(f"{p['current']:g} A: measured Max {p['maximum']:g} °C; Avg of Max {p['average']:g} °C" for p in measured)
@@ -308,6 +333,42 @@ def _step_identity(result):
 
 def measurement_table(result):
     data = result['data']
+    if result['kind'] in {'external_reference', 'linked_temperature'}:
+        adoption = data['adoption']
+        return value_table(['Reference', 'Version', 'Source location', 'Adopted scope'], [[adoption[key] for key in ('report_identity', 'source_version', 'source_locator', 'adopted_scope')]])
+    if result['kind'] == 'electrical':
+        headers = ['Sample / pair', 'Stage', 'IR / DWV reading', 'Conditions', 'Breakdown', 'Source cells']
+        values = [[f"{row['sample_id']}\n{row['pair']}", row['stage'], row['measurement'].upper() + '\n' +
+            ('' if row['value'] is None else f"{row['comparator'] or ''}{row['value']} {row['unit']}"),
+            '\n'.join([f"{row['voltage_v']} V" if row['voltage_v'] else '', f"{row['duration_s']} s" if row['duration_s'] else '']),
+            {'not_recorded': '', 'not_applicable': '', 'no_breakdown': 'No breakdown', 'breakdown': 'Breakdown'}[row['breakdown']],
+            '\n'.join(f'{key}: {value}' for key, value in row['source_cells'].items())] for row in data['rows']]
+        table = value_table(headers, values)
+        # A six-column layout keeps measured numbers legible in the common six-inch
+        # body. Percent cell widths follow the target table; only reading cells do not wrap.
+        widths = (850, 700, 950, 650, 850, 1000)
+        for column, width in zip(table.find('w:tblGrid', NS), widths):
+            column.set(f'{{{NS["w"]}}}w', str(width * 8640 // 5000))
+        for row_index, row in enumerate(table.findall('w:tr', NS)):
+            for column_index, (cell, width) in enumerate(zip(row.findall('w:tc', NS), widths)):
+                properties = node('tcPr'); cell.insert(0, properties)
+                preferred = node('tcW'); preferred.set(f'{{{NS["w"]}}}type', 'pct'); preferred.set(f'{{{NS["w"]}}}w', str(width)); properties.append(preferred)
+                if row_index and column_index == 2: properties.append(node('noWrap'))
+                if row_index:
+                    lines = values[row_index - 1][column_index].split('\n')
+                    set_text(cell, lines[0])
+                    for line in lines[1:]:
+                        paragraph = node('p'); set_text(paragraph, line); cell.append(paragraph)
+        return table
+    if result['kind'] == 'resistance_stages':
+        headers = ['Sample', 'Pair', 'Stage', 'Quantity', 'Value (mΩ)', 'Baseline (mΩ)', 'Raw source value', 'Source cells']
+        values = [[row['sample_id'], row['pair'], row['stage'], 'Absolute R' if row['quantity'] == 'absolute' else 'ΔR',
+            row['value'] if row['value'] is not None else '', row['baseline_mohm'] or '',
+            f"{row['raw_value']} {row['source_unit']}" if row['raw_value'] else '',
+            ', '.join(f'{key}: {value}' for key, value in row['source_cells'].items())] for row in data['rows']]
+        return value_table(headers, values)
+    if result['kind'] == 'mechanical_qualitative':
+        return qualitative_table(data['tables'][0])
     if result['kind'] == 'temperature':
         points = [p for p in data['analysis']['points'] if p['source_row'] is not None]
         channels = len(points[0]['rises']) if points else 0
@@ -346,6 +407,20 @@ def measurement_table(result):
             headers.append('Hold (s)')
             keys.append('hold_seconds')
         values = [[row.get(key, '') for key in keys] for row in data['rows']]
+    return value_table(headers, values)
+
+
+def qualitative_table(matrix):
+    headers = [matrix.get('row_heading') or 'Sample'] + [
+        f"{matrix.get('column_heading', '')} {label}".strip() for label in matrix['columns']]
+    values = [[sample, *row] for sample, row in zip(matrix['samples'], matrix['results'])]
+    if matrix.get('curves'):
+        headers.append('Source curve annotation (not sample identity)')
+        values = [[*row, curve] for row, curve in zip(values, matrix['curves'])]
+    return value_table(headers, values)
+
+
+def value_table(headers, values):
     table = node('tbl')
     properties = node('tblPr')
     style = node('tblStyle'); style.set(f'{{{NS["w"]}}}val', 'TableGrid'); properties.append(style)
@@ -366,6 +441,17 @@ def measurement_table(result):
 
 
 def result_notes(result):
+    if result['kind'] in {'external_reference', 'linked_temperature'}:
+        return result['data']['adoption_notes']
+    if result['kind'] in {'electrical', 'resistance_stages'}:
+        return ['Blank measurements and breakdown observations are unrecorded, not zero or a passing result. Stage labels do not imply absolute R or ΔR.',
+            *[f"Conditions: {row['stage']} / {row['sample_id']} — {row['condition_locator']}" for row in result['data']['rows'] if row.get('condition_locator')],
+            *([f"Project acceptance evidence: {result['acceptance_reason']}"] if result.get('acceptance_reason') else [])]
+    if result['kind'] == 'mechanical_qualitative':
+        count = len(result['data'].get('raw_curves', []))
+        return [f"{count} source curve(s) retained; not one curve per observation. Matrix cells are reviewed source observations, not independent instrument measurements.",
+            'The report outcome is a separate project decision; matrix Pass labels do not automatically approve this Step.',
+            *([f"Project acceptance evidence: {result['acceptance_reason']}"] if result.get('acceptance_reason') else [])]
     if result['kind'] != 'temperature':
         stats = result['data']['summary']
         return [f"Statistics ({result['data']['unit']}): Min {stats['min']}; Max {stats['max']}; Average {stats['average']}; Sample standard deviation {stats['stdev'] if stats['stdev'] is not None else 'not defined for one sample'}. Classifications and source coordinates are retained in the Workspace."]
@@ -401,6 +487,14 @@ def result_appendix_title(result, requested):
             label += '; ' + ' and '.join(colors)
     elif result['kind'] == 'cr':
         label = ('Change in Contact Resistance (ΔR, mΩ)' if data['quantity'] == 'delta' else 'Absolute Contact Resistance (mΩ)')
+    elif result['kind'] == 'mechanical_qualitative':
+        label = 'Qualitative Observations — ' + '; '.join(matrix['title'] for matrix in data['tables'])
+    elif result['kind'] == 'electrical':
+        label = 'Electrical Measurements — IR / DWV'
+    elif result['kind'] == 'resistance_stages':
+        label = 'Contact Resistance by Stage — Absolute R and ΔR (mΩ)'
+    elif result['kind'] == 'external_reference':
+        label = 'Scoped Related Report Evidence'
     else:
         label = 'Temperature Rise Measurements (°C)'
     return f'Appendix {match.group(1).upper()}: {label}'

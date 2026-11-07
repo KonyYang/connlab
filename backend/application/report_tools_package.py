@@ -97,12 +97,13 @@ def _mechanical_entries(analysis):
             identity = sha256(f'{section["id"]}:{field}'.encode()).hexdigest()[:24]
             entry = {'entry_id': identity, 'label': section['name'] + (f' — {field}' if kind == 'mating' else ''),
                 'kind': 'mechanical_qualitative' if qualitative else 'mechanical',
-                'supported_for_report': not qualitative,
-                'reason': 'Qualitative matrices are retained as evidence; report application needs a supported mapping.' if qualitative else '',
+                'supported_for_report': True,
+                'reason': '',
                 'source_names': [section['source']]}
             if qualitative:
                 entry['data'] = {'tables': section['tables'], 'raw_cells': section['raw_cells'],
-                    'raw_curves': section['raw_curves'], 'information': section['information']}
+                    'raw_curves': section['raw_curves'], 'information': section['information'],
+                    'quantity': 'qualitative', 'unit': '', 'test_type': kind}
                 entries.append(entry)
                 continue
             hold = kind in {'hold', 'hold_end1', 'clamp'}

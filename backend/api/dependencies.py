@@ -1460,6 +1460,7 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
     from backend.application.test_report_template_resource import resolve_customer_report_template_path
     from backend.modules.test_plan.matrix_step_sequence_validation import parse_step_tokens
     from backend.application.report_authoring.results import ReportResultReader
+    from backend.infrastructure.office.report_authoring.linked_region import LinkedReportRegion
     from backend.application.tools_temperature_service import ToolsTemperatureService
     from backend.infrastructure.office.temperature_workbook_gateway import TemperatureWorkbookGateway
 
@@ -1497,7 +1498,7 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
         customer=CustomerReportCopy(converter=CustomerReportDocumentGateway(),
             template=lambda: resolve_customer_report_template_path(get_test_report_template_resource_store(session)),
             temperature_chart=insert_temperature_chart),
-        results=ReportResultReader(TemperatureWorkbookGateway(), ToolsTemperatureService(TemperatureWorkbookGateway())))
+        results=ReportResultReader(TemperatureWorkbookGateway(), ToolsTemperatureService(TemperatureWorkbookGateway()), LinkedReportRegion()))
 
 
 def get_report_section_update_service(session: Session = Depends(get_session), settings: Settings = Depends(get_settings)):

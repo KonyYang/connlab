@@ -2,6 +2,7 @@
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 from io import BytesIO
+from hashlib import sha256
 import re
 from lxml import etree
 from backend.infrastructure.office.office_protected_document_gateway import ProtectedWordPackageGateway
@@ -24,18 +25,38 @@ class ReportCopyWriter:
             for name in archive.namelist():
                 if _text_part(name):
                     root = etree.fromstring(archive.read(name))
-                    paragraphs.extend((name, paragraph) for paragraph in root.xpath("//w:p", namespaces=NS))
+                    paragraphs.extend((name, index, paragraph) for index, paragraph in enumerate(root.xpath("//w:p", namespaces=NS)))
             changes = []
-            for old, new in replacements:
-                matches = [(name, _paragraph_text(paragraph).count(old)) for name, paragraph in paragraphs if old in _paragraph_text(paragraph)]
+            for replacement in replacements:
+                old, new, target = replacement_parts(replacement)
+                selected = [(name, paragraph) for name, index, paragraph in paragraphs
+                            if fact_target_matches(name, index, paragraph, target)]
+                matches = [(name, _paragraph_text(paragraph).count(old)) for name, paragraph in selected if old in _paragraph_text(paragraph)]
                 count = sum(item[1] for item in matches)
                 if not count:
                     raise ValueError(f"The report does not contain the exact old text: {old}. Review the mapping before applying.")
-                changes.append({"old": old, "new": new, "occurrences": count, "parts": sorted({item[0] for item in matches})})
+                changes.append({"old": old, "new": new, "occurrences": count, "parts": sorted({item[0] for item in matches}),
+                                **({'target': target} if target else {})})
             return changes
 
+    def fact_targets(self, source: Path, old_text: str):
+        if not old_text.strip():
+            raise ValueError('Enter the exact old report text before choosing its location.')
+        targets = []
+        with self.protected.readable_copy(source) as readable, ZipFile(readable) as archive:
+            for name in archive.namelist():
+                if not _text_part(name):
+                    continue
+                root = etree.fromstring(archive.read(name))
+                for index, paragraph in enumerate(root.xpath('//w:p', namespaces=NS)):
+                    value = _paragraph_text(paragraph)
+                    if old_text in value:
+                        targets.append({'text': value, 'target': {'part': name, 'paragraph': index,
+                            'sha256': sha256(etree.tostring(paragraph, method='c14n')).hexdigest()}})
+        return targets
+
     def apply_facts(self, source: Path, output: Path, replacements):
-        _validate_replacements(replacements)
+        self.preview_facts(source, replacements)
         protection = self.protected.stage_editable_copy(source, output)
         changed = {}
         with ZipFile(output) as archive:
@@ -44,8 +65,10 @@ class ReportCopyWriter:
                     continue
                 root = etree.fromstring(archive.read(name))
                 count = 0
-                for paragraph in root.xpath("//w:p", namespaces=NS):
-                    for old, new in replacements:
+                for index, paragraph in enumerate(root.xpath("//w:p", namespaces=NS)):
+                    selected = [replacement_parts(item) for item in replacements
+                                if fact_target_matches(name, index, paragraph, replacement_parts(item)[2])]
+                    for old, new, _ in selected:
                         count += _replace_paragraph(paragraph, old, new)
                 if count:
                     changed[name] = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
@@ -140,9 +163,28 @@ def _replace_paragraph_pattern(paragraph, pattern, new):
 
 
 def _validate_replacements(replacements):
-    for index, (old, new) in enumerate(replacements):
+    for index, replacement in enumerate(replacements):
+        old, new, target = replacement_parts(replacement)
         if not old:
             raise ValueError('Replacement source text must not be empty.')
-        for other_index, (other_old, _) in enumerate(replacements):
-            if index != other_index and (old in other_old or other_old in old or other_old in new):
+        for other_index, other in enumerate(replacements):
+            other_old, _, other_target = replacement_parts(other)
+            separate = target and other_target and (target['part'], target['paragraph']) != (other_target['part'], other_target['paragraph'])
+            if index != other_index and not separate and (old in other_old or other_old in old or other_old in new):
                 raise ValueError('Overlapping or cascading replacements need separate reviewed updates.')
+
+
+def replacement_parts(replacement):
+    if isinstance(replacement, dict):
+        return replacement['old'], replacement['new'], replacement.get('target')
+    return *replacement, None
+
+
+def fact_target_matches(part, index, paragraph, target):
+    if target is None:
+        return True
+    if target['part'] != part or target['paragraph'] != index:
+        return False
+    if sha256(etree.tostring(paragraph, method='c14n')).hexdigest() != target['sha256']:
+        raise ValueError('The exact report target changed. Select its location again.')
+    return True

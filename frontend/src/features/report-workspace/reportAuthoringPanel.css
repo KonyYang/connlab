@@ -170,6 +170,12 @@
   margin-bottom: 12px;
 }
 
+.report-evidence-results fieldset { min-width: 0; }
+.report-evidence-results fieldset fieldset { grid-column: 1 / -1; }
+.report-evidence-source-table { overflow: auto; max-height: 320px; }
+.report-evidence-results label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+.report-evidence-results input[type="checkbox"] { width: auto; flex: none; }
+
 .report-preparation-guidance {
   padding: 12px 14px;
   border-left: 3px solid var(--color-primary);

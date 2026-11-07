@@ -1,7 +1,14 @@
 """Bounded report evidence edits; source paths and authority IDs are server owned."""
-from typing import Literal
+from typing import Annotated, Literal
 from pydantic import BaseModel, Field, ConfigDict
 from backend.api.temperature_schemas import DataSelectionRequest
+
+
+class FactTarget(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    part: str = Field(pattern=r'^word/(document|header\d+|footer\d+)\.xml$')
+    paragraph: int = Field(ge=0, le=100000)
+    sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
 
 
 class MappingRequest(BaseModel):
@@ -21,6 +28,8 @@ class MappingRequest(BaseModel):
     sample_ids: list[str] = Field(default_factory=list, max_length=1000)
     confirmed_by: str = Field(default="Lab User", min_length=1, max_length=255)
     report_text: str = Field(default="", max_length=5000)
+    fact_role: Literal['unspecified', 'specification_number', 'revision', 'revision_date', 'authorization_date'] = 'unspecified'
+    report_target: FactTarget | None = None
 
 
 class SelectBaseRequest(BaseModel):
@@ -43,11 +52,70 @@ class WorkingLlcrRequest(BaseModel):
     dataset_revision_id: str = Field(min_length=1, max_length=128)
 
 
+CellAddress = Annotated[str, Field(pattern=r'^[A-Za-z]{1,3}[1-9][0-9]{0,4}$')]
+
+
+class ElectricalRecordSelection(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    stage: str = Field(min_length=1, max_length=200)
+    measurement: Literal['ir', 'dwv']
+    cells: dict[Literal['sample', 'pair', 'value', 'breakdown'], CellAddress]
+    unit: Literal['MΩ', 'GΩ', 'Ω', 'µA', 'μA', 'uA', 'mA', 'nA']
+    voltage_v: str = Field(default='', max_length=40)
+    duration_s: str = Field(default='', max_length=40)
+    condition_locator: str = Field(default='', max_length=500)
+
+
+class ResistanceRecordSelection(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    stage: str = Field(min_length=1, max_length=200)
+    quantity: Literal['absolute', 'delta', 'delta_from_absolute']
+    cells: dict[Literal['sample', 'pair', 'value', 'baseline'], CellAddress]
+    unit: Literal['mΩ', 'Ω']
+
+
+class ElectricalSelection(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    type: Literal['electrical']
+    records: list[ElectricalRecordSelection] = Field(min_length=1, max_length=500)
+    selection_confirmed: bool = False
+
+
+class ResistanceSelection(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    type: Literal['resistance_stages']
+    records: list[ResistanceRecordSelection] = Field(min_length=1, max_length=500)
+    selection_confirmed: bool = False
+
+
+class ResultAdoption(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    report_identity: str = Field(min_length=1, max_length=500)
+    source_version: str = Field(min_length=1, max_length=200)
+    source_locator: str = Field(min_length=1, max_length=1000)
+    adopted_scope: str = Field(min_length=1, max_length=3000)
+    applicability_reason: str = Field(default='', max_length=5000)
+    adverse_observations: str = Field(default='', max_length=5000)
+    source_observations: str = Field(default='', max_length=5000)
+    confirmed: bool = False
+    customer_reference_allowed: bool = False
+
+
+class LinkedRegionSelection(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    start: int = Field(ge=0, le=100000)
+    end: int = Field(ge=0, le=100000)
+    freeze_external_charts: bool = False
+
+
 class ResultImportRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     expected_revision: int = Field(ge=0)
     source_id: str = Field(min_length=1, max_length=64)
-    kind: Literal["temperature", "cr", "mechanical"]
+    kind: Literal["temperature", "cr", "mechanical", "mechanical_qualitative", 'electrical', 'resistance_stages', 'external_reference', 'linked_temperature']
+    semantic_selection: Annotated[ElectricalSelection | ResistanceSelection, Field(discriminator='type')] | None = None
+    adoption: ResultAdoption | None = None
+    linked_region: LinkedRegionSelection | None = None
     package_entry_id: str | None = Field(default=None, min_length=1, max_length=128)
     source_project_confirmed: bool = False
     sheet_name: str = Field(default="", max_length=255)

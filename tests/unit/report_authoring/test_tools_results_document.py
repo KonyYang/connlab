@@ -8,6 +8,26 @@ from tests.unit.report_authoring.test_results_document import fixture_report, me
 from tests.unit.test_report_tools_package import service, temperature_input
 
 
+def test_electrical_appendix_gives_readings_room_without_digit_wrapping(tmp_path):
+    source, output = tmp_path/'source.docx', tmp_path/'copy.docx'
+    fixture_report(source)
+    result = mechanical(); result.update(kind='electrical', data={'rows': [{
+        'sample_id': '1#', 'pair': 'Contact&Latch', 'stage': 'Final', 'measurement': 'dwv',
+        'value': '69.95', 'comparator': '=', 'unit': 'µA', 'voltage_v': '4000', 'duration_s': '60',
+        'breakdown': 'not_recorded', 'source_cells': {'sample': 'C21', 'pair': 'B22', 'value': 'C22'}}]})
+    ReportResultsDocument().update(source, output, result, result_table=0, result_row=1,
+        appendix_table=1, appendix_title='Appendix B')
+    with ZipFile(output) as archive:
+        root = etree.fromstring(archive.read('word/document.xml'))
+    table = root.xpath('//w:sdtContent/w:tbl', namespaces=NS)[0]
+    headers = table.xpath('./w:tr[1]/w:tc', namespaces=NS)
+    assert len(headers) == 6
+    cell = table.xpath('./w:tr[2]/w:tc', namespaces=NS)[2]
+    assert '=69.95 µA' in cell.xpath('.//w:t/text()', namespaces=NS)
+    assert cell.find('w:tcPr/w:noWrap', NS) is not None
+    assert int(cell.find('w:tcPr/w:tcW', NS).get('{'+NS['w']+'}w')) >= 900
+
+
 def test_package_force_appendix_keeps_part_and_raw_signed_force(tmp_path):
     source, output = tmp_path / 'original.docx', tmp_path / 'copy.docx'
     fixture_report(source)
@@ -36,3 +56,39 @@ def test_temperature_notes_distinguish_tools_effective_decision_from_fitted_curv
     assert any('Tools effective Max' in note and '0.0005' in note for note in notes)
     assert any('not the fitted chart curve' in note for note in notes)
     assert data['analysis']['maximum_fit']['fitted_coefficients'] == fitted
+
+
+def test_qualitative_appendix_keeps_matrix_observations_without_inheriting_pass(tmp_path):
+    source, output = tmp_path / 'original.docx', tmp_path / 'copy.docx'
+    fixture_report(source)
+    before = source.read_bytes()
+    result = mechanical()
+    result.update(kind='mechanical_qualitative', outcome='pending')
+    result['data'] = {'quantity': 'qualitative', 'unit': '', 'raw_curves': ['72'],
+        'tables': [{'title': 'Mis-mating', 'row_heading': 'Receptacle', 'column_heading': 'Header',
+            'columns': ['Orange', 'Black'], 'samples': ['SN1', 'SN2'],
+            'results': [['Pass', 'Fail'], ['N/A', 'Pass']], 'curves': [], 'diagonal': False}]}
+    ReportResultsDocument().update(source, output, result, result_table=0, result_row=1,
+        appendix_table=1, appendix_title='Appendix B')
+    with ZipFile(output) as archive:
+        document = etree.fromstring(archive.read('word/document.xml'))
+    contents = document.xpath('//w:t/text()', namespaces=NS)
+    assert 'Mis-mating' in contents
+    assert 'Header Orange' in contents and 'Header Black' in contents
+    assert 'SN1' in contents and 'SN2' in contents
+    assert any('1 source curve' in value and 'not one curve per observation' in value for value in contents)
+    result_cells = document.xpath('(//w:tbl)[1]/w:tr[2]/w:tc', namespaces=NS)
+    assert ''.join(result_cells[-1].xpath('.//w:t/text()', namespaces=NS)) == ''
+    assert source.read_bytes() == before
+
+    # A reviewed matrix may contain several tables in the same owned appendix.
+    result['data']['tables'].append({**result['data']['tables'][0], 'title': 'Protection'})
+    second = tmp_path / 'two-tables.docx'
+    ReportResultsDocument().update(output, second, result, result_table=0, result_row=1,
+        appendix_table=1, appendix_title='Appendix B')
+    third = tmp_path / 'updated-again.docx'
+    ReportResultsDocument().update(second, third, result, result_table=0, result_row=1,
+        appendix_table=1, appendix_title='Appendix B')
+    with ZipFile(third) as archive:
+        assert etree.fromstring(archive.read('word/document.xml')).xpath(
+            'count(//w:sdtContent/w:tbl)', namespaces=NS) == 2

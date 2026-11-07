@@ -30,6 +30,25 @@ beforeEach(() => {
   vi.mocked(api.confirmReportResult).mockResolvedValue({ ...state, revision: 3 });
 });
 
+it('shows a qualitative matrix as observations without inheriting its Pass as the report outcome', async () => {
+  vi.mocked(api.getReportToolsPackage).mockResolvedValue({ entries: [{ entry_id: 'qual-1', label: 'Mis-mating',
+    kind: 'mechanical_qualitative', supported_for_report: true, reason: '', source_names: ['raw.xls'] }] });
+  vi.mocked(api.previewReportResult).mockResolvedValue({ kind: 'mechanical_qualitative', source_id: 'package-1',
+    source_sha256: 'p'.repeat(64), matrix_id: 'M1', target: state.context.steps[0], outcome: 'pending', acceptance_reason: '',
+    profile: {} as api.ResultImportRequest, preview_sha256: 'v'.repeat(64),
+    data: { sheet_name: '', unit: '', quantity: 'qualitative', raw_curves: ['72'], tables: [{ title: 'Mis-mating observations',
+      row_heading: 'Receptacle', column_heading: 'Header', samples: ['SN1'], columns: ['Orange', 'Black'], results: [['Pass', 'Fail']] }] } });
+  render(<ReportAuthoringPanel projectId="P1" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Update report content' }));
+  fireEvent.change(await screen.findByLabelText('Reviewed Tools result'), { target: { value: 'qual-1' } });
+  fireEvent.change(screen.getByLabelText('Package result Group / Step'), { target: { value: '0' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Preview Tools result' }));
+  expect(await screen.findByRole('cell', { name: 'Fail' })).toBeTruthy();
+  expect(screen.getByRole('columnheader', { name: 'Header Black' })).toBeTruthy();
+  expect(screen.getByText(/not one curve per observation/)).toBeTruthy();
+  expect(screen.getByLabelText('Package report outcome')).toHaveProperty('value', 'pending');
+});
+
 it('reuses reviewed Tools results without remapping columns or inheriting report Pass', async () => {
   render(<ReportAuthoringPanel projectId="P1" />);
   fireEvent.click(screen.getByRole('button', { name: 'Update report content' }));

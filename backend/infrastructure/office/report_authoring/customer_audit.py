@@ -6,6 +6,7 @@ reviews of binary/image parts bind to their exact hashes; unknown contents never
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
 import posixpath
@@ -50,7 +51,8 @@ def _owner(relationship_part: str) -> str:
 
 def audit_customer_package(path: Path, *, sensitive_terms: Sequence[str] = (),
                            forbidden_project_ids: Sequence[str] = (),
-                           reviewed_parts: Mapping[str, str] | None = None) -> CustomerAudit:
+                           reviewed_parts: Mapping[str, str] | None = None,
+                           allowed_reference_regions: Mapping[str, str] | None = None) -> CustomerAudit:
     """Check saved bytes. reviewed_parts comes from retained explicit user review decisions."""
     path = Path(path)
     raw = path.read_bytes()
@@ -91,7 +93,19 @@ def audit_customer_package(path: Path, *, sensitive_terms: Sequence[str] = (),
         normalized = _normalized(unquote(" ".join(values)))
         if any(term in normalized for term in terms):
             issues.append(CustomerIssue("sensitive_text", name, "A restricted material or disclosure term remains."))
-        if any(term in normalized for term in old_ids):
+        identity_tree = deepcopy(tree)
+        if name == 'word/document.xml' and allowed_reference_regions:
+            for section in identity_tree.findall(f'.//{{{W}}}sdt'):
+                marker = section.find(f'{{{W}}}sdtPr/{{{W}}}tag')
+                expected = allowed_reference_regions.get(marker.get(f'{{{W}}}val', '')) if marker is not None else None
+                # Exemption is for these exact retained visible bytes only. It does
+                # not whitelist the source project elsewhere or waive sensitive terms.
+                actual = ''.join(value.text or '' for value in section.findall(f'.//{{{W}}}t'))
+                if expected is not None and actual == expected:
+                    for value in section.findall(f'.//{{{W}}}t'):
+                        value.text = ''
+        identity_values = [*identity_tree.itertext(), *(value for node in identity_tree.iter() for value in node.attrib.values())]
+        if any(term in _normalized(unquote(' '.join(identity_values))) for term in old_ids):
             issues.append(CustomerIssue("old_project_identity", name, "A previous project's identity remains."))
         if any(node.tag in {f"{{{W}}}{tag}" for tag in ("ins", "del", "moveFrom", "moveTo")} for node in tree.iter()):
             issues.append(CustomerIssue("tracked_changes", name, "Tracked changes need review before delivery."))

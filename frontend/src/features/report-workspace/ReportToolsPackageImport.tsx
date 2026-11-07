@@ -48,7 +48,7 @@ export function ReportToolsPackageImport({ projectId, state, disabled, beginOper
   useEffect(() => { setPreview(null); setChecked(false); }, [sourceId, entryId, stepIndex, outcome, reason, sampleIds, sourceConfirmed]);
 
   function request(): ToolsPackageImportRequest {
-    if (!entry?.supported_for_report || !step || (entry.kind !== 'temperature' && entry.kind !== 'mechanical'))
+    if (!entry?.supported_for_report || !step || (entry.kind !== 'temperature' && entry.kind !== 'mechanical' && entry.kind !== 'mechanical_qualitative'))
       throw new Error('Choose a supported Tools result and this project’s confirmed Matrix step.');
     return { expected_revision: state.revision, source_id: sourceId, package_entry_id: entry.entry_id, kind: entry.kind,
       group_id: step.group_id, row_id: step.row_id, step_token: step.step_token, outcome, acceptance_reason: reason,
@@ -117,7 +117,14 @@ export function ReportToolsPackageImport({ projectId, state, disabled, beginOper
       <p>Group {preview.target.group_label} / Step {preview.target.step_token} — {preview.data.quantity}; outcome: {preview.outcome}</p>
       {preview.data.force_field && <p>Source force field: {preview.data.force_field}.</p>}
       {preview.data.withdraw_magnitude && <p>Magnitude selected in Tools; original signed values are retained.</p>}
-      {preview.data.analysis ? <table><thead><tr><th>Source row</th><th>Current / A</th><th>Max rise / °C</th><th>Avg of Max / °C</th></tr></thead><tbody>
+      {preview.kind === 'mechanical_qualitative' ? <>
+        <p>{preview.data.raw_curves?.length || 0} source curves retained. These are not one curve per observation; source Pass labels do not approve this project's report outcome.</p>
+        {preview.data.tables?.map((table, index) => <table key={index}>
+          <caption>{table.title}</caption><thead><tr><th>{table.row_heading || 'Sample'}</th>
+            {table.columns.map((column, i) => <th key={i}>{table.column_heading} {column}</th>)}</tr></thead>
+          <tbody>{table.results.map((row, i) => <tr key={i}><th>{table.samples[i]}</th>{row.map((value, j) => <td key={j}>{value || '—'}</td>)}</tr>)}</tbody>
+        </table>)}
+      </> : preview.data.analysis ? <table><thead><tr><th>Source row</th><th>Current / A</th><th>Max rise / °C</th><th>Avg of Max / °C</th></tr></thead><tbody>
         {preview.data.analysis.points.map((point, index) => <tr key={index}><td>{point.source_row ?? 'Fit origin — not measured'}</td><td>{point.current}</td><td>{point.maximum}</td><td>{point.average}</td></tr>)}
       </tbody></table> : <table><thead><tr><th>SN</th><th>Instrument ID</th><th>Color</th>{hasPart && <th>Part</th>}<th>Measured value</th>{hasSignedValue && <th>Original signed value</th>}{hasHold && <th>Hold / s</th>}</tr></thead><tbody>
         {mechanicalRows.map((row, index) => <tr key={index}><td>{String(row.sample_id)}</td><td>{String(row.record_id ?? '')}</td><td>{String(row.color ?? '')}</td>{hasPart && <td>{String(row.part ?? '')}</td>}<td>{String(row.value)} {preview.data.unit}</td>{hasSignedValue && <td>{String(row.raw_value ?? '')} {preview.data.unit}</td>}{hasHold && <td>{String(row.hold_seconds ?? '')}</td>}</tr>)}

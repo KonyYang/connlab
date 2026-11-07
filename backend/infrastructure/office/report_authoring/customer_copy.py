@@ -31,12 +31,18 @@ class CustomerReportCopy:
             plain = Path(directory)/'editable.docx'
             protection = self.protected.stage_editable_copy(converted, plain)
             for index, result in enumerate(temperature_results):
-                if result['kind'] != 'temperature':
+                if result['kind'] not in {'temperature', 'linked_temperature', 'external_reference'}:
                     raise ValueError('Only selected temperature measurements belong in the customer temperature supplement.')
                 if self._contains_complete_temperature(plain, result):
                     continue
                 tag = 'connlab-customer-temperature:' + result['result_id']
+                if result['kind'] == 'linked_temperature':
+                    from backend.infrastructure.office.report_authoring.linked_region import LinkedReportRegion
+                    LinkedReportRegion().append(plain, result['data'], tag)
+                    continue
                 self._append_temperature(plain, result, tag)
+                if result['kind'] == 'external_reference':
+                    continue
                 charted = Path(directory)/f'chart-{index}.docx'
                 self.temperature_chart(plain, charted, result['data']['analysis'], tag)
                 plain = charted
@@ -59,7 +65,7 @@ class CustomerReportCopy:
                 return False
             section = matches[0]
             charts = section.xpath('.//*[local-name()="chart"]')
-            if not section.xpath('.//w:tbl', namespaces=NS) or not charts:
+            if not section.xpath('.//w:tbl', namespaces=NS) or (result['kind'] != 'external_reference' and not charts):
                 raise ValueError('The converted temperature evidence is incomplete. Its editable table and curve must both be retained.')
             return True
 
@@ -71,7 +77,7 @@ class CustomerReportCopy:
             section = node('sdt'); properties = node('sdtPr'); marker = node('tag')
             marker.set(f'{{{NS["w"]}}}val', tag); properties.append(marker); section.append(properties)
             content = node('sdtContent')
-            heading = node('p'); set_text(heading, f"Temperature rise — Group {result['target']['group_label']}, Step {result['target']['step_token']}")
+            heading = node('p'); set_text(heading, f"{'Related report evidence' if result['kind'] == 'external_reference' else 'Temperature rise'} — Group {result['target']['group_label']}, Step {result['target']['step_token']}")
             content.append(heading); content.append(measurement_table(result))
             for line in result_notes(result):
                 paragraph = node('p'); set_text(paragraph, line); content.append(paragraph)
@@ -87,10 +93,23 @@ class CustomerReportCopy:
                         if info.filename == 'word/document.xml' else source.read(info.filename))
         path.write_bytes(buffer.getvalue())
 
-    def audit(self, source, *, sensitive_terms, forbidden_project_ids, reviewed_parts, expected_project_dl=None):
+    def audit(self, source, *, sensitive_terms, forbidden_project_ids, reviewed_parts, expected_project_dl=None, scoped_references=()):
+        allowed_regions = {}
+        for result in scoped_references:
+            data = result['data']
+            if not data['adoption'].get('confirmed') or not data['adoption'].get('customer_reference_allowed'):
+                continue
+            if result['kind'] == 'linked_temperature':
+                expected = ''.join(text(etree.fromstring(block.encode())) for block in data['blocks']) + ''.join(data['adoption_notes'])
+            else:
+                expected = text(measurement_table(result)) + ''.join(result_notes(result))
+            allowed_regions['connlab-report-result:' + result['result_id']] = expected
+            # Customer-only reference supplements have their own visible heading.
+            customer_expected = expected if result['kind'] == 'linked_temperature' else f"Related report evidence — Group {result['target']['group_label']}, Step {result['target']['step_token']}" + expected
+            allowed_regions['connlab-customer-temperature:' + result['result_id']] = customer_expected
         with self.protected.readable_copy(source) as readable:
             audit = asdict(audit_customer_package(readable, sensitive_terms=sensitive_terms,
-                forbidden_project_ids=forbidden_project_ids, reviewed_parts=reviewed_parts))
+                forbidden_project_ids=forbidden_project_ids, reviewed_parts=reviewed_parts, allowed_reference_regions=allowed_regions))
             if expected_project_dl:
                 # The existing E-4515 projection appends exactly -CR (optionally followed
                 # by a separate Rev.X label); arbitrary project-number prefixes do not match.
