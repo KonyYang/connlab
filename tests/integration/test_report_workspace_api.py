@@ -41,6 +41,7 @@ from backend.shared.config import Settings
 from tests.unit.test_result_dataset_repository import _dataset
 from backend.infrastructure.files.report_publication_gateway import ReportPublicationGateway
 from backend.infrastructure.office.customer_report_document_gateway import CustomerReportDocumentGateway
+from backend.infrastructure.storage.database import create_database_engine, init_db
 
 
 def test_unreadable_customer_report_returns_blocker_without_modifying_files(tmp_path):
@@ -73,16 +74,25 @@ def test_unreadable_customer_report_returns_blocker_without_modifying_files(tmp_
 
 
 @pytest.fixture(autouse=True)
-def isolated_generation_storage(tmp_path):
-    app.dependency_overrides[get_settings] = lambda: Settings(
+def isolated_generation_storage(tmp_path, tmp_path_factory):
+    settings = Settings(
         data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
-        templates_dir=tmp_path / "templates", database_path=tmp_path / "db.sqlite3",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path_factory.mktemp("report-workspace-db") / "db.sqlite3",
     )
-    yield
-    app.dependency_overrides.clear()
+    # Legacy service substitutes still pass through the real pending-save guard.
+    # Give its read-only check a real isolated schema, not an absent production DB.
+    engine = create_database_engine(settings)
+    init_db(engine)
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        yield settings
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
 
 
-def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: Path) -> None:
+def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: Path, isolated_generation_storage) -> None:
     dataset = _dataset("dataset-1", 1)
     preview = LlcrImportPreview(
         preview_id="preview-1",
@@ -122,7 +132,7 @@ def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: P
         data_dir=tmp_path / "data",
         projects_dir=tmp_path / "projects",
         templates_dir=templates,
-        database_path=tmp_path / "db.sqlite3",
+        database_path=isolated_generation_storage.database_path,
     )
     app.dependency_overrides[get_test_report_template_resource_store] = lambda: _Store(templates)
     client = TestClient(app)
