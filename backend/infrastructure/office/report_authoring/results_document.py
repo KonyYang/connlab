@@ -337,13 +337,29 @@ def measurement_table(result):
         adoption = data['adoption']
         return value_table(['Reference', 'Version', 'Source location', 'Adopted scope'], [[adoption[key] for key in ('report_identity', 'source_version', 'source_locator', 'adopted_scope')]])
     if result['kind'] == 'electrical':
-        headers = ['Sample', 'Pair', 'Stage', 'Measurement', 'Value', 'Voltage (V)', 'Duration (s)', 'Breakdown observation', 'Source cells']
-        values = [[row['sample_id'], row['pair'], row['stage'], row['measurement'].upper(),
-            '' if row['value'] is None else f"{row['comparator'] or ''}{row['value']} {row['unit']}",
-            row['voltage_v'] or '', row['duration_s'] or '',
+        headers = ['Sample / pair', 'Stage', 'IR / DWV reading', 'Conditions', 'Breakdown', 'Source cells']
+        values = [[f"{row['sample_id']}\n{row['pair']}", row['stage'], row['measurement'].upper() + '\n' +
+            ('' if row['value'] is None else f"{row['comparator'] or ''}{row['value']} {row['unit']}"),
+            '\n'.join([f"{row['voltage_v']} V" if row['voltage_v'] else '', f"{row['duration_s']} s" if row['duration_s'] else '']),
             {'not_recorded': '', 'not_applicable': '', 'no_breakdown': 'No breakdown', 'breakdown': 'Breakdown'}[row['breakdown']],
-            ', '.join(f'{key}: {value}' for key, value in row['source_cells'].items())] for row in data['rows']]
-        return value_table(headers, values)
+            '\n'.join(f'{key}: {value}' for key, value in row['source_cells'].items())] for row in data['rows']]
+        table = value_table(headers, values)
+        # A six-column layout keeps measured numbers legible in the common six-inch
+        # body. Percent cell widths follow the target table; only reading cells do not wrap.
+        widths = (850, 700, 950, 650, 850, 1000)
+        for column, width in zip(table.find('w:tblGrid', NS), widths):
+            column.set(f'{{{NS["w"]}}}w', str(width * 8640 // 5000))
+        for row_index, row in enumerate(table.findall('w:tr', NS)):
+            for column_index, (cell, width) in enumerate(zip(row.findall('w:tc', NS), widths)):
+                properties = node('tcPr'); cell.insert(0, properties)
+                preferred = node('tcW'); preferred.set(f'{{{NS["w"]}}}type', 'pct'); preferred.set(f'{{{NS["w"]}}}w', str(width)); properties.append(preferred)
+                if row_index and column_index == 2: properties.append(node('noWrap'))
+                if row_index:
+                    lines = values[row_index - 1][column_index].split('\n')
+                    set_text(cell, lines[0])
+                    for line in lines[1:]:
+                        paragraph = node('p'); set_text(paragraph, line); cell.append(paragraph)
+        return table
     if result['kind'] == 'resistance_stages':
         headers = ['Sample', 'Pair', 'Stage', 'Quantity', 'Value (mΩ)', 'Baseline (mΩ)', 'Raw source value', 'Source cells']
         values = [[row['sample_id'], row['pair'], row['stage'], 'Absolute R' if row['quantity'] == 'absolute' else 'ΔR',

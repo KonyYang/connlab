@@ -19,6 +19,7 @@ P = 'http://schemas.openxmlformats.org/package/2006/relationships'
 C = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
 A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
 CT = 'http://schemas.openxmlformats.org/package/2006/content-types'
+WP = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing'
 
 
 def xml(raw):
@@ -105,6 +106,78 @@ def resolve_theme_colors(tree, theme):
                         value = ''.join(f'{round(channel * 255):02X}' for channel in hls_to_rgb(hue, luminance, saturation))
                         del item.attrib[f'{{{W}}}{modifier}']
                 item.set(f'{{{W}}}{direct_attr}', value); del item.attrib[f'{{{W}}}{theme_attr}']
+
+
+def fit_selected_region(blocks, body, container):
+    """Constrain adopted fixed tables and inline drawings to this target section only."""
+    owner = container
+    while owner.getparent() is not body:
+        owner = owner.getparent()
+        if owner is None:
+            raise ValueError('The adopted region has no supported body placement.')
+    section = None
+    for sibling in list(body)[body.index(owner):]:
+        section = sibling if sibling.tag == f'{{{W}}}sectPr' else sibling.find(f'{{{W}}}pPr/{{{W}}}sectPr')
+        if section is not None: break
+    if section is None:
+        raise ValueError('The target section has no explicit page geometry.')
+    page, margins, columns = (section.find(f'{{{W}}}{name}') for name in ('pgSz', 'pgMar', 'cols'))
+    if page is None or margins is None or (columns is not None and (int(columns.get(f'{{{W}}}num', '1')) > 1 or len(columns) > 1)):
+        raise ValueError('The adopted region requires an explicit single-column target section.')
+    available = int(page.get(f'{{{W}}}w', '0')) - sum(int(margins.get(f'{{{W}}}{name}', '0')) for name in ('left', 'right', 'gutter'))
+    if available <= 0:
+        raise ValueError('The target body width is invalid.')
+    for block in blocks:
+        if block.findall('.//{%s}anchor' % WP) or block.findall('.//{%s}pict' % W):
+            raise ValueError('Floating or legacy drawings cannot be safely fitted to the target body.')
+        tables = ([block] if block.tag == f'{{{W}}}tbl' else []) + block.findall('.//{%s}tbl' % W)
+        for table in tables:
+            if table.findall('.//{%s}tbl' % W) or table.find(f'{{{W}}}tblPr/{{{W}}}tblpPr') is not None:
+                raise ValueError('Nested or floating tables require manual layout mapping.')
+            props = table.find(f'{{{W}}}tblPr'); grid = table.find(f'{{{W}}}tblGrid')
+            if props is None or grid is None or not len(grid):
+                raise ValueError('The adopted table has no explicit column geometry.')
+            indent = props.find(f'{{{W}}}tblInd')
+            if indent is not None and indent.get(f'{{{W}}}type', 'dxa') != 'dxa':
+                raise ValueError('Unsupported adopted table indentation.')
+            if indent is not None and int(indent.get(f'{{{W}}}w', '0')) < 0:
+                raise ValueError('Negative adopted table indentation requires manual layout mapping.')
+            width = props.find(f'{{{W}}}tblW')
+            measured = max(sum(int(col.get(f'{{{W}}}w', '0')) for col in grid),
+                int(width.get(f'{{{W}}}w', '0')) if width is not None and width.get(f'{{{W}}}type') == 'dxa' else 0)
+            limit = available - max(0, int(indent.get(f'{{{W}}}w', '0')) if indent is not None else 0)
+            if measured <= 0 or limit <= 0: raise ValueError('The adopted table width is invalid.')
+            if measured <= limit: continue
+            ratio = limit / measured
+            for element in [*grid, *table.findall('.//{%s}tcW' % W)]:
+                if element.tag == f'{{{W}}}tcW' and element.get(f'{{{W}}}type', 'dxa') != 'dxa':
+                    raise ValueError('Scaling this adopted table requires explicit cell widths.')
+                element.set(f'{{{W}}}w', str(max(1, int(int(element.get(f'{{{W}}}w', '0')) * ratio))))
+            if width is None: width = etree.SubElement(props, f'{{{W}}}tblW')
+            width.set(f'{{{W}}}type', 'dxa'); width.set(f'{{{W}}}w', str(limit))
+            layout = props.find(f'{{{W}}}tblLayout')
+            if layout is None: layout = etree.SubElement(props, f'{{{W}}}tblLayout')
+            layout.set(f'{{{W}}}type', 'fixed')
+        for inline in block.findall('.//{%s}inline' % WP):
+            if any(parent.tag == f'{{{W}}}tc' for parent in inline.iterancestors()):
+                raise ValueError('Inline drawings inside adopted cells need explicit layout mapping.')
+            extent = inline.find(f'{{{WP}}}extent')
+            if extent is None: raise ValueError('The adopted inline drawing has no explicit size.')
+            cx, cy = int(extent.get('cx', '0')), int(extent.get('cy', '0'))
+            if min(cx, cy) <= 0: raise ValueError('The adopted inline drawing size is invalid.')
+            paragraph = next((parent for parent in inline.iterancestors() if parent.tag == f'{{{W}}}p'), None)
+            indent = paragraph.find(f'{{{W}}}pPr/{{{W}}}ind') if paragraph is not None else None
+            if indent is not None and any(int(indent.get(f'{{{W}}}{name}', '0')) != 0 for name in ('leftChars', 'rightChars', 'firstLine', 'hanging')):
+                raise ValueError('Complex adopted drawing indentation requires manual layout mapping.')
+            inset = sum(max(0, int(indent.get(f'{{{W}}}{name}', '0'))) for name in ('left', 'right')) if indent is not None else 0
+            limit = (available - inset) * 635
+            if limit <= 0: raise ValueError('The adopted drawing paragraph has no available width.')
+            if cx > limit:
+                ratio = limit / cx
+                extent.set('cx', str(limit)); extent.set('cy', str(max(1, int(cy * ratio))))
+                for drawing_extent in inline.findall(f'.//{{{A}}}xfrm/{{{A}}}ext'):
+                    for name in ('cx', 'cy'):
+                        drawing_extent.set(name, str(max(1, int(int(drawing_extent.get(name, '0')) * ratio))))
 
 
 class LinkedReportRegion:
@@ -245,6 +318,7 @@ class LinkedReportRegion:
             container = etree.SubElement(section, f'{{{W}}}sdtContent')
             index = next((i for i, block in enumerate(body) if 'End of Report' in text(block)), len(body) - 1)
             body.insert(max(index, 0), section)
+        fit_selected_region(blocks, body, container)
         rels = xml(target['word/_rels/document.xml.rels'])
         for relation in list(rels):
             if relation.get('TargetMode') != 'External' and posixpath.normpath(posixpath.join('word', relation.get('Target', ''))).startswith(prefix):

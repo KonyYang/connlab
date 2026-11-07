@@ -8,6 +8,26 @@ from tests.unit.report_authoring.test_results_document import fixture_report, me
 from tests.unit.test_report_tools_package import service, temperature_input
 
 
+def test_electrical_appendix_gives_readings_room_without_digit_wrapping(tmp_path):
+    source, output = tmp_path/'source.docx', tmp_path/'copy.docx'
+    fixture_report(source)
+    result = mechanical(); result.update(kind='electrical', data={'rows': [{
+        'sample_id': '1#', 'pair': 'Contact&Latch', 'stage': 'Final', 'measurement': 'dwv',
+        'value': '69.95', 'comparator': '=', 'unit': 'µA', 'voltage_v': '4000', 'duration_s': '60',
+        'breakdown': 'not_recorded', 'source_cells': {'sample': 'C21', 'pair': 'B22', 'value': 'C22'}}]})
+    ReportResultsDocument().update(source, output, result, result_table=0, result_row=1,
+        appendix_table=1, appendix_title='Appendix B')
+    with ZipFile(output) as archive:
+        root = etree.fromstring(archive.read('word/document.xml'))
+    table = root.xpath('//w:sdtContent/w:tbl', namespaces=NS)[0]
+    headers = table.xpath('./w:tr[1]/w:tc', namespaces=NS)
+    assert len(headers) == 6
+    cell = table.xpath('./w:tr[2]/w:tc', namespaces=NS)[2]
+    assert '=69.95 µA' in cell.xpath('.//w:t/text()', namespaces=NS)
+    assert cell.find('w:tcPr/w:noWrap', NS) is not None
+    assert int(cell.find('w:tcPr/w:tcW', NS).get('{'+NS['w']+'}w')) >= 900
+
+
 def test_package_force_appendix_keeps_part_and_raw_signed_force(tmp_path):
     source, output = tmp_path / 'original.docx', tmp_path / 'copy.docx'
     fixture_report(source)

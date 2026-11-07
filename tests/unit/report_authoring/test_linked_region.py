@@ -163,3 +163,67 @@ def test_linked_region_result_writer_and_customer_supplement_use_same_native_evi
         assert chart == next(external.read(name) for name in external.namelist() if name.endswith('/chart1.xml'))
         text = ''.join(etree.fromstring(external.read('word/document.xml')).xpath('//*[local-name()="t"]/text()'))
         assert '26' in text and 'temperature only' in text
+
+
+def test_adopted_fixed_table_and_native_chart_fit_six_inches_without_changing_chart_or_target_parts(tmp_path):
+    from docx.shared import Inches
+    from backend.infrastructure.office.report_authoring.linked_region import W, A, C
+    wp = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing'
+    with ZipFile(BytesIO(linked_source())) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    root = etree.fromstring(parts['word/document.xml']); body = root.find(f'{{{W}}}body')
+    table = body[1]
+    table.find(f'{{{W}}}tblPr/{{{W}}}tblW').attrib.update({f'{{{W}}}type': 'dxa', f'{{{W}}}w': '10095'})
+    for column, width in zip(table.find(f'{{{W}}}tblGrid'), (5000, 5095)): column.set(f'{{{W}}}w', str(width))
+    for row in table.findall(f'{{{W}}}tr'):
+        for cell, width in zip(row.findall(f'{{{W}}}tc'), (5000, 5095)):
+            cell.find(f'{{{W}}}tcPr/{{{W}}}tcW').set(f'{{{W}}}w', str(width))
+    chart = body[2].find(f'.//{{{C}}}chart'); run = chart.getparent(); run.remove(chart)
+    inline = etree.SubElement(etree.SubElement(run, f'{{{W}}}drawing'), f'{{{wp}}}inline')
+    etree.SubElement(inline, f'{{{wp}}}extent', cx='6324600', cy='3600450')
+    etree.SubElement(inline, f'{{{wp}}}docPr', id='1', name='Native curve')
+    etree.SubElement(etree.SubElement(inline, f'{{{A}}}graphic'), f'{{{A}}}graphicData', uri=C).append(chart)
+    parts['word/document.xml'] = etree.tostring(root)
+    stream = BytesIO()
+    with ZipFile(stream, 'w', ZIP_DEFLATED) as archive:
+        for name, content in parts.items(): archive.writestr(name, content)
+    original = stream.getvalue(); reader = LinkedReportRegion()
+    data = reader.preview(original, {'start': 0, 'end': 2, 'freeze_external_charts': True})
+    target, wide = tmp_path/'six-inch.docx', tmp_path/'wide-control.docx'
+    document = Document(); document.sections[0].page_width = Inches(8.5)
+    document.sections[0].left_margin = document.sections[0].right_margin = Inches(1.25)
+    document.sections[0].header.paragraphs[0].text = 'Target header unchanged'
+    document.add_paragraph('Target body'); document.save(target)
+    with ZipFile(target) as archive:
+        before = {name: archive.read(name) for name in archive.namelist()}
+    document.sections[0].page_width = Inches(11); document.save(wide)
+    reader.append(target, data, 'width-check'); reader.append(wide, data, 'width-check')
+    with ZipFile(target) as archive, ZipFile(wide) as control:
+        root = etree.fromstring(archive.read('word/document.xml'))
+        table = root.find(f'.//{{{W}}}tbl')
+        assert int(table.find(f'{{{W}}}tblPr/{{{W}}}tblW').get(f'{{{W}}}w')) <= 8640
+        assert sum(int(col.get(f'{{{W}}}w')) for col in table.find(f'{{{W}}}tblGrid')) <= 8640
+        for row in table.findall(f'{{{W}}}tr'):
+            assert sum(int(cell.find(f'{{{W}}}tcPr/{{{W}}}tcW').get(f'{{{W}}}w')) for cell in row.findall(f'{{{W}}}tc')) <= 8640
+        extent = root.find(f'.//{{{wp}}}extent')
+        assert int(extent.get('cx')) <= 8640 * 635
+        assert int(extent.get('cy')) / int(extent.get('cx')) == pytest.approx(3600450 / 6324600, abs=1e-6)
+        chart_name = next(name for name in archive.namelist() if name.endswith('/chart1.xml'))
+        assert archive.read(chart_name) == control.read(chart_name)
+        for name in ('word/header1.xml', 'word/theme/theme1.xml'):
+            assert archive.read(name) == before[name]
+        assert etree.tostring(root.find(f'{{{W}}}body/{{{W}}}sectPr')) == etree.tostring(etree.fromstring(before['word/document.xml']).find(f'{{{W}}}body/{{{W}}}sectPr'))
+    assert stream.getvalue() == original
+
+
+def test_floating_adopted_drawing_is_rejected_without_changing_target(tmp_path):
+    from backend.infrastructure.office.report_authoring.linked_region import W, WP
+    reader = LinkedReportRegion()
+    data = reader.preview(linked_source(), {'start': 0, 'end': 2, 'freeze_external_charts': True})
+    block = etree.fromstring(data['blocks'][2].encode())
+    etree.SubElement(etree.SubElement(block, f'{{{W}}}drawing'), f'{{{WP}}}anchor')
+    data['blocks'][2] = etree.tostring(block).decode()
+    target = tmp_path/'unchanged.docx'; Document().save(target); before = target.read_bytes()
+    with pytest.raises(ValueError, match='Floating'):
+        reader.append(target, data, 'unsupported-placement')
+    assert target.read_bytes() == before
