@@ -416,6 +416,7 @@
           "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
           "frontend/src/features/project-workbench/useProjectRuntimeConsoleModel.ts",
           "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+          "tests/integration/test_project_folder_generation_api.py",
           "tests/integration/test_project_folder_generation_complete_chain.py",
           "tests/integration/test_project_folder_generation_recovery.py",
           "tests/unit/test_project_folder_required_forms_service.py",
@@ -426,7 +427,7 @@
         ],
         "activation_head": "19e8073bff43737bf8955ca6cac84f26e4f88430",
         "started_at": "2026-11-07T11:52:04.329246Z",
-        "updated_at": "2026-11-07T12:32:58.667445Z",
+        "updated_at": "2026-11-07T12:50:59.725237Z",
         "checkpoint": null,
         "report": null
       }
