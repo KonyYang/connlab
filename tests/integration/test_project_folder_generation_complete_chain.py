@@ -258,6 +258,51 @@ def test_contact_source_failure_keeps_other_contact_workbooks(tmp_path, monkeypa
         fixture.engine.dispose()
 
 
+def test_contact_resume_clears_only_source_issues_that_later_succeed(tmp_path, monkeypatch):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch, include_contact=True, samples="5")
+    from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import LlcrCrSpecializedRecordWorkbookGateway
+    from backend.infrastructure.files.project_folder_required_forms_gateway import RecoverableContactRecordPublisher
+    write = LlcrCrSpecializedRecordWorkbookGateway.write
+    publish = RecoverableContactRecordPublisher.publish
+    failed_source = interrupted = False
+    def prepare(self, *, output_path, projection):
+        nonlocal failed_source
+        if output_path.name.startswith("llcr-") and not failed_source:
+            failed_source = True
+            raise RuntimeError("Transient LLCR source preparation failure")
+        return write(self, output_path=output_path, projection=projection)
+    def publish_then_interrupt(self, record_type, *args, **kwargs):
+        nonlocal interrupted
+        publish(self, record_type, *args, **kwargs)
+        if record_type == "cr" and not interrupted:
+            interrupted = True
+            raise RuntimeError("Interrupted after CR publication before registration")
+    monkeypatch.setattr(LlcrCrSpecializedRecordWorkbookGateway, "write", prepare)
+    monkeypatch.setattr(RecoverableContactRecordPublisher, "publish", publish_then_interrupt)
+    try:
+        url = "/api/projects/P1/project-folder/generation"
+        preview = _ok(fixture.client.get(url + "/preview"))
+        _ok(fixture.client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "contact-resume"}))
+        fixture.callbacks.pop()()
+        blocked = _ok(fixture.client.get(url))
+        assert blocked["status"] == "blocked"
+        assert [issue["key"] for issue in blocked["issues"]] == ["llcr_record"]
+        _ok(fixture.client.post(url + "/resume", json={"operation_id": blocked["operation_id"]}))
+        fixture.callbacks.pop()()
+        completed = _ok(fixture.client.get(url))
+        assert completed["status"] == "completed", completed
+        assert completed["outcome"] == "complete" and completed["issues"] == []
+        with fixture.sessions() as session:
+            records = deps.get_project_output_record_service(session).list_records("P1")
+        for kind in ("llcr_record_form", "cr_record_form", "ir_dwv_record_form"):
+            assert len([record for record in records if record.output_kind.value == kind]) == 1
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
 def test_rebuild_still_blocks_material_sources_inside_replaced_folder(tmp_path, monkeypatch):
     fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch)
     try:

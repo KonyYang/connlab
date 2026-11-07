@@ -565,6 +565,11 @@ class ProjectFolderGenerationRunner:
                         and file_hash(source) == source_sha and source.stat().st_size == source_size):
                     source.unlink()
         publisher.recover(lambda payload: self._register_once(outputs, payload))
+        # A resumed contact step may now finish a source that failed earlier.
+        # Only clear its issue after publication and registration both reconcile.
+        recovered_keys = {f"{effect['record_type']}_record" for effect in state["effects"].values()
+                          if effect.get("type") == "contact_record" and effect.get("step") == "llcr_cr_records"}
+        state["issues"] = [issue for issue in state.get("issues", ()) if issue["key"] not in recovered_keys]
 
     @staticmethod
     def _register_once(outputs, payload):
