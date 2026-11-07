@@ -125,7 +125,8 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
         forms = deps.get_project_folder_required_forms_service(session, settings).preview(
             project_id, planned_workspace=planned, rebuilding=rebuilding)
         items.extend({"key": item.key, "label": item.label, "status": item.status,
-                      "action": item.action, "message": safe_text(item.message)} for item in forms.items)
+                      "action": item.action, "message": safe_text(item.message),
+                      "safety_blocker": item.safety_blocker} for item in forms.items)
         contact_targets, contact_items = contact_record_preflight(
             project_id, planned, session, settings=settings, rebuilding=rebuilding,
         )

@@ -1267,6 +1267,24 @@ def _application_child(root, mode):
         os._exit(43)
 
 
+def _seed_recovery_workspace(sessions, record, state):
+    """Seed the real registration and directory checkpoint preceding a file step."""
+    paths = {key: getattr(record, key) for key in
+             ("local_workspace_path", "official_folder_path", "source_book_path")}
+    for path in paths.values():
+        path.mkdir(parents=True, exist_ok=True)
+    for relative in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (record.official_folder_path / relative).mkdir(parents=True, exist_ok=True)
+    with sessions() as session:
+        deps.ProjectOfficialWorkspaceRepository(session).save(record)
+        session.commit()
+    state["completed_steps"] = ["workspace"]
+    state["workspace_directories"] = {
+        key: {"path": str(path), "identity": [path.stat().st_dev, path.stat().st_ino]}
+        for key, path in paths.items()
+    }
+
+
 @pytest.mark.parametrize("window,exit_code", [("before_db", 23), ("after_db", 24)])
 def test_new_process_recovers_published_output_and_committed_record_without_regeneration(tmp_path, window, exit_code):
     settings = _settings(tmp_path)
@@ -1279,8 +1297,9 @@ def test_new_process_recovers_published_output_and_committed_record_without_rege
         session.commit()
     journal = GenerationJournal(settings.data_dir / "project_folder_generation")
     state = journal.create("P1", None, "fixture authority")
-    # This fixture exercises one real form step, not an earlier workspace execution.
-    state.update(step=3, completed_steps=[])
+    fixtures = runpy.run_path(str(Path(__file__).parents[1] / "unit" / "test_project_folder_required_forms_service.py"))
+    _seed_recovery_workspace(sessions, fixtures["_workspace"](tmp_path), state)
+    state["step"] = 3
     journal.save(state)
     env = dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2]))
     def run(mode):
@@ -1319,7 +1338,14 @@ def test_application_form_process_crash_never_edits_final_in_place_or_repeats_co
     target.parent.mkdir(parents=True)
     shutil.copy2(source, target)
     journal = GenerationJournal(settings.data_dir / "project_folder_generation")
-    journal.create("P1", None, "fixture authority")
+    state = journal.create("P1", None, "fixture authority")
+    fixtures = runpy.run_path(str(Path(__file__).parents[1] / "unit" / "test_project_application_form_write_back_service.py"))
+    _seed_recovery_workspace(sessions, fixtures["_WorkspaceStore"](tmp_path / "official").get_by_project("P1"), state)
+    with sessions() as session:
+        deps.FileAssetRepository(session).create(FileAsset("app-source", "P1", FileAssetType.APPLICATION_FORM,
+            source, original_name=target.name, source_role="selected_application_form"))
+        session.commit()
+    journal.save(state)
     env = dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2]))
     def run(mode):
         return subprocess.run([sys.executable, str(Path(__file__).resolve()), str(tmp_path), mode], env=env,

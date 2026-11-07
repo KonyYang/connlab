@@ -228,6 +228,7 @@ class RequiredFormPreviewItem:
     output_kind: ProjectOutputKind
     existing_sha256: str | None = None
     source_context_signature: str | None = None
+    safety_blocker: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -481,7 +482,7 @@ class ProjectFolderRequiredFormsService:
                     key=key, label=label, output_kind=kind,
                     target_path=_target_path(workspace, pattern, relative_folder,
                                              owner_suffix=owner_suffix if key == "customer_feedback_form" else None),
-                    status="blocked", action="blocked", message=errors[key])
+                    status="blocked", action="blocked", message=errors[key], safety_blocker=True)
             items.append(item)
         if any(item.status == "conflict" for item in items):
             status = "conflict"

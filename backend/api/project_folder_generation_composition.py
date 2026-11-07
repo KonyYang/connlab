@@ -324,6 +324,8 @@ class ProjectFolderGenerationRunner:
                     if self.context(project_id) != state["context"]:
                         raise ValueError("Generation inputs changed before publication. No further target was written.")
                     if name != "workspace":
+                        if workspace_record is None:
+                            raise ValueError("A registered project folder is required before generating files.")
                         RecoverableWorkspacePublisher(self.journal, state).verify_directories(workspace_record)
                         for relative in ("E-mail", "Submitted Material", "Photos", "Test results", "Test results/Final Examination"):
                             require_safe_output_path(workspace_record.official_folder_path / relative)
@@ -442,7 +444,7 @@ class ProjectFolderGenerationRunner:
                     selected = next((item for item in preview.items if item.key == name), None)
                     if selected is None:
                         raise ValueError("Required form target needs review before generation.")
-                    if selected.action == "conflict":
+                    if selected.action == "conflict" or selected.safety_blocker:
                         raise ValueError(selected.message)
                     if selected.status == "blocked":
                         verify_context()
