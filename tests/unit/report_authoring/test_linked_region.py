@@ -243,6 +243,14 @@ def test_adopted_fixed_table_and_native_chart_fit_six_inches_without_changing_ch
     with pytest.raises(ValueError, match='font size'):
         reader.append(unsafe, unresolved, 'unresolved-size')
     assert unsafe.read_bytes() == before
+    repeated = deepcopy(data); block = etree.fromstring(repeated['blocks'][2].encode())
+    drawing = deepcopy(block.find(f'.//{{{wp}}}inline').getparent())
+    drawing.find(f'{{{wp}}}inline/{{{wp}}}extent').set('cx', '3000000')
+    etree.SubElement(block, f'{{{W}}}r').append(drawing)
+    repeated['blocks'][2] = etree.tostring(block).decode()
+    with pytest.raises(ValueError, match='incompatible adopted display sizes'):
+        reader.append(unsafe, repeated, 'mixed-shared-chart')
+    assert unsafe.read_bytes() == before
 
 
 def test_floating_adopted_drawing_is_rejected_without_changing_target(tmp_path):

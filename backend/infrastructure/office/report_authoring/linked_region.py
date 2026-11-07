@@ -232,13 +232,13 @@ def fit_selected_region(blocks, body, container, styles, source_styles):
             inset = sum(max(0, int(indent.get(f'{{{W}}}{name}', '0'))) for name in ('left', 'right')) if indent is not None else 0
             limit = (available - inset) * 635
             if limit <= 0: raise ValueError('The adopted drawing paragraph has no available width.')
-            if cx > limit:
-                ratio = limit / cx
-                for chart in inline.findall('.//{%s}chart' % C):
-                    identity = chart.get(f'{{{R}}}id')
-                    if identity in chart_scales and chart_scales[identity] != ratio:
-                        raise ValueError('One native chart has incompatible adopted display sizes.')
-                    chart_scales[identity] = ratio
+            ratio = min(1, limit / cx)
+            for chart in inline.findall('.//{%s}chart' % C):
+                identity = chart.get(f'{{{R}}}id')
+                if identity in chart_scales and chart_scales[identity] != ratio:
+                    raise ValueError('One native chart has incompatible adopted display sizes.')
+                chart_scales[identity] = ratio
+            if ratio < 1:
                 extent.set('cx', str(limit)); extent.set('cy', str(max(1, int(cy * ratio))))
                 for drawing_extent in inline.findall(f'.//{{{A}}}xfrm/{{{A}}}ext'):
                     for name in ('cx', 'cy'):
@@ -392,7 +392,8 @@ class LinkedReportRegion:
             if child in scaled_parts and scaled_parts[child] != ratio:
                 raise ValueError('One native chart part has incompatible adopted display sizes.')
             if child not in scaled_parts:
-                source[child] = scale_chart_text(source[child], ratio); scaled_parts[child] = ratio
+                if ratio < 1: source[child] = scale_chart_text(source[child], ratio)
+                scaled_parts[child] = ratio
         rels = xml(target['word/_rels/document.xml.rels'])
         for relation in list(rels):
             if relation.get('TargetMode') != 'External' and posixpath.normpath(posixpath.join('word', relation.get('Target', ''))).startswith(prefix):
