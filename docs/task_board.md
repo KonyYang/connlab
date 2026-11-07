@@ -400,14 +400,15 @@
         "route": "full_chain",
         "scope": "Keep project identity, directory, authority race, publication recovery and explicit Backup/Rebuild protections. Separate per-output readiness and safe generation failures; persist and display partial outcomes. Local only; isolated test files; no push or publication.",
         "scope_paths": [
-          "tests/integration/test_matrix_editor_llcr_cr_record_generation_api.py"
+          "tests/integration/test_project_folder_required_forms_api.py",
+          "tests/integration/test_project_request_material_collection_api.py"
         ],
         "risk_reasons": [
           "Changes external-file generation and durable partial/recovery semantics; existing files and confirmed authorities must remain protected."
         ],
         "activation_head": "19e8073bff43737bf8955ca6cac84f26e4f88430",
         "started_at": "2026-11-07T11:52:04.329246Z",
-        "updated_at": "2026-11-07T15:32:23.854778Z",
+        "updated_at": "2026-11-07T15:35:27.024475Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
