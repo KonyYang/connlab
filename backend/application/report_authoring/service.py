@@ -11,7 +11,7 @@ from backend.domain.report_authoring import (
 
 
 class ReportAuthoringService:
-    def __init__(self, *, repository, assets, inspect_upload, project_context, drafts=None, writer=None, results=None, result_writer=None, photos=None, customer=None, sections=None, tools_packages=None, batch_writer=None, inventory=None):
+    def __init__(self, *, repository, assets, inspect_upload, project_context, drafts=None, writer=None, results=None, result_writer=None, photos=None, customer=None, sections=None, tools_packages=None, batch_writer=None, inventory=None, document_inspector=None, visual_renderer=None):
         self.repository = repository
         self.assets = assets
         self.inspect_upload = inspect_upload
@@ -27,6 +27,10 @@ class ReportAuthoringService:
         self.inventory = inventory
         from backend.application.report_authoring.assembly import ReportAssembly
         self.assembly = ReportAssembly(self, batch_writer)
+        from backend.application.report_authoring.document_review import ReportDocumentReview
+        from backend.application.report_authoring.photo_plan import ReportPhotoPlan
+        self.document_review = ReportDocumentReview(self, document_inspector, visual_renderer)
+        self.photo_plan = ReportPhotoPlan(self)
 
     def state(self, project_id):
         context = self.project_context(project_id)

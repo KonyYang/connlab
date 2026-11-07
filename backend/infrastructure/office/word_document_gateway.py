@@ -92,7 +92,7 @@ class WordDocumentGateway:
             raise FileNotFoundError(f"Word document does not exist: {path}")
         return _read_table_locations_with_com(path)
 
-    def export_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+    def export_preview_pdf(self, source_path: Path, output_pdf_path: Path, *, on_owned_word=None) -> Path:
         """Export one `.docx` source file to a PDF preview via Word COM."""
         path = Path(source_path)
         output = Path(output_pdf_path)
@@ -102,8 +102,13 @@ class WordDocumentGateway:
             raise FileNotFoundError(f"Word document does not exist: {path}")
         if output.suffix.lower() != ".pdf":
             raise ValueError(f"Preview output must be a .pdf file: {output}")
+        if output.exists():
+            raise FileExistsError('Word preview requires a new output file; existing previews are immutable.')
         output.parent.mkdir(parents=True, exist_ok=True)
-        _export_pdf_with_com(path, output)
+        if on_owned_word is None:
+            _export_pdf_with_com(path, output)
+        else:
+            _export_pdf_with_com(path, output, on_owned_word=on_owned_word)
         return output
 
     def convert_legacy_doc_to_docx(self, source_path: Path, output_path: Path) -> Path:
@@ -398,7 +403,7 @@ def _read_table_locations_with_com(path: Path) -> tuple[WordTableLocation, ...]:
         pythoncom.CoUninitialize()
 
 
-def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
+def _export_pdf_with_com(source_path: Path, output_pdf_path: Path, *, on_owned_word=None) -> None:
     """Export one Word document to PDF through Microsoft Word COM."""
     try:
         import pythoncom  # type: ignore[import-not-found]
@@ -412,10 +417,22 @@ def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
     pythoncom.CoInitialize()
     word = None
     document = None
+    owned_word = on_owned_word is None
     try:
+        if on_owned_word:
+            import win32process
+            prior_processes = set(win32process.EnumProcesses())
         word = win32com.client.DispatchEx("Word.Application")
+        if on_owned_word:
+            _, pid = win32process.GetWindowThreadProcessId(int(word.Hwnd))
+            owned_word = bool(pid) and pid not in prior_processes
+            if not owned_word:
+                raise OfficeAutomationUnavailable('Word did not provide a new owned instance; existing Word was not touched.')
+            on_owned_word(pid)
         word.Visible = False
         word.DisplayAlerts = 0
+        word.AutomationSecurity = 3
+        word.Options.UpdateLinksAtOpen = False
         document = word.Documents.Open(
             str(source),
             PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
@@ -429,11 +446,15 @@ def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
             OpenAfterExport=False,
         )
     finally:
-        if document is not None:
-            document.Close(SaveChanges=False)
-        if word is not None:
-            word.Quit()
-        pythoncom.CoUninitialize()
+        try:
+            if document is not None:
+                document.Close(SaveChanges=False)
+        finally:
+            try:
+                if word is not None and owned_word:
+                    word.Quit()
+            finally:
+                pythoncom.CoUninitialize()
 
 
 def _convert_legacy_doc_to_docx_with_com(source_path: Path, output_path: Path) -> None:

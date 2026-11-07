@@ -24,6 +24,8 @@ export type ReportAuthoringOutput = {
   download_url: string; base_source_id: string;
   artifact?: { sha256: string };
   parent_output_id?: string;
+  photo_plan?: { plan_id: string; output_sha256: string; matrix_id: string; confirmed_by: string; assignments: ConfirmedPhotoAssignment[] };
+  visual_preview?: ReportVisualPreviewRecord;
   evidence?: { result_id?: string; statistics?: Extract<EquipmentListOneClickResult, { status: "completed" }>["statistics"] };
 };
 export type ReportMatrixStep = { group_id: string; row_id: string; group_label: string; test_item: string; step_token: string };
@@ -50,6 +52,46 @@ export const saveReportMapping = (projectId: string, mapping: ReportMappingInput
 export const selectReportBase = (projectId: string, sourceId: string, revision: number) =>
   requestJson<ReportAuthoringState>(base(projectId) + "/base", { method: "POST", body: JSON.stringify({ source_id: sourceId, expected_revision: revision }) });
 export const downloadReportArtifact = (url: string) => requestBlobResponse(url);
+
+export type ConfirmedPhotoAssignment = { slot_id: string; source_id: string; crop_mode: 'preserve' | 'centre_crop';
+  scope?: 'step' | 'sample_overview' | 'project_context';
+  accept_slot_transform: boolean; group_id: string; row_id: string; step_token: string; sample_ids: string[];
+  stage: string; reason: string; reuse_reason: string };
+export type ReportDocumentReviewData = {
+  output_id: string; output_sha256: string; review_sha256: string; base_role: string; complete: boolean; notice: string;
+  regions: { region_id: string; kind: string; text: string; sha256: string; target: ReportFactTarget;
+    status: string; reasons: string[]; has_fields: boolean }[];
+  region_groups: { region_id: string; kind: string; text: string; sha256: string; status: string; reasons: string[]; paragraph_count: number; region_ids: string[] }[];
+  slots: (ReportPhotoSlot & { coverage: string })[];
+  figures: { figure_id: string; caption: string; numbers: number[]; slot_ids: string[]; automatic_order: boolean; reason: string }[];
+  findings: { code: string; message: string; location: string }[];
+  numbering: { ready: boolean; issues: { code: string; message: string; location: string }[];
+    replacements: { old: string; new: string; target: ReportFactTarget }[] };
+  photo_candidates: { source_id: string; source_sha256: string; file_name: string; warning: string;
+    suggestions: { slot_id: string; score: number; hints: string[] }[] }[];
+};
+export type ReportVisualPreviewRecord = {
+  output_sha256: string; artifact: { sha256: string; file_name: string }; status: string; page_count: number;
+  pages: { page: number; width: number; height: number; text: string }[]; affected_pages: number[];
+  affected_pages_reason: string; changed_locations?: { text: string; pages: number[] }[];
+  reviewed_pages?: number[]; reviewed_by?: string;
+};
+export type DocumentReviewIdentity = { expected_revision: number; output_id: string; output_sha256: string };
+export const getReportDocumentReview = (projectId: string, outputId: string, revision: number) =>
+  requestJson<ReportDocumentReviewData>(base(projectId) + `/outputs/${encodeURIComponent(outputId)}/document-review?expected_revision=${revision}`);
+export const confirmReportPhotoPlan = (projectId: string, request: DocumentReviewIdentity & {
+  review_sha256: string; confirmed_by: string; assignments: ConfirmedPhotoAssignment[];
+}) => requestJson<ReportAuthoringState>(base(projectId) + '/photos/plan', { method: 'POST', body: JSON.stringify(request) });
+export const confirmReportRegions = (projectId: string, request: DocumentReviewIdentity & {
+  review_sha256: string; confirmed_by: string;
+  decisions: { region_id: string; region_sha256: string; source_id: string; locator: string; reason: string }[];
+}) => requestJson<ReportAuthoringState>(base(projectId) + '/document-review/regions', { method: 'POST', body: JSON.stringify(request) });
+export const createReportVisualPreview = (projectId: string, request: DocumentReviewIdentity) =>
+  requestJson<ReportAuthoringState>(base(projectId) + '/visual-preview', { method: 'POST', body: JSON.stringify(request) });
+export const reportVisualPreviewUrl = (projectId: string, outputId: string) => base(projectId) + `/outputs/${encodeURIComponent(outputId)}/visual-preview`;
+export const confirmReportVisualPages = (projectId: string, request: DocumentReviewIdentity & {
+  preview_sha256: string; pages: number[]; confirmed_by: string; notes: string;
+}) => requestJson<ReportAuthoringState>(base(projectId) + '/visual-preview/review', { method: 'POST', body: JSON.stringify(request) });
 
 export const adoptCurrentReportWorkingCopy = (projectId: string, request: {
   expected_revision: number; source_sha256: string; source_mode: string;
