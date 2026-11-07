@@ -377,11 +377,11 @@
   "tasks": {
     "TASK_REPORT_DELIVERY_CONTROLLED_SAVE_20261107": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
       "branch": "codex/report-delivery-save-20261107",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "3f74accdca6a558ec5034f63c1ec0a482822e870",
       "task": {
         "task_id": "TASK_REPORT_DELIVERY_CONTROLLED_SAVE_20261107",
         "summary": "Report batch 6 part 1: exact-version delivery checks and controlled Internal/Customer save through existing History protections",
@@ -443,7 +443,7 @@
         ],
         "activation_head": "6ed116e9fad7b4bc87b9fc1bf2d442d98260bbe5",
         "started_at": "2026-11-07T05:33:10.499892Z",
-        "updated_at": "2026-11-07T06:31:30.515427Z",
+        "updated_at": "2026-11-07T07:18:31.565307Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -453,7 +453,86 @@
           "summary": "Receipt staged-write failure independently retested passing on d822 (one complete History, no duplicate/unknown stage); four additional file-boundary probes pass. QA matrix 488 passed and six legacy fixture DB failures fixed test-only in reviewed clean 02a0888b. Independent public API probe then proved explicit DRAFT conclusions/known pending placeholders could be cleared by whole-report retained confirmation; Developer bounded delivery.py/API-test fix is underway. No final QA/Word/integration/close claim. Actual UI formal-project seed corrected by adding only initial isolated LTR; complete coherent synthetic original is separate test preparation, not fabricated review. Preserve all prior evidence. No real writes or push.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REPORT_DELIVERY_CONTROLLED_SAVE_20261107",
+          "subject": "81b6934643cce76f748770343e9a717c0527ac14",
+          "summary": "Batch6 part1 exact-pair delivery checks and controlled reviewed-byte save accepted after independent review and QA, including real Word/UI, cancellation, locked Customer partial save, same-DB restart/resume and unchanged report/History replay. Real pending conclusions stay blocked. No formal issuance, part2 release qualification, push or close is claimed by this finish report.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/api/project_folder_write_guard.py",
+            "backend/api/report_authoring_schemas.py",
+            "backend/api/routes_report_authoring.py",
+            "backend/application/report_authoring/delivery.py",
+            "backend/application/report_authoring/document_review.py",
+            "backend/application/report_authoring/service.py",
+            "backend/domain/report_authoring.py",
+            "backend/infrastructure/files/report_delivery_receipt.py",
+            "backend/infrastructure/files/report_delivery_workspace.py",
+            "backend/infrastructure/files/report_publication_gateway.py",
+            "backend/infrastructure/storage/repositories/report_authoring.py",
+            "docs/PROJECT_CONTEXT.md",
+            "docs/operational/report_automation_plan_20261107.md",
+            "docs/operational/report_delivery_controlled_save_20261107.md",
+            "frontend/src/api/reportAuthoring.ts",
+            "frontend/src/api/reportAuthoringDelivery.ts",
+            "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
+            "frontend/src/features/report-workspace/ReportDelivery.test.tsx",
+            "frontend/src/features/report-workspace/ReportDelivery.tsx",
+            "frontend/src/features/report-workspace/ReportVisualPreview.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/features/report-workspace/reportAuthoringPanel.css",
+            "tests/integration/test_report_delivery_api.py",
+            "tests/integration/test_report_workspace_api.py",
+            "tests/unit/test_report_delivery_receipt.py"
+          ],
+          "validation": [
+            {
+              "name": "Independent final risk-proportionate QA",
+              "status": "passed",
+              "summary": "Final product97ac:39 affected Python,140 frontend tests, TypeScript and Vite build passed. Initial488 passing checks reused only where unchanged; six legacy fixture failures were fixed and rerun, not ignored. Counts overlap and are not summed. Native Internal6/Customer3 pages, API/UI cancel/Win32 partial/restart/resume, exact saved/History bytes and protected198+2 inputs accepted. Preserved over-strict receipt-mtime assertion is non-blocking: same receiptSHA/public state and unchanged user outputs/History.",
+              "evidence": "tmp/report_batch6_20261107/final_qa.md",
+              "sha256": "84bd5edd64e3372e2ed4fc405719f816d19e509e4bbaf07a971b17477bfc228b"
+            },
+            {
+              "name": "Final subject and evidence equivalence",
+              "status": "passed",
+              "summary": "Clean81b69346 parent43f9b2b7/tree2ad779bfbdbe1148c63b3283ae7fd6adfc6ee5e0;26 exact allowed paths, no task-board edits, clean diff check. Since QA product97ac only three approved docs changed; backend/frontend/tests/scripts byte-equivalent. All14 manifest evidence rawSHA256 and lengths match. Primary master clean and changed only board since base; common Git authority verified."
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "summary": "Original independent /root/batch6_planner read actual code and returned the bounded plan, accepted by root before request.json Submit. Root explicitly confirmed this retained continuation fact; no new planning pass or nonexistent versioned Plan SHA is claimed. Reuse authoring JSON/rendering/publication boundaries, exact-pair gate, trusted workspace and bounded recovery; isolated verification, no issuance/push."
+            },
+            "developer": {
+              "status": "passed",
+              "summary": "Independent Developer implemented the requested slice and bounded QA findings without scope expansion. Targeted RED/GREEN and affected checks retained in developer_evidence.md and reviewed fix commits; final independent QA verifies final product bytes."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Root independent Standards/Spec exact-diff and bounded-fix reviews plus actual UI/all9 Word pages accepted. final_review.md accepts final81b docs correction and no remaining blocking finding; recorded UI limitations and part2 qualification remain explicit."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Independent /root/batch6_qa final_qa.md passed for97ac product, with truthful initial failures/fixes/reuse and native/API/filesystem evidence. Final docs-only product equivalence and all evidence bytes independently rechecked by Integrator; no duplicate full matrix."
+            },
+            "integrator": {
+              "status": "passed",
+              "summary": "Independent /root/batch6_integrator verified exact subject, clean primary/task identities, common authority, base/parent/tree,26-path allowlist, board-only primary drift, final review/QA raw bytes and product equivalence. Integration pending only the production writer's locked serial local merge; no direct merge, close, publication or push."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "81b6934643cce76f748770343e9a717c0527ac14",
+            "primary_before": "dca08dcfde942423c2b61e199386efbd4855fba3",
+            "integrated_head": "3f74accdca6a558ec5034f63c1ec0a482822e870",
+            "recovered": false
+          }
+        }
       }
     }
   }
