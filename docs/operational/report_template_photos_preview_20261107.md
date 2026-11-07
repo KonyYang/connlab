@@ -1,7 +1,7 @@
 # 第5批：批准稿区域、批量照片与 Word 视觉预览
 
 日期：2026-11-07。任务：`TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107`。
-状态：Developer 候选，待独立 Reviewer、QA 和最终验收。第6批未实施。
+状态：第5批实现及独立审查、QA、页面冒烟和 Word 逐页视觉验收通过；待主任务串行集成与关闭记录。第6批未实施。
 
 ## 范围与入口
 
@@ -38,7 +38,7 @@
 
 ## 验证与证据
 
-Developer 定向回归（当前候选，2026-11-07）：
+Developer 定向回归（2026-11-07）：
 
 - `test_document_review.py`、`test_photo_plan.py`、`test_visual_preview.py`、
   `test_word_document_gateway.py`、`test_report_document_review_api.py`：30 passed。
@@ -51,8 +51,35 @@ Developer 定向回归（当前候选，2026-11-07）：
 - QA 提前兼容性实测：产品 renderer 对 synthetic 6 页、032 隔离报告 19 页均成功；
   源 SHA 不变，未新增残留 Word。证据在隔离 `tmp/report_batch5_20261107/` 下的
   `renderer_preflight_20261107_120421/result.json` 等，不提交样本或 PDF 到仓库。
-- 最终完整矩阵、页面冒烟及逐页视觉结论由独立 QA 在 clean reviewed subject 上记录。
-  本文件不以“可导出 PDF”替代逐页视觉验收。
+
+### 最终独立验收
+
+产品最终修复 subject：`cdaf429b818f6f0782cb6c949e90570856a8b6bd`。
+独立 QA 原完整矩阵为后端报告/Office/API 288 passed、前端 Report Workspace 14 文件
+137 tests passed，TypeScript 与生产 build 通过。恢复候选 `c9f1dc0c` 的产品字节与已测
+`360d100e` 一致；局部分页修复后另跑受影响 52 项全部通过，未将旧结果冒充修复后全量重跑。
+只有既存 FastAPI/TestClient 弃用提示，没有测试失败。
+
+- 031 Cable 原稿：实际 API 工作副本/PDF 19 页全部查看，照片、箭头、共享图注、温升表/曲线、
+  附录和结束语正常；保留原有空白，不为压缩页数改稿。
+- 032：root 完成实际页面照片比较、确认、批量装配和 PDF 审核路径；独立 QA 查看最终19页。
+  替换照片位于第14页，其余18页与同分辨率 Word 基线 PNG 字节一致。
+- 隔离 synthetic：重复图未说明理由被拒绝，EXIF与不同比例需明确裁剪选择；两槽替换与
+  图号/引用在一个输出完成，重复 apply 幂等。6页全部查看，跨页长表、页眉logo和结束语正常。
+- 021跨项目版式参考：原始身份作为 original 被拒绝，明确 layout_reference 后保留待核事实，
+  清空旧 Result/Comment，不继承旧 Pass。QA发现并阻止了清空后孤立 Group 标题的问题。
+  最小修复仅在确实清空非空结果的表格后，复用既有流式标题保护；显式分页和显式
+  `keepNext=false` 保留，不全篇重排。公开API RED复现，Developer修复后34项通过。
+  修复后重新生成19页并逐页查看，Ac/Ad/B分别在第7/8/9页与表格同页，无新增裁切/重叠。
+  原/新解密包仅 `document.xml` 不同，去除新增keepNext后XML完全相等。
+- 实际API验证DOCX/PDF SHA绑定、重复下载和重复预览不重渲染、旧SHA拒绝、部分页审核拒绝。
+  全页视觉记录与内容完整性分开；未解决的业务语义仍为 pending，不宣称报告已可正式发行。
+- 198份原件及隔离副本重新计算SHA全部不变（排除2个临时Office锁文件）；成功渲染无新增
+  Word残留。此前失败预检留下的两个既存进程未被冒充用户授权关闭。
+
+原始证据保留在隔离目录 `tmp/report_batch5_20261107/`：`finalQA.md`、
+`qa_360d100e/matrix.json`、`qa_cdaf429b/`、`api_acceptance/layout-fixed-125727/`，
+以及031、032与synthetic对应API产物。保密DOCX/PDF/截图不提交到Git。
 
 ## 限制与后续
 
