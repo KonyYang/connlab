@@ -103,12 +103,15 @@ def contact_record_preflight(project_id, workspace, session, *, settings=None, r
                 except (OSError, ValueError) as exc:
                     status, action = "blocked", "blocked"
                     message = f"Cannot verify {form_label} form target: {exc}"
+                    entry["safety_blocker"] = True
         entry["action"] = action
+        entry["message"] = safe_text(message)
         if action == "skip":
             entry["warning"] = message
         targets[kind] = entry
         items.append({"key": f"{kind}_record", "label": label,
-                      "status": status, "action": action, "message": safe_text(message)})
+                      "status": status, "action": action, "message": safe_text(message),
+                      "safety_blocker": entry.get("safety_blocker", False)})
     return targets, items
 
 
@@ -122,7 +125,8 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
         forms = deps.get_project_folder_required_forms_service(session, settings).preview(
             project_id, planned_workspace=planned, rebuilding=rebuilding)
         items.extend({"key": item.key, "label": item.label, "status": item.status,
-                      "action": item.action, "message": safe_text(item.message)} for item in forms.items)
+                      "action": item.action, "message": safe_text(item.message),
+                      "safety_blocker": item.safety_blocker} for item in forms.items)
         contact_targets, contact_items = contact_record_preflight(
             project_id, planned, session, settings=settings, rebuilding=rebuilding,
         )
@@ -150,6 +154,7 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
             and all(blocker == "Target file conflict" for blocker in materials.blockers)
         )
         items.insert(0, {"key": "materials", "label": "Request materials",
+                        "safety_blocker": source_inside_target,
                         "status": "ready" if materials_ready else "conflict" if material_conflict_only else "blocked",
                         "action": "collect" if materials_ready else "review" if material_conflict_only else "blocked",
                         "message": ("Source material is inside the folder being rebuilt. Import an independent source copy before rebuilding."

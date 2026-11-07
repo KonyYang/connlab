@@ -151,6 +151,7 @@ export type ProjectWorkbenchModel = {
   officialWorkspaceCanRestart?: boolean;
   officialWorkspaceProgressLabel: string | null;
   officialWorkspaceError: string | null;
+  officialWorkspaceIssues?: { key: string; label: string; message: string }[];
   officialWorkspaceResult: OfficialWorkspaceCreateResponse | null;
   officialFolderCheckPreview: OfficialFolderCheckPreview | null;
   officialFolderCheckLoading: boolean;
@@ -1572,6 +1573,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     officialWorkspaceCanRestart: generation.canRestart,
     officialWorkspaceProgressLabel,
     officialWorkspaceError: generation.error ?? officialWorkspaceError,
+    officialWorkspaceIssues: generation.operation?.status === "completed" ? generation.operation.issues ?? [] : [],
     officialWorkspaceResult,
     officialFolderCheckPreview,
     officialFolderCheckLoading,

@@ -23,6 +23,7 @@ from backend.application.official_project_workspace_service import OfficialWorks
 from backend.application.project_basic_information_service import ConfirmProjectBasicInformationCommand
 from backend.application.project_folder_generation_service import ProjectFolderGenerationService, ProjectFolderInUseError
 from backend.infrastructure.files.generation_journal import GenerationJournal
+from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher
 from backend.infrastructure.official_workspace_manifest import (
     OfficialWorkspaceManifest, OfficialWorkspaceManifestGateway, stable_folder_identity,
@@ -38,6 +39,46 @@ from backend.infrastructure.files.project_folder_required_forms_gateway import R
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "fixture.sqlite")
+
+
+@pytest.mark.parametrize("phase", ["publish", "stage", "recover"])
+def test_output_publisher_rejects_redirected_target_and_staging_ancestors(tmp_path, phase):
+    if os.name != "nt":
+        pytest.skip("Windows junction safety regression")
+    import _winapi
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", None, "inputs")
+    source = tmp_path / "source.docx"
+    source.write_bytes(b"generated source")
+    target_root = tmp_path / "approved"
+    target_root.mkdir()
+    target = target_root / "form.docx"
+    outside = tmp_path / "outside"
+    stage_root = tmp_path / "stage"
+    publisher = RecoverableOutputPublisher(journal, state, "forms", publication_root=stage_root)
+    junction = stage_root if phase == "stage" else target_root
+    if phase == "recover":
+        publisher.publish_file("form", source, target, None, {"kind": "form"})
+        target_root.rename(outside)
+    else:
+        outside.mkdir()
+        if phase == "publish":
+            target_root.rmdir()
+    _winapi.CreateJunction(str(outside), str(junction))
+    before = {path.name: path.read_bytes() for path in outside.iterdir() if path.is_file()}
+    records = []
+    try:
+        with pytest.raises(ValueError, match="link or junction"):
+            if phase == "recover":
+                publisher.recover_files(records.append)
+            else:
+                publisher.publish_file("form", source, target, None)
+        assert records == []
+        assert {path.name: path.read_bytes() for path in outside.iterdir() if path.is_file()} == before
+        if phase != "recover":
+            assert state["effects"] == {}
+    finally:
+        os.rmdir(junction)  # Isolated junction only; the destination remains intact.
 
 
 @pytest.mark.parametrize("errors,expected_action", [
@@ -1123,7 +1164,7 @@ def test_runner_revalidates_real_inputs_around_readonly_cleanup(tmp_path, monkey
 
 
 @pytest.mark.parametrize("missing_attachment", [False, True])
-def test_materials_step_commits_warning_only_collection_but_rejects_unresolved_sources(tmp_path, missing_attachment):
+def test_materials_step_keeps_available_sources_and_reports_missing_attachments(tmp_path, missing_attachment):
     settings = _settings(tmp_path)
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
     Base.metadata.create_all(engine)
@@ -1148,19 +1189,18 @@ def test_materials_step_commits_warning_only_collection_but_rejects_unresolved_s
     runner.context = lambda _: "fixture authority"
     state = runner.journal.create("P1", None, "fixture authority")
     try:
+        runner.run_step(state, "materials")
+        with sessions() as session:
+            collection = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project("P1")
+            assert collection.collection_id == state["operation_id"]
+            assert "Request email missing" in collection.warnings
+        target = official / "Submitted Material" / source.name
+        before = target.stat().st_mtime_ns
+        runner.run_step(state, "materials")
+        assert target.stat().st_mtime_ns == before
+        assert bool(state.get("issues")) is missing_attachment
         if missing_attachment:
-            with pytest.raises(ValueError, match="material|source"):
-                runner.run_step(state, "materials")
-        else:
-            runner.run_step(state, "materials")
-            with sessions() as session:
-                collection = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project("P1")
-                assert collection.collection_id == state["operation_id"]
-                assert "Request email missing" in collection.warnings
-            target = official / "Submitted Material" / source.name
-            before = target.stat().st_mtime_ns
-            runner.run_step(state, "materials")
-            assert target.stat().st_mtime_ns == before
+            assert state["issues"][0]["label"] == "missing.pdf"
     finally:
         runner.pool.shutdown()
         engine.dispose()
@@ -1227,6 +1267,24 @@ def _application_child(root, mode):
         os._exit(43)
 
 
+def _seed_recovery_workspace(sessions, record, state):
+    """Seed the real registration and directory checkpoint preceding a file step."""
+    paths = {key: getattr(record, key) for key in
+             ("local_workspace_path", "official_folder_path", "source_book_path")}
+    for path in paths.values():
+        path.mkdir(parents=True, exist_ok=True)
+    for relative in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (record.official_folder_path / relative).mkdir(parents=True, exist_ok=True)
+    with sessions() as session:
+        deps.ProjectOfficialWorkspaceRepository(session).save(record)
+        session.commit()
+    state["completed_steps"] = ["workspace"]
+    state["workspace_directories"] = {
+        key: {"path": str(path), "identity": [path.stat().st_dev, path.stat().st_ino]}
+        for key, path in paths.items()
+    }
+
+
 @pytest.mark.parametrize("window,exit_code", [("before_db", 23), ("after_db", 24)])
 def test_new_process_recovers_published_output_and_committed_record_without_regeneration(tmp_path, window, exit_code):
     settings = _settings(tmp_path)
@@ -1239,8 +1297,9 @@ def test_new_process_recovers_published_output_and_committed_record_without_rege
         session.commit()
     journal = GenerationJournal(settings.data_dir / "project_folder_generation")
     state = journal.create("P1", None, "fixture authority")
-    # This fixture exercises one real form step, not an earlier workspace execution.
-    state.update(step=3, completed_steps=[])
+    fixtures = runpy.run_path(str(Path(__file__).parents[1] / "unit" / "test_project_folder_required_forms_service.py"))
+    _seed_recovery_workspace(sessions, fixtures["_workspace"](tmp_path), state)
+    state["step"] = 3
     journal.save(state)
     env = dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2]))
     def run(mode):
@@ -1279,7 +1338,14 @@ def test_application_form_process_crash_never_edits_final_in_place_or_repeats_co
     target.parent.mkdir(parents=True)
     shutil.copy2(source, target)
     journal = GenerationJournal(settings.data_dir / "project_folder_generation")
-    journal.create("P1", None, "fixture authority")
+    state = journal.create("P1", None, "fixture authority")
+    fixtures = runpy.run_path(str(Path(__file__).parents[1] / "unit" / "test_project_application_form_write_back_service.py"))
+    _seed_recovery_workspace(sessions, fixtures["_WorkspaceStore"](tmp_path / "official").get_by_project("P1"), state)
+    with sessions() as session:
+        deps.FileAssetRepository(session).create(FileAsset("app-source", "P1", FileAssetType.APPLICATION_FORM,
+            source, original_name=target.name, source_role="selected_application_form"))
+        session.commit()
+    journal.save(state)
     env = dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2]))
     def run(mode):
         return subprocess.run([sys.executable, str(Path(__file__).resolve()), str(tmp_path), mode], env=env,

@@ -95,6 +95,7 @@ export function ProjectWorkbenchLayout({
     onRefreshOfficialWorkspacePreview,
     officialWorkspaceProgressLabel,
     officialWorkspaceError,
+    officialWorkspaceIssues,
     onUpdateOfficialWorkspace,
     officialFolderCheckPreview,
     officialFolderCheckError,
@@ -609,6 +610,16 @@ export function ProjectWorkbenchLayout({
             </button>
           ) : null}
           <span>After resolving the issue, use the project folder action in Folder Actions.</span>
+        </div>
+      ) : officialWorkspaceIssues?.length ? (
+        <div className="runtime-console-workflow-alert is-danger" role="alert">
+          <strong>Project folder created; some files were not generated.</strong>
+          <ul>
+            {officialWorkspaceIssues.map((issue, index) => (
+              <li key={`${issue.key}-${index}`}><strong>{issue.label}:</strong> {issue.message}</li>
+            ))}
+          </ul>
+          <span>Other files have been kept. Add the missing files manually, or resolve these issues and use Create folder again.</span>
         </div>
       ) : null}
 

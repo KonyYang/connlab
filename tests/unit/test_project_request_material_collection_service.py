@@ -363,6 +363,33 @@ def test_collect_blocks_existing_target_with_different_content(tmp_path: Path) -
         service.collect("P1")
 
 
+@pytest.mark.parametrize("problem", ["missing_source", "ambiguous_email", "target_conflict"])
+def test_partial_source_opt_in_does_not_relax_ambiguity_or_target_conflicts(tmp_path: Path, problem: str) -> None:
+    source = tmp_path / "source" / "missing-application.docx"
+    email = _write(tmp_path / "source" / "request.msg", b"request")
+    assets = [_asset("form", FileAssetType.APPLICATION_FORM, source, source.name),
+              _asset("mail", FileAssetType.ATTACHMENT, email, email.name, role="email_source")]
+    if problem == "ambiguous_email":
+        other = _write(tmp_path / "source" / "other.msg", b"other")
+        assets.append(_asset("other", FileAssetType.ATTACHMENT, other, other.name, role="email_source"))
+    service = _service(tmp_path, assets)
+    if problem == "target_conflict":
+        target = next(item.target_path for item in service.preview("P1").items if item.source_asset_id == "mail")
+        _write(target, b"operator content")
+    with pytest.raises(ProjectRequestMaterialCollectionConflictError):
+        service.collect("P1")  # The existing direct API remains strict.
+    with pytest.raises(ProjectRequestMaterialCollectionConflictError):
+        service.collect("P1", allow_missing_sources=True)  # Recovery is mandatory.
+    preview = service.preview("P1", allow_missing_sources=True)
+    if problem == "missing_source":
+        assert preview.status == "partial"
+        assert any(item.status == "missing_source" for item in preview.items)
+    else:
+        assert preview.status in {"blocked", "conflict"}
+        with pytest.raises(ProjectRequestMaterialCollectionConflictError):
+            service.collect("P1", recovery=object(), allow_missing_sources=True)
+
+
 def test_preview_accepts_written_back_application_form_in_submitted_material(
     tmp_path: Path,
 ) -> None:

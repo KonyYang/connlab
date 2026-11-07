@@ -448,7 +448,7 @@ def test_preview_surfaces_missing_project_root_before_required_form_blockers(
         engine.dispose()
 
 
-def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_path, monkeypatch):
+def test_real_preflight_reports_missing_outputs_without_blocking_folder_creation(tmp_path, monkeypatch):
     settings = Settings(data_dir=tmp_path / "data", projects_dir=tmp_path / "projects", templates_dir=tmp_path / "templates",
                         database_path=tmp_path / "fixture.sqlite")
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
@@ -500,28 +500,31 @@ def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_pa
         stale = client.post(url + "/start", json={**body, "expected_context": "stale"})
         assert stale.status_code == 409
         started = client.post(url + "/start", json=body)
-        assert started.status_code == 409, started.text
-        assert "Application Form" in started.json()["detail"]
-        assert client.get(url).json() is None
+        assert started.status_code == 202, started.text
+        assert started.json()["status"] == "queued"
+        assert preview.json()["start_blockers"] == []
+        assert any(item["status"] == "blocked" for item in preview.json()["workspace_preview"]["file_preflight"]["items"])
+        assert client.get(url).json()["operation_id"] == started.json()["operation_id"]
         assert runner.context("P1") == before_context
         assert list(destination.iterdir()) == []
-        assert queued == []
+        assert len(queued) == 1
 
         # An existing folder can be linked by the separate identity-only route
-        # even while missing generation inputs still prohibit Start.
+        # independently of per-file readiness. The already queued operation is
+        # retained rather than silently replaced by a second Start.
         planned = preview.json()["workspace_preview"]
         Path(planned["source_book_path"]).mkdir(parents=True)
         Path(planned["official_project_folder_path"]).mkdir()
         link_preview = client.get(url + "/preview")
         assert link_preview.status_code == 200, link_preview.text
         assert link_preview.json()["workspace_preview"]["status"] == "adoptable"
-        assert link_preview.json()["start_blockers"]
+        assert link_preview.json()["start_blockers"] == []
         linked_start = client.post(url + "/start", json={
             "expected_context": link_preview.json()["expected_context"],
             "request_id": "link-is-not-generation",
         })
         assert linked_start.status_code == 409
-        assert client.get(url).json() is None
+        assert client.get(url).json()["operation_id"] == started.json()["operation_id"]
     finally:
         app.dependency_overrides.clear()
         runner.pool.shutdown()

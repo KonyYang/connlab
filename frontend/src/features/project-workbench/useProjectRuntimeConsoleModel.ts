@@ -37,6 +37,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onRestartOfficialWorkspace"
   | "officialWorkspaceProgressLabel"
   | "officialWorkspaceError"
+  | "officialWorkspaceIssues"
   | "officialWorkspaceResult"
   | "officialFolderCheckPreview"
   | "officialFolderCheckLoading"
@@ -143,6 +144,7 @@ export function selectProjectRuntimeConsoleModel(
     onRestartOfficialWorkspace: model.onRestartOfficialWorkspace,
     officialWorkspaceProgressLabel: model.officialWorkspaceProgressLabel,
     officialWorkspaceError: model.officialWorkspaceError,
+    officialWorkspaceIssues: model.officialWorkspaceIssues,
     officialWorkspaceResult: model.officialWorkspaceResult,
     officialFolderCheckPreview: model.officialFolderCheckPreview,
     officialFolderCheckLoading: model.officialFolderCheckLoading,

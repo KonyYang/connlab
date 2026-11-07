@@ -9,6 +9,8 @@ from typing import Protocol, Sequence
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.domain import FileAsset, Project
 
+MISSING_APPLICATION_SOURCE = "Selected Application Form source file is missing"
+
 
 class ProjectRequestMaterialCollectionError(ValueError):
     """Base error for request-material collection workflows."""

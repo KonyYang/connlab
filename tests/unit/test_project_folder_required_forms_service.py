@@ -96,6 +96,20 @@ def test_missing_fee_does_not_hide_independent_file_readiness(tmp_path: Path) ->
     assert _item(preview.items, "customer_feedback_form").action == "generate"
 
 
+def test_missing_fee_does_not_prevent_generating_selected_independent_files(tmp_path: Path) -> None:
+    from dataclasses import replace
+    service = _service(tmp_path, fee_result=_FeeResult(status="missing", latest_confirmed_fee=None))
+    command = replace(_ready_command(tmp_path), expected_confirmed_fee_id=None,
+                      expected_confirmed_fee_revision=None, expected_confirmed_fee_pricing_draft_edit_id=None,
+                      expected_targets=tuple(RequiredFormsGenerateTarget(key, _final_path(tmp_path, key))
+                                            for key in ("test_record", "test_status", "customer_feedback_form")))
+    result = service.generate(command)
+    assert result.status == "generated"
+    assert {item.key for item in result.items} == {"test_record", "test_status", "customer_feedback_form"}
+    assert all(item.target_path.is_file() for item in result.items)
+    assert not _final_path(tmp_path, "fee_form").exists()
+
+
 def test_fee_changes_do_not_invalidate_independent_file_signatures(tmp_path: Path) -> None:
     first = _service(tmp_path).preview("P1")
     changed = _FeeVersion(revision=2)

@@ -30,6 +30,8 @@ class GenerationResponse(BaseModel):
     completed_steps: list[str]
     message: str | None
     can_restart: bool = False
+    outcome: Literal["complete", "partial"] | None = None
+    issues: list[dict[str, str]] = Field(default_factory=list)
 
 
 def _call(action):

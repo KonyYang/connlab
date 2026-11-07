@@ -23,6 +23,19 @@ import { AppShell } from "../../components/layout/AppShell";
 import { ProjectWorkbenchLayout } from "./ProjectWorkbenchLayout";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
+it("shows retained successful outputs and individual generation failures without a recovery error", () => {
+  renderWorkbench({ officialWorkspaceIssues: [
+    { key: "ir_dwv_record", label: "IR&DWV blank record", message: "IR/DWV template is unavailable." },
+    { key: "test_record", label: "Test Record", message: "Word could not prepare this file." },
+  ] });
+  const alert = screen.getByRole("alert");
+  expect(within(alert).getByText("Project folder created; some files were not generated.")).toBeTruthy();
+  expect(within(alert).getByText("IR&DWV blank record:")).toBeTruthy();
+  expect(within(alert).getByText("Test Record:")).toBeTruthy();
+  expect(within(alert).getByText(/Other files have been kept/)).toBeTruthy();
+  expect(within(alert).queryByText(/After resolving the issue/)).toBeNull();
+});
+
 vi.mock("./ProjectFolderCreationPanel", () => ({
   ProjectFolderCreationPanel: () => <section>Folder setup panel</section>,
 }));
