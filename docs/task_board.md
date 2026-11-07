@@ -374,7 +374,81 @@
       "closed_at": "2026-11-07T04:14:15.094568Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REPORT_DELIVERY_CONTROLLED_SAVE_20261107": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
+      "branch": "codex/report-delivery-save-20261107",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_DELIVERY_CONTROLLED_SAVE_20261107",
+        "summary": "Report batch 6 part 1: exact-version delivery checks and controlled Internal/Customer save through existing History protections",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Implement batch6 part1 in existing Report Workspace: server-verified completeness/confidentiality/visual checks, exact Internal-Customer pairing and evidence invalidation, explicit controlled save through existing project-folder/History protection with bounded durable recovery and idempotency. Isolated databases and material copies only; real reports/templates/project materials read-only during implementation/verification. No release packaging/second-machine acceptance, no automatic formal issuance, no push. User authorizes autonomous acceptance and local completed close.",
+        "scope_paths": [
+          "backend/domain/report_authoring.py",
+          "backend/application/report_authoring/service.py",
+          "backend/application/report_authoring/document_review.py",
+          "backend/application/report_authoring/delivery.py",
+          "backend/application/report_authoring/delivery_workspace.py",
+          "backend/infrastructure/storage/repositories/report_authoring.py",
+          "backend/infrastructure/files/report_publication_gateway.py",
+          "backend/infrastructure/files/report_delivery_receipt.py",
+          "backend/infrastructure/files/report_delivery_workspace.py",
+          "backend/infrastructure/files/report_draft_workspace.py",
+          "backend/api/dependencies.py",
+          "backend/api/routes_report_authoring.py",
+          "backend/api/report_authoring_schemas.py",
+          "backend/api/project_folder_write_guard.py",
+          "backend/api/routes_report_workspace.py",
+          "backend/application/current_report_update_service.py",
+          "backend/application/official_project_workspace_service.py",
+          "frontend/src/api/reportAuthoring.ts",
+          "frontend/src/api/reportAuthoringDelivery.ts",
+          "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+          "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
+          "frontend/src/features/report-workspace/ReportCustomerCopy.tsx",
+          "frontend/src/features/report-workspace/ReportVisualPreview.tsx",
+          "frontend/src/features/report-workspace/ReportDelivery.tsx",
+          "frontend/src/features/report-workspace/reportAuthoringPanel.css",
+          "frontend/src/features/report-workspace/reportCustomerCopy.css",
+          "frontend/src/features/report-workspace/ReportDelivery.test.tsx",
+          "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+          "frontend/src/features/report-workspace/ReportVisualPreview.test.tsx",
+          "frontend/src/features/report-workspace/ReportAuthoringPanel.test.tsx",
+          "frontend/src/features/report-workspace/ReportAuthoringFeatures.test.tsx",
+          "tests/unit/report_authoring/test_delivery.py",
+          "tests/unit/report_authoring/test_delivery_workspace.py",
+          "tests/unit/report_authoring/test_document_review.py",
+          "tests/unit/report_authoring/test_report_state.py",
+          "tests/unit/report_authoring/test_visual_preview.py",
+          "tests/unit/test_report_delivery_receipt.py",
+          "tests/unit/test_report_publication_gateway.py",
+          "tests/unit/test_current_report_update_service.py",
+          "tests/unit/test_report_authoring_schema.py",
+          "tests/integration/test_report_delivery_api.py",
+          "tests/integration/test_report_document_review_api.py",
+          "tests/integration/test_report_authoring_api.py",
+          "tests/integration/test_report_working_copy_api.py",
+          "tests/integration/test_report_workspace_api.py",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/operational/report_automation_plan_20261107.md",
+          "docs/operational/report_delivery_controlled_save_20261107.md"
+        ],
+        "risk_reasons": [
+          "Controlled replacement of authoritative project report files and durable paired save/recovery require independent review and QA."
+        ],
+        "activation_head": "6ed116e9fad7b4bc87b9fc1bf2d442d98260bbe5",
+        "started_at": "2026-11-07T05:33:10.499892Z",
+        "updated_at": "2026-11-07T05:33:10.499892Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
