@@ -407,6 +407,9 @@
           "backend/application/project_folder_generation_outcome.py",
           "backend/application/project_folder_generation_service.py",
           "backend/application/project_folder_required_forms_service.py",
+          "backend/application/project_request_material_collection_service.py",
+          "backend/application/project_request_material_collection_types.py",
+          "backend/infrastructure/files/recoverable_output_publisher.py",
           "docs/PROJECT_CONTEXT.md",
           "frontend/src/api/client.ts",
           "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
@@ -415,14 +418,15 @@
           "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
           "tests/integration/test_project_folder_generation_complete_chain.py",
           "tests/integration/test_project_folder_generation_recovery.py",
-          "tests/unit/test_project_folder_required_forms_service.py"
+          "tests/unit/test_project_folder_required_forms_service.py",
+          "tests/unit/test_project_request_material_collection_service.py"
         ],
         "risk_reasons": [
           "Changes external-file generation and durable partial/recovery semantics; existing files and confirmed authorities must remain protected."
         ],
         "activation_head": "19e8073bff43737bf8955ca6cac84f26e4f88430",
         "started_at": "2026-11-07T11:52:04.329246Z",
-        "updated_at": "2026-11-07T12:22:40.762837Z",
+        "updated_at": "2026-11-07T12:32:58.667445Z",
         "checkpoint": null,
         "report": null
       }
