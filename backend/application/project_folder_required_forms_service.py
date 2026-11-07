@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.application.project_folder_generation_outcome import ProjectFolderOutputUnavailable
+
 from dataclasses import dataclass
 from hashlib import sha256
 import os
@@ -150,7 +152,7 @@ class RequiredFormsStagingGenerator(Protocol):
         project_id: str,
         key: str,
         target_name: str,
-        basic_information: ConfirmedBasicInformationSnapshot,
+        basic_information: ConfirmedBasicInformationSnapshot | None,
         confirmed_fee: object,
     ) -> Path:
         """Generate one form into ConnLab-controlled staging."""
@@ -265,12 +267,12 @@ class GenerateRequiredFormsCommand:
     expected_official_project_folder_path: Path
     expected_confirmed_matrix_id: str
     expected_confirmed_revision: int
-    expected_confirmed_fee_id: str
-    expected_confirmed_fee_revision: int
-    expected_confirmed_fee_pricing_draft_edit_id: str
-    expected_confirmed_basic_information_version: int
-    expected_confirmed_basic_information_source_signature_hash: str
-    expected_customer_feedback_template_path: Path
+    expected_confirmed_fee_id: str | None
+    expected_confirmed_fee_revision: int | None
+    expected_confirmed_fee_pricing_draft_edit_id: str | None
+    expected_confirmed_basic_information_version: int | None
+    expected_confirmed_basic_information_source_signature_hash: str | None
+    expected_customer_feedback_template_path: Path | None
     expected_targets: tuple[RequiredFormsGenerateTarget, ...]
 
 
@@ -353,7 +355,15 @@ class ProjectFolderRequiredFormsService:
             return _blocked_preview(project_id, "Create the Official project folder first.")
         folder_check = self._folder_check.preview(project_id) if planned_workspace is None and not rebuilding else None
         if folder_check is not None and getattr(folder_check, "status", "blocked") in {"blocked", "conflict"}:
-            return _blocked_preview(project_id, "Resolve Project Folder check blockers first.")
+            folders = getattr(folder_check, "required_folders", ())
+            file_conflicts = {item.key for item in getattr(folder_check, "required_files", ())
+                              if item.status == "conflict"}
+            # Archived request materials are not inputs to these independently
+            # generated forms. Keep directory and other file safety gates intact.
+            materials_only = (folders and all(item.status == "ready" for item in folders)
+                              and file_conflicts and file_conflicts <= {"request_material", "submitted_material"})
+            if not materials_only:
+                return _blocked_preview(project_id, "Resolve Project Folder check blockers first.")
 
         matrix = self._matrices.get_active_snapshot(project_id)
         try:
@@ -517,16 +527,21 @@ class ProjectFolderRequiredFormsService:
         _append_timing(timings, "required_forms.preview", preview_start)
         validate_start = perf_counter()
         self._validate_context(command, preview)
-        confirmed_fee = self._require_confirmed_fee(command.project_id)
-        self._validate_confirmed_fee_context(command, confirmed_fee)
-        basic_information = self._require_basic_information(command.project_id)
-        self._validate_basic_information_context(command, basic_information)
+        expected_target_keys = {item.key for item in command.expected_targets}
+        confirmed_fee = None
+        if "fee_form" in expected_target_keys:
+            confirmed_fee = self._require_confirmed_fee(command.project_id)
+            self._validate_confirmed_fee_context(command, confirmed_fee)
+        basic_information = self._basic_information.get_latest_confirmed(command.project_id)
+        if expected_target_keys & {"test_record", "fee_form", "customer_feedback_form"}:
+            basic_information = self._require_basic_information(command.project_id)
+            self._validate_basic_information_context(command, basic_information)
         _append_timing(timings, "required_forms.validate_context", validate_start)
-        if preview.status == "blocked":
+        selected_items = [item for item in preview.items if item.key in expected_target_keys]
+        if not selected_items or any(item.status == "blocked" for item in selected_items):
             raise RequiredFormsConflictError(
                 preview.blockers[0] if preview.blockers else "Required forms are blocked."
             )
-        expected_target_keys = {item.key for item in command.expected_targets}
         generated: list[RequiredFormsGenerateItem] = []
         warnings: list[str] = []
         final_placement_success_count = 0
@@ -588,14 +603,21 @@ class ProjectFolderRequiredFormsService:
                 ))
                 continue
             try:
-                source = self._source_for_item(
-                    command=command,
-                    item=item,
-                    basic_information=basic_information,
-                    confirmed_fee=confirmed_fee,
-                    source_context=item.source_context_signature,
-                    timings=timings,
-                )
+                try:
+                    source = self._source_for_item(
+                        command=command,
+                        item=item,
+                        basic_information=basic_information,
+                        confirmed_fee=confirmed_fee,
+                        source_context=item.source_context_signature,
+                        timings=timings,
+                    )
+                except Exception as exc:
+                    if recovery is not None:
+                        # Only preparing the source is eligible for partial completion.
+                        # Publication checks below remain fatal, even before an effect exists.
+                        raise ProjectFolderOutputUnavailable(item.key, item.label, str(exc)) from exc
+                    raise
                 place_start = perf_counter()
                 if recovery is not None:
                     summary = self._outputs.get_status_summary(command.project_id)
@@ -633,6 +655,8 @@ class ProjectFolderRequiredFormsService:
                     timings=_finish_timings(timings, total_start),
                 )
             except OSError as exc:
+                if recovery is not None:
+                    raise
                 generated.append(_failed_item(item, "failed", str(exc)))
                 return RequiredFormsGenerateResult(
                     project_id=command.project_id,
@@ -887,7 +911,7 @@ class ProjectFolderRequiredFormsService:
         *,
         command: GenerateRequiredFormsCommand,
         item: RequiredFormPreviewItem,
-        basic_information: ConfirmedBasicInformationSnapshot,
+        basic_information: ConfirmedBasicInformationSnapshot | None,
         confirmed_fee: object,
         source_context: str | None,
         timings: list[RequiredFormsTiming],

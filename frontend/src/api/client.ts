@@ -6,6 +6,8 @@ export type ProjectFolderGeneration = {
   completed_steps: string[];
   message: string | null;
   can_restart?: boolean;
+  outcome?: "complete" | "partial" | null;
+  issues?: { key: string; label: string; message: string }[];
 };
 
 export function getProjectFolderGeneration(projectId: string): Promise<ProjectFolderGeneration | null> {

@@ -1123,7 +1123,7 @@ def test_runner_revalidates_real_inputs_around_readonly_cleanup(tmp_path, monkey
 
 
 @pytest.mark.parametrize("missing_attachment", [False, True])
-def test_materials_step_commits_warning_only_collection_but_rejects_unresolved_sources(tmp_path, missing_attachment):
+def test_materials_step_keeps_available_sources_and_reports_missing_attachments(tmp_path, missing_attachment):
     settings = _settings(tmp_path)
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
     Base.metadata.create_all(engine)
@@ -1148,19 +1148,18 @@ def test_materials_step_commits_warning_only_collection_but_rejects_unresolved_s
     runner.context = lambda _: "fixture authority"
     state = runner.journal.create("P1", None, "fixture authority")
     try:
+        runner.run_step(state, "materials")
+        with sessions() as session:
+            collection = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project("P1")
+            assert collection.collection_id == state["operation_id"]
+            assert "Request email missing" in collection.warnings
+        target = official / "Submitted Material" / source.name
+        before = target.stat().st_mtime_ns
+        runner.run_step(state, "materials")
+        assert target.stat().st_mtime_ns == before
+        assert bool(state.get("issues")) is missing_attachment
         if missing_attachment:
-            with pytest.raises(ValueError, match="material|source"):
-                runner.run_step(state, "materials")
-        else:
-            runner.run_step(state, "materials")
-            with sessions() as session:
-                collection = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project("P1")
-                assert collection.collection_id == state["operation_id"]
-                assert "Request email missing" in collection.warnings
-            target = official / "Submitted Material" / source.name
-            before = target.stat().st_mtime_ns
-            runner.run_step(state, "materials")
-            assert target.stat().st_mtime_ns == before
+            assert state["issues"][0]["label"] == "missing.pdf"
     finally:
         runner.pool.shutdown()
         engine.dispose()

@@ -11,6 +11,9 @@ from backend.application.project_folder_generation_service import (
     ProjectFolderGenerationService,
     basic_information_generation_blocker,
 )
+from backend.application.project_folder_generation_outcome import (
+    ProjectFolderOutputUnavailable, record_output_issue,
+)
 from backend.application.project_folder_required_forms_service import GenerateRequiredFormsCommand, RequiredFormsGenerateTarget
 from backend.application.project_output_record_service import RegisterProjectOutputCommand
 from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
@@ -211,7 +214,13 @@ class ProjectFolderGenerationRunner:
                 "preview": preview,
                 "targets": target_facts,
                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None,
-                "contact_record_targets": contact_record_targets,
+                # Diagnostic text is not a new publication approval. Keep v4 tokens
+                # recoverable for journals created before per-output reporting.
+                "contact_record_targets": {
+                    kind: {key: value for key, value in item.items()
+                           if key not in {"message", "safety_blocker"}}
+                    for kind, item in contact_record_targets.items()
+                },
             }
             legacy_payload = {key: value for key, value in token_payload.items()
                               if key != "contact_record_targets"}
@@ -220,7 +229,7 @@ class ProjectFolderGenerationRunner:
             # v3 reviewed LLCR/CR only. Its token must remain recoverable without
             # adding an electrical target to the persisted publication approval.
             contact_token = fingerprint({**token_payload, "intent": intent,
-                "contact_record_targets": {kind: item for kind, item in contact_record_targets.items()
+                "contact_record_targets": {kind: item for kind, item in token_payload["contact_record_targets"].items()
                                            if kind in {"llcr", "cr"}}})
             if (rebuilding and saved_operation is not None
                     and saved_operation["status"] != "completed"
@@ -273,14 +282,13 @@ class ProjectFolderGenerationRunner:
                                 item.update(status="blocked", action="blocked", message=detail)
             file_blockers = [
                 f"{item['label']}: {item['message']}"
-                for item in file_preflight["items"] if item["status"] == "blocked"
+                for item in file_preflight["items"] if item.get("safety_blocker")
             ]
             review_conflicts = [
                 f"{item['label']}: {item['message']}"
                 for item in file_preflight["items"] if item["status"] == "conflict"
             ]
-            if file_blockers and not start_blockers:
-                start_blockers.append("; ".join(file_blockers))
+            start_blockers.extend(file_blockers)
             # Generation inputs can be missing while a separate, identity-only
             # Link existing folder action remains valid for this workspace.
             if start_blockers and preview.status != "adoptable":
@@ -367,19 +375,46 @@ class ProjectFolderGenerationRunner:
                 elif name == "materials":
                     latest = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project(project_id)
                     if latest is None or latest.collection_id != state["operation_id"]:
-                        result = deps.get_project_request_material_collection_service(session).collect(
-                            project_id, recovery=publisher, collection_id=state["operation_id"])
+                        materials = deps.get_project_request_material_collection_service(session)
+                        preview = materials.preview(project_id)
+                        if preview.status in {"blocked", "conflict"}:
+                            verify_context()
+                            record_output_issue(state, "materials", "Request materials",
+                                "; ".join(preview.blockers) or "Some request material targets need review.")
+                            self.journal.save(state)
+                            session.commit()
+                            return
+                        result = materials.collect(project_id, recovery=publisher, collection_id=state["operation_id"])
                         # A missing optional request email is a retained warning, not a failed copy.
                         # Check concrete placement outcomes rather than the warning-bearing "partial" label.
                         if (result.blockers or result.missing_source_paths or result.conflict_paths or result.skipped_paths
                                 or any(item.action != "already_present" for item in result.items)):
-                            raise ValueError(result.blockers[0] if result.blockers else
-                                             "Request material collection has missing, conflicting, or unresolved source files. Review them before continuing.")
+                            verify_context()
+                            for item in result.items:
+                                if item.action != "already_present":
+                                    record_output_issue(state, "materials", item.source_path.name, item.message)
+                            if result.blockers:
+                                record_output_issue(state, "materials", "Request materials", "; ".join(result.blockers))
                 elif name == "check":
                     result = deps.get_official_project_folder_check_service(session).preview(project_id)
                     # Required-form files are expected to be absent at this stage; its own preview owns readiness.
                 elif name == "application_form":
-                    deps.get_project_application_form_write_back_service(session, self.settings).write_back(project_id, recovery=publisher)
+                    application = deps.get_project_application_form_write_back_service(session, self.settings)
+                    materials = deps.get_project_request_material_collection_service(session).preview(project_id)
+                    missing_application = next((item for item in materials.items
+                        if (item.source_asset_type == "application_form" or item.source_role == "selected_application_form")
+                        and item.status in {"missing", "missing_source"}
+                        and not os.path.lexists(item.target_path)), None)
+                    if missing_application is not None:
+                        verify_context()
+                        record_output_issue(state, "application_form", "Application Form",
+                            f"The selected Application Form was not collected: {missing_application.source_name}.")
+                    else:
+                        try:
+                            application.write_back(project_id, recovery=publisher)
+                        except ProjectFolderOutputUnavailable as exc:
+                            verify_context()
+                            record_output_issue(state, exc.key, exc.label, exc.reason)
                 elif name == "llcr_cr_records":
                     self._generate_contact_records(
                         state, session, workspace_record, outputs, contact_publisher,
@@ -394,11 +429,13 @@ class ProjectFolderGenerationRunner:
                     )
                     service = deps.get_project_folder_required_forms_service(session, operation_settings)
                     preview = service.preview(project_id)
-                    self._require_result(preview)
                     selected = next((item for item in preview.items if item.key == name), None)
-                    if selected is None or selected.action == "conflict":
+                    if selected is None:
                         raise ValueError("Required form target needs review before generation.")
-                    if selected.action != "skip":
+                    if selected.status == "blocked" or selected.action == "conflict":
+                        verify_context()
+                        record_output_issue(state, name, selected.label, selected.message)
+                    elif selected.action != "skip":
                         command = GenerateRequiredFormsCommand(
                             project_id=project_id,
                             expected_official_project_folder_path=preview.official_project_folder_path,
@@ -412,12 +449,17 @@ class ProjectFolderGenerationRunner:
                             expected_customer_feedback_template_path=preview.customer_feedback_template_path,
                             expected_targets=(RequiredFormsGenerateTarget(name, selected.target_path),),
                         )
-                        self._require_result(service.generate(command, recovery=publisher))
+                        try:
+                            self._require_result(service.generate(command, recovery=publisher))
+                        except ProjectFolderOutputUnavailable as exc:
+                            verify_context()
+                            record_output_issue(state, exc.key, exc.label, exc.reason)
                 # Any publication/registration gap is reconciled before committing this step.
                 publisher.recover_files(lambda payload: self._register_once(outputs, payload))
                 if contact_publisher is not None:
                     contact_publisher.recover(lambda payload: self._register_once(outputs, payload))
                 session.commit()
+                self.journal.save(state)
             except BaseException:
                 session.rollback()
                 raise
@@ -439,8 +481,11 @@ class ProjectFolderGenerationRunner:
             item = approved.get(kind)
             if item is None:
                 continue
-            if item["action"] == "skip":
-                warning = item.get("warning") or f"{kind.upper()} blank form skipped: confirm explicit Test points first."
+            if item["action"] in {"skip", "blocked"} and not item.get("safety_blocker"):
+                warning = item.get("warning") or item.get("message") or f"{kind.upper()} blank form was not generated."
+                reason = item.get("message") or warning
+                record_output_issue(state, f"{kind}_record",
+                                    f"{'IR&DWV' if kind == 'ir_dwv' else kind.upper()} blank record", reason)
                 if warning not in state.setdefault("warnings", []):
                     state["warnings"].append(warning)
                     self.journal.save(state)
@@ -464,9 +509,19 @@ class ProjectFolderGenerationRunner:
             if os.path.lexists(source):
                 raise ValueError("Contact record stage path unexpectedly exists.")
             writer = generation or LlcrCrSpecializedRecordWorkbookGateway()
-            writer.write(
-                output_path=source, projection=projection,
-            )
+            try:
+                writer.write(output_path=source, projection=projection)
+            except Exception as exc:
+                # This writer owns only its unique staging file. Once publish starts,
+                # every error instead remains subject to the durable recovery rules.
+                if self.context(state["project_id"]) != state["context"]:
+                    raise ValueError("Generation inputs changed during record preparation.") from exc
+                RecoverableWorkspacePublisher(self.journal, state).verify_directories(workspace)
+                publisher.verify_completed()
+                record_output_issue(state, f"{kind}_record",
+                                    f"{'IR&DWV' if kind == 'ir_dwv' else kind.upper()} blank record", str(exc))
+                self.journal.save(state)
+                continue
             source_parent_identity = file_identity(stage_root)
             source_identity = file_identity(source)
             source_sha = file_hash(source)

@@ -150,10 +150,13 @@ class ProjectFolderGenerationService:
                     with stage("folder_finalization"):
                         self.finalize(state)
                     warnings = state.get("warnings", ())
-                    message = "Project folder generation completed."
+                    issues = state.get("issues", ())
+                    message = ("Project folder created; some files were not generated."
+                               if issues else "Project folder generation completed.")
                     if warnings:
                         message += " " + " ".join(warnings)
-                    state.update(status="completed", finalization_pending=False, message=message)
+                    state.update(status="completed", outcome="partial" if issues else "complete",
+                                 finalization_pending=False, message=message)
                     self.journal.save(state)
                 except Exception as exc:
                     record_failure(exc)
@@ -185,6 +188,7 @@ class ProjectFolderGenerationService:
     @staticmethod
     def _view(state):
         return {**{key: state.get(key) for key in ("project_id", "operation_id", "status", "step", "completed_steps", "message")},
+                "issues": state.get("issues", []), "outcome": state.get("outcome"),
                 "can_restart": ProjectFolderGenerationService._can_replace(state)}
 
     @staticmethod

@@ -469,8 +469,18 @@ Do not use a dated snapshot as a substitute for the code.
   confirmed Matrix steps. LLCR/CR require explicit point IDs; IR/DWV require explicit measurement
   pairs and use the same configured template, sample quantities, rounds, conditions and requirements
   as Matrix Editor. Measured results remain blank. Missing point coverage or measurement pairs alone
-  skips the corresponding optional form with a warning; other projection, template or path failures
-  block publication. Projects without electrical steps do not require an IR/DWV template.
+  skips the corresponding optional form with a reported issue. Missing templates, unusable individual
+  projections and failures while preparing a new source artifact no longer block unrelated files.
+  Required Forms validates the selected file's own authority dependencies: missing Fee blocks Fee Form,
+  not Test Record, Test Status or Customer Feedback. Available request materials are retained even
+  when another attachment is missing. Each completed attempt persists an `issues` list and a partial
+  outcome, and Workbench summarizes the files that need manual completion or a later Create folder
+  attempt. An ordinary successful attempt remains quiet. Projects without electrical steps do not
+  require an IR/DWV template. Project identity, lifecycle, directory/path safety, changed inputs,
+  final-file publication, registration recovery and unfinished cleanup still stop the operation;
+  they are never treated as a harmless failed source artifact. Repeating Create folder retains the
+  existing explicit Backup and Rebuild review and History protections; partial completion does not
+  grant overwrite or deletion authority. Old journals without outcome/issue fields remain readable.
   The retained in-place update API binds an existing target's hash and filesystem identity. In that
   explicitly approved compatibility flow, an unchanged same-name file is moved without replacement to the local
   `History/Test results` before the new blank form is published without overwriting. Interrupted

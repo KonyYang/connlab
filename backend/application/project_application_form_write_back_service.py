@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.application.project_folder_generation_outcome import ProjectFolderOutputUnavailable
+
 import shutil
 from tempfile import TemporaryDirectory
 from dataclasses import dataclass
@@ -313,9 +315,14 @@ class ProjectApplicationFormWriteBackService:
                 staged = Path(directory) / ("form" + target.suffix)
                 prior = sha256_file(target)
                 shutil.copy2(target, staged)
-                write_result = self._office.write_word_application_form_fields_with_owned_session(
-                    staged, fields,
-                )
+                try:
+                    write_result = self._office.write_word_application_form_fields_with_owned_session(
+                        staged, fields,
+                    )
+                except Exception as exc:
+                    if recovery is not None:
+                        raise ProjectFolderOutputUnavailable("application_form", "Application Form", str(exc)) from exc
+                    raise
                 self._publish_staged(project_id, staged, target, summary, context_signature, recovery, prior)
         except OfficeAutomationUnavailable as exc:
             raise ProjectApplicationFormWriteBackError(str(exc)) from exc

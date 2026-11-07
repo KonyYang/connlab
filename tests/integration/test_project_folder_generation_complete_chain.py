@@ -20,7 +20,7 @@ def _ok(response):
     return response.json()
 
 
-def seed_create_folder_ir_dwv_project(root, monkeypatch, *, pairs="Odd&Even，P1&P2", samples="5+5(d)"):
+def seed_create_folder_ir_dwv_project(root, monkeypatch, *, pairs="Odd&Even，P1&P2", samples="5+5(d)", include_contact=False):
     """Complete isolated Create folder fixture, reusable for browser/recovery checks."""
     fixture = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_session_api.py")))
     electrical = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_ir_dwv_record_generation_api.py")))
@@ -37,9 +37,16 @@ def seed_create_folder_ir_dwv_project(root, monkeypatch, *, pairs="Odd&Even，P1
         "post_test_buffer_days": "0", "planned_test_start_date": "2026-10-01",
         "planned_test_complete_date": "2026-10-02", "estimated_completion_date": "2026-10-02",
     }
+    if include_contact:
+        payload["point_profile"]["categories"] = [{"prefix": "HP", "point_expression": "1,2", "cr_selected": True}]
+        for kind, token in (("LLCR", "3"), ("Contact Resistance, Specified Current", "4")):
+            row_id = "contact-" + token
+            payload["rows"].append({**payload["rows"][0], "draft_row_id": row_id,
+                "source_row_snapshot_id": None, "test_item": kind, "condition": "", "requirement": ""})
+            payload["cells"].append({"draft_row_id": row_id, "draft_group_id": payload["groups"][0]["draft_group_id"], "cell_value": token})
     _ok(client.put("/api/projects/P1/matrix-editor/session/draft", json=payload))
     saved = _ok(client.get("/api/projects/P1/matrix-editor/session"))
-    _ok(client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, "confirmed_by": "operator",
+    _ok(client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, **saved["editor_draft"], "confirmed_by": "operator",
         "expected_editor_draft_id": saved["editor_draft_id"], "expected_saved_payload_signature": saved["saved_payload_signature"]}))
     source = root / "application.docx"
     source.write_bytes(b"isolated submitted application")
@@ -162,6 +169,151 @@ def test_create_folder_completes_with_warning_when_only_explicit_ir_dwv_pairs_ar
             workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
             assert len(deps.get_project_output_record_service(session).list_records("P1")) == 5
         assert not list((workspace.official_folder_path / "Test results").glob("*IR&DWV Record.xlsx"))
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+@pytest.mark.parametrize("failure", ["ir_template", "ir_template_and_pairs", "test_record_writer", "application_writer", "missing_attachment", "missing_application"])
+def test_create_folder_retains_independent_outputs_and_reports_failed_artifact(tmp_path, monkeypatch, failure):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch, pairs="" if failure == "ir_template_and_pairs" else "P1&P2")
+    if failure.startswith("ir_template"):
+        fixture.template.unlink()
+        expected_keys, expected_count = ["ir_dwv_record"], 5
+    elif failure == "test_record_writer":
+        def unavailable(_self, **_kwargs):
+            raise RuntimeError("Word could not prepare the Test Record")
+        monkeypatch.setattr(deps.TestRecordDocumentGateway, "generate_from_confirmed_matrix", unavailable)
+        expected_keys, expected_count = ["test_record"], 5
+    elif failure == "application_writer":
+        def unavailable(_self, _path, _fields):
+            raise RuntimeError("Word could not prepare the Application Form")
+        monkeypatch.setattr(OfficeFacade, "write_word_application_form_fields_with_owned_session", unavailable)
+        expected_keys, expected_count = ["application_form"], 5
+    elif failure == "missing_application":
+        fixture.source.unlink()
+        expected_keys, expected_count = ["materials", "application_form"], 5
+    else:
+        with fixture.sessions() as session:
+            deps.FileAssetRepository(session).create(FileAsset("missing", "P1", FileAssetType.ATTACHMENT,
+                tmp_path / "missing-spec.pdf", original_name="missing-spec.pdf"))
+            session.commit()
+        expected_keys, expected_count = ["materials"], 6
+    try:
+        url = "/api/projects/P1/project-folder/generation"
+        preview = _ok(fixture.client.get(url + "/preview"))
+        assert preview["start_blockers"] == []
+        _ok(fixture.client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "partial"}))
+        fixture.callbacks.pop()()
+        result = _ok(fixture.client.get(url))
+        assert result["status"] == "completed", result
+        assert result["outcome"] == "partial"
+        assert [item["key"] for item in result["issues"]] == expected_keys
+        with fixture.sessions() as session:
+            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+            records = deps.get_project_output_record_service(session).list_records("P1")
+        assert workspace.official_folder_path.is_dir()
+        assert len(records) == expected_count
+        assert any(record.output_kind.value == "test_status" for record in records)
+        before = {str(record.output_path): (Path(record.output_path).read_bytes(), Path(record.output_path).stat().st_mtime_ns) for record in records}
+        assert _ok(fixture.client.post(url + "/resume", json={"operation_id": result["operation_id"]}))["issues"] == result["issues"]
+        assert not fixture.callbacks
+        assert before == {path: (Path(path).read_bytes(), Path(path).stat().st_mtime_ns) for path in before}
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+@pytest.mark.parametrize("failed_kind", ["llcr", "cr"])
+def test_contact_source_failure_keeps_other_contact_workbooks(tmp_path, monkeypatch, failed_kind):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch, include_contact=True, samples="5")
+    from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import LlcrCrSpecializedRecordWorkbookGateway
+    write = LlcrCrSpecializedRecordWorkbookGateway.write
+    def prepare(self, *, output_path, projection):
+        if output_path.name.startswith(failed_kind + "-"):
+            raise RuntimeError("The selected workbook could not be prepared")
+        return write(self, output_path=output_path, projection=projection)
+    monkeypatch.setattr(LlcrCrSpecializedRecordWorkbookGateway, "write", prepare)
+    try:
+        url = "/api/projects/P1/project-folder/generation"
+        preview = _ok(fixture.client.get(url + "/preview"))
+        _ok(fixture.client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "contact-failure"}))
+        fixture.callbacks.pop()()
+        result = _ok(fixture.client.get(url))
+        assert result["status"] == "completed", result
+        assert [issue["key"] for issue in result["issues"]] == [failed_kind + "_record"]
+        with fixture.sessions() as session:
+            kinds = {record.output_kind.value for record in deps.get_project_output_record_service(session).list_records("P1")}
+        assert "ir_dwv_record_form" in kinds
+        assert ("cr_record_form" if failed_kind == "llcr" else "llcr_record_form") in kinds
+        assert failed_kind + "_record_form" not in kinds
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+def test_rebuild_still_blocks_material_sources_inside_replaced_folder(tmp_path, monkeypatch):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch)
+    try:
+        url = "/api/projects/P1/project-folder/generation"
+        preview = _ok(fixture.client.get(url + "/preview"))
+        official = Path(preview["workspace_preview"]["official_project_folder_path"])
+        official.mkdir(parents=True)
+        source = official / "only-copy.pdf"
+        source.write_bytes(b"original material must not move before source collection")
+        with fixture.sessions() as session:
+            deps.FileAssetRepository(session).create(FileAsset("inside", "P1", FileAssetType.ATTACHMENT,
+                source, original_name=source.name))
+            session.commit()
+        preview = _ok(fixture.client.get(url + "/preview?intent=backup_rebuild"))
+        assert any("independent source" in message.casefold() for message in preview["start_blockers"]), preview
+        response = fixture.client.post(url + "/start", json={"expected_context": preview["expected_context"],
+            "request_id": "unsafe-rebuild", "conflict_strategy": "backup_and_recreate"})
+        assert response.status_code == 409
+        assert not fixture.callbacks
+        assert source.read_bytes() == b"original material must not move before source collection"
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+@pytest.mark.parametrize("race", ["authority", "target"])
+def test_source_preparation_does_not_hide_context_or_publication_races(tmp_path, monkeypatch, race):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch)
+    write = deps.TestRecordDocumentGateway.generate_from_confirmed_matrix
+    replaced = []
+    def prepare(self, **kwargs):
+        if race == "authority":
+            fixture.template.write_bytes(fixture.template.read_bytes() + b"authority changed")
+            raise RuntimeError("Word failed while authority changed")
+        with fixture.sessions() as session:
+            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+            target = workspace.official_folder_path / "Submitted Material" / "DL-2026-10-IRDWV Test Record.docx"
+        target.write_bytes(b"operator-created file")
+        replaced.append(target)
+        return write(self, **kwargs)
+    monkeypatch.setattr(deps.TestRecordDocumentGateway, "generate_from_confirmed_matrix", prepare)
+    try:
+        url = "/api/projects/P1/project-folder/generation"
+        preview = _ok(fixture.client.get(url + "/preview"))
+        _ok(fixture.client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "race"}))
+        fixture.callbacks.pop()()
+        result = _ok(fixture.client.get(url))
+        assert result["status"] == "blocked", result
+        assert result["outcome"] is None
+        with fixture.sessions() as session:
+            kinds = {record.output_kind.value for record in deps.get_project_output_record_service(session).list_records("P1")}
+        assert "test_status" not in kinds and "ir_dwv_record_form" not in kinds
+        if replaced:
+            assert replaced[0].read_bytes() == b"operator-created file"
     finally:
         app.dependency_overrides.clear()
         fixture.client.close()
