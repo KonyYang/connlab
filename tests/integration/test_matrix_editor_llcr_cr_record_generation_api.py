@@ -254,7 +254,7 @@ def test_publication_route_holds_folder_lock_for_service_publication(tmp_path: P
 
     app.dependency_overrides[get_settings] = lambda: Settings(
         data_dir=data_dir, projects_dir=tmp_path / "projects",
-        templates_dir=tmp_path / "templates", database_path=tmp_path / "test.sqlite",
+        templates_dir=tmp_path / "templates", database_path=tmp_path / "fixture.sqlite",
     )
     app.dependency_overrides[get_session] = guarded_session
     app.dependency_overrides[get_matrix_editor_llcr_cr_record_publication_service] = lambda: _Publication()
