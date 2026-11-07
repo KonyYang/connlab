@@ -42,6 +42,9 @@ class WordReportPreview:
         def capture_owned(pid):
             # The gateway supplies only a newly created Word PID. A live process
             # handle binds that instance even if Windows later recycles its PID.
+            if pid is None:
+                close_owned()
+                return
             import win32api
             handle = win32api.OpenProcess(0x00100001, False, pid)
             with lock:
@@ -74,16 +77,22 @@ class WordReportPreview:
                     locations = [{'text': anchor, 'pages': [page['page'] for page in pages if anchor in normalize(page['text'])]}
                                  for anchor in dict.fromkeys(anchors)]
                     affected = sorted({number for location in locations for number in location['pages']})
-                    result.put({'content': payload, 'page_count': len(pages), 'pages': pages,
+                    response = {'content': payload, 'page_count': len(pages), 'pages': pages,
                         'affected_pages': affected or list(range(1, len(pages) + 1)), 'changed_locations': locations,
                         'affected_pages_reason': 'Changed text located in actual Word PDF; inspect these pages first and all pages for reflow.' if affected else 'Changed text could not be located reliably; review the full document.',
-                        'renderer': 'Microsoft Word', 'render_policy': 'isolated-read-only-macros-disabled-no-link-update'})
+                        'renderer': 'Microsoft Word', 'render_policy': 'isolated-read-only-macros-disabled-no-link-update'}
             except Exception as exc:
                 logger.exception('Isolated report Word preview failed')
-                result.put(exc)
+                response = exc
             finally:
-                close_owned()
-                _workers.release()
+                try:
+                    close_owned()
+                except Exception as exc:
+                    logger.exception('Owned Word preview handle cleanup failed')
+                    response = exc
+                finally:
+                    _workers.release()
+            result.put(response)
 
         Thread(target=work, name='connlab-word-preview', daemon=True).start()
         try:

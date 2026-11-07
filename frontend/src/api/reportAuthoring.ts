@@ -55,6 +55,7 @@ export const downloadReportArtifact = (url: string) => requestBlobResponse(url);
 
 export type ConfirmedPhotoAssignment = { slot_id: string; source_id: string; crop_mode: 'preserve' | 'centre_crop';
   scope?: 'step' | 'sample_overview' | 'project_context';
+  accept_context_change?: boolean;
   accept_slot_transform: boolean; group_id: string; row_id: string; step_token: string; sample_ids: string[];
   stage: string; reason: string; reuse_reason: string };
 export type ReportDocumentReviewData = {

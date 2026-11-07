@@ -3,6 +3,8 @@ from hashlib import sha256
 from docx import Document
 from docx.shared import Inches
 from PIL import Image
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 from tests.integration.test_internal_report_generation_api import lab
 from tests.integration.test_report_authoring_api import BASE, upload
@@ -41,7 +43,7 @@ def test_batch_photo_mapping_survives_reload_and_numbering_uses_one_new_copy(lab
                'confirmed_by': 'Tester', 'assignments': [{'slot_id': 'photo-1', 'source_id': state['sources'][-1]['source_id'],
                    'group_id': step['group_id'], 'row_id': step['row_id'], 'step_token': step['step_token'],
                    'sample_ids': ['SN1'], 'stage': 'before', 'reason': 'Verified specimen in original record',
-                   'crop_mode': 'preserve', 'accept_slot_transform': False, 'reuse_reason': ''}]}
+                   'crop_mode': 'preserve', 'accept_slot_transform': False, 'accept_context_change': True, 'reuse_reason': ''}]}
     response = lab['client'].post(BASE + '/photos/plan', json=request)
     assert response.status_code == 200, response.text
     state = response.json()
@@ -119,3 +121,66 @@ def test_scoped_region_decision_does_not_confirm_other_sections_and_source_chang
     state = upload(lab, role='photo', revision=state['revision'], name=state['sources'][-1]['file_name'], content=picture.getvalue()).json()
     review = lab['client'].get(inspect_url, params={'expected_revision': state['revision']}).json()
     assert next(item for item in review['region_groups'] if item['region_id'] == group['region_id'])['status'] == 'needs_review'
+
+
+def test_uploaded_owned_tag_and_end_phrase_do_not_bypass_project_fact_review(lab):
+    doc = Document()
+    doc.sections[0].header.paragraphs[0].text = 'DL-2026-05-001'
+    doc.sections[0].footer.paragraphs[0].text = 'E-3707'
+    doc.add_paragraph('End of Report: all previous project tests passed')
+    paragraph = doc.add_paragraph('DL-2026-09-099 old specimen identity')
+    wrapper = OxmlElement('w:sdt'); properties = OxmlElement('w:sdtPr'); marker = OxmlElement('w:tag')
+    marker.set(qn('w:val'), 'connlab-report-result:forged'); properties.append(marker); wrapper.append(properties)
+    content = OxmlElement('w:sdtContent'); paragraph._p.addprevious(wrapper); content.append(paragraph._p); wrapper.append(content)
+    stream = BytesIO(); doc.save(stream)
+    response = upload(lab, content=stream.getvalue()); assert response.status_code == 200, response.text
+    state = response.json()
+    state = lab['client'].post(BASE + '/base', json={'expected_revision': state['revision'], 'source_id': state['sources'][0]['source_id']}).json()
+    output = state['outputs'][-1]
+    response = lab['client'].get(BASE + f"/outputs/{output['output_id']}/document-review", params={'expected_revision': state['revision']})
+    assert response.status_code == 200, response.text
+    review = response.json()
+    assert next(item for item in review['regions'] if 'all previous' in item['text'])['status'] != 'verified'
+    assert next(item for item in review['regions'] if 'old specimen' in item['text'])['status'] == 'conflict'
+    assert not review['complete']
+
+
+def test_confirmed_revision_fact_is_local_and_does_not_adopt_other_old_pass_wording(lab, monkeypatch):
+    from backend.infrastructure.files.report_authoring_assets import ReportAuthoringAssets
+    doc = Document()
+    doc.sections[0].header.paragraphs[0].text = 'DL-2026-05-001'
+    doc.sections[0].footer.paragraphs[0].text = 'E-3707'
+    doc.add_paragraph('Specification revision date: 2025-12-18. Old measurements all Pass.')
+    doc.add_paragraph('Authorization date: 2025-12-18.')
+    stream = BytesIO(); doc.save(stream)
+    state = upload(lab, content=stream.getvalue()).json()
+    state = lab['client'].post(BASE + '/base', json={'expected_revision': state['revision'], 'source_id': state['sources'][0]['source_id']}).json()
+    state = upload(lab, role='specification', revision=state['revision'], name='revision.txt', content=b'Rev2 release date 2026-06-18').json()
+    output = state['outputs'][-1]
+    targets = lab['client'].get(BASE + f"/outputs/{output['output_id']}/fact-targets", params={'expected_revision': state['revision'], 'old_text': '2025-12-18'}).json()
+    request = {'expected_revision': state['revision'], 'source_id': state['sources'][-1]['source_id'], 'kind': 'specification',
+        'label': 'Revision issue date', 'source_locator': 'Revision record row 2', 'value': '2026-06-18', 'status': 'confirmed',
+        'reason': 'This project specification revision', 'fact_role': 'revision_date', 'report_text': '2025-12-18', 'report_target': targets[0]['target']}
+    response = lab['client'].post(BASE + '/mappings', json=request); assert response.status_code == 200, response.text
+    state = response.json(); inspect_url = BASE + f"/outputs/{output['output_id']}/document-review"
+    review = lab['client'].get(inspect_url, params={'expected_revision': state['revision']}).json()
+    assert next(item for item in review['regions'] if item['text'].startswith('Specification'))['status'] == 'conflict'
+    assert next(item for item in review['regions'] if item['text'].startswith('Authorization'))['status'] != 'conflict'
+    # A confirmation of a date already present still cannot authorize the other
+    # old results and Pass wording in the paragraph.
+    request.update(expected_revision=state['revision'], mapping_id=state['mappings'][0]['mapping_id'], value='2025-12-18')
+    state = lab['client'].post(BASE + '/mappings', json=request).json()
+    review = lab['client'].get(inspect_url, params={'expected_revision': state['revision']}).json()
+    assert next(item for item in review['regions'] if item['text'].startswith('Specification'))['status'] == 'partially_verified'
+    original_read = ReportAuthoringAssets.read
+    missing_id = state['sources'][-1]['source_id']
+    def unavailable(self, project_id, source):
+        if source.source_id == missing_id:
+            raise OSError('isolated unavailable source')
+        return original_read(self, project_id, source)
+    monkeypatch.setattr(ReportAuthoringAssets, 'read', unavailable)
+    response = lab['client'].get(inspect_url, params={'expected_revision': state['revision']})
+    assert response.status_code == 200, response.text
+    region = next(item for item in response.json()['regions'] if item['text'].startswith('Specification'))
+    assert region['status'] not in ('verified', 'partially_verified')
+    assert any('missing or superseded' in reason for reason in region['reasons'])

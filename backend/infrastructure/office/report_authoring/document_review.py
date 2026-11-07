@@ -48,6 +48,17 @@ def _numbers(label):
     return values
 
 
+def _following_result(paragraph):
+    """Only a directly adjacent owned appendix, never a distant keyword match."""
+    for sibling in paragraph.itersiblings():
+        if sibling.tag == f'{{{NS["w"]}}}p' and not _value(sibling):
+            continue
+        if sibling.tag == f'{{{NS["w"]}}}sdt':
+            return next(iter(sibling.xpath('./w:sdtPr/w:tag/@w:val', namespaces=NS)), '')
+        break
+    return ''
+
+
 class ReportDocumentInspector:
     def __init__(self, protected=None):
         self.protected = protected or ProtectedWordPackageGateway()
@@ -85,10 +96,14 @@ class ReportDocumentInspector:
                     # A region is one actual paragraph, including table cells. No claimed
                     # complete template understanding is inferred from a heading alone.
                     if value:
+                        associated = _following_result(paragraph)
+                        rows = paragraph.xpath('ancestor::w:tr[1]', namespaces=NS)
+                        table_header = bool(rows and not rows[0].xpath('preceding-sibling::w:tr', namespaces=NS))
                         regions.append({'region_id': f'{name}:{index}', 'kind': role or section,
                             'group_id': group_id, 'group_title': group_title,
                             'text': value, 'target': target, 'sha256': target['sha256'],
                             'has_fields': bool(paragraph.xpath('.//w:fldChar|.//w:fldSimple|.//w:instrText', namespaces=NS)),
+                            'associated_result': associated, 'semantic_heading': bool(associated or heading or table_header),
                             'owned_result': next(iter(paragraph.xpath('ancestor::w:sdt/w:sdtPr/w:tag/@w:val', namespaces=NS)), '')})
                     if paragraph.xpath('ancestor::w:txbxContent', namespaces=NS):
                         continue
@@ -103,6 +118,10 @@ class ReportDocumentInspector:
                                      for slot_id in pending_photos)
                         complex_fields = bool(paragraph.xpath('.//w:fldChar|.//w:fldSimple|.//w:instrText', namespaces=NS))
                         numbers = _numbers(caption.group(1))
+                        if (not pending_photos and figures and figures[-1]['target']['paragraph'] == index - 1
+                                and len(figures[-1]['slot_ids']) > len(figures[-1]['numbers'])):
+                            figures[-1].update(automatic_order=False, reason='Adjacent shared captions cannot be assigned to the preceding images unambiguously.')
+                            issues.append({'code': 'ambiguous_shared_caption', 'message': 'Review which image group belongs to each adjacent caption; numbering cannot infer the split.', 'location': f'figure-{index}'})
                         figures.append({'figure_id': f'figure-{index}', 'number': numbers[0], 'numbers': numbers,
                             'caption': value, 'target': target, 'slot_ids': list(pending_photos),
                             'automatic_order': bool(pending_photos) and not floats and not complex_fields,
@@ -157,6 +176,9 @@ class ReportDocumentInspector:
         for item in [*selected, *review['references']]:
             value = item.get('caption', item.get('text', ''))
             for match in FIGURE.finditer(value):
+                sequence = [numbering.get(number, number) for number in _numbers(match.group(1))]
+                if re.search(r'~|–|\-|\bto\b', match.group(1), re.I) and sequence != list(range(sequence[0], sequence[-1] + 1)):
+                    issues.append({'code': 'noncontiguous_figure_range', 'message': 'Renumbering would make a figure range noncontiguous because another numbered figure is reserved; review this range explicitly.', 'location': str(item['target']['paragraph'])})
                 old = match.group(0)
                 prefix = old[:match.start(1) - match.start()]
                 new = prefix + re.sub(r'\d+', lambda digit: str(numbering.get(int(digit.group()), int(digit.group()))), match.group(1))

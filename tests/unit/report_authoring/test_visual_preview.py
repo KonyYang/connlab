@@ -1,6 +1,9 @@
 from io import BytesIO
 from pathlib import Path
 import time
+from threading import Event, enumerate as threads
+from types import SimpleNamespace
+import sys
 
 import pytest
 
@@ -27,9 +30,46 @@ def test_word_preview_is_immutable_version_bound_and_reports_all_pages(tmp_path)
 
 
 def test_hung_word_reports_timeout_without_waiting_indefinitely():
+    release, completed = Event(), Event()
     def hung(*args, **kwargs):
-        time.sleep(.2)
+        try:
+            release.wait(2)
+        finally:
+            completed.set()
     started = time.monotonic()
-    with pytest.raises(ValueError, match='timed out'):
-        WordReportPreview(exporter=hung, timeout_seconds=.01).render(b'copy', review={})
-    assert time.monotonic() - started < .15
+    try:
+        with pytest.raises(ValueError, match='timed out'):
+            WordReportPreview(exporter=hung, timeout_seconds=.01).render(b'copy', review={})
+        assert time.monotonic() - started < .15
+    finally:
+        release.set()
+        assert completed.wait(2)
+        for worker in threads():
+            if worker.name == 'connlab-word-preview':
+                worker.join(2)
+                assert not worker.is_alive()
+
+
+def test_timeout_terminates_only_captured_owned_process_handle(monkeypatch):
+    release, acquired = Event(), Event()
+    actions = []
+    handle = SimpleNamespace(Close=lambda: actions.append('close-owned'))
+    def open_process(access, inherit, pid):
+        assert pid == 999
+        return handle
+    monkeypatch.setitem(sys.modules, 'win32api', SimpleNamespace(OpenProcess=open_process,
+        TerminateProcess=lambda candidate, code: actions.append(('terminate', candidate is handle))))
+    monkeypatch.setitem(sys.modules, 'win32event', SimpleNamespace(WaitForSingleObject=lambda *_: 258))
+    def export(*args, on_owned_word):
+        on_owned_word(999); acquired.set(); release.wait(2)
+    try:
+        with pytest.raises(ValueError, match='timed out'):
+            WordReportPreview(exporter=export, timeout_seconds=.1).render(b'isolated', review={})
+        assert acquired.is_set()
+        assert actions == [('terminate', True), 'close-owned']
+    finally:
+        release.set()
+        for worker in threads():
+            if worker.name == 'connlab-word-preview':
+                worker.join(2)
+                assert not worker.is_alive()

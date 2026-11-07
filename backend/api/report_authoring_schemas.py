@@ -233,6 +233,7 @@ class ConfirmedPhotoAssignment(PhotoAssignment):
     stage: str = Field(min_length=1, max_length=100)
     reason: str = Field(min_length=1, max_length=2000)
     reuse_reason: str = Field(default='', max_length=2000)
+    accept_context_change: bool = False
 
 
 class PhotoPlanRequest(DocumentReviewRequest):

@@ -191,6 +191,6 @@ class ReportAssembly:
             record['evidence']['applied_regions'] = [
                 {key: region[key] for key in ('region_id', 'sha256', 'owned_result')}
                 for region in service.document_review.inspector.inspect(service.assets.path(project_id, artifact))['regions']
-                if any(region['owned_result'].endswith(item['result']['result_id']) for item in results)]
+                if any((region['owned_result'] or region.get('associated_result', '')) == 'connlab-report-result:' + item['result']['result_id'] for item in results)]
         completed_plan = {**plan, 'status': 'completed', 'can_apply': False, 'applied_output_id': artifact.source_id}
         return service.repository.save(replace(state, outputs=(*state.outputs, record), assembly_plan=completed_plan), state.revision)

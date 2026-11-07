@@ -29,8 +29,12 @@ export function ReportPhotoPlan({ projectId, state, review, disabled, onConfirm 
     setImages(previous => { const next = { ...previous }; delete next[slot]; return next; });
   }
   const selected = Object.values(draft).filter(item => item.source_id);
+  const samePhotoCount = (id: string) => {
+    const digest = review.photo_candidates.find(item => item.source_id === id)?.source_sha256;
+    return selected.filter(item => digest ? review.photo_candidates.find(candidate => candidate.source_id === item.source_id)?.source_sha256 === digest : item.source_id === id).length;
+  };
   const valid = selected.length > 0 && selected.every(item => (item.scope !== 'step' || (item.group_id && item.row_id && item.step_token)) && (item.scope === 'project_context' || item.sample_ids.length)
-    && item.stage.trim() && item.reason.trim() && (selected.filter(other => other.source_id === item.source_id).length === 1 || item.reuse_reason.trim()));
+    && item.stage.trim() && item.reason.trim() && (samePhotoCount(item.source_id) === 1 || item.reuse_reason.trim()));
   async function compare() {
     if (disabled || comparing) return;
     setComparing(true); setError(''); setConfirmed(false);
@@ -55,7 +59,8 @@ export function ReportPhotoPlan({ projectId, state, review, disabled, onConfirm 
       {review.slots.map(slot => <details className="report-photo-card" key={slot.slot_id}><summary>{slot.slot_id} — {slot.caption || 'Uncaptioned photograph'} — {slot.coverage}</summary>
         {!slot.supported ? <p>{slot.reason}</p> : <>
           <label>Replacement for {slot.slot_id}<select value={draft[slot.slot_id]?.source_id || ''} onChange={event => update(slot.slot_id, { source_id: event.target.value })}>
-            <option value="">Leave this slot unchanged</option>{review.photo_candidates.map(candidate => <option key={candidate.source_id} value={candidate.source_id}>
+            <option value="">Leave this slot unchanged</option>{[...review.photo_candidates].sort((left, right) =>
+              (right.suggestions.find(item => item.slot_id === slot.slot_id)?.score || 0) - (left.suggestions.find(item => item.slot_id === slot.slot_id)?.score || 0)).map(candidate => <option key={candidate.source_id} value={candidate.source_id}>
               {candidate.file_name}{candidate.suggestions.find(hint => hint.slot_id === slot.slot_id && hint.score > 0) ? ' — filename hint' : ''}</option>)}</select></label>
           {draft[slot.slot_id]?.source_id && <div className="report-review-fields">
             <label>Scope for {slot.slot_id}<select value={draft[slot.slot_id].scope || 'step'} onChange={event => update(slot.slot_id,
@@ -68,6 +73,8 @@ export function ReportPhotoPlan({ projectId, state, review, disabled, onConfirm 
             <label>Specimen IDs for {slot.slot_id}<input value={draft[slot.slot_id].sample_ids.join(', ')} onChange={event => update(slot.slot_id, { sample_ids: event.target.value.split(',').map(value => value.trim()).filter(Boolean) })} /></label>
             <label>Stage for {slot.slot_id}<input placeholder="Before / after the named test" value={draft[slot.slot_id].stage} onChange={event => update(slot.slot_id, { stage: event.target.value })} /></label>
             <label>Evidence reason for {slot.slot_id}<input value={draft[slot.slot_id].reason} onChange={event => update(slot.slot_id, { reason: event.target.value })} /></label>
+            <label className="report-batch-check"><input type="checkbox" checked={draft[slot.slot_id].accept_context_change || false}
+              onChange={event => update(slot.slot_id, { accept_context_change: event.target.checked })} />I checked any intentional Group change from the old caption for {slot.slot_id}; the caption is not automatically rewritten</label>
             <label>Reuse reason for {slot.slot_id}<input placeholder="Required only when using this image more than once" value={draft[slot.slot_id].reuse_reason} onChange={event => update(slot.slot_id, { reuse_reason: event.target.value })} /></label>
             <label>Fit for {slot.slot_id}<select value={draft[slot.slot_id].crop_mode} onChange={event => update(slot.slot_id, { crop_mode: event.target.value as 'preserve' | 'centre_crop' })}>
               <option value="preserve">Preserve approved crop / aspect ratio</option><option value="centre_crop">Centre crop without stretching</option></select></label>
