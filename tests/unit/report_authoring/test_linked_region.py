@@ -7,6 +7,40 @@ from lxml import etree
 from backend.infrastructure.office.report_authoring.linked_region import LinkedReportRegion
 
 
+@pytest.mark.parametrize('modifier, amount, expected', [
+    ('themeTint', 'FF', '336699'), ('themeTint', '00', 'FFFFFF'), ('themeTint', '99', '75A3D1'),
+    ('themeShade', 'FF', '336699'), ('themeShade', '00', '000000'), ('themeShade', '99', '1F3D5C')])
+def test_source_word_theme_modifiers_preserve_hue_and_use_hsl_luminance(modifier, amount, expected):
+    from backend.infrastructure.office.report_authoring.linked_region import resolve_theme_colors, W, A
+    theme = etree.fromstring(f'<a:theme xmlns:a="{A}"><a:themeElements><a:clrScheme><a:accent1><a:srgbClr val="336699"/></a:accent1></a:clrScheme></a:themeElements></a:theme>'.encode())
+    color = etree.Element(f'{{{W}}}color')
+    color.set(f'{{{W}}}themeColor', 'accent1'); color.set(f'{{{W}}}{modifier}', amount)
+    resolve_theme_colors(color, theme)
+    assert color.get(f'{{{W}}}val') == expected
+    assert color.get(f'{{{W}}}{modifier}') is None
+
+
+def test_foreground_and_background_theme_modifiers_are_independent():
+    from backend.infrastructure.office.report_authoring.linked_region import resolve_theme_colors, W, A
+    theme = etree.fromstring(f'<a:theme xmlns:a="{A}"><a:themeElements><a:clrScheme><a:accent1><a:srgbClr val="336699"/></a:accent1></a:clrScheme></a:themeElements></a:theme>'.encode())
+    shading = etree.Element(f'{{{W}}}shd')
+    for name, value in [('themeColor', 'accent1'), ('themeFill', 'accent1'), ('themeTint', '00'), ('themeFillShade', '99')]:
+        shading.set(f'{{{W}}}{name}', value)
+    resolve_theme_colors(shading, theme)
+    assert shading.get(f'{{{W}}}val') == 'FFFFFF'
+    assert shading.get(f'{{{W}}}fill') == '1F3D5C'
+    assert not any('theme' in key for key in shading.attrib)
+
+
+def test_shading_changes_luminance_not_each_rgb_channel():
+    from backend.infrastructure.office.report_authoring.linked_region import resolve_theme_colors, W, A
+    theme = etree.fromstring(f'<a:theme xmlns:a="{A}"><a:themeElements><a:clrScheme><a:accent1><a:srgbClr val="99CCFF"/></a:accent1></a:clrScheme></a:themeElements></a:theme>'.encode())
+    color = etree.Element(f'{{{W}}}color')
+    color.set(f'{{{W}}}themeColor', 'accent1'); color.set(f'{{{W}}}themeShade', '99')
+    resolve_theme_colors(color, theme)
+    assert color.get(f'{{{W}}}val') == '007AF5'
+
+
 def linked_source():
     document = Document(); document.add_paragraph('Temperature source')
     normal_fonts = document.styles['Normal'].element.get_or_add_rPr().get_or_add_rFonts()

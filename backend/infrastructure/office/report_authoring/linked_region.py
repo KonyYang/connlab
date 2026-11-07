@@ -1,6 +1,7 @@
 """Adopt an explicitly selected Word region and only its safe relationship closure."""
 from base64 import b64decode, b64encode
 from copy import deepcopy
+from colorsys import rgb_to_hls, hls_to_rgb
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -88,11 +89,20 @@ def resolve_theme_colors(tree, theme):
             key = item.get(f'{{{W}}}{theme_attr}')
             if key:
                 value = color(key)
-                for modifier, tint in [('themeTint', True), ('themeShade', False), ('themeFillTint', True), ('themeFillShade', False)]:
+                modifiers = [('themeTint', True), ('themeShade', False)] if theme_attr == 'themeColor' else [('themeFillTint', True), ('themeFillShade', False)]
+                if all(item.get(f'{{{W}}}{modifier}') is not None for modifier, _ in modifiers):
+                    raise ValueError('Simultaneous theme tint and shade need explicit source review.')
+                for modifier, tint in modifiers:
                     amount = item.get(f'{{{W}}}{modifier}')
                     if amount:
+                        if len(amount) != 2 or any(character not in '0123456789abcdefABCDEF' for character in amount):
+                            raise ValueError('Unsupported Word theme color modifier.')
                         ratio = int(amount, 16) / 255
-                        value = ''.join(f'{round(255 - (255 - int(value[i:i+2], 16)) * (1 - ratio)) if tint else round(int(value[i:i+2], 16) * ratio):02X}' for i in (0, 2, 4))
+                        hue, luminance, saturation = rgb_to_hls(*(int(value[i:i+2], 16) / 255 for i in (0, 2, 4)))
+                        # WordprocessingML retains luminance at FF; tint 00 is
+                        # white, shade 00 black. DrawingML child transforms stay native.
+                        luminance = luminance * ratio + (1 - ratio if tint else 0)
+                        value = ''.join(f'{round(channel * 255):02X}' for channel in hls_to_rgb(hue, luminance, saturation))
                         del item.attrib[f'{{{W}}}{modifier}']
                 item.set(f'{{{W}}}{direct_attr}', value); del item.attrib[f'{{{W}}}{theme_attr}']
 
