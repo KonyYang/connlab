@@ -424,8 +424,16 @@
         ],
         "activation_head": "c213295de4bbd698494c3cc302bc9be7cc2c717b",
         "started_at": "2026-11-07T03:43:41.091186Z",
-        "updated_at": "2026-11-07T03:43:41.091186Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-07T04:04:32.622579Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
+          "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
+          "stage": "development_and_real_word_preflight",
+          "status": "running",
+          "summary": "Resumed after explicit user goal activation. Retained WIP checkpoint f20f19f1 on original worktree / resumed branch. Developer addressing independent review findings; real Word HWND/Open compatibility preflight revealed failures and is being retested on isolated copies. Final review, complete QA, browser and all-page Word acceptance remain pending. No real materials modified; no push.",
+          "requires_user": false
+        },
         "report": null
       }
     }
