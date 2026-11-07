@@ -5,7 +5,6 @@ import json
 import logging
 from pathlib import Path
 from uuid import uuid4
-from sqlalchemy.exc import SQLAlchemyError
 
 from backend.domain.report_authoring import ReportAuthoringConflict, ReportSource
 
@@ -238,7 +237,7 @@ class ReportDelivery:
                     current_path=Path(item['current']) if item['current'] else None, expected_current_sha256=item['old_sha256'],
                     target_path=Path(item['target']), history_root=Path(item['history_root']), persist=persist,
                     pre_publish=validate, receipt=self.receipts.item(project_id, operation_id, item['role']))
-            except (OSError, RuntimeError, ValueError, SQLAlchemyError) as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 logger.exception('Report delivery %s stopped at %s for project %s', operation_id, item['role'], project_id)
                 raise ReportAuthoringConflict(f"{item['role'].title()} report save is unfinished. Close any open Word file, check storage access, then resume this operation. If recovery reports a changed identity, retain all files for review.") from exc
         record = self.receipts.read(project_id, operation_id)

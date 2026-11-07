@@ -2,7 +2,8 @@
 from dataclasses import asdict, replace
 import json
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+import logging
 from backend.domain.report_authoring import ReportAuthoringState, ReportSource, ReportMapping, ReportAuthoringConflict
 from backend.infrastructure.storage.models_report_authoring import ReportAuthoringRevisionModel
 
@@ -50,6 +51,10 @@ class ReportAuthoringRepository:
             updated = self.save(state, expected_revision)
             self._session.commit()
             return updated
+        except SQLAlchemyError as exc:
+            self._session.rollback()
+            logging.getLogger(__name__).exception('Report delivery projection commit failed for %s', state.project_id)
+            raise ReportAuthoringConflict('Report save state could not be recorded. Restore database access, inspect the current save status and retry the same operation; do not regenerate reports.') from exc
         except Exception:
             self._session.rollback()
             raise
