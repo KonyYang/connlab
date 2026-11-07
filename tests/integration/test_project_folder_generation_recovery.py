@@ -23,6 +23,7 @@ from backend.application.official_project_workspace_service import OfficialWorks
 from backend.application.project_basic_information_service import ConfirmProjectBasicInformationCommand
 from backend.application.project_folder_generation_service import ProjectFolderGenerationService, ProjectFolderInUseError
 from backend.infrastructure.files.generation_journal import GenerationJournal
+from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher
 from backend.infrastructure.official_workspace_manifest import (
     OfficialWorkspaceManifest, OfficialWorkspaceManifestGateway, stable_folder_identity,
@@ -38,6 +39,46 @@ from backend.infrastructure.files.project_folder_required_forms_gateway import R
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "fixture.sqlite")
+
+
+@pytest.mark.parametrize("phase", ["publish", "stage", "recover"])
+def test_output_publisher_rejects_redirected_target_and_staging_ancestors(tmp_path, phase):
+    if os.name != "nt":
+        pytest.skip("Windows junction safety regression")
+    import _winapi
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", None, "inputs")
+    source = tmp_path / "source.docx"
+    source.write_bytes(b"generated source")
+    target_root = tmp_path / "approved"
+    target_root.mkdir()
+    target = target_root / "form.docx"
+    outside = tmp_path / "outside"
+    stage_root = tmp_path / "stage"
+    publisher = RecoverableOutputPublisher(journal, state, "forms", publication_root=stage_root)
+    junction = stage_root if phase == "stage" else target_root
+    if phase == "recover":
+        publisher.publish_file("form", source, target, None, {"kind": "form"})
+        target_root.rename(outside)
+    else:
+        outside.mkdir()
+        if phase == "publish":
+            target_root.rmdir()
+    _winapi.CreateJunction(str(outside), str(junction))
+    before = {path.name: path.read_bytes() for path in outside.iterdir() if path.is_file()}
+    records = []
+    try:
+        with pytest.raises(ValueError, match="link or junction"):
+            if phase == "recover":
+                publisher.recover_files(records.append)
+            else:
+                publisher.publish_file("form", source, target, None)
+        assert records == []
+        assert {path.name: path.read_bytes() for path in outside.iterdir() if path.is_file()} == before
+        if phase != "recover":
+            assert state["effects"] == {}
+    finally:
+        os.rmdir(junction)  # Isolated junction only; the destination remains intact.
 
 
 @pytest.mark.parametrize("errors,expected_action", [

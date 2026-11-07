@@ -15,11 +15,12 @@ from backend.application.project_folder_generation_outcome import (
     ProjectFolderOutputUnavailable, record_output_issue,
 )
 from backend.application.project_folder_required_forms_service import GenerateRequiredFormsCommand, RequiredFormsGenerateTarget
+from backend.application.project_request_material_collection_types import MISSING_APPLICATION_SOURCE
 from backend.application.project_output_record_service import RegisterProjectOutputCommand
 from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
 from backend.domain import ProjectOutputKind, ProjectOutputSource, ProjectOutputStatus
 from backend.infrastructure.files.generation_journal import GenerationJournal, fingerprint
-from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher, file_hash, file_identity
+from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher, file_hash, file_identity, require_safe_output_path
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher, tree_hash
 from backend.infrastructure.files.project_folder_required_forms_gateway import RecoverableContactRecordPublisher
 from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import LlcrCrSpecializedRecordWorkbookGateway
@@ -324,9 +325,11 @@ class ProjectFolderGenerationRunner:
                         raise ValueError("Generation inputs changed before publication. No further target was written.")
                     if name != "workspace":
                         RecoverableWorkspacePublisher(self.journal, state).verify_directories(workspace_record)
+                        for relative in ("E-mail", "Submitted Material", "Photos", "Test results", "Test results/Final Examination"):
+                            require_safe_output_path(workspace_record.official_folder_path / relative)
                 workspace_record = deps.ProjectOfficialWorkspaceRepository(session).get_by_project(project_id)
                 if name != "workspace":
-                    RecoverableWorkspacePublisher(self.journal, state).verify_directories(workspace_record)
+                    verify_context()
                 publication_root = (workspace_record.local_workspace_path / ".connlab" / "generation" / state["operation_id"]
                                     if workspace_record is not None and name != "workspace" else None)
                 publisher = RecoverableOutputPublisher(self.journal, state, name, verify_context, publication_root)
@@ -376,15 +379,18 @@ class ProjectFolderGenerationRunner:
                     latest = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project(project_id)
                     if latest is None or latest.collection_id != state["operation_id"]:
                         materials = deps.get_project_request_material_collection_service(session)
-                        preview = materials.preview(project_id)
-                        if preview.status in {"blocked", "conflict"}:
+                        preview = materials.preview(project_id, allow_missing_sources=True)
+                        if preview.status == "conflict":
+                            raise ValueError("Request material targets changed. Review conflicts before continuing.")
+                        if preview.status == "blocked":
                             verify_context()
                             record_output_issue(state, "materials", "Request materials",
                                 "; ".join(preview.blockers) or "Some request material targets need review.")
                             self.journal.save(state)
                             session.commit()
                             return
-                        result = materials.collect(project_id, recovery=publisher, collection_id=state["operation_id"])
+                        result = materials.collect(project_id, recovery=publisher, collection_id=state["operation_id"],
+                                                   allow_missing_sources=True)
                         # A missing optional request email is a retained warning, not a failed copy.
                         # Check concrete placement outcomes rather than the warning-bearing "partial" label.
                         if (result.blockers or result.missing_source_paths or result.conflict_paths or result.skipped_paths
@@ -393,7 +399,7 @@ class ProjectFolderGenerationRunner:
                             for item in result.items:
                                 if item.action != "already_present":
                                     record_output_issue(state, "materials", item.source_path.name, item.message)
-                            if result.blockers:
+                            if result.blockers and not any(item.action != "already_present" for item in result.items):
                                 record_output_issue(state, "materials", "Request materials", "; ".join(result.blockers))
                 elif name == "check":
                     result = deps.get_official_project_folder_check_service(session).preview(project_id)
@@ -405,10 +411,14 @@ class ProjectFolderGenerationRunner:
                         if (item.source_asset_type == "application_form" or item.source_role == "selected_application_form")
                         and item.status in {"missing", "missing_source"}
                         and not os.path.lexists(item.target_path)), None)
-                    if missing_application is not None:
+                    no_application = (MISSING_APPLICATION_SOURCE in materials.blockers and not any(
+                        item.source_asset_type == "application_form" or item.source_role == "selected_application_form"
+                        for item in materials.items))
+                    if missing_application is not None or no_application:
                         verify_context()
                         record_output_issue(state, "application_form", "Application Form",
-                            f"The selected Application Form was not collected: {missing_application.source_name}.")
+                            (f"The selected Application Form was not collected: {missing_application.source_name}."
+                             if missing_application is not None else MISSING_APPLICATION_SOURCE))
                     else:
                         try:
                             application.write_back(project_id, recovery=publisher)
@@ -432,7 +442,9 @@ class ProjectFolderGenerationRunner:
                     selected = next((item for item in preview.items if item.key == name), None)
                     if selected is None:
                         raise ValueError("Required form target needs review before generation.")
-                    if selected.status == "blocked" or selected.action == "conflict":
+                    if selected.action == "conflict":
+                        raise ValueError(selected.message)
+                    if selected.status == "blocked":
                         verify_context()
                         record_output_issue(state, name, selected.label, selected.message)
                     elif selected.action != "skip":
@@ -514,9 +526,7 @@ class ProjectFolderGenerationRunner:
             except Exception as exc:
                 # This writer owns only its unique staging file. Once publish starts,
                 # every error instead remains subject to the durable recovery rules.
-                if self.context(state["project_id"]) != state["context"]:
-                    raise ValueError("Generation inputs changed during record preparation.") from exc
-                RecoverableWorkspacePublisher(self.journal, state).verify_directories(workspace)
+                publisher.verify_context()
                 publisher.verify_completed()
                 record_output_issue(state, f"{kind}_record",
                                     f"{'IR&DWV' if kind == 'ir_dwv' else kind.upper()} blank record", str(exc))

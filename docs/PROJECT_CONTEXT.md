@@ -473,7 +473,10 @@ Do not use a dated snapshot as a substitute for the code.
   projections and failures while preparing a new source artifact no longer block unrelated files.
   Required Forms validates the selected file's own authority dependencies: missing Fee blocks Fee Form,
   not Test Record, Test Status or Customer Feedback. Available request materials are retained even
-  when another attachment is missing. Each completed attempt persists an `issues` list and a partial
+  when another attachment or the selected Application Form source is missing. This opt-in is limited
+  to recoverable Project Folder generation; direct material collection keeps its strict prerequisite.
+  Ambiguous material sources and changed targets are not silently selected or overwritten.
+  Each completed attempt persists an `issues` list and a partial
   outcome, and Workbench summarizes the files that need manual completion or a later Create folder
   attempt. An ordinary successful attempt remains quiet. Projects without electrical steps do not
   require an IR/DWV template. Project identity, lifecycle, directory/path safety, changed inputs,

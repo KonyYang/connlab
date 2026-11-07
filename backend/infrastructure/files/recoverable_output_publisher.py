@@ -9,6 +9,13 @@ import shutil
 from uuid import uuid4
 
 from backend.infrastructure.files.generation_journal import json_value
+from backend.infrastructure.official_workspace_manifest import OfficialWorkspaceManifestGateway
+
+
+def require_safe_output_path(path: Path) -> None:
+    """Do not publish or recover through a replaced link/junction ancestor."""
+    if OfficialWorkspaceManifestGateway.first_redirected_path(path, *path.parents) is not None:
+        raise ValueError("Generation output path redirects through a link or junction; recovery stopped.")
 
 
 def file_hash(path: Path) -> str | None:
@@ -43,6 +50,8 @@ class RecoverableOutputPublisher:
         return path
 
     def publish_file(self, key, source: Path, target: Path, prior: str | None, record=None):
+        self.verify_context()
+        require_safe_output_path(target)
         effect_key = f"{self.step}:{key}"
         effect = self.state["effects"].get(effect_key)
         if effect is None:
@@ -51,6 +60,7 @@ class RecoverableOutputPublisher:
             prior_identity = file_identity(target) if prior is not None else None
             target.parent.mkdir(parents=True, exist_ok=True)
             stage_root = self.publication_root or target.parent
+            require_safe_output_path(stage_root)
             stage_root.mkdir(parents=True, exist_ok=True)
             staged = stage_root / f".connlab-{self.state['operation_id']}-{uuid4().hex}{target.suffix}"
             with source.open("rb") as input_file, staged.open("xb") as output:
@@ -68,6 +78,8 @@ class RecoverableOutputPublisher:
     def _publish(self, effect):
         self.verify_context()
         target, staged = Path(effect["target"]), Path(effect["stage"])
+        require_safe_output_path(target)
+        require_safe_output_path(staged)
         current = file_hash(target)
         if current == effect["sha"] and file_identity(target) == effect["identity"]:
             self._remove_owned_stage(effect)
@@ -106,5 +118,6 @@ class RecoverableOutputPublisher:
             if effect["step"] not in self.state["completed_steps"]:
                 continue
             target = Path(effect["target"])
+            require_safe_output_path(target)
             if file_hash(target) != effect["sha"] or file_identity(target) != effect["identity"]:
                 raise ValueError("A completed generation target changed. Recovery stopped without overwriting it.")

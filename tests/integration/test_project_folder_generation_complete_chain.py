@@ -194,6 +194,14 @@ def test_create_folder_retains_independent_outputs_and_reports_failed_artifact(t
         expected_keys, expected_count = ["application_form"], 5
     elif failure == "missing_application":
         fixture.source.unlink()
+        with fixture.sessions() as session:
+            for asset_id, filename, role, content in (("mail", "request.msg", "email_source", b"original request email"),
+                                                       ("spec", "drawing.pdf", "supporting_attachment", b"original drawing")):
+                path = tmp_path / filename
+                path.write_bytes(content)
+                deps.FileAssetRepository(session).create(FileAsset(asset_id, "P1", FileAssetType.ATTACHMENT,
+                    path, original_name=filename, source_role=role))
+            session.commit()
         expected_keys, expected_count = ["materials", "application_form"], 5
     else:
         with fixture.sessions() as session:
@@ -217,6 +225,9 @@ def test_create_folder_retains_independent_outputs_and_reports_failed_artifact(t
         assert workspace.official_folder_path.is_dir()
         assert len(records) == expected_count
         assert any(record.output_kind.value == "test_status" for record in records)
+        if failure == "missing_application":
+            assert (workspace.official_folder_path / "E-mail" / "request.msg").read_bytes() == b"original request email"
+            assert (workspace.official_folder_path / "Submitted Material" / "drawing.pdf").read_bytes() == b"original drawing"
         before = {str(record.output_path): (Path(record.output_path).read_bytes(), Path(record.output_path).stat().st_mtime_ns) for record in records}
         assert _ok(fixture.client.post(url + "/resume", json={"operation_id": result["operation_id"]}))["issues"] == result["issues"]
         assert not fixture.callbacks
@@ -360,6 +371,47 @@ def test_source_preparation_does_not_hide_context_or_publication_races(tmp_path,
         if replaced:
             assert replaced[0].read_bytes() == b"operator-created file"
     finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+@pytest.mark.parametrize("conflicting_record", [False, True])
+def test_redirected_output_directory_stops_generation_without_writing_outside(tmp_path, monkeypatch, conflicting_record):
+    import os
+    if os.name != "nt":
+        pytest.skip("Windows junction safety regression")
+    import _winapi
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch)
+    run_step = fixture.service.run_step
+    outside = tmp_path / "unapproved-output"
+    junction = None
+    before = {}
+    def redirect_then_run(state, name):
+        nonlocal junction, before
+        if name == "test_record" and junction is None:
+            with fixture.sessions() as session:
+                workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+            junction = workspace.official_folder_path / "Submitted Material"
+            junction.rename(outside)
+            _winapi.CreateJunction(str(outside), str(junction))
+            if conflicting_record:
+                (outside / "DL-2026-10-IRDWV Test Record.docx").write_bytes(b"operator conflict")
+            before = {path.name: path.read_bytes() for path in outside.iterdir() if path.is_file()}
+        return run_step(state, name)
+    fixture.service.run_step = redirect_then_run
+    try:
+        url = "/api/projects/P1/project-folder/generation"
+        preview = _ok(fixture.client.get(url + "/preview"))
+        _ok(fixture.client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "junction"}))
+        fixture.callbacks.pop()()
+        result = _ok(fixture.client.get(url))
+        assert result["status"] == "blocked", result
+        assert {path.name: path.read_bytes() for path in outside.iterdir() if path.is_file()} == before
+    finally:
+        if junction is not None and os.path.lexists(junction):
+            os.rmdir(junction)  # Remove only the isolated junction, never its destination.
         app.dependency_overrides.clear()
         fixture.client.close()
         fixture.runner.pool.shutdown()

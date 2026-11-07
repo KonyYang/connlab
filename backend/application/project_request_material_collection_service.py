@@ -21,6 +21,7 @@ from backend.application.project_request_material_collection_helpers import (
 )
 from backend.application.project_request_material_collection_types import (
     FileAssetRepositoryPort,
+    MISSING_APPLICATION_SOURCE,
     OfficialWorkspaceRepositoryPort,
     PlannedTarget,
     ProjectRepositoryPort,
@@ -59,7 +60,7 @@ class ProjectRequestMaterialCollectionService:
         self._collections = collection_repository
         self._copy_gateway = copy_gateway
 
-    def preview(self, project_id: str, *, planned_workspace=None, rebuilding=False) -> RequestMaterialPreview:
+    def preview(self, project_id: str, *, planned_workspace=None, rebuilding=False, allow_missing_sources=False) -> RequestMaterialPreview:
         """Return a read-only preview of request-material collection."""
         project = self._projects.get(project_id)
         if project is None:
@@ -98,10 +99,10 @@ class ProjectRequestMaterialCollectionService:
             )
         )
         if not application_forms:
-            blockers.append("Selected Application Form source file is missing")
+            blockers.append(MISSING_APPLICATION_SOURCE)
         form_candidate = application_forms[0] if application_forms else None
         if form_candidate and not form_candidate.source_exists:
-            blockers.append("Selected Application Form source file is missing")
+            blockers.append(MISSING_APPLICATION_SOURCE)
 
         planned = self._plan_targets(
             workspace,
@@ -126,6 +127,11 @@ class ProjectRequestMaterialCollectionService:
                 "Attachment candidates need review before Submitted Material placement"
             )
         status = preview_status(items, blockers, warnings)
+        if (allow_missing_sources and set(blockers) == {MISSING_APPLICATION_SOURCE}
+                and not any(item.status == "conflict" for item in items)):
+            # Only the known missing-source prerequisite is local to that file.
+            # Ambiguous sources, target conflicts and unknown blockers stay strict.
+            status = "partial"
         return RequestMaterialPreview(
             project_id=project_id,
             local_workspace_path=workspace.local_workspace_path,
@@ -137,9 +143,11 @@ class ProjectRequestMaterialCollectionService:
             warnings=tuple(dict.fromkeys(warnings)),
         )
 
-    def collect(self, project_id: str, recovery=None, collection_id=None) -> RequestMaterialCollectResult:
+    def collect(self, project_id: str, recovery=None, collection_id=None, *, allow_missing_sources=False) -> RequestMaterialCollectResult:
         """Copy request material after re-running preview and conflict checks."""
-        preview = self.preview(project_id)
+        if allow_missing_sources and recovery is None:
+            raise ProjectRequestMaterialCollectionConflictError("Partial source collection requires recoverable publication.")
+        preview = self.preview(project_id, allow_missing_sources=allow_missing_sources)
         if preview.status in {"blocked", "conflict"}:
             detail = preview.blockers[0] if preview.blockers else "Target file conflict"
             raise ProjectRequestMaterialCollectionConflictError(detail)
@@ -210,7 +218,7 @@ class ProjectRequestMaterialCollectionService:
             )
             self._persist_result(result)
             return result
-        after = self.preview(project_id)
+        after = self.preview(project_id, allow_missing_sources=allow_missing_sources)
         result = _collect_result_from_preview(
             project_id=project_id,
             collection_id=collection_id,
