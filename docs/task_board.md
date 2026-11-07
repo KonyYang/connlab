@@ -417,15 +417,15 @@
         ],
         "activation_head": "75d9eb36512f67d4ee22eda070876f0e527b11ad",
         "started_at": "2026-11-07T04:33:36.854373Z",
-        "updated_at": "2026-11-07T04:56:15.562644Z",
+        "updated_at": "2026-11-07T04:56:51.161009Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_REPORT_TEMPLATE_PHOTOS_PREVIEW_20261107",
-          "stage": "final_visual_acceptance",
-          "status": "blocked",
-          "summary": "Candidate c9f1dc0c equals reviewed360d100e product bytes. QA288Python/137frontend/build passed; 63 actual Word pages inspected.032UI photo-plan/batch/Word/reload passed;18 unaffected pages pixel-identical, visual review recorded without content approval.021 cross-project result clearing causes orphan headings, RED publicAPI regression prepared. Await explicit approval to add existing word_copy.py to exact scope for bounded local pagination repair. Primary clean; all198inputs unchanged; no integration/push/real writes.",
-          "requires_user": true
+          "stage": "final_visual_revalidation",
+          "status": "running",
+          "summary": "User approved word_copy.py scope; productionwriter amendment completed. Clean reviewed fix cdaf429b818f6f0782cb6c949e90570856a8b6bd adds bounded flowing-heading protection and publicAPI regression, Developer34passed. IndependentQA rerendering021 layout on new process/final bytes and checking all pages; original288/137/build and032/031/synthetic evidence retained by product-path equivalence. No integration/push/real writes.",
+          "requires_user": false
         },
         "report": null
       }
