@@ -413,13 +413,13 @@
   "tasks": {
     "TASK_IMPORT_FOLDER_PICKER_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/import-folder-picker-20261108",
       "resources": [
         "project-import-folder-picker"
       ],
-      "integrated_head": null,
+      "integrated_head": "af1e75aacee129454f997de7120a8661160beaeb",
       "task": {
         "task_id": "TASK_IMPORT_FOLDER_PICKER_20261108",
         "summary": "Modernize Import Projects folder selection and show immediate progress",
@@ -437,9 +437,73 @@
         "risk_reasons": [],
         "activation_head": "97f6a08c35ba1f9fe86f2bcf74a86b840a914bd8",
         "started_at": "2026-11-08T10:43:16.848176Z",
-        "updated_at": "2026-11-08T10:43:16.848176Z",
+        "updated_at": "2026-11-08T11:28:33.123831Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "ac2289143f8c833474bc1ffa41bd5e8e410f1604",
+            "primary_before": "fe7ba09ef52a2ed343d1eb26589d5e0cfb393cb4",
+            "integrated_head": "af1e75aacee129454f997de7120a8661160beaeb",
+            "recovered": false
+          },
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "method": "Primary agent implementation and targeted RED/GREEN."
+            },
+            "reviewer": {
+              "status": "passed",
+              "method": "Primary agent separate Standards then Spec passes on fixed diff; not independent review."
+            },
+            "qa": {
+              "status": "passed",
+              "method": "Primary agent bounded complete matrix once after final edits:14 Python,71 Vitest,build; real native selection probe. No real business mutation."
+            }
+          },
+          "validation": [
+            {
+              "name": "Frontend RED/GREEN and final regression",
+              "status": "passed",
+              "result": "New pending-picker feedback test failed before fix and passed after; final App, single import and import feature files:71 passed. Two prior hidden-progress expectations updated to requested visible progress."
+            },
+            {
+              "name": "Windows adapter and desktop picker tests",
+              "status": "passed",
+              "result": "14 passed. Tests cover returned path, supplied owner, cancellation, error propagation, COM/string cleanup and existing desktop integration."
+            },
+            {
+              "name": "Production frontend build",
+              "status": "passed",
+              "result": "TypeScript and Vite build passed after final changes."
+            },
+            {
+              "name": "Native selection probe",
+              "status": "passed",
+              "result": "Actual Windows Common Item Dialog invocation returned an existing directory, with no project import or file copying. Cancel behavior covered by unit test; live native screenshot inspection not completed due app-approval timeout."
+            },
+            {
+              "name": "Self review",
+              "status": "passed",
+              "result": "Standards: no unresolved findings; Spec: visible waiting feedback, modern dialog and owner relationship supplied; validation/copy/confirmation rules unchanged. No new runtime dependency. diff --check clean."
+            }
+          ],
+          "changed_paths": [
+            "backend/infrastructure/files/windows_path_picker.py",
+            "backend/infrastructure/files/windows_project_folder_dialog.py",
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "tests/unit/test_windows_project_folder_dialog.py"
+          ],
+          "version": 1,
+          "scope_ok": true,
+          "schema": "connlab.sol-task-report",
+          "task_id": "TASK_IMPORT_FOLDER_PICKER_20261108",
+          "summary": "Replace classic SHBrowseForFolder for Import Projects with native Common Item Dialog, foreground owner, single-folder filesystem selection and deterministic cleanup. Keep browser progress visible during setup/picking/checking; import business pipeline unchanged. Local only. Standards and Spec self-review passed. Native selection returned a path; visual screenshot inspection was limited by app-approval timeout.",
+          "subject": "ac2289143f8c833474bc1ffa41bd5e8e410f1604"
+        }
       }
     }
   }
