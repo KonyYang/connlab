@@ -401,7 +401,35 @@
       "closed_at": "2026-11-08T01:38:18.677248Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\folder-partial-generation\\connlab",
+      "branch": "codex/save-materials-dialog-20261108",
+      "resources": [
+        "save-materials-dialog-style"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108",
+        "summary": "Unify Save materials dialog with existing ConnLab visual styles",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Localized visual markup and scoped CSS only; preserve preview, save, cancellation and folder-opening behavior. Local integration; no push or release.",
+        "scope_paths": [
+          "frontend/src/features/intake/SaveMaterialsDialog.tsx",
+          "frontend/src/features/intake/SaveMaterialsDialog.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "871f0c599944a88a6026db90ac6427b96d2f4cb1",
+        "started_at": "2026-11-08T10:26:56.809185Z",
+        "updated_at": "2026-11-08T10:26:56.809185Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
