@@ -464,7 +464,38 @@
       "closed_at": "2026-11-08T14:58:17.746469Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_P3_STORAGE_MAINTENANCE_20261108": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
+      "branch": "codex/p3-maintenance-20261108",
+      "resources": [
+        "p3-development-copy-cleanup"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_P3_STORAGE_MAINTENANCE_20261108",
+        "summary": "Safely reclaim closed development copies and document minimal retention rules",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "User-authorized P3 maintenance: audit and archive ignored/unique local files before removing closed unused worktrees and six explicit orphan copies; retain branches and real data; conservative duplicate-loose Git repacking in LLCR_Extractor/TestFlowManager; Conda inspect-only where references remain; no global tmp purge, no business code changes, no push or automatic Close. Evidence/archives outside deletion roots.",
+        "scope_paths": [
+          "AGENTS.md",
+          "docs/packaging_notes.md",
+          "docs/operational/p3_storage_maintenance_20261108.md"
+        ],
+        "risk_reasons": [
+          "destructive deletion of proven redundant development copies"
+        ],
+        "activation_head": "dff4bd1cc0f9769ed949a68c3708f9313e348b2b",
+        "started_at": "2026-11-08T15:34:01.013132Z",
+        "updated_at": "2026-11-08T15:34:01.013132Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
