@@ -49,6 +49,20 @@ recorded as they happen; Settings > Support diagnostics > Export diagnostic pack
 exports existing logs, not a new recording session. This does not recover earlier
 unlogged events. Do not run multiple backend workers against the same rotating file.
 
+## Build storage and retention
+
+`dist_release`, `dist` and `build` are generated outputs, not source files. Keep them untracked.
+The current release scripts write beneath the checkout from which they run; they do not yet offer
+a shared external output location. Do not package every development task. When packaging is required,
+use a designated build checkout at the exact validated source commit and retain the release needed
+for delivery/acceptance. Once no longer needed, reclaim obsolete build output after checking that it
+contains no operator data or unique evidence; do not recursively clear a running release directory.
+
+Old commits may still track historical `dist_release` files even though current master does not.
+Checking out those old commits can materialize the files again. Prefer current-master task bases;
+recover old source selectively when appropriate. Removing an obsolete checkout does not remove those
+objects from Git history. This policy does not authorize history rewriting or aggressive Git pruning.
+
 ## Portable Desktop Release
 
 RELEASE_001 produces a copyable Windows desktop release folder for non-programmer
