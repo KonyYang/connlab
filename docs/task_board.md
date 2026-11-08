@@ -440,11 +440,11 @@
   "tasks": {
     "TASK_CLOSE_PROJECT_DIALOG_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/close-project-dialog-20261108",
       "resources": [],
-      "integrated_head": "f5a561222d41802e2b80cf75bbe489e4392d85c1",
+      "integrated_head": "8b7959c7d0de3b60b2c6917462cf3b6fd0cc9caf",
       "task": {
         "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
         "summary": "Simplify and unify the Close project confirmation dialog",
@@ -466,7 +466,7 @@
         "risk_reasons": [],
         "activation_head": "adbb1338803c838981e2fc65b2edda590ac8c0dc",
         "started_at": "2026-11-08T12:31:40.974518Z",
-        "updated_at": "2026-11-08T14:25:57.332782Z",
+        "updated_at": "2026-11-08T14:28:33.446438Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -476,7 +476,60 @@
           "summary": "User requests hiding the screenshot text: title, project reference, retention sentence and Close reason label. Keep dropdown with Completed default, optional note and action buttons. Retain accessible dialog/control names. Local only, no push/publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
+          "subject": "5746b66eff7de83ff0f05323b203ec07710ce850",
+          "summary": "User screenshot revision: hide visible dialog title, project reference, retention explanation and Close reason label. Keep actual dropdown choices, Completed default, optional note and actions. Accessible title/identity/label remain visually clipped. Local-only.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "docs/project_registry_management.md",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.css",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "check": "96 affected frontend tests: close dialog 9, Workbench 83 and shared registry dialog 4. Worktree tmp/close-controls-only-qa.log."
+            },
+            {
+              "status": "passed",
+              "check": "TypeScript and Vite production build; worktree tmp/close-controls-only-build.log."
+            },
+            {
+              "status": "passed",
+              "check": "Real browser default and 603px preview: header, ID, explanation and reason label absent visually; named dialog and reason control remain in accessibility tree, dropdown defaults Completed, controls unchanged. Cancel only, no real project closure. Primary screenshot tmp/close-controls-only-preview.png."
+            },
+            {
+              "status": "passed",
+              "check": "Exact diff reviewed; git diff --check clean. Presentation-only revision; no new implementation-mirroring tests. Backend and callback semantics unchanged."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "Current agent; scoped visual-only CSS and removed explanatory paragraph; retained accessibility names and existing behavior."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Current agent separate Standards and Spec passes, not independent agents; zero unresolved findings. Existing tokens, no hidden visual header spacing, retained screenreader naming, only user-requested visible text removed."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "96 affected tests, build, real default/603px browser screenshots and AX naming check; no real project closed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "5746b66eff7de83ff0f05323b203ec07710ce850",
+            "primary_before": "a2915742c00ab1760a2e582241866b4e7a2dd05f",
+            "integrated_head": "8b7959c7d0de3b60b2c6917462cf3b6fd0cc9caf",
+            "recovered": false
+          }
+        }
       }
     }
   }
