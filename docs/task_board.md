@@ -452,18 +452,21 @@
         "route": "sol_build_review_qa",
         "scope": "Four explicit business reasons, optional note disclosure, concise read-only copy, remove output reminders; retain lifecycle API, errors and keyboard safety. Local only, no push or publication.",
         "scope_paths": [
-          "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
+          "backend/application/project_lifecycle_state_service.py",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/project_registry_management.md",
           "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.css",
           "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.test.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
           "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
           "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx",
-          "docs/PROJECT_CONTEXT.md",
-          "docs/project_registry_management.md"
+          "tests/integration/test_project_lifecycle_api.py",
+          "tests/unit/test_project_lifecycle_state_service.py"
         ],
         "risk_reasons": [],
         "activation_head": "adbb1338803c838981e2fc65b2edda590ac8c0dc",
         "started_at": "2026-11-08T12:31:40.974518Z",
-        "updated_at": "2026-11-08T13:05:30.643739Z",
+        "updated_at": "2026-11-08T13:06:11.155032Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
