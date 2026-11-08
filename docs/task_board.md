@@ -446,7 +446,42 @@
       "closed_at": "2026-11-08T12:22:25.508029Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REOPEN_PROJECT_ACTION_20261108": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/reopen-project-action-20261108",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REOPEN_PROJECT_ACTION_20261108",
+        "summary": "One-click Reopen project action without a reason form",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Replace closed/stopped lifecycle card with compact Reopen project action in the existing Close position. No manual reason or confirmation form; backend writes automatic reopen audit reason, time and current local operator display name. Preserve previous business state, data and explicit reason compatibility; errors only, busy protection. Isolated tests, local-only integration, no real project reopen, push or publication.",
+        "scope_paths": [
+          "backend/application/project_lifecycle_state_service.py",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+          "frontend/src/workbench.css",
+          "tests/unit/test_project_lifecycle_state_service.py",
+          "tests/integration/test_project_lifecycle_api.py",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/project_registry_management.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "ccf59e4c93e76dd77a13451dc67aa975d623352d",
+        "started_at": "2026-11-08T14:38:37.534300Z",
+        "updated_at": "2026-11-08T14:38:37.534300Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
