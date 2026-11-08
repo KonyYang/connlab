@@ -141,17 +141,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("No confirmed Matrix")).toBeNull();
   });
 
-  it("can hide workbench details while keeping the Matrix visible", async () => {
-    const user = userEvent.setup();
-    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot });
+  it.each([false, true])("keeps Workbench actions visible without a hide/show toggle (shell: %s)", (withShell) => {
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot }, {}, {}, withShell ? AppShellWrapper : undefined);
     expect(screen.getByRole("complementary", { name: "Step workspace" })).toBeTruthy();
-    const detailsToggle = screen.getByRole("button", { name: "Hide Actions" });
-    expect(detailsToggle.className).toContain("runtime-console-workbench-action");
-    await user.click(detailsToggle);
-    expect(screen.queryByRole("complementary", { name: "Step workspace" })).toBeNull();
+    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Hide Actions" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Show Actions" })).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Show Actions" }));
-    expect(screen.getByRole("complementary", { name: "Step workspace" })).toBeTruthy();
   });
 
   it("keeps an existing Matrix in the unified workspace before LTR identity arrives", () => {
