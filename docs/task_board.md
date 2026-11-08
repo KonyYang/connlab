@@ -410,7 +410,39 @@
       "closed_at": "2026-11-08T02:18:00.842368Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_IMPORT_FOLDER_PICKER_20261108": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/import-folder-picker-20261108",
+      "resources": [
+        "project-import-folder-picker"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_IMPORT_FOLDER_PICKER_20261108",
+        "summary": "Modernize Import Projects folder selection and show immediate progress",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Use modern Windows folder selection owned by foreground window with deterministic COM cleanup and cancellation. Show progress while choosing/checking. Preserve import validation, copying and confirmations. Local only.",
+        "scope_paths": [
+          "backend/infrastructure/files/windows_path_picker.py",
+          "backend/infrastructure/files/windows_project_folder_dialog.py",
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "frontend/src/App.test.tsx",
+          "tests/unit/test_windows_project_folder_dialog.py",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "97f6a08c35ba1f9fe86f2bcf74a86b840a914bd8",
+        "started_at": "2026-11-08T10:43:16.848176Z",
+        "updated_at": "2026-11-08T10:43:16.848176Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
