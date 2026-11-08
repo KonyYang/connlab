@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import nullcontext
 from types import SimpleNamespace
 import ctypes
 import sys
@@ -37,6 +38,7 @@ def native(monkeypatch):
     monkeypatch.setattr(win32gui, "GetForegroundWindow", lambda: 321)
     monkeypatch.setattr(dialog, "_ole32", lambda: SimpleNamespace(CoCreateInstance=create, CoTaskMemFree=lambda value: events.append("free")))
     monkeypatch.setattr(dialog, "_call", call)
+    monkeypatch.setattr(dialog, "compact_folder_dialog", nullcontext)
     return dialog, events, outcome
 
 

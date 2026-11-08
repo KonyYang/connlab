@@ -302,8 +302,8 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     detailsBySource={detailsBySource}
     busy={busy} onOpenMember={openImportedMember} onViewLibrary={() => onViewLibrary()} onRefresh={() => void refreshBatch()}
     onResume={() => void receive(true)} onReceiveMore={() => changeSources("")} heading={displayBatch.batch_id === recoveredCompletedId ? "Import Result" : undefined} />;
-  const needsDialog = Boolean(
-    !setupReady || busy || error
+  const needsDialog = !busy && Boolean(
+    error
     || runtime && !runtime.configured
     || manualOpen
     || scan?.selection_issue

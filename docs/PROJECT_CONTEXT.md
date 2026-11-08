@@ -610,8 +610,11 @@ schema catalog here.
 
 Import Projects uses the Windows Common Item Dialog in single-folder filesystem mode,
 owned by the foreground window. COM interfaces and returned path memory are released
-on selection, cancellation and errors. The browser keeps the import dialog visible
-while loading setup, choosing a folder and checking it. Cancellation preserves the
+on selection, cancellation and errors. The native dialog starts with compact, centered
+bounds limited by its monitor work area; a temporary current-thread activation hook
+applies sizing once and is removed when the dialog closes. Users can still resize it.
+Routine setup, folder selection and checking do not display a browser progress overlay;
+errors and decisions requiring input still display their existing dialog. Cancellation preserves the
 existing Projects view; selecting a directory does not change the existing import
 validation, copy, conflict or confirmation rules. Native-dialog failures retain the
 existing manual path fallback. No dependencies or runtime installation were added.
