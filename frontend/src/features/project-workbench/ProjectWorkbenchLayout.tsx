@@ -661,6 +661,7 @@ export function ProjectWorkbenchLayout({
             />
             <ProjectLifecycleManagementPanel
               allowDelete={false}
+              closeActionHost={topBarActionsRoot}
               compactBottom
               deletePreview={null}
               lifecycleActions={lifecycleActions}
@@ -695,6 +696,7 @@ export function ProjectWorkbenchLayout({
             />
             <ProjectLifecycleManagementPanel
               allowDelete={lifecycle.mode === "temporary_planning"}
+              closeActionHost={topBarActionsRoot}
               compactBottom
               deletePreview={lifecycle.mode === "temporary_planning" ? deletePreview : null}
               lifecycleActions={lifecycleActions}

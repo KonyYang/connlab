@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 import type {
   ProjectCloseReasonCategory,
   ProjectOutputStatusSummary,
@@ -263,6 +264,7 @@ export function TemporaryPlanningMode({
 
 export function ProjectLifecycleManagementPanel({
   compactBottom = false,
+  closeActionHost = null,
   lifecycleActions,
   lifecycleBusy,
   lifecycleError,
@@ -274,6 +276,7 @@ export function ProjectLifecycleManagementPanel({
 }: {
   allowDelete: boolean;
   compactBottom?: boolean;
+  closeActionHost?: HTMLElement | null;
   deletePreview: TemporaryProjectDeletePreview | null;
   lifecycleActions: WorkbenchLifecycleActionsViewModel;
   lifecycleBusy: boolean;
@@ -289,7 +292,25 @@ export function ProjectLifecycleManagementPanel({
     return null;
   }
 
-  return (
+  const closeConfirmation = (
+    <ProjectWorkbenchCloseConfirmation
+      key={lifecycleActions.projectRecordId}
+      compact={compactBottom}
+      lifecycleActions={lifecycleActions}
+      lifecycleBusy={lifecycleBusy}
+      onCloseProject={onCloseProject}
+      outputStatusSummary={outputStatusSummary}
+      projectIdentity={projectIdentity}
+      projectReference={projectReference}
+    />
+  );
+  const showInlinePanel = lifecycleActions.canActivate || lifecycleError || !closeActionHost;
+
+  return <>
+    {closeActionHost && lifecycleActions.canClose ? createPortal(
+      <div className="runtime-console-topbar-close">{closeConfirmation}</div>, closeActionHost
+    ) : null}
+    {showInlinePanel ? (
     <section
       className={`runtime-console-lifecycle-management${compactBottom ? " is-compact-bottom" : ""}`}
       aria-label="Project lifecycle"
@@ -303,19 +324,11 @@ export function ProjectLifecycleManagementPanel({
           </button>
         </div>
       ) : null}
-      <ProjectWorkbenchCloseConfirmation
-        key={lifecycleActions.projectRecordId}
-        compact={compactBottom}
-        lifecycleActions={lifecycleActions}
-        lifecycleBusy={lifecycleBusy}
-        onCloseProject={onCloseProject}
-        outputStatusSummary={outputStatusSummary}
-        projectIdentity={projectIdentity}
-        projectReference={projectReference}
-      />
+      {!closeActionHost ? closeConfirmation : null}
       {lifecycleError ? <p className="runtime-console-error" role="alert">{lifecycleError}</p> : null}
     </section>
-  );
+    ) : null}
+  </>;
 }
 
 export function RegisteredSetupMode({

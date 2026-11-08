@@ -10367,6 +10367,21 @@
 }
 
 /* The project identity and actions share the global Workbench title bar. */
+.runtime-console-topbar-close {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  margin-left: 8px;
+}
+
+.runtime-console-topbar-close > .runtime-console-close-actions {
+  display: contents;
+}
+
+.runtime-console-topbar-close .runtime-console-close-action {
+  white-space: nowrap;
+}
+
 .top-bar-workbench .top-bar-actions {
   width: 100%;
   min-width: 0;
