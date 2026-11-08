@@ -473,7 +473,35 @@
       "closed_at": "2026-11-08T15:30:23.201007Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LTR_INFORMATION_WITHOUT_MATRIX_20261109": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/ltr-information-without-matrix-20261109",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LTR_INFORMATION_WITHOUT_MATRIX_20261109",
+        "summary": "Show LTR Information before Matrix confirmation",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Show the existing LTR Information summary card after Folder Actions in the unconfirmed/no-Matrix workspace, including the default one-row Matrix. Keep card behavior and existing confirmed Matrix path unchanged. Local only, no push or publication.",
+        "scope_paths": [
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "79771c2a97466653ffe0fb7f6d6346086135b269",
+        "started_at": "2026-11-08T23:03:38.178215Z",
+        "updated_at": "2026-11-08T23:03:38.178215Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
