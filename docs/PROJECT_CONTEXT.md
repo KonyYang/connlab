@@ -100,10 +100,11 @@ Do not use a dated snapshot as a substitute for the code.
   audit can still resolve them; ordinary writes require restoration first.
 - Registry transitions and business writes share the project-generation lock. A queued or running
   generation prevents a registry move; transitions revalidate all conflicts in one transaction.
-- New closure actions require an explicit reason; the compact confirmation offers a dropdown with
-  Completed, Cancelled, Unable to continue and Other, with no default selection. Every reason,
-  including Other, permits an empty note; Add note reveals the optional field. Output status checks stay outside
-  this confirmation and do not block closure. Reopening is separate from restoring a hidden record.
+- Workbench closure uses Completed when the operator explicitly confirms Close project; the compact
+  dialog has no reason selector. Add note reveals an optional field. The lifecycle API retains its
+  other reason categories for compatibility and accepts an empty note for every category. Output
+  status checks stay outside the confirmation and do not block closure. Reopening is separate from
+  restoring a hidden record.
 - [Management behavior and acceptance](project_registry_management.md) defines this boundary.
 
 ### Matrix draft lifecycle
