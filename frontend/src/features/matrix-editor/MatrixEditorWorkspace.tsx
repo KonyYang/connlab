@@ -195,7 +195,6 @@ export function MatrixEditorWorkspace({
   const [scheduleWorkspace, setScheduleWorkspace] = useState<ProjectScheduleWorkspace | null>(null);
   const [scheduleMessage, setScheduleMessage] = useState("");
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(true);
   const editorSurfaceRef = useRef<HTMLElement>(null);
   const [errorFocusLabel, setErrorFocusLabel] = useState<string | null>(null);
   useLayoutEffect(() => {
@@ -1875,15 +1874,11 @@ export function MatrixEditorWorkspace({
           </ul>
         </section>
       ) : null}
-      <section className={`matrix-editor-studio${detailsOpen ? "" : " is-details-collapsed"}`} ref={editorSurfaceRef}>
+      <section className="matrix-editor-studio" ref={editorSurfaceRef}>
         <section className="matrix-editor-grid-surface">
           <div className="matrix-editor-main-table-wrap">
             <div className="matrix-editor-grid-controls">
               <div className="matrix-editor-grid-control-actions">
-                <button type="button" aria-expanded={detailsOpen} aria-controls="matrix-step-details"
-                  onClick={() => setDetailsOpen((open) => !open)}>
-                  {detailsOpen ? "Hide step details" : "Show step details"}
-                </button>
                 <button
                   type="button"
                   disabled={isLifecycleReadonly || draftLoading || methodVersionSync.busy}
@@ -2284,7 +2279,7 @@ export function MatrixEditorWorkspace({
           />
         </section>
 
-        {detailsOpen ? <MatrixStepWorkspace
+        <MatrixStepWorkspace
           readOnly={isLifecycleReadonly}
           view={{
             groupName: selectedGroup ? selectedGroup.name || "Unnamed" : null,
@@ -2306,7 +2301,7 @@ export function MatrixEditorWorkspace({
               return next;
             });
           }}
-        /> : null}
+        />
       </section>
       <footer
         aria-label="Matrix editor completion actions"

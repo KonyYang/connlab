@@ -77,8 +77,8 @@ Do not use a dated snapshot as a substitute for the code.
 
 - Workbench action panels are always displayed alongside/below the Matrix. The Hide Actions / Show
   Actions toggle and its collapse state have been removed; Step Actions, Folder Actions and the other
-  existing side-column content keep their behavior. Matrix Editor's own step-details toggle remains
-  separate.
+  existing side-column content keep their behavior. Matrix Editor also always displays its group-step
+  workspace; its Hide/Show step details toggle and collapse state have been removed.
   Close project is at the far right of the Workbench top bar and retains its confirmation dialog;
   standalone layouts without a top bar retain their in-place action.
 
