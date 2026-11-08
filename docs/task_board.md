@@ -470,15 +470,17 @@
         "route": "sol_direct",
         "scope": "Remove only Workbench Hide Actions/Show Actions button, collapse state, top-bar portal/fallback and unused feature CSS. Always display Step Actions, Folder Actions and existing side-column content. Preserve Matrix Editor step detail controls, navigation and all action functions. Local only, no push or publication.",
         "scope_paths": [
+          "docs/PROJECT_CONTEXT.md",
           "frontend/src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
           "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-          "frontend/src/workbench.css",
-          "docs/PROJECT_CONTEXT.md"
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
+          "frontend/src/workbench.css"
         ],
         "risk_reasons": [],
         "activation_head": "7b3c26dabfe610d0137d4bc04ab4a5f022b736eb",
         "started_at": "2026-11-08T15:00:53.133368Z",
-        "updated_at": "2026-11-08T15:17:20.044085Z",
+        "updated_at": "2026-11-08T15:21:56.009861Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
