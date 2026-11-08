@@ -61,6 +61,9 @@ class ExternalResourceRepositoryPort(Protocol):
     def upsert(self, resource: ExternalResource) -> ExternalResource:
         """Create or update a registered resource."""
 
+    def save_validation(self, expected: ExternalResource, validated: ExternalResource) -> ExternalResource | None:
+        """Save only validation fields if the checked configuration is still current."""
+
 
 class ExternalResourceService:
     """Register and validate external resources without mutating them."""
@@ -130,7 +133,10 @@ class ExternalResourceService:
             validation_failure_reason=failure,
             worksheet_name=resource.worksheet_name,
         )
-        return self._repository.upsert(validated)
+        current = self._repository.save_validation(resource, validated)
+        if current is None:
+            raise ExternalResourceNotFoundError(f"External resource is no longer registered: {resource_type.value}")
+        return current
 
     def _validation_failure(self, resource: ExternalResource) -> str | None:
         """Return a failure reason, or None when the resource is valid."""

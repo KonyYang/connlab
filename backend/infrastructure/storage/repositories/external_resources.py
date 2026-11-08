@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from backend.domain import (
@@ -59,6 +59,26 @@ class ExternalResourceRepository:
             row.worksheet_name = resource.worksheet_name
         self._session.flush()
         return resource
+
+    def save_validation(self, expected: ExternalResource, validated: ExternalResource) -> ExternalResource | None:
+        """A slow Office probe must never restore an older path or worksheet."""
+        self._session.execute(
+            update(ExternalResourceModel).where(
+                ExternalResourceModel.resource_id == expected.resource_id,
+                ExternalResourceModel.resource_type == expected.resource_type.value,
+                ExternalResourceModel.path == str(expected.path),
+                ExternalResourceModel.active == expected.active,
+                ExternalResourceModel.worksheet_name == expected.worksheet_name,
+            ).values(
+                validation_status=validated.validation_status.value,
+                last_validated_at=validated.last_validated_at,
+                validation_failure_reason=validated.validation_failure_reason,
+            ).execution_options(synchronize_session=False)
+        )
+        row = self._session.scalar(select(ExternalResourceModel).where(
+            ExternalResourceModel.resource_type == expected.resource_type.value
+        ).execution_options(populate_existing=True))
+        return _to_domain(row) if row else None
 
 
 def _to_model(resource: ExternalResource) -> ExternalResourceModel:
