@@ -18,12 +18,15 @@ LTR records or ownership, source materials, external paths, or external files.
 
 ## Closing and reopening
 
-- The operator explicitly selects Completed, Cancelled, Cannot continue testing,
-  or Other. Other requires a nonblank note; the other categories allow no note.
+- The compact confirmation displays the project reference separately below its title and offers
+  four directly selectable reasons: Completed, Cancelled, Unable to continue, or Other. No reason
+  is selected by default. Other requires a nonblank note; the other categories reveal an optional
+  note through Add note. Written notes stay visible when changing reason.
 - Existing Failed and Duplicate closure reasons remain readable. A test failing
   its acceptance requirement is not itself an incomplete project.
-- Missing/stale/failed output records appear as a collapsible reminder, not a new
-  completion gate. No automatic claim of successful testing is made.
+- Output status reminders, counts and details are omitted from the close confirmation. Missing,
+  stale, failed or manually maintained outputs do not become a completion gate. No automatic claim
+  of successful testing is made. Closing does not move public-drive files or submit an approval package.
 - Failed submissions keep the entered reason and note. Repeated submissions are
   prevented. Dialog focus, Escape, keyboard navigation and narrow screens work.
 - Reopening a closed project is distinct from restoring a removed project.

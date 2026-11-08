@@ -62,8 +62,8 @@ export function ProjectRecordIdentity({project}: {project: ProjectRegistryEntry}
 }
 
 /** Shared project management confirmation: focus, keyboard and scroll ownership. */
-export function ProjectManagementDialog({ title, children, busy = false, onCancel }: {
-  title: string; children: ReactNode; busy?: boolean; onCancel: () => void;
+export function ProjectManagementDialog({ title, children, busy = false, onCancel, className = "" }: {
+  title: string; children: ReactNode; busy?: boolean; onCancel: () => void; className?: string;
 }): ReactElement {
   const titleId = useId();
   const container = useRef<HTMLDivElement>(null);
@@ -81,7 +81,13 @@ export function ProjectManagementDialog({ title, children, busy = false, onCance
     siblings.forEach((element) => element.setAttribute("inert", ""));
     const focusable = () => Array.from(root.querySelectorAll<HTMLElement>(
       'button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), summary, a[href], [tabindex="0"]'
-    )).filter((element) => !element.closest("[hidden]") && !element.closest("details:not([open]) > :not(summary)"));
+    )).filter((element) => {
+      if (element.matches(":disabled") || element.closest("[hidden]") || element.closest("details:not([open]) > :not(summary)")) return false;
+      if (!(element instanceof HTMLInputElement) || element.type !== "radio" || !element.name) return true;
+      const group = Array.from(root.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
+        .filter((radio) => radio.name === element.name && !radio.matches(":disabled"));
+      return element === (group.find((radio) => radio.checked) ?? group[0]);
+    });
     (root.querySelector<HTMLElement>("[data-dialog-initial-focus]") ?? focusable()[0] ?? root).focus();
     function keydown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
@@ -109,7 +115,7 @@ export function ProjectManagementDialog({ title, children, busy = false, onCance
     };
   }, []);
   return createPortal(<div className="project-management-dialog-backdrop">
-    <div ref={container} className="project-management-dialog" role="dialog" aria-modal="true"
+    <div ref={container} className={`project-management-dialog ${className}`.trim()} role="dialog" aria-modal="true"
       aria-labelledby={titleId} aria-busy={busy} tabIndex={-1}>
       <h2 id={titleId}>{title}</h2>{children}
     </div>

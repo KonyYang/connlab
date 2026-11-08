@@ -1,13 +1,14 @@
-import { useRef, useState, type ReactElement } from "react";
-import type { ProjectCloseReasonCategory, ProjectOutputStatusItem, ProjectOutputStatusSummary } from "../../api/client";
+import { useEffect, useId, useRef, useState, type ReactElement } from "react";
+import type { ProjectCloseReasonCategory, ProjectOutputStatusSummary } from "../../api/client";
 import { ProjectManagementDialog } from "../projects-registry/ProjectRegistryManagementDialog";
 import type { WorkbenchLifecycleActionsViewModel } from "./projectWorkbenchLifecycleSelectors";
 import "../../project-dashboard.css";
+import "./ProjectWorkbenchCloseConfirmation.css";
 
 const CLOSE_REASON_OPTIONS: Array<{value: ProjectCloseReasonCategory; label: string}> = [
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
-  { value: "cannot_test", label: "Cannot continue testing" },
+  { value: "cannot_test", label: "Unable to continue" },
   { value: "other", label: "Other" },
 ];
 
@@ -24,20 +25,25 @@ type ProjectWorkbenchCloseConfirmationProps = {
 };
 
 export function ProjectWorkbenchCloseConfirmation({
-  compact = false, lifecycleActions, lifecycleBusy, outputStatusSummary, projectIdentity,
+  compact = false, lifecycleActions, lifecycleBusy, projectIdentity,
   projectReference, onCloseProject, initiallyOpen = false, onDismiss,
 }: ProjectWorkbenchCloseConfirmationProps): ReactElement | null {
   const [confirming, setConfirming] = useState(initiallyOpen);
   const [reasonCategory, setReasonCategory] = useState<ProjectCloseReasonCategory | "">("");
   const [note, setNote] = useState("");
+  const [noteExpanded, setNoteExpanded] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submitLock = useRef(false);
+  const noteInput = useRef<HTMLTextAreaElement>(null);
+  const reasonGroupName = useId();
+  useEffect(() => { if (noteExpanded) noteInput.current?.focus(); }, [noteExpanded]);
   if (!lifecycleActions.canClose) return null;
   const busy = lifecycleBusy || submitting;
   const canSubmit = Boolean(reasonCategory) && (reasonCategory !== "other" || Boolean(note.trim())) && !busy;
+  const showNote = reasonCategory === "other" || noteExpanded || Boolean(note);
   function resetConfirmation(): void {
-    setConfirming(false); setReasonCategory(""); setNote(""); setValidationMessage(null); onDismiss?.();
+    setConfirming(false); setReasonCategory(""); setNote(""); setNoteExpanded(false); setValidationMessage(null); onDismiss?.();
   }
   async function handleCloseProject(): Promise<void> {
     if (!canSubmit || !reasonCategory || submitLock.current) return;
@@ -52,42 +58,31 @@ export function ProjectWorkbenchCloseConfirmation({
   return <section className={`runtime-console-close-actions${compact ? " is-compact" : ""}`} aria-label="Project close action">
     {!initiallyOpen && <button type="button" className="runtime-console-close-action ui-primary-action" disabled={busy}
       onClick={() => setConfirming(true)}>Close project</button>}
-    {confirming && <ProjectManagementDialog title={`Close project ${projectReference ?? projectIdentity}`} busy={busy} onCancel={resetConfirmation}>
-      <p>Closing makes this project read-only and keeps all its records. Reopen it when work needs to continue.</p>
-      <label><span>Close reason</span><select data-dialog-initial-focus value={reasonCategory} disabled={busy}
-        onChange={(event) => setReasonCategory(event.target.value as ProjectCloseReasonCategory | "")}>
-        <option value="">Select a reason</option>
-        {CLOSE_REASON_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select></label>
-      <label><span>Additional note ({reasonCategory === "other" ? "required" : "optional"})</span>
-        <textarea value={note} disabled={busy} onChange={(event) => setNote(event.target.value)} rows={2} />
-      </label>
-      {reasonCategory === "other" && !note.trim() && <p className="project-management-help">Explain the reason when choosing Other.</p>}
-      <OutputStatusSummaryPanel outputStatusSummary={outputStatusSummary} />
-      {validationMessage && <p className="runtime-console-error" role="alert">{validationMessage}</p>}
-      <div className="project-management-dialog-actions">
-        <button className="primary-action ui-primary-action" type="button" disabled={!canSubmit} onClick={() => void handleCloseProject()}>{submitting ? "Closing…" : "Close project"}</button>
+    {confirming && <ProjectManagementDialog title="Close project" className="project-close-dialog" busy={busy} onCancel={resetConfirmation}>
+      <p className="project-close-identity">{projectReference ?? projectIdentity}</p>
+      <div className="project-close-body">
+        <p className="project-close-description">Records will be kept. Reopen the project to edit again.</p>
+        <fieldset className="project-close-reasons" disabled={busy}>
+          <legend>Close reason</legend>
+          <div className="project-close-reason-options">
+            {CLOSE_REASON_OPTIONS.map((option, index) => <label key={option.value} className="project-close-reason">
+              <input type="radio" name={reasonGroupName} value={option.value} checked={reasonCategory === option.value}
+                data-dialog-initial-focus={index === 0 ? true : undefined}
+                onChange={() => setReasonCategory(option.value)} />
+              <span>{option.label}</span>
+            </label>)}
+          </div>
+        </fieldset>
+        {showNote ? <label className="project-close-note"><span>Additional note ({reasonCategory === "other" ? "required" : "optional"})</span>
+          <textarea ref={noteInput} value={note} required={reasonCategory === "other"} disabled={busy}
+            onChange={(event) => setNote(event.target.value)} rows={3} />
+        </label> : <button className="project-close-add-note" type="button" disabled={busy} onClick={() => setNoteExpanded(true)}>Add note</button>}
+        {validationMessage && <p className="project-close-error" role="alert">{validationMessage}</p>}
+      </div>
+      <div className="project-management-dialog-actions project-close-actions">
         <button className="secondary-action ui-secondary-action" type="button" disabled={busy} onClick={resetConfirmation}>Cancel</button>
+        <button className="primary-action ui-primary-action" type="button" disabled={!canSubmit} onClick={() => void handleCloseProject()}>{submitting ? "Closing…" : "Close project"}</button>
       </div>
     </ProjectManagementDialog>}
   </section>;
-}
-
-function OutputStatusSummaryPanel({outputStatusSummary}: {outputStatusSummary: ProjectOutputStatusSummary | null}): ReactElement {
-  if (!outputStatusSummary) return <p className="project-management-help">Output status is currently unavailable. You can still close the project after reviewing your records.</p>;
-  const exceptions = outputStatusSummary.items.filter((item) => item.status !== "current");
-  if (!exceptions.length) return <p className="project-management-help">{outputStatusSummary.items.length ? "Recorded outputs are current." : "No output status is recorded. Review your records before closing."}</p>;
-  return <div className="project-management-output-summary">
-    <p>{exceptions.length} {exceptions.length === 1 ? "output needs" : "outputs need"} review</p>
-    <details><summary>View output details</summary><ul>{exceptions.map((item) =>
-      <li key={item.output_kind}><strong>{formatOutputKind(item.output_kind)}: {formatOutputStatus(item.status)}</strong><p>{item.reason}</p></li>
-    )}</ul></details>
-  </div>;
-}
-function formatOutputKind(kind: ProjectOutputStatusItem["output_kind"]): string {
-  return ({section2_write_back: "Section 2 write-back", test_record_form: "Test Record", test_status: "Test Status",
-    ir_dwv_record_form: "IR/DWV Record", fee_evaluation: "Fee Evaluation", customer_feedback_form: "Customer Feedback", approval_package: "Approval Package"})[kind];
-}
-function formatOutputStatus(status: ProjectOutputStatusItem["status"]): string {
-  return ({missing: "Not generated", current: "Current", stale: "Needs refresh", manual: "Manually maintained", failed: "Failed"})[status];
 }
