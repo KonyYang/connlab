@@ -2,6 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useProjectWorkbenchModel } from "./useProjectWorkbenchModel";
 
+vi.mock("../../currentUser", () => ({getCurrentUserDisplayName: () => "Lab Operator"}));
+
 const MockApiRequestError = vi.hoisted(
   () =>
     class MockApiRequestError extends Error {
@@ -553,10 +555,36 @@ describe("useProjectWorkbenchModel", () => {
 
     expect(apiMocks.activateProjectLifecycle).toHaveBeenCalledWith("project-1", {
       reason: "Business work continues.",
-      operator: null,
+      operator: "Lab Operator",
     });
     expect(result.current.project?.status).toBe("active");
     expect(result.current.lifecycle?.lifecycle_state).toBe("active");
+  });
+
+  it("permits reopening without a note and includes the current operator display name", async () => {
+    const {result} = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(result.current.project?.project_id).toBe("project-1"));
+    await act(async () => { await result.current.onActivateLifecycle(""); });
+    expect(apiMocks.activateProjectLifecycle).toHaveBeenCalledWith("project-1", {
+      reason: "", operator: "Lab Operator",
+    });
+    expect(result.current.lifecycle?.lifecycle_state).toBe("active");
+  });
+
+  it("ignores a late reopen response after navigation to another project", async () => {
+    let resolveReopen!: (value: ReturnType<typeof lifecycleResponse>) => void;
+    apiMocks.activateProjectLifecycle.mockImplementationOnce(() => new Promise((resolve) => {resolveReopen = resolve;}));
+    const {result, rerender} = renderHook(({id}) => useProjectWorkbenchModel(id), {initialProps: {id: "project-1"}});
+    await waitFor(() => expect(result.current.project?.project_id).toBe("project-1"));
+    let reopening!: Promise<void>;
+    act(() => {reopening = result.current.onActivateLifecycle("");});
+    apiMocks.getProject.mockResolvedValue({project_id: "project-2", product_name: "Second", requestor: "Lab", status: "closed"});
+    apiMocks.getProjectLifecycle.mockResolvedValue(lifecycleResponse({project_id: "project-2", lifecycle_state: "closed"}));
+    rerender({id: "project-2"});
+    await waitFor(() => expect(result.current.lifecycle?.project_id).toBe("project-2"));
+    await act(async () => {resolveReopen(lifecycleResponse({project_id: "project-1"})); await reopening;});
+    expect(result.current.project?.project_id).toBe("project-2");
+    expect(result.current.lifecycle?.lifecycle_state).toBe("closed");
   });
 
   it("closes a project with unified business reason and refreshes Workbench state", async () => {
@@ -619,18 +647,15 @@ describe("useProjectWorkbenchModel", () => {
     });
   });
 
-  it("rejects blank close notes for Other before calling the close API", async () => {
+  it("allows an empty optional Other note through the real Workbench model", async () => {
     const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
 
     await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
 
-    await expect(
-      act(async () => {
-        await result.current.onCloseLifecycle("other", "   ");
-      })
-    ).rejects.toThrow("Close note is required.");
-
-    expect(apiMocks.closeProjectLifecycle).not.toHaveBeenCalled();
+    await act(async () => { await result.current.onCloseLifecycle("other", "   "); });
+    expect(apiMocks.closeProjectLifecycle).toHaveBeenCalledWith("project-1", {
+      reason_category: "other", note: "", operator: null,
+    });
   });
 });
 

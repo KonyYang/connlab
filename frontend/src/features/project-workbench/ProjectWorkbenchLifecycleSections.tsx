@@ -285,70 +285,24 @@ export function ProjectLifecycleManagementPanel({
   projectIdentity: string;
   projectReference: string | null;
 }): ReactElement | null {
-  const [pendingAction, setPendingAction] =
-    useState<WorkbenchLifecycleActionsViewModel["primaryAction"]>("none");
-  const [reason, setReason] = useState("");
-  const lifecycleTitle = lifecycleActions.canActivate
-    ? "Reopen project"
-    : lifecycleActions.canClose
-      ? "Close project"
-      : "Project lifecycle";
-  const lifecycleDescription = lifecycleActions.canActivate
-    ? "Reopen restores editing and project work when business work should continue."
-    : lifecycleActions.canClose
-      ? "Close records a business reason. Reopen the project if work needs to continue."
-      : "No lifecycle action is currently available.";
-  const hasLifecycleAction = lifecycleActions.canActivate || lifecycleActions.canClose;
-  const hasPanelContent =
-    hasLifecycleAction ||
-    Boolean(lifecycleActions.readonlyReason) ||
-    Boolean(lifecycleError);
-
-  if (!hasPanelContent) {
+  if (!lifecycleActions.canActivate && !lifecycleActions.canClose && !lifecycleError) {
     return null;
-  }
-
-  function handleConfirmAction(): void {
-    const normalizedReason = reason.trim();
-    if (!normalizedReason || pendingAction !== "activate") {
-      return;
-    }
-    onActivateProject(normalizedReason);
-    setPendingAction("none");
-    setReason("");
-  }
-
-  function handleCancelAction(): void {
-    setPendingAction("none");
-    setReason("");
   }
 
   return (
     <section
-      className={`runtime-console-lifecycle-management${
-        compactBottom ? " is-compact-bottom" : ""
-      }`}
+      className={`runtime-console-lifecycle-management${compactBottom ? " is-compact-bottom" : ""}`}
       aria-label="Project lifecycle"
+      aria-busy={lifecycleBusy}
     >
-      {compactBottom ? null : (
-        <div>
-          <p className="eyebrow">Project lifecycle</p>
-          <strong>{lifecycleTitle}</strong>
-          <p>{lifecycleDescription}</p>
-        </div>
-      )}
-      <div className="runtime-console-lifecycle-actions">
-        {lifecycleActions.canActivate ? (
-          <button
-            type="button"
-            className="runtime-console-activate-action"
-            disabled={lifecycleBusy}
-            onClick={() => setPendingAction("activate")}
-          >
+      {lifecycleActions.canActivate ? (
+        <div className="runtime-console-lifecycle-actions">
+          <button type="button" className="runtime-console-activate-action ui-primary-action"
+            disabled={lifecycleBusy} onClick={() => onActivateProject("")}>
             {lifecycleActions.activateActionLabel}
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <ProjectWorkbenchCloseConfirmation
         key={lifecycleActions.projectRecordId}
         compact={compactBottom}
@@ -359,40 +313,7 @@ export function ProjectLifecycleManagementPanel({
         projectIdentity={projectIdentity}
         projectReference={projectReference}
       />
-      {pendingAction !== "none" ? (
-        <div className="runtime-console-lifecycle-confirmation">
-          <strong>Confirm reopen project</strong>
-          <p>Record why project work should continue before editing is restored.</p>
-          <label>
-            <span>Reopening note</span>
-            <textarea
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              rows={3}
-            />
-          </label>
-          <div className="runtime-console-lifecycle-confirm-actions">
-            <button
-              type="button"
-              disabled={lifecycleBusy || !reason.trim()}
-              onClick={handleConfirmAction}
-            >
-              Confirm reopen project
-            </button>
-            <button type="button" disabled={lifecycleBusy} onClick={handleCancelAction}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
-      {!compactBottom && lifecycleActions.readonlyReason ? (
-        <p className="runtime-console-readonly-note">
-          {lifecycleActions.readonlyReason}
-        </p>
-      ) : null}
-      {lifecycleError ? (
-        <p className="runtime-console-error">{lifecycleError}</p>
-      ) : null}
+      {lifecycleError ? <p className="runtime-console-error" role="alert">{lifecycleError}</p> : null}
     </section>
   );
 }

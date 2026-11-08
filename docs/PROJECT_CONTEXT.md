@@ -110,6 +110,17 @@ Do not use a dated snapshot as a substitute for the code.
   restoring a hidden record.
 - [Management behavior and acceptance](project_registry_management.md) defines this boundary.
 
+- Closed or stopped Workbench projects show one compact Reopen project action in the same bottom
+  position as Close project. It restores editing immediately without a reason form or a second
+  confirmation. The lifecycle card headings, explanatory text and repeated read-only note are omitted;
+  the page's read-only context remains. Only failures appear below the action, and it is disabled
+  while running. The backend records `Reopened by operator.` when no reason is supplied, preserving
+  explicit reasons from existing API callers. Audit events retain time, previous closure metadata
+  and the configured local operator display name (a display setting, not authentication). Restoration
+  uses the saved prior business state; missing history still blocks it. Existing Matrix, fee, report
+  and external file records are retained, and public folders are not moved. Navigating to another
+  project suppresses late reopening responses.
+
 ### Matrix draft lifecycle
 
 - A Project has at most one editable Matrix working draft (`status = draft`).

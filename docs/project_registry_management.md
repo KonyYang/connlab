@@ -35,6 +35,15 @@ LTR records or ownership, source materials, external paths, or external files.
   prevented. Dialog focus, Escape, keyboard navigation and narrow screens work.
 - Reopening a closed project is distinct from restoring a removed project.
   Restoring a closed record preserves its closed business state.
+- Closed and stopped projects offer one compact Reopen project button at the existing Close action
+  position. Clicking restores editing directly; there is no reason input or second confirmation.
+  Card headings, explanatory paragraphs and duplicate read-only notices are omitted. The action is
+  disabled during its request; an actionable failure is the only additional text shown by the action.
+- Reopening with an omitted, null or blank reason records `Reopened by operator.`. Existing explicit
+  API reasons are still retained. The event keeps the timestamp, configured local operator display
+  name and prior closure metadata. A display name is not authentication. A missing recoverable prior
+  state or an already active project still rejects the operation. Existing project data and files
+  remain intact. Late responses after navigation cannot replace another project's state.
 
 ## Recycle bin and retained history
 

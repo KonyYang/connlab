@@ -3442,10 +3442,12 @@
   padding: 12px 0 0;
 }
 
-.runtime-console-lifecycle-management.is-compact-bottom
-  .runtime-console-lifecycle-confirmation,
 .runtime-console-lifecycle-management.is-compact-bottom .runtime-console-error {
   flex-basis: 100%;
+}
+
+.runtime-console-lifecycle-management .runtime-console-error {
+  color: var(--color-danger);
 }
 
 .runtime-console-lifecycle-management p {
@@ -3506,67 +3508,6 @@
 .runtime-console-lifecycle-actions button.runtime-console-activate-action:not(:disabled):hover {
   border-color: #9fbbea;
   background: var(--color-action-secondary-hover);
-}
-
-.runtime-console-lifecycle-confirmation {
-  display: grid;
-  gap: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-muted);
-  padding: 10px;
-}
-
-.runtime-console-lifecycle-confirmation label {
-  display: grid;
-  gap: 6px;
-  color: var(--color-ink-muted);
-  font-size: 12px;
-}
-
-.runtime-console-lifecycle-confirmation .runtime-console-lifecycle-check {
-  grid-template-columns: auto 1fr;
-  align-items: start;
-  color: var(--color-ink);
-  font-size: 13px;
-}
-
-.runtime-console-lifecycle-check input {
-  margin-top: 2px;
-}
-
-.runtime-console-lifecycle-confirmation textarea {
-  min-height: 72px;
-  resize: vertical;
-}
-
-.runtime-console-lifecycle-confirm-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.runtime-console-lifecycle-confirm-actions button {
-  border: 1px solid color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
-  color: var(--color-primary-strong);
-  font-weight: 800;
-  line-height: 1.2;
-  padding: 8px 12px;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.runtime-console-lifecycle-confirm-actions button:not(:disabled):hover {
-  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
-}
-
-.runtime-console-lifecycle-confirm-actions button:disabled {
-  border-color: var(--color-border);
-  background: var(--color-surface-muted);
-  color: var(--color-ink-muted);
-  box-shadow: none;
 }
 
 .runtime-console-readonly-note {

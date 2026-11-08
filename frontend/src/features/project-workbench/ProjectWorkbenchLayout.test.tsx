@@ -458,7 +458,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByRole("button", { name: "Reopen project" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
-    expect(screen.getByText("Project lifecycle")).toBeTruthy();
+    expect(screen.queryByText("Project lifecycle")).toBeNull();
   });
 
   it("uses project_no as DL fallback when latest LTR lookup is unavailable", () => {
@@ -648,7 +648,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
   });
 
-  it("opens an inline Activate confirmation for stopped projects when activate is allowed", async () => {
+  it("reopens a stopped project directly without a reason form", async () => {
     const user = userEvent.setup();
     const onActivateLifecycle = vi.fn().mockResolvedValue(undefined);
 
@@ -676,13 +676,39 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Reopen project" }));
 
-    expect(screen.getAllByText("Confirm reopen project").length).toBeGreaterThan(0);
-    await user.type(screen.getByLabelText("Reopening note"), "Customer restarted work.");
-    await user.click(screen.getByRole("button", { name: "Confirm reopen project" }));
-
-    expect(onActivateLifecycle).toHaveBeenCalledWith("Customer restarted work.");
+    expect(screen.queryByText("Confirm reopen project")).toBeNull();
+    expect(screen.queryByLabelText("Reopening note")).toBeNull();
+    expect(onActivateLifecycle).toHaveBeenCalledWith("");
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Close project" })).toBeNull();
+  });
+
+  it("keeps closed-project reopening compact, blocks duplicate clicks and permits retry after failure", async () => {
+    let reject!: (error: Error) => void;
+    const onActivateLifecycle = vi.fn()
+      .mockImplementationOnce(() => new Promise<void>((_resolve, fail) => {reject = fail;}))
+      .mockResolvedValueOnce(undefined);
+    renderWorkbench({
+      onActivateLifecycle,
+      lifecycle: lifecycleResponse({lifecycle_state: "closed", status: "closed", readonly: true,
+        close_reason_category: "completed", allowed_actions: ["activate"]}),
+    });
+    const user = userEvent.setup();
+    const panel = within(screen.getByRole("region", {name: "Project lifecycle"}));
+    expect(panel.queryByText("Project lifecycle")).toBeNull();
+    expect(panel.queryByText(/Reopen restores/)).toBeNull();
+    expect(panel.queryByText(/This project is closed/)).toBeNull();
+    const reopen = panel.getByRole("button", {name: "Reopen project"});
+    await user.dblClick(reopen);
+    expect(onActivateLifecycle).toHaveBeenCalledTimes(1);
+    expect(onActivateLifecycle).toHaveBeenCalledWith("");
+    expect(reopen).toHaveProperty("disabled", true);
+    reject(new Error("Could not reopen. Try again."));
+    expect(await panel.findByRole("alert")).toHaveProperty("textContent", "Could not reopen. Try again.");
+    expect(reopen).toHaveProperty("disabled", false);
+    await user.click(reopen);
+    expect(onActivateLifecycle).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(panel.queryByRole("alert")).toBeNull());
   });
 
   it("opens unified close confirmation for active formal projects when close is allowed", async () => {

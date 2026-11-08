@@ -109,7 +109,7 @@ class ActivateProjectLifecycleCommand:
     """Command for activating stopped or closed project work."""
 
     project_id: str
-    reason: str
+    reason: str = ""
     operator: str | None = None
 
 
@@ -432,7 +432,7 @@ class ProjectLifecycleStateService:
             )
 
         now = self._clock()
-        reason = _required_text(command.reason, "Activation reason")
+        reason = _required_or_default(command.reason, "Reopened by operator.")
         metadata = {
             "previous_project_status": previous_status.value,
             "restored_project_status": previous_status.value,
