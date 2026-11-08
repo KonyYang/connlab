@@ -1926,6 +1926,26 @@ function AppShellWrapper({ children }: { children: ReactNode }): ReactElement {
  * command bar actually lands.
  */
 describe("ProjectWorkbenchLayout top bar action slot", () => {
+  it.each([false, true])("places Close project at the right of the top bar with active Matrix=%s and retains confirmation", async (hasMatrix) => {
+    const onCloseLifecycle = vi.fn().mockResolvedValue(undefined);
+    renderWorkbench({
+      activeConfirmedMatrixSnapshot: hasMatrix ? confirmedMatrixSnapshot : null,
+      onCloseLifecycle,
+    }, {}, {}, AppShellWrapper);
+    const user = userEvent.setup();
+    const banner = within(screen.getByLabelText("Page actions"));
+    const close = banner.getByRole("button", {name: "Close project"});
+    expect(screen.getAllByRole("button", {name: "Close project"})).toHaveLength(1);
+    expect(screen.queryByRole("region", {name: "Project lifecycle"})).toBeNull();
+    await user.click(close);
+    expect(onCloseLifecycle).not.toHaveBeenCalled();
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Cancel"}));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(close);
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Close project"}));
+    expect(onCloseLifecycle).toHaveBeenCalledWith("completed", "");
+  });
+
   it("renders the workbench command bar inside the shell slot when the app shell is mounted", () => {
     renderWorkbench({}, {}, {}, AppShellWrapper);
 

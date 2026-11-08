@@ -79,6 +79,8 @@ Do not use a dated snapshot as a substitute for the code.
   Actions toggle and its collapse state have been removed; Step Actions, Folder Actions and the other
   existing side-column content keep their behavior. Matrix Editor's own step-details toggle remains
   separate.
+  Close project is at the far right of the Workbench top bar and retains its confirmation dialog;
+  standalone layouts without a top bar retain their in-place action.
 
 - The unified project library distinguishes managed file membership from business
   Project identity and lifecycle. Full LTR stays the business reference; titles,
