@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_REOPEN_PROJECT_ACTION_20261108",
-    "tier": "standard",
-    "subject": "23988f3e200cf4fab0915d920b4a0dda2a649c2c",
-    "summary": "One-click Reopen project action without a reason form",
+    "task_id": "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108",
+    "tier": "micro",
+    "subject": "28dd24ab9e5414dbcbcde1218c663a1be7077dfd",
+    "summary": "Remove Hide/Show Actions toggle and keep Workbench action panels visible",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing the current task locally only, with no push or publication. Preserve integrated code and validation records; publish-close intentionally omitted.",
-    "closed_at": "2026-11-08T14:58:17.746469Z"
+    "decision_ref": "User explicitly confirmed closing this completed task. Persistent local-only instruction applies: preserve integrated code and validation, no push or publication; publish-close intentionally omitted.",
+    "closed_at": "2026-11-08T15:30:23.201007Z"
   },
   "retained_history": [
     {
@@ -453,92 +453,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested closing the current task locally only, with no push or publication. Preserve integrated code and validation records; publish-close intentionally omitted.",
       "closed_at": "2026-11-08T14:30:53.965058Z"
+    },
+    {
+      "task_id": "TASK_REOPEN_PROJECT_ACTION_20261108",
+      "tier": "standard",
+      "subject": "23988f3e200cf4fab0915d920b4a0dda2a649c2c",
+      "summary": "One-click Reopen project action without a reason form",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing the current task locally only, with no push or publication. Preserve integrated code and validation records; publish-close intentionally omitted.",
+      "closed_at": "2026-11-08T14:58:17.746469Z"
     }
   ],
-  "tasks": {
-    "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
-      "branch": "codex/remove-workbench-actions-toggle-20261108",
-      "resources": [],
-      "integrated_head": "3e80aa77978babc46c6fa7bc1eaa32605b2e3122",
-      "task": {
-        "task_id": "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108",
-        "summary": "Remove Hide/Show Actions toggle and keep Workbench action panels visible",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Remove only Workbench Hide Actions/Show Actions button, collapse state, top-bar portal/fallback and unused feature CSS. Always display Step Actions, Folder Actions and existing side-column content. Preserve Matrix Editor step detail controls, navigation and all action functions. Local only, no push or publication.",
-        "scope_paths": [
-          "docs/PROJECT_CONTEXT.md",
-          "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-          "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-          "frontend/src/features/matrix-editor/MatrixStepWorkspace.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
-          "frontend/src/workbench.css"
-        ],
-        "risk_reasons": [],
-        "activation_head": "7b3c26dabfe610d0137d4bc04ab4a5f022b736eb",
-        "started_at": "2026-11-08T15:00:53.133368Z",
-        "updated_at": "2026-11-08T15:29:10.889175Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User additionally requests removing Matrix Editor Hide/Show step details toggle and its related collapse feature; keep step details always visible. Continue the same UI simplification task locally, no push/publication.",
-          "requires_user": false
-        },
-        "report": {
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "28dd24ab9e5414dbcbcde1218c663a1be7077dfd",
-            "primary_before": "265628d6e36b530714cd7d609f2207e8a79efc9f",
-            "integrated_head": "3e80aa77978babc46c6fa7bc1eaa32605b2e3122",
-            "recovered": false
-          },
-          "task_id": "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108",
-          "subject": "28dd24ab9e5414dbcbcde1218c663a1be7077dfd",
-          "roles": {
-            "developer": {
-              "execution": "Micro current-agent implementation and exact-diff Standards then Spec self-review: zero unresolved findings. No independent reviewer claimed. No API, persistence, draft-save or confirmation logic changed.",
-              "status": "passed"
-            }
-          },
-          "summary": "User follow-up: removed Matrix Editor Hide/Show step details button, collapse state, conditional rendering, obsolete aria-controls target and CSS. Group step details always display. Existing Workbench simplification and top-bar Close placement retained. Local only.",
-          "validation": [
-            {
-              "check": "Final MatrixEditorWorkspace suites: 98 passed; one existing opt-in VITE_MATRIX_PROFILE performance case skipped. Worktree tmp/matrix-details-toggle-tests.log. Updated public editing test fails before removal (tmp/matrix-details-toggle-red.log), passes after removal and still verifies edited step text and invalid-cell focus.",
-              "status": "passed"
-            },
-            {
-              "check": "Final TypeScript and Vite production build passed; tmp/matrix-details-toggle-build.log. git diff --check clean; removed collapse symbols remain only in negative test assertions.",
-              "status": "passed"
-            },
-            {
-              "check": "Real target Matrix Editor preview at 609x804: Hide and Show button counts 0; Group Step Workspace and Show selected groups only visible; Update Method versions retained. Primary tmp/matrix-details-always-visible-609.png. Read-only UI verification, no business file or project mutation. Preview tab closed, viewport reset, temporary server stopped.",
-              "status": "passed"
-            }
-          ],
-          "version": 1,
-          "changed_paths": [
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-            "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-            "frontend/src/features/matrix-editor/MatrixStepWorkspace.tsx",
-            "frontend/src/workbench.css"
-          ],
-          "scope_ok": true,
-          "schema": "connlab.sol-task-report"
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
