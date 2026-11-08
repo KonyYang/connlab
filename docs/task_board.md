@@ -467,13 +467,13 @@
   "tasks": {
     "TASK_P3_STORAGE_MAINTENANCE_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
       "branch": "codex/p3-maintenance-20261108",
       "resources": [
         "p3-development-copy-cleanup"
       ],
-      "integrated_head": null,
+      "integrated_head": "42623c09b8b549ed803a9bad4bc6ef4b169d2f16",
       "task": {
         "task_id": "TASK_P3_STORAGE_MAINTENANCE_20261108",
         "summary": "Safely reclaim closed development copies and document minimal retention rules",
@@ -490,9 +490,109 @@
         ],
         "activation_head": "dff4bd1cc0f9769ed949a68c3708f9313e348b2b",
         "started_at": "2026-11-08T15:34:01.013132Z",
-        "updated_at": "2026-11-08T15:34:01.013132Z",
+        "updated_at": "2026-11-08T16:21:11.223490Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_P3_STORAGE_MAINTENANCE_20261108",
+          "subject": "b45a46f7d5b45cd9fa8000f437d1e6d15b613524",
+          "summary": "P3 maintenance completed:6unused worktrees and6orphan copies reclaimed,branches/local data recoverable,roughly20GiB net observed;minimal storage rules only. Conda/uncertain trees retained. Local integration only,no push or automatic Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "AGENTS.md",
+            "docs/operational/p3_storage_maintenance_20261108.md",
+            "docs/packaging_notes.md"
+          ],
+          "validation": [
+            {
+              "name": "Conservative maintenance and recovery acceptance",
+              "status": "passed",
+              "summary": "All12fresh source gates,CRC/rawSHA checks,independent restoration/SQLite check,fullGit object integrity and references,live health/read-only frontend smoke passed. No application tests claimed because business code unchanged.",
+              "evidence": [
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\archive_verification.json",
+                  "sha256": "1ca07505fbf7546af9b772d936f1e4e2ef94da0bf10c5de5582df28ef7ee97b6"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\preservation_metadata_sha256.json",
+                  "sha256": "5f04f702f6465cc1f73e944652e8358d3d4835a815f211f5e48d487e1ef2bd91"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\deletion_gates.json",
+                  "sha256": "b710bb4a935a537ba7f66a84f798bc386445348298c25d44420fa478dbd7e64e"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\removal_outcomes.json",
+                  "sha256": "50270c7c883d8325fdc6bdbcc0b1adee1ab8db26d0e8a9009eed3c2e5fb94d3e"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\removal_final_checks.json",
+                  "sha256": "73c8bc383bc68e095c58a268cf057d9e2f8a240043718c38f89b146e860580c5"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\qa_result.json",
+                  "sha256": "e07461279f2de4b857ffaed1f833bc0e9c48449959045c13c9f2e690b51f4819"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\review_result.json",
+                  "sha256": "9f46f9e8e3f9e9862b567bb9743fb79f2b4cf784affd24aa4110534fb8af7ad0"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\integrator_result.json",
+                  "sha256": "9b2e0f6b2bbdd8fa862cbbb16ee08ed95aa842dc6ad6cd45101eb946973f4dec"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\LLCR-all-objects-result.json",
+                  "sha256": "0b492007af699fa00725603f749c2d3b47fb9a1f8d1f14bc92584b27bdb648dd"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\TestFlowManager-maintenance.json",
+                  "sha256": "066612539f62edeb727ac3d9e0a502c1a96df477ef729b11d4ab87dce9baf641"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\retained_archives\\p3_20261108\\live_readonly_smoke.json",
+                  "sha256": "ca58e8120f72819841ec205264a1496c7505f3a144b2bfb6384c855e821276e6"
+                }
+              ]
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "context": "/root/p3_planner (independent)",
+              "summary": "Bounded preservation, ownership, no-follow, conservative object maintenance and deferral gates applied."
+            },
+            "developer": {
+              "status": "passed",
+              "context": "/root",
+              "summary": "Twelve sources preserved and removed after fresh raw-hash gates; inspected long-path partial-state recovery; no product code or Conda changes."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "/root/p3_reviewer (independent)",
+              "summary": "Final exact three-document diff: Standards0 and Spec0 blockers; two pre-removal safeguards implemented."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "/root/p3_qa (independent)",
+              "summary": "Archive identity and coverage,56content samples,isolatedSQLite restore,12removals,branches/dependencies/producttree,oldrepositoryfacts and exact clean subject verified."
+            },
+            "integrator": {
+              "status": "passed",
+              "context": "/root/p3_integrator (independent)",
+              "summary": "Exact subject/scope/parents/tree,clean roots,raw evidence metadata and QA checked; merge delegated to sole production writer."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "b45a46f7d5b45cd9fa8000f437d1e6d15b613524",
+            "primary_before": "1e5101c3452f6a44e6d0422b4f6067a6af3c25b3",
+            "integrated_head": "42623c09b8b549ed803a9bad4bc6ef4b169d2f16",
+            "recovered": false
+          }
+        }
       }
     }
   }
