@@ -449,11 +449,11 @@
   "tasks": {
     "TASK_REOPEN_PROJECT_ACTION_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/reopen-project-action-20261108",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "860e687217eb45e7ae17db7debc40998ef2f89e6",
       "task": {
         "task_id": "TASK_REOPEN_PROJECT_ACTION_20261108",
         "summary": "One-click Reopen project action without a reason form",
@@ -476,9 +476,73 @@
         "risk_reasons": [],
         "activation_head": "ccf59e4c93e76dd77a13451dc67aa975d623352d",
         "started_at": "2026-11-08T14:38:37.534300Z",
-        "updated_at": "2026-11-08T14:38:37.534300Z",
+        "updated_at": "2026-11-08T14:53:01.778579Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REOPEN_PROJECT_ACTION_20261108",
+          "subject": "23988f3e200cf4fab0915d920b4a0dda2a649c2c",
+          "summary": "Replace closed/stopped lifecycle card with compact one-click Reopen project action at existing Close position. Remove manual note and second confirmation; backend supplies automatic audit reason and keeps time/operator/previous closure metadata. Preserve data/history guards, block duplicate clicks, show only failures, ignore stale responses. Also align the previously approved optional Other close note through the Workbench model. Local-only, no push or publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/application/project_lifecycle_state_service.py",
+            "docs/PROJECT_CONTEXT.md",
+            "docs/project_registry_management.md",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+            "frontend/src/workbench.css",
+            "tests/integration/test_project_lifecycle_api.py",
+            "tests/unit/test_project_lifecycle_state_service.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "check": "Backend 50 unique affected cases validated: initial full 46 passed and 4 new tests failed only on a nonexistent response-field assertion; corrected assertion and reran those 4 API cases, all passed. Unit audits verify automatic reason, operator/time and retained prior note; state/history guards and API editing restoration tested. Logs in task worktree tmp/reopen-project-backend-qa.log and reopen-project-api-final.log. One preexisting Starlette/httpx warning."
+            },
+            {
+              "status": "passed",
+              "check": "Frontend 136 unique affected tests validated: initial matrix 135 passed plus one obsolete card-title expectation; corrected expectation and reran all 84 layout tests, passed. Model/close 28 tests rerun after the bounded optional-Other consistency fix, all passed. Other unchanged suites retained passing results (registry 4, App 20). Logs: tmp/reopen-project-frontend-qa.log, reopen-project-layout-final.log, reopen-project-model-final.log."
+            },
+            {
+              "status": "passed",
+              "check": "Final TypeScript/Vite production build passed after final source/test edits; tmp/reopen-project-build-final.log."
+            },
+            {
+              "status": "passed",
+              "check": "Real IAB closed-project preview at default and 734x804: one styled right-aligned Reopen project button at bottom; no lifecycle card header/description/reason form/repeated note in action region. Screenshot primary tmp/reopen-project-preview.png. Did not click Reopen or mutate real project."
+            },
+            {
+              "status": "passed",
+              "check": "TDD RED/GREEN at service, Workbench UI and model seams. Exact diff and git diff --check clean; task HEAD clean."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "Current agent; existing application/default reason seam and UI handlers, no schema/dependency changes. Current local display name used as audit context, not authentication. Added navigation-generation checks and preserved already-active/missing-history guards."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Current agent separate Standards and Spec focused review passes, not independent agents; zero unresolved findings. Direction and ownership preserved, old unused confirmation CSS removed, no filesystem mutation path. Optional Other note fix is explicitly authorized by prior user requirement and limited to existing model seam."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "Affected matrix executed once with only bounded assertion/model fixes rerun: 50 backend and 136 frontend unique cases pass on applicable exact final state; final build and real browser layout verified. Actual audit storage behavior at application event port; no unsupported API audit flag claimed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "23988f3e200cf4fab0915d920b4a0dda2a649c2c",
+            "primary_before": "8a9e0c2b69b22ef68cdded6671b4e3a1fb1bb2f9",
+            "integrated_head": "860e687217eb45e7ae17db7debc40998ef2f89e6",
+            "recovered": false
+          }
+        }
       }
     }
   }
