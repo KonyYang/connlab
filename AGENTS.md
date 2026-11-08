@@ -104,6 +104,21 @@ the board/writer are compatibility names, not instructions to select GPT-5.6 Sol
 - Finish with the outcome, exact changed paths, validation results, material findings, and residual
   risk. Omit duplicated plans, board JSON, full logs, and role ceremony.
 
+## Development storage
+
+- Never create development worktrees inside generic `tmp`. For manually managed checkouts prefer
+  `D:\PythonProject\connlab-worktrees`; app-managed worktrees may keep their managed location.
+  Reuse a suitable idle checkout; do not relocate active worktrees merely to standardize paths.
+- After acceptance and explicit Close, reclaim an unused task checkout through its Git/app lifecycle
+  only after checking task/process ownership, tracked and untracked changes, ignored local data,
+  nested repositories and reparse points. Preserve needed databases, configuration and evidence
+  outside the checkout with verified recovery information first. Keep branches unless their removal
+  is separately justified; never force removal or bypass safety hooks. Retain and report uncertain targets.
+- Keep release outputs out of Git and avoid ordinary-task packaging; see `docs/packaging_notes.md`.
+  A seven-day retention window may apply to proven disposable test output after task closure, not
+  to all of `tmp` or date-named directories. Worktrees, business files, databases, acceptance evidence,
+  archives and interrupted-write recovery data require classification before cleanup.
+
 ## Task tiers
 
 - Allow at most **one main task plus one scope-independent micro task**. Parallel writers use distinct
