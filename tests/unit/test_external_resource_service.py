@@ -282,6 +282,10 @@ class _Store:
         self.resources[resource.resource_type] = resource
         return resource
 
+    def save_validation(self, expected: ExternalResource, validated: ExternalResource) -> ExternalResource | None:
+        current = self.get_by_type(expected.resource_type)
+        return self.upsert(validated) if current == expected else current
+
 
 class _FakeOffice:
     """Fake Office facade for service tests."""

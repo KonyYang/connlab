@@ -618,3 +618,20 @@ errors and decisions requiring input still display their existing dialog. Cancel
 existing Projects view; selecting a directory does not change the existing import
 validation, copy, conflict or confirmation rules. Native-dialog failures retain the
 existing manual path fallback. No dependencies or runtime installation were added.
+
+## Settings resource validation freshness
+
+Settings automatically revalidates its configured active file locations on entry and
+when returning to the window. Repeated focus/visibility events are coalesced; full
+Office/template checks and saves share a serial queue, without progress popups.
+Ordinary folders are checked before slower Office resources. A failed check does not stop subsequent resources. Unconfigured, inactive and hidden
+resource types are not automatically probed. Existing resource validators remain the
+source of truth; a file's existence alone does not clear a structure/template error.
+
+Editing a path or worksheet invalidates older UI results and preserves other unsaved
+field drafts. Blur continues to save and validate without requiring Enter. Validation
+persistence updates only validation fields when resource identity, path, active flag
+and worksheet still match the checked configuration. A slow result cannot restore a
+replaced path or worksheet. Background work stops queuing checks after leaving Settings.
+Validation reads business resources without rewriting their contents; tests use isolated
+SQLite and filesystem fixtures, with Office ports stubbed where required.

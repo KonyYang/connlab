@@ -207,3 +207,70 @@ class _PickerService(LocalPathPickerService):
 
     def pick_path(self, resource_type):  # type: ignore[override]
         return self._chosen
+
+
+def test_slow_validation_cannot_restore_a_replaced_configuration(tmp_path):
+    from backend.application.external_resource_service import ExternalResourceService
+    from backend.infrastructure.storage.repositories.external_resources import ExternalResourceRepository
+    from backend.domain import ExternalResourceType, ExternalResourceValidationStatus
+    old, new = tmp_path / "old.docx", tmp_path / "new.docx"
+    old.write_bytes(b"old fake Office input")
+    new.write_bytes(b"new fake Office input")
+    _, engine = _client(tmp_path)
+    resource_type = ExternalResourceType.APPLICATION_FORM_TEMPLATE
+    class SlowOffice:
+        def read_word_document(self, path):
+            assert path == old
+            with Session(engine) as writer:
+                ExternalResourceService(ExternalResourceRepository(writer)).upsert_resource(resource_type, new, True)
+                writer.commit()
+            raise ValueError("old template is unreadable")
+    try:
+        with Session(engine) as reader:
+            service = ExternalResourceService(ExternalResourceRepository(reader), office=SlowOffice())
+            service.upsert_resource(resource_type, old, True)
+            reader.commit()
+            result = service.validate_resource(resource_type)
+            reader.commit()
+            assert result.path == new
+            assert result.validation_status is ExternalResourceValidationStatus.NOT_VALIDATED
+        with Session(engine) as check:
+            stored = ExternalResourceRepository(check).get_by_type(resource_type)
+            assert stored.path == new
+            assert stored.validation_failure_reason is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_slow_validation_cannot_restore_a_replaced_worksheet(tmp_path):
+    from backend.application.external_resource_service import ExternalResourceService, WorksheetNameUpdate
+    from backend.infrastructure.storage.repositories.external_resources import ExternalResourceRepository
+    from backend.domain import ExternalResourceType, ExternalResourceValidationStatus
+    source = tmp_path / "standard.xlsx"
+    source.write_bytes(b"fake Office input")
+    _, engine = _client(tmp_path)
+    resource_type = ExternalResourceType.STANDARD_RECORD_EXCEL
+    class SlowOffice:
+        def probe_excel_structure(self, path, **rules):
+            with Session(engine) as writer:
+                ExternalResourceService(ExternalResourceRepository(writer)).upsert_resource(
+                    resource_type, source, True, WorksheetNameUpdate(supplied=True, value="New sheet"))
+                writer.commit()
+            raise ValueError("old worksheet is unreadable")
+    try:
+        with Session(engine) as reader:
+            service = ExternalResourceService(ExternalResourceRepository(reader), office=SlowOffice())
+            service.upsert_resource(resource_type, source, True, WorksheetNameUpdate(supplied=True, value="Old sheet"))
+            reader.commit()
+            result = service.validate_resource(resource_type)
+            reader.commit()
+            assert result.worksheet_name == "New sheet"
+            assert result.validation_status is ExternalResourceValidationStatus.NOT_VALIDATED
+        with Session(engine) as check:
+            stored = ExternalResourceRepository(check).get_by_type(resource_type)
+            assert stored.worksheet_name == "New sheet"
+            assert stored.validation_failure_reason is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()

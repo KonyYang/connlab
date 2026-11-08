@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactElement
 } from "react";
@@ -12,7 +13,7 @@ type SettingsExternalResourcesPanelProps = {
   resources: ExternalResource[];
   savingType: ExternalResourceType | null;
   browseEnabled: boolean;
-  pathValidationMessages: Record<ExternalResourceType, string | null>;
+  pathValidationMessages: Partial<Record<ExternalResourceType, string | null>>;
   onPathChange: (resourceType: ExternalResourceType) => void;
   onSave: (
     resourceType: ExternalResourceType,
@@ -44,8 +45,15 @@ export function SettingsExternalResourcesPanel({
     () => initialDrafts(rows)
   );
 
+  const savedDrafts = useRef(initialDrafts(rows));
   useEffect(() => {
-    setDrafts(initialDrafts(rows));
+    const next = initialDrafts(rows);
+    const previous = savedDrafts.current;
+    savedDrafts.current = next;
+    setDrafts(current => Object.fromEntries(SHARED_RESOURCE_CONFIGS.map(({resourceType: type}) => [type, {
+      path: current[type]?.path === previous[type]?.path ? next[type].path : current[type]?.path ?? next[type].path,
+      worksheetName: current[type]?.worksheetName === previous[type]?.worksheetName ? next[type].worksheetName : current[type]?.worksheetName ?? next[type].worksheetName,
+    }])) as Record<ExternalResourceType, DraftValue>);
   }, [rows]);
 
   function updateDraft(resourceType: ExternalResourceType, value: Partial<DraftValue>): void {
@@ -235,7 +243,7 @@ function ResourceRow({
             disabled={saving}
             maxLength={31}
             value={draft.worksheetName}
-            onChange={(event) => onDraftChange({ worksheetName: event.target.value })}
+            onChange={(event) => { onDraftChange({ worksheetName: event.target.value }); onPathChange(); }}
             onBlur={(event) => saveWorksheetName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
