@@ -440,11 +440,11 @@
   "tasks": {
     "TASK_CLOSE_PROJECT_DIALOG_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/close-project-dialog-20261108",
       "resources": [],
-      "integrated_head": "d74d0168210262a6a3849cc726422e88af2efd13",
+      "integrated_head": "bf1d4f15df3f713326bfab725bda97f393552712",
       "task": {
         "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
         "summary": "Simplify and unify the Close project confirmation dialog",
@@ -466,7 +466,7 @@
         "risk_reasons": [],
         "activation_head": "adbb1338803c838981e2fc65b2edda590ac8c0dc",
         "started_at": "2026-11-08T12:31:40.974518Z",
-        "updated_at": "2026-11-08T13:06:11.155032Z",
+        "updated_at": "2026-11-08T13:14:36.143759Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -476,7 +476,70 @@
           "summary": "User feedback: use a compact reason dropdown instead of radio cards; notes are optional for every reason including Other. Update UI and backend consistency. Continue same local-only task; no push or release.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
+          "subject": "ce56be73d6abd5c807c535291fe56d29c090e294",
+          "summary": "User revision: replace reason radio cards with compact styled dropdown; all four reasons including Other permit an empty optional note. Backend close seam matches frontend. Previous visual cleanup and error/cancellation protections retained. Local only, no push or release.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/application/project_lifecycle_state_service.py",
+            "docs/PROJECT_CONTEXT.md",
+            "docs/project_registry_management.md",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.css",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx",
+            "tests/integration/test_project_lifecycle_api.py",
+            "tests/unit/test_project_lifecycle_state_service.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "check": "Backend final matrix: 42 passed; state service, lifecycle write guard, lifecycle API and gating API. Includes omitted, empty and whitespace Other note through isolated SQLite API. One preexisting Starlette/httpx deprecation warning. Worktree tmp/close-dropdown-backend-qa.log."
+            },
+            {
+              "status": "passed",
+              "check": "Frontend final directly affected matrix: 113 passed across close confirmation, Workbench layout, shared registry dialog, App. Worktree tmp/close-dropdown-frontend-qa.log."
+            },
+            {
+              "status": "passed",
+              "check": "TypeScript and Vite production build passed; worktree tmp/close-dropdown-build.log."
+            },
+            {
+              "status": "passed",
+              "check": "Real IAB preview at default viewport and 741x804: styled dropdown, no default, Other accepts no note with enabled Close, Add note reveals optional empty field and focuses it; did not submit a real closure. Primary screenshot tmp/close-project-dropdown-741.png."
+            },
+            {
+              "status": "passed",
+              "check": "TDD red before green: UI missing combobox and backend rejecting empty Other note both reproduced before fix; exact diff reviewed and git diff --check clean."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "Current agent; grouped TDD at existing dialog/service/API seams. Two-line backend validation removal, no schema/external-file changes. Legacy-only routes retain their contracts."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Distinct same-agent Standards and Spec review passes, not independent agents. Zero unresolved findings. Scoped select tokens, no unnecessary radio support, explicit reason required, all notes optional, errors/duplicate submit/focus preserved."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "Final affected matrix: 42 backend and 113 frontend tests, build, real browser. No real project close or public-drive mutation. Previous wider ProjectListPage baseline failures were not rerun, since untouched."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "ce56be73d6abd5c807c535291fe56d29c090e294",
+            "primary_before": "57a46dc7a68e9b31645729cebc9a7a1049e95fe8",
+            "integrated_head": "bf1d4f15df3f713326bfab725bda97f393552712",
+            "recovered": false
+          }
+        }
       }
     }
   }
