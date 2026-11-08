@@ -174,6 +174,39 @@ def test_activate_closed_project_restores_previous_status_and_preserves_close_me
     )
 
 
+@pytest.mark.parametrize("reason", [None, "", "   "])
+def test_reopen_without_a_reason_restores_status_and_records_the_operator(reason) -> None:
+    stores = _Stores(project=_project(status=ProjectStatus.LTR_REGISTERED))
+    service = stores.service()
+    service.close_project(CloseProjectLifecycleCommand(
+        project_id="P1", reason_category="completed", note="Retained close note"))
+
+    result = service.activate_project(ActivateProjectLifecycleCommand(
+        project_id="P1", reason=reason, operator="Lab Operator"))
+
+    assert result.lifecycle_state is ProjectLifecycleState.ACTIVE
+    assert stores.projects.project.status is ProjectStatus.LTR_REGISTERED
+    assert stores.projects.project.product_name == "Connector"
+    assert stores.projects.project.resumed_reason == "Reopened by operator."
+    assert stores.projects.project.resumed_by == "Lab Operator"
+    assert stores.projects.project.resumed_at == "2026-06-27T02:00:00+00:00"
+    assert len(stores.events.items) == 2
+    event = stores.events.items[-1]
+    assert event.event_type == "activate"
+    assert event.operator == "Lab Operator"
+    assert event.reason == "Reopened by operator."
+    assert '"previous_closed_note": "Retained close note"' in event.metadata_json
+
+
+def test_reopen_without_restorable_history_does_not_change_the_project() -> None:
+    stores = _Stores(project=_project(status=ProjectStatus.CLOSED).with_lifecycle(
+        lifecycle_state=ProjectLifecycleState.CLOSED))
+    with pytest.raises(ProjectLifecycleStateError, match="previous project status is unavailable"):
+        stores.service().activate_project(ActivateProjectLifecycleCommand(project_id="P1", reason=""))
+    assert stores.projects.project.lifecycle_state is ProjectLifecycleState.CLOSED
+    assert stores.events.items == []
+
+
 def test_close_stopped_project_preserves_original_status_for_activation() -> None:
     project = _project(status=ProjectStatus.CANCELLED).with_lifecycle(
         lifecycle_state=ProjectLifecycleState.STOPPED,

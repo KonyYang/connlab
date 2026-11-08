@@ -182,13 +182,13 @@ def test_unified_close_and_activate_closed_project_api(tmp_path: Path) -> None:
                 "operator": "Lab User",
             },
         )
-        active_conflict = client.post(
-            f"/api/projects/{project_id}/lifecycle/activate",
-            json={"reason": " "},
-        )
         activated = client.post(
             f"/api/projects/{project_id}/lifecycle/activate",
             json={"reason": "Retest approved.", "operator": "Lab User"},
+        )
+        active_conflict = client.post(
+            f"/api/projects/{project_id}/lifecycle/activate",
+            json={},
         )
 
         assert closed.status_code == 200
@@ -198,12 +198,36 @@ def test_unified_close_and_activate_closed_project_api(tmp_path: Path) -> None:
         assert closed.json()["close_reason_label"] == "Cannot test"
         assert closed.json()["allowed_actions"] == ["activate"]
         assert active_conflict.status_code == 409
-        assert "Activation reason is required" in active_conflict.json()["detail"]["message"]
+        assert "already active" in active_conflict.json()["detail"]["message"]
         assert activated.status_code == 200
         assert activated.json()["lifecycle_state"] == "active"
         assert activated.json()["status"] == "draft"
         assert activated.json()["closure_type"] is None
         assert activated.json()["close_reason_category"] is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+@pytest.mark.parametrize("reason_fields", [{}, {"reason": ""}, {"reason": "   "}, {"reason": None}])
+def test_reopen_without_a_reason_api(tmp_path: Path, reason_fields: dict) -> None:
+    client, engine = _client(tmp_path)
+    try:
+        project_id = _create_project(client, project_no="DL-2026-06-014")
+        closed = client.post(f"/api/projects/{project_id}/lifecycle/close", json={"reason_category": "completed"})
+        assert closed.status_code == 200
+
+        reopened = client.post(f"/api/projects/{project_id}/lifecycle/activate",
+                               json={**reason_fields, "operator": "Lab Operator"})
+
+        assert reopened.status_code == 200
+        assert reopened.json()["lifecycle_state"] == "active"
+        assert reopened.json()["status"] == "draft"
+        assert reopened.json()["readonly"] is False
+        retained = client.get(f"/api/projects/{project_id}").json()
+        assert retained["project_no"] == "DL-2026-06-014"
+        assert retained["product_name"] == "Connector"
+        assert retained["requestor"] == "Alice"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

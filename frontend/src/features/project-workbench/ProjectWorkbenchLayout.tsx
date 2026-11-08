@@ -362,6 +362,7 @@ export function ProjectWorkbenchLayout({
   }, [project.project_id, project.status, projectNumber]);
 
   async function handleActivateProject(reason: string): Promise<void> {
+    if (lifecycleBusy) return;
     setLifecycleBusy(true);
     try {
       await onActivateLifecycle(reason);
@@ -694,7 +695,7 @@ export function ProjectWorkbenchLayout({
             />
             <ProjectLifecycleManagementPanel
               allowDelete={lifecycle.mode === "temporary_planning"}
-              compactBottom={shellModel.primaryWorkspace !== "readonly_archive"}
+              compactBottom
               deletePreview={lifecycle.mode === "temporary_planning" ? deletePreview : null}
               lifecycleActions={lifecycleActions}
               lifecycleBusy={lifecycleBusy}

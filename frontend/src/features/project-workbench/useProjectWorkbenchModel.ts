@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getCurrentUserDisplayName } from "../../currentUser";
 import { useProjectFolderGeneration } from "./useProjectFolderGeneration";
 import {
   ApiRequestError,
@@ -1147,27 +1148,28 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   }
 
   async function onActivateLifecycle(reason: string): Promise<void> {
-    const normalizedReason = normalizeRequiredLifecycleText(
-      reason,
-      "Activation note is required."
-    );
+    const request = lifecycleEpoch.current;
     setLifecycleLoading(true);
     try {
       const nextLifecycle = await activateProjectLifecycle(projectId, {
-        reason: normalizedReason,
-        operator: null,
+        reason: reason.trim(),
+        operator: getCurrentUserDisplayName(),
       });
+      if (request !== lifecycleEpoch.current) return;
       setLifecycle(nextLifecycle);
-      setProject(await getProject(projectId));
+      const refreshedProject = await getProject(projectId);
+      if (request !== lifecycleEpoch.current) return;
+      setProject(refreshedProject);
       setLifecycleError(null);
       setMessage("Project activated. Editing and project work are available again.");
     } catch (err) {
+      if (request !== lifecycleEpoch.current) return;
       setLifecycleError(
         err instanceof Error ? err.message : "Failed to activate project lifecycle."
       );
       throw err;
     } finally {
-      setLifecycleLoading(false);
+      if (request === lifecycleEpoch.current) setLifecycleLoading(false);
     }
   }
 
@@ -1176,9 +1178,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     note: string
   ): Promise<void> {
     const request = lifecycleEpoch.current;
-    const normalizedNote = reasonCategory === "other"
-      ? normalizeRequiredLifecycleText(note, "Close note is required.")
-      : note.trim();
+    const normalizedNote = note.trim();
     setLifecycleLoading(true);
     try {
       const nextLifecycle = await closeProjectLifecycle(projectId, {
@@ -2144,14 +2144,6 @@ function uniquePaths(paths: string[]): string[] {
 
 function normalizeLines(lines: string[]): string {
   return lines.map((line) => line.trim()).filter(Boolean).join("\n");
-}
-
-function normalizeRequiredLifecycleText(value: string, message: string): string {
-  const normalized = value.trim();
-  if (!normalized) {
-    throw new Error(message);
-  }
-  return normalized;
 }
 
 function cloneGroups(groups: ProjectTestPlanDraftGroup[] | undefined): ProjectTestPlanDraftGroup[] {
