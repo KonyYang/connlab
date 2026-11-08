@@ -20,7 +20,7 @@ function setup(onCloseProject = vi.fn()) {
 }
 
 describe("ProjectWorkbenchCloseConfirmation", () => {
-  it("identifies an IR/DWV record that needs review without blocking closure", async () => {
+  it("keeps output checks out of the confirmation and still closes with the selected reason", async () => {
     const onCloseProject = vi.fn();
     render(<ProjectWorkbenchCloseConfirmation lifecycleActions={lifecycleActions}
       lifecycleBusy={false} onCloseProject={onCloseProject} projectIdentity="Connector A"
@@ -30,26 +30,26 @@ describe("ProjectWorkbenchCloseConfirmation", () => {
           draft_id: null, draft_version: null, updated_at: null}]}} />);
     const user = userEvent.setup();
     const dialog = within(screen.getByRole("dialog"));
-    await user.click(dialog.getByText("View output details"));
-    expect(dialog.getByText("IR/DWV Record: Needs refresh")).toBeTruthy();
-    expect(dialog.getByText("Matrix test points have changed.")).toBeTruthy();
-    await user.selectOptions(dialog.getByLabelText("Close reason"), "completed");
+    expect(dialog.queryByText("View output details")).toBeNull();
+    expect(dialog.queryByText("Matrix test points have changed.")).toBeNull();
+    await user.click(dialog.getByRole("radio", {name: "Completed"}));
     await user.click(dialog.getByRole("button", {name: "Close project"}));
     expect(onCloseProject).toHaveBeenCalledWith("completed", "");
   });
 
-  it("requires a selected reason, permits Completed without a note and summarizes output exceptions", async () => {
+  it("shows four explicit reasons without a default or a mandatory optional-note field", async () => {
     const onCloseProject = vi.fn();
     const user = setup(onCloseProject);
     await user.click(screen.getByRole("button", {name: "Close project"}));
-    const dialog = within(screen.getByRole("dialog", {name: "Close project DL-2026-01-002"}));
-    expect(dialog.getByLabelText("Close reason")).toHaveProperty("value", "");
+    const dialog = within(screen.getByRole("dialog", {name: "Close project"}));
+    expect(dialog.getByText("DL-2026-01-002")).toBeTruthy();
+    const reasons = within(dialog.getByRole("group", {name: "Close reason"}));
+    expect(reasons.getAllByRole("radio")).toHaveLength(4);
+    expect(reasons.getAllByRole("radio").every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
     expect(dialog.getByRole("button", {name: "Close project"})).toHaveProperty("disabled", true);
-    expect(dialog.queryByRole("option", {name: "Failed"})).toBeNull();
-    expect(dialog.queryByRole("option", {name: "Duplicate"})).toBeNull();
-    expect(dialog.getByText("1 output needs review")).toBeTruthy();
-    expect(dialog.getByText("View output details").closest("details")).toHaveProperty("open", false);
-    await user.selectOptions(dialog.getByLabelText("Close reason"), "completed");
+    expect(dialog.queryByRole("textbox")).toBeNull();
+    expect(dialog.queryByText(/output needs review/)).toBeNull();
+    await user.click(reasons.getByRole("radio", {name: "Completed"}));
     await user.click(dialog.getByRole("button", {name: "Close project"}));
     expect(onCloseProject).toHaveBeenCalledWith("completed", "");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -61,14 +61,56 @@ describe("ProjectWorkbenchCloseConfirmation", () => {
     const user = setup(onCloseProject);
     await user.click(screen.getByRole("button", {name: "Close project"}));
     const dialog = within(screen.getByRole("dialog"));
-    await user.selectOptions(dialog.getByLabelText("Close reason"), "other");
+    await user.click(dialog.getByRole("radio", {name: "Other"}));
     expect(dialog.getByRole("button", {name: "Close project"})).toHaveProperty("disabled", true);
     await user.type(dialog.getByLabelText(/Additional note/), "Scope changed");
     await user.dblClick(dialog.getByRole("button", {name: "Close project"}));
     expect(onCloseProject).toHaveBeenCalledTimes(1);
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(dialog.getByRole("radio", {name: "Other"}).matches(":disabled")).toBe(true);
     reject(new Error("Project changed. Review and retry."));
     expect(await dialog.findByRole("alert")).toHaveProperty("textContent", "Project changed. Review and retry.");
     expect(dialog.getByLabelText(/Additional note/)).toHaveProperty("value", "Scope changed");
+  });
+
+  it("rejects a blank Other explanation and keeps a written note visible when changing reason", async () => {
+    const onCloseProject = vi.fn();
+    const user = setup(onCloseProject);
+    await user.click(screen.getByRole("button", {name: "Close project"}));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.click(dialog.getByRole("radio", {name: "Other"}));
+    await user.type(dialog.getByRole("textbox"), "   ");
+    expect(dialog.getByRole("button", {name: "Close project"})).toHaveProperty("disabled", true);
+    await user.clear(dialog.getByRole("textbox"));
+    await user.type(dialog.getByRole("textbox"), "  Request withdrawn  ");
+    await user.click(dialog.getByRole("radio", {name: "Cancelled"}));
+    expect(dialog.getByRole("textbox", {name: "Additional note (optional)"})).toHaveProperty("value", "  Request withdrawn  ");
+    await user.click(dialog.getByRole("button", {name: "Close project"}));
+    expect(onCloseProject).toHaveBeenCalledWith("cancelled", "Request withdrawn");
+  });
+
+  it("allows an optional note for normal reasons and discards the form on cancellation", async () => {
+    const onCloseProject = vi.fn();
+    const user = setup(onCloseProject);
+    const trigger = screen.getByRole("button", {name: "Close project"});
+    await user.click(trigger);
+    let dialog = within(screen.getByRole("dialog"));
+    await user.click(dialog.getByRole("radio", {name: "Cancelled"}));
+    await user.click(dialog.getByRole("button", {name: "Add note"}));
+    expect(document.activeElement).toBe(dialog.getByRole("textbox", {name: /Additional note/}));
+    await user.type(dialog.getByRole("textbox"), "Request withdrawn");
+    await user.click(dialog.getByRole("button", {name: "Cancel"}));
+    expect(onCloseProject).not.toHaveBeenCalled();
+    await user.click(trigger);
+    dialog = within(screen.getByRole("dialog"));
+    expect(dialog.queryByRole("textbox")).toBeNull();
+    expect(dialog.getAllByRole("radio").every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
+    await user.click(dialog.getByRole("radio", {name: "Unable to continue"}));
+    await user.click(dialog.getByRole("button", {name: "Add note"}));
+    await user.type(dialog.getByRole("textbox"), "Samples unavailable");
+    await user.click(dialog.getByRole("button", {name: "Close project"}));
+    expect(onCloseProject).toHaveBeenCalledWith("cannot_test", "Samples unavailable");
   });
 
   it("returns keyboard focus after Escape and traps tabbing inside the confirmation", async () => {
@@ -76,9 +118,10 @@ describe("ProjectWorkbenchCloseConfirmation", () => {
     const trigger = screen.getByRole("button", {name: "Close project"});
     await user.click(trigger);
     const dialog = within(screen.getByRole("dialog"));
-    expect(document.activeElement).toBe(dialog.getByLabelText("Close reason"));
+    expect(document.activeElement).toBe(dialog.getByRole("radio", {name: "Completed"}));
+    await user.click(dialog.getByRole("radio", {name: "Cancelled"}));
     await user.tab({shift: true});
-    expect(document.activeElement).toBe(dialog.getByRole("button", {name: "Cancel"}));
+    expect(document.activeElement).toBe(dialog.getByRole("button", {name: "Close project"}));
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);

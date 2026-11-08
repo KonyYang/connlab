@@ -322,14 +322,14 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onOpenFeeEvaluation: vi.fn(), onOpenBasicInformation: vi.fn(), onOpenReportWorkspace: vi.fn(), onOpenSettings: vi.fn()};
     const {rerender} = render(<ProjectWorkbenchLayout {...props} />);
     await user.click(screen.getByRole("button", {name: "Close project"}));
-    await user.selectOptions(screen.getByLabelText("Close reason"), "other");
+    await user.click(screen.getByRole("radio", {name: "Other"}));
     await user.type(screen.getByLabelText(/Additional note/), "For first record");
     const second = buildRuntimeModel({lifecycle: lifecycleResponse({project_id: "record-B", allowed_actions: ["close"]})}, {...project, project_id: "record-B"});
     rerender(<ProjectWorkbenchLayout {...props} runtimeModel={second} project={second.project!} />);
     expect(screen.queryByRole("dialog")).toBeNull();
     await user.click(screen.getByRole("button", {name: "Close project"}));
-    expect(screen.getByLabelText("Close reason")).toHaveProperty("value", "");
-    expect(screen.getByLabelText(/Additional note/)).toHaveProperty("value", "");
+    expect(screen.getAllByRole("radio").every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
+    expect(screen.queryByLabelText(/Additional note/)).toBeNull();
   });
 
   it("opens one close dialog and keeps the operator in the Workbench", async () => {
@@ -349,7 +349,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     await user.click(screen.getByRole("button", { name: "Close project" }));
 
     expect(screen.getByRole("dialog")).toBeTruthy();
-    await user.selectOptions(screen.getByLabelText("Close reason"), "completed");
+    await user.click(screen.getByRole("radio", {name: "Completed"}));
+    await user.click(screen.getByRole("button", {name: "Add note"}));
     await user.type(screen.getByLabelText(/Additional note/), "Business work ended.");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close project" }));
 
@@ -716,8 +717,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     await user.click(screen.getByRole("button", { name: "Close project" }));
 
-    expect(screen.getByText("Recorded outputs are current.")).toBeTruthy();
-    await user.selectOptions(screen.getByLabelText("Close reason"), "cannot_test");
+    expect(screen.queryByText("Recorded outputs are current.")).toBeNull();
+    await user.click(screen.getByRole("radio", {name: "Unable to continue"}));
+    await user.click(screen.getByRole("button", {name: "Add note"}));
     await user.type(screen.getByLabelText(/Additional note/), "Outputs reviewed.");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close project" }));
 
@@ -741,8 +743,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Close as completed")).toBeNull();
     expect(screen.queryByText("Close administratively")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Close project" }));
-    expect((screen.getByLabelText("Close reason") as HTMLSelectElement).value).toBe("");
-    await user.selectOptions(screen.getByLabelText("Close reason"), "other");
+    expect(screen.getAllByRole("radio").every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
+    await user.click(screen.getByRole("radio", {name: "Other"}));
 
     await user.type(screen.getByLabelText(/Additional note/), "Duplicate request.");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close project" }));
