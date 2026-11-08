@@ -395,11 +395,11 @@
   "tasks": {
     "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
       "branch": "codex/report-existing-targets-20261108",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "4f15354c8b318283018c0dc97c6dbf35460ec98e",
       "task": {
         "task_id": "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108",
         "summary": "Make existing report result and appendix targeting discoverable and editable in the batch UI",
@@ -419,9 +419,74 @@
         "risk_reasons": [],
         "activation_head": "f31037a7cc339d2a18e5ff5f33f39407456401a8",
         "started_at": "2026-11-08T01:42:29.162898Z",
-        "updated_at": "2026-11-08T01:42:29.162898Z",
+        "updated_at": "2026-11-08T02:05:00.227532Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108",
+          "subject": "ee78bf1e7b56c88af4253f95271a59320639ffca",
+          "summary": "Existing result/appendix choices are explicit and saved previews reopen safely; real page and isolated file acceptance passed. Await User Close; no push or release work.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "docs/operational/report_existing_targets_20261108.md",
+            "frontend/src/api/reportAuthoringBatch.ts",
+            "frontend/src/features/report-workspace/ReportBatchPreparation.test.tsx",
+            "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
+            "frontend/src/features/report-workspace/ReportBatchPreparationSelections.tsx"
+          ],
+          "validation": [
+            {
+              "name": "Final report UI regressions and isolated API contracts",
+              "status": "passed",
+              "summary": "145 frontend tests, TypeScript and sequential Vite build passed on final frontend bytes;15 unchanged backend assembly/LLCR cases passed. Real browser existing A/B reuse generated one isolated copy, tables4→4, sources unchanged, console0 errors. No Word/release qualification claimed.",
+              "evidence": [
+                {
+                  "path": "D:\\PythonProject\\connlab\\tmp\\report_existing_targets_20261108\\acceptance.md",
+                  "sha256": "9dda7c8d70c7797b76c8b13374ae8c78f9283ce06dd1af13327c41b91ce0c5c9"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\tmp\\report_existing_targets_20261108\\vitest_final.json",
+                  "sha256": "e740379039c6051b94f69aad6704b97e983ce87bc5811317fdde809ccfad0d8d"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\tmp\\report_existing_targets_20261108\\pytest.xml",
+                  "sha256": "13972f431dc8fb7f70c1ba1335aa099717a56a5b40a0079d3700c10ab8449809"
+                },
+                {
+                  "path": "D:\\PythonProject\\connlab\\tmp\\report_existing_targets_20261108\\smoke\\result.json",
+                  "sha256": "f03b8d1a9155286e2d5f0555016d9a1ad5c8ddcb4b971ff5b47b024cee016635"
+                }
+              ]
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Scoped UI/API-type changes with actual RED/GREEN including nullable real API payload; no backend runtime change.",
+              "context": "/root (same-context sequential standard-task pass)"
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Separate Standards/Spec focused passes completed; scope, current coordinates, stale confirmation and real-data protections reviewed; no blocking finding.",
+              "context": "/root (same-context sequential standard-task pass)"
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Final affected regressions, typecheck/build, actual browser and raw DOCX/source acceptance passed; no independent-agent claim.",
+              "context": "/root (same-context sequential standard-task pass)"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "ee78bf1e7b56c88af4253f95271a59320639ffca",
+            "primary_before": "6e971f43cacc1b6e0101ddb1ad1b0a71266a14ba",
+            "integrated_head": "4f15354c8b318283018c0dc97c6dbf35460ec98e",
+            "recovered": false
+          }
+        }
       }
     }
   }
