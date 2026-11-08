@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108",
-    "tier": "standard",
-    "subject": "ee78bf1e7b56c88af4253f95271a59320639ffca",
-    "summary": "Make existing report result and appendix targeting discoverable and editable in the batch UI",
+    "task_id": "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108",
+    "tier": "micro",
+    "subject": "382d52a644bb597d470722d4c1faa45d76f0697d",
+    "summary": "Unify Save materials dialog with existing ConnLab visual styles",
     "disposition": "completed",
-    "decision_ref": "User requested acceptance and local Close only, preserving commits without push. Acceptance passed: integrated bytes and raw evidence match; 19 focused regressions passed, prior 145 frontend and 15 backend tests plus isolated browser/file acceptance verified; no blocking Standards or Spec findings. No real report, template or project material modified. Publication explicitly not authorized.",
-    "closed_at": "2026-11-08T02:18:00.842368Z"
+    "decision_ref": "User explicitly permits closing previous Save materials style task while continuing Import Projects picker optimization. Close locally and preserve integrated style, screenshot and validation evidence; no push or release in current work.",
+    "closed_at": "2026-11-08T10:41:16.238599Z"
   },
   "retained_history": [
     {
@@ -399,79 +399,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested closing current task locally only on 2026-11-08. Preserve integrated partial-generation fix, all API test repairs, package and evidence. No push or publication; publish-close intentionally omitted.",
       "closed_at": "2026-11-08T01:38:18.677248Z"
+    },
+    {
+      "task_id": "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108",
+      "tier": "standard",
+      "subject": "ee78bf1e7b56c88af4253f95271a59320639ffca",
+      "summary": "Make existing report result and appendix targeting discoverable and editable in the batch UI",
+      "disposition": "completed",
+      "decision_ref": "User requested acceptance and local Close only, preserving commits without push. Acceptance passed: integrated bytes and raw evidence match; 19 focused regressions passed, prior 145 frontend and 15 backend tests plus isolated browser/file acceptance verified; no blocking Standards or Spec findings. No real report, template or project material modified. Publication explicitly not authorized.",
+      "closed_at": "2026-11-08T02:18:00.842368Z"
     }
   ],
-  "tasks": {
-    "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\folder-partial-generation\\connlab",
-      "branch": "codex/save-materials-dialog-20261108",
-      "resources": [
-        "save-materials-dialog-style"
-      ],
-      "integrated_head": "16d6c8fc5fb57d7de223c2b36f5a47b372753b05",
-      "task": {
-        "task_id": "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108",
-        "summary": "Unify Save materials dialog with existing ConnLab visual styles",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Localized visual markup and scoped CSS only; preserve preview, save, cancellation and folder-opening behavior. Local integration; no push or release.",
-        "scope_paths": [
-          "frontend/src/features/intake/SaveMaterialsDialog.tsx",
-          "frontend/src/features/intake/SaveMaterialsDialog.css"
-        ],
-        "risk_reasons": [],
-        "activation_head": "871f0c599944a88a6026db90ac6427b96d2f4cb1",
-        "started_at": "2026-11-08T10:26:56.809185Z",
-        "updated_at": "2026-11-08T10:28:22.364934Z",
-        "checkpoint": null,
-        "report": {
-          "subject": "382d52a644bb597d470722d4c1faa45d76f0697d",
-          "validation": [
-            {
-              "name": "Existing Save materials regression",
-              "result": "1 passed, 16 unrelated tests filtered; preserves entered form values, save and close behavior.",
-              "status": "passed"
-            },
-            {
-              "name": "Production build",
-              "result": "tsc -b and Vite build passed.",
-              "status": "passed"
-            },
-            {
-              "name": "Self review",
-              "result": "Exact two-file diff checked; CSS scoped and directly imported, existing API handlers unchanged; no save performed on real business materials.",
-              "status": "passed"
-            }
-          ],
-          "task_id": "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108",
-          "version": 1,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "382d52a644bb597d470722d4c1faa45d76f0697d",
-            "primary_before": "7243d37202c8945145e9fc0eead230eebaabd97c",
-            "integrated_head": "16d6c8fc5fb57d7de223c2b36f5a47b372753b05",
-            "recovered": false
-          },
-          "summary": "Scoped Save materials dialog styles loaded directly by intake: consistent typography, location panel, file rows, input, feedback and action footer. Existing save and cancellation workflow preserved. Browser visual verification follows local integration; no push or release.",
-          "roles": {
-            "developer": {
-              "method": "Primary agent implementation, exact-diff self-review and targeted validation; micro tier.",
-              "status": "passed"
-            }
-          },
-          "scope_ok": true,
-          "schema": "connlab.sol-task-report",
-          "changed_paths": [
-            "frontend/src/features/intake/SaveMaterialsDialog.css",
-            "frontend/src/features/intake/SaveMaterialsDialog.tsx"
-          ]
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
