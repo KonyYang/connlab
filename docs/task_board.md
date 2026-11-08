@@ -440,11 +440,11 @@
   "tasks": {
     "TASK_CLOSE_PROJECT_DIALOG_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/close-project-dialog-20261108",
       "resources": [],
-      "integrated_head": "0ae696cf719685703bf6c747fb7d9c1d041f6af2",
+      "integrated_head": "f5a561222d41802e2b80cf75bbe489e4392d85c1",
       "task": {
         "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
         "summary": "Simplify and unify the Close project confirmation dialog",
@@ -466,7 +466,7 @@
         "risk_reasons": [],
         "activation_head": "adbb1338803c838981e2fc65b2edda590ac8c0dc",
         "started_at": "2026-11-08T12:31:40.974518Z",
-        "updated_at": "2026-11-08T13:46:54.129061Z",
+        "updated_at": "2026-11-08T13:50:05.362023Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -476,7 +476,62 @@
           "summary": "User clarified: retain the Close reason dropdown and all four categories; remove only the Select a reason placeholder; default to Completed. Keep every note optional. Continue same local-only task, no push or publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
+          "subject": "41957b31b97563fa6ab0a2bc8d010464fc4bd1a7",
+          "summary": "Correct user clarification: retain all four close-reason choices in styled dropdown; remove only Select a reason placeholder; default/reset to Completed. Notes remain optional for all reasons. Local only.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "docs/project_registry_management.md",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.css",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "check": "116 final frontend tests (close dialog 9, Workbench 83, registry dialog 4, App 20); worktree tmp/close-reason-default-qa.log."
+            },
+            {
+              "status": "passed",
+              "check": "TypeScript and Vite production build; worktree tmp/close-reason-default-build.log."
+            },
+            {
+              "status": "passed",
+              "check": "Real IAB preview: dropdown defaults to Completed; exactly Completed, Cancelled, Unable to continue, Other; no placeholder. Close enabled, Add note optional; cancelled without mutation. Screenshot primary tmp/close-reason-default-preview.png."
+            },
+            {
+              "status": "passed",
+              "check": "RED before fix: missing dropdown; worktree tmp/close-reason-default-red.log. Reviewed exact diff; git diff --check clean. No backend changes this revision; prior 42 passing backend tests remain applicable."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "Current agent grouped TDD at dialog seam; defaults and reset to completed, callback uses actual selected value; optional note unchanged."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Current agent separate Standards and Spec focused passes, not independent agents; zero unresolved findings. Four semantic choices remain; only placeholder removed, default selected, styling/cancellation/focus/error/busy protections preserved. No backend changes."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "116 affected tests, production build, real 603px preview, no real closure. Backend unchanged from prior 42 passing tests."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "41957b31b97563fa6ab0a2bc8d010464fc4bd1a7",
+            "primary_before": "62b0a62e513c70573e2793dccf0e76b0df5789bf",
+            "integrated_head": "f5a561222d41802e2b80cf75bbe489e4392d85c1",
+            "recovered": false
+          }
+        }
       }
     }
   }
