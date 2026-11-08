@@ -392,7 +392,39 @@
       "closed_at": "2026-11-07T07:19:39.211426Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
+      "branch": "codex/report-existing-targets-20261108",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108",
+        "summary": "Make existing report result and appendix targeting discoverable and editable in the batch UI",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Improve existing Report Workspace result/appendix selection and preview editing using current target/assembly APIs. Preserve backend authority, outcome, stale-plan and publication protections. Validate with isolated database and report copies plus page smoke and regression tests; real reports/templates/project materials read-only. No release packaging, second-machine acceptance, push or automatic Close; wait for User acceptance and Close.",
+        "scope_paths": [
+          "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
+          "frontend/src/features/report-workspace/ReportBatchPreparationSelections.tsx",
+          "frontend/src/features/report-workspace/ReportBatchPreparation.test.tsx",
+          "frontend/src/features/report-workspace/ReportBatchPreparation.css",
+          "frontend/src/api/reportAuthoringBatch.ts",
+          "tests/integration/test_report_batch_assembly_api.py",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/operational/report_existing_targets_20261108.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "f31037a7cc339d2a18e5ff5f33f39407456401a8",
+        "started_at": "2026-11-08T01:42:29.162898Z",
+        "updated_at": "2026-11-08T01:42:29.162898Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
