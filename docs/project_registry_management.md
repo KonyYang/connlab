@@ -18,8 +18,10 @@ LTR records or ownership, source materials, external paths, or external files.
 
 ## Closing and reopening
 
-- The compact confirmation displays the project reference separately below its title. Its reason
-  dropdown defaults to Completed, with Cancelled, Unable to continue and Other also available. There
+- The compact confirmation shows its reason dropdown, optional Add note and action buttons. Title,
+  project reference and reason label are visually hidden but remain available to assistive technology;
+  the retention explanation is omitted. The reason dropdown defaults to Completed, with Cancelled,
+  Unable to continue and Other also available. There
   is no Select a reason placeholder. Confirmation submits the selected reason; reopening resets it
   to Completed. Add note reveals an optional field. Opening or cancelling never closes a project.
 - The lifecycle API retains its other reason categories for compatibility; every category, including

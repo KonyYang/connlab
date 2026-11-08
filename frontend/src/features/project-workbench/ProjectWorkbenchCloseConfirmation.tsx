@@ -59,7 +59,6 @@ export function ProjectWorkbenchCloseConfirmation({
     {confirming && <ProjectManagementDialog title="Close project" className="project-close-dialog" busy={busy} onCancel={resetConfirmation}>
       <p className="project-close-identity">{projectReference ?? projectIdentity}</p>
       <div className="project-close-body">
-        <p className="project-close-description">Records will be kept. Reopen the project to edit again.</p>
         <label className="project-close-reason"><span>Close reason</span>
           <select data-dialog-initial-focus value={reasonCategory} disabled={busy}
             onChange={(event) => setReasonCategory(event.target.value as ProjectCloseReasonCategory)}>

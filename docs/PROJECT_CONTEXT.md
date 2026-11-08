@@ -103,6 +103,8 @@ Do not use a dated snapshot as a substitute for the code.
 - Workbench closure defaults its reason dropdown to Completed and offers Cancelled, Unable to
   continue and Other. There is no Select a reason placeholder. Confirming sends the selected reason;
   reopening the dialog resets it to Completed. Add note reveals an optional field for every category.
+  The dialog shows only its controls and actions; title, project reference and reason label remain
+  available to assistive technology, and the retention explanation is omitted.
   The lifecycle API accepts an empty note for every category. Output
   status checks stay outside the confirmation and do not block closure. Reopening is separate from
   restoring a hidden record.
