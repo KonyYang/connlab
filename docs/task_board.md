@@ -404,13 +404,13 @@
   "tasks": {
     "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\folder-partial-generation\\connlab",
       "branch": "codex/save-materials-dialog-20261108",
       "resources": [
         "save-materials-dialog-style"
       ],
-      "integrated_head": null,
+      "integrated_head": "16d6c8fc5fb57d7de223c2b36f5a47b372753b05",
       "task": {
         "task_id": "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108",
         "summary": "Unify Save materials dialog with existing ConnLab visual styles",
@@ -424,9 +424,51 @@
         "risk_reasons": [],
         "activation_head": "871f0c599944a88a6026db90ac6427b96d2f4cb1",
         "started_at": "2026-11-08T10:26:56.809185Z",
-        "updated_at": "2026-11-08T10:26:56.809185Z",
+        "updated_at": "2026-11-08T10:28:22.364934Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "subject": "382d52a644bb597d470722d4c1faa45d76f0697d",
+          "validation": [
+            {
+              "name": "Existing Save materials regression",
+              "result": "1 passed, 16 unrelated tests filtered; preserves entered form values, save and close behavior.",
+              "status": "passed"
+            },
+            {
+              "name": "Production build",
+              "result": "tsc -b and Vite build passed.",
+              "status": "passed"
+            },
+            {
+              "name": "Self review",
+              "result": "Exact two-file diff checked; CSS scoped and directly imported, existing API handlers unchanged; no save performed on real business materials.",
+              "status": "passed"
+            }
+          ],
+          "task_id": "TASK_SAVE_MATERIALS_DIALOG_STYLE_20261108",
+          "version": 1,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "382d52a644bb597d470722d4c1faa45d76f0697d",
+            "primary_before": "7243d37202c8945145e9fc0eead230eebaabd97c",
+            "integrated_head": "16d6c8fc5fb57d7de223c2b36f5a47b372753b05",
+            "recovered": false
+          },
+          "summary": "Scoped Save materials dialog styles loaded directly by intake: consistent typography, location panel, file rows, input, feedback and action footer. Existing save and cancellation workflow preserved. Browser visual verification follows local integration; no push or release.",
+          "roles": {
+            "developer": {
+              "method": "Primary agent implementation, exact-diff self-review and targeted validation; micro tier.",
+              "status": "passed"
+            }
+          },
+          "scope_ok": true,
+          "schema": "connlab.sol-task-report",
+          "changed_paths": [
+            "frontend/src/features/intake/SaveMaterialsDialog.css",
+            "frontend/src/features/intake/SaveMaterialsDialog.tsx"
+          ]
+        }
       }
     }
   }
