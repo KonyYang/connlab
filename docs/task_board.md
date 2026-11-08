@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_IMPORT_FOLDER_PICKER_20261108",
+    "task_id": "TASK_IMPORT_PICKER_COMPACT_20261108",
     "tier": "standard",
-    "subject": "ac2289143f8c833474bc1ffa41bd5e8e410f1604",
-    "summary": "Modernize Import Projects folder selection and show immediate progress",
+    "subject": "309f00ab040687e5bf2c4bdedadc748f1089ffec",
+    "summary": "Hide routine import progress overlays and size folder picker compactly",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local-only close of the current task on 2026-11-08; retain integrated code and validation evidence, including the documented native-window screenshot limitation. No push, no publication; publish-close intentionally omitted.",
-    "closed_at": "2026-11-08T11:30:42.405240Z"
+    "decision_ref": "User explicitly requests local-only close of compact picker task then settings automatic validation repair. Preserve commits and evidence; no push or publication.",
+    "closed_at": "2026-11-08T11:56:20.017340Z"
   },
   "retained_history": [
     {
@@ -417,112 +417,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly permits closing previous Save materials style task while continuing Import Projects picker optimization. Close locally and preserve integrated style, screenshot and validation evidence; no push or release in current work.",
       "closed_at": "2026-11-08T10:41:16.238599Z"
+    },
+    {
+      "task_id": "TASK_IMPORT_FOLDER_PICKER_20261108",
+      "tier": "standard",
+      "subject": "ac2289143f8c833474bc1ffa41bd5e8e410f1604",
+      "summary": "Modernize Import Projects folder selection and show immediate progress",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local-only close of the current task on 2026-11-08; retain integrated code and validation evidence, including the documented native-window screenshot limitation. No push, no publication; publish-close intentionally omitted.",
+      "closed_at": "2026-11-08T11:30:42.405240Z"
     }
   ],
-  "tasks": {
-    "TASK_IMPORT_PICKER_COMPACT_20261108": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
-      "branch": "codex/import-picker-compact-20261108",
-      "resources": [
-        "project-import-folder-picker"
-      ],
-      "integrated_head": "c2123c8862cb0be0130127c5f9da54af22c032f0",
-      "task": {
-        "task_id": "TASK_IMPORT_PICKER_COMPACT_20261108",
-        "summary": "Hide routine import progress overlays and size folder picker compactly",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Keep routine picking/checking silent, retain actionable errors and decisions. Give native folder dialog a bounded initial size centered on the current monitor; retain manual resizing and all import validations. Local only.",
-        "scope_paths": [
-          "backend/infrastructure/files/windows_project_folder_dialog.py",
-          "backend/infrastructure/files/windows_dialog_layout.py",
-          "tests/unit/test_windows_project_folder_dialog.py",
-          "tests/unit/test_windows_dialog_layout.py",
-          "frontend/src/App.test.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "docs/PROJECT_CONTEXT.md"
-        ],
-        "risk_reasons": [],
-        "activation_head": "95159716738495ee6410f1b5f487a7d95676b230",
-        "started_at": "2026-11-08T11:36:00.524591Z",
-        "updated_at": "2026-11-08T11:42:28.096491Z",
-        "checkpoint": null,
-        "report": {
-          "scope_ok": true,
-          "task_id": "TASK_IMPORT_PICKER_COMPACT_20261108",
-          "summary": "Routine import setup, picking and checking are silent; error and required-decision dialogs remain. Windows folder picker initially centered and bounded to compact geometry once, allowing later manual resizing. Real isolated native probe measured900x600 at350,176; no import or copy. Local only.",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "309f00ab040687e5bf2c4bdedadc748f1089ffec",
-            "primary_before": "e934a847ec12ecf54ba90d91904d5a97b86bc776",
-            "integrated_head": "c2123c8862cb0be0130127c5f9da54af22c032f0",
-            "recovered": false
-          },
-          "roles": {
-            "qa": {
-              "status": "passed",
-              "method": "Primary agent bounded final18Python/71Vitest/build once, plus live native geometry probe."
-            },
-            "reviewer": {
-              "status": "passed",
-              "method": "Primary agent separate Standards and Spec passes, not independent."
-            },
-            "developer": {
-              "status": "passed",
-              "method": "Primary agent RED/GREEN and implementation."
-            }
-          },
-          "version": 1,
-          "subject": "309f00ab040687e5bf2c4bdedadc748f1089ffec",
-          "changed_paths": [
-            "backend/infrastructure/files/windows_dialog_layout.py",
-            "backend/infrastructure/files/windows_project_folder_dialog.py",
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/App.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "tests/unit/test_windows_dialog_layout.py",
-            "tests/unit/test_windows_project_folder_dialog.py"
-          ],
-          "schema": "connlab.sol-task-report",
-          "validation": [
-            {
-              "result": "New requested silence expectation failed before fix, passed after. Existing cancellation/required-decision assertions preserved.",
-              "name": "Silent overlay RED/GREEN",
-              "status": "passed"
-            },
-            {
-              "result": "18passed: geometry, negative monitor origin, small monitor bounds, local one-shot hook ignores other windows and unhooks on error, native picker cleanup and desktop picker contracts.",
-              "name": "Final affected Python matrix",
-              "status": "passed"
-            },
-            {
-              "result": "71passed across App, single import and import feature suites.",
-              "name": "Final frontend matrix",
-              "status": "passed"
-            },
-            {
-              "result": "TypeScript and Vite build succeeded on final frontend bytes.",
-              "name": "Production build",
-              "status": "passed"
-            },
-            {
-              "result": "Isolated dialog actual GetWindowRect measured900x600,rect350,176,1250,776. Dialog closed and selection returned; no project import or file copying invoked.",
-              "name": "Actual native geometry probe",
-              "status": "passed"
-            },
-            {
-              "result": "Standards pass: dependency/resource boundary, current-thread-only hook and finally cleanup checked. Spec pass: no routine progress overlay, errors/decisions retained, initial size one-shot/manual resizing preserved, no change to import rules. No unresolved findings; diffcheck passed.",
-              "name": "Focused self review",
-              "status": "passed"
-            }
-          ]
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
