@@ -44,8 +44,8 @@ it("opens the native project-folder picker directly from Projects and stays ther
   await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce());
   expect(window.location.pathname).toBe("/projects");
   expect(screen.getByTestId("active-area").textContent).toBe("projects");
-  expect(screen.getByRole("dialog", { name: "Import project" })).toBeTruthy();
-  expect(screen.getByText("Choose a project folder in the system window…")).toBeTruthy();
+  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
+  expect(screen.queryByText("Choose a project folder in the system window…")).toBeNull();
   expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
   cancelPicker(null);
   await waitFor(() => expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull());
@@ -82,7 +82,7 @@ it("receives one safe selected project in the background and opens its workspace
   expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
 });
 
-it("keeps checking feedback visible before presenting a required decision", async () => {
+it("keeps routine checking silent before presenting a required decision", async () => {
   const source = "D:/old/Connector";
   let finishScan: (value: libraryApi.LibraryScan) => void = () => undefined;
   vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
@@ -95,8 +95,8 @@ it("keeps checking feedback visible before presenting a required decision", asyn
 
   await user.click(await screen.findByRole("button", { name: "Import Projects" }));
   await waitFor(() => expect(libraryApi.scanLibrarySources).toHaveBeenCalledOnce());
-  expect(screen.getByRole("dialog", { name: "Import project" })).toBeTruthy();
-  expect(screen.getByText("Checking selected folders…")).toBeTruthy();
+  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
+  expect(screen.queryByText("Checking selected folders…")).toBeNull();
 
   finishScan({
     items: [{ source_path: source, title: "Connector", ltr_number: null, kind: "project", warnings: [], child_folders: [] }],
@@ -382,13 +382,13 @@ describe("Basic Information route entry behavior", () => {
 });
 
 
-it("keeps import feedback visible while the system folder picker is pending", async () => {
+it("keeps the page clear while the system folder picker is pending", async () => {
   vi.mocked(libraryApi.pickLibraryFolder).mockReturnValue(new Promise(() => {}));
   window.history.replaceState({}, "", "/projects");
   render(<App />);
   await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
-  expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
-  expect(await screen.findByText("Choose a project folder in the system window…")).toBeTruthy();
-  expect((screen.getByRole("button", { name: "Cancel", exact: true }) as HTMLButtonElement).disabled).toBe(true);
+  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce());
+  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
+  expect(screen.queryByText("Choose a project folder in the system window…")).toBeNull();
   expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce();
 });

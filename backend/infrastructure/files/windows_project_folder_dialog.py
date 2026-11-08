@@ -10,6 +10,8 @@ from ctypes import wintypes
 from pathlib import Path
 from uuid import UUID
 
+from backend.infrastructure.files.windows_dialog_layout import compact_folder_dialog
+
 
 class _Guid(ctypes.Structure):
     _fields_ = [("data1", wintypes.DWORD), ("data2", wintypes.WORD),
@@ -58,7 +60,8 @@ def pick_project_folder() -> Path | None:
         _check(_call(dialog, 9, wintypes.LONG, (wintypes.DWORD,), flags))
         _check(_call(dialog, 17, wintypes.LONG, (wintypes.LPCWSTR,), "Import Projects — choose one project folder"))
         _check(_call(dialog, 18, wintypes.LONG, (wintypes.LPCWSTR,), "Select folder"))
-        result = _call(dialog, 3, wintypes.LONG, (wintypes.HWND,), owner)
+        with compact_folder_dialog():
+            result = _call(dialog, 3, wintypes.LONG, (wintypes.HWND,), owner)
         if result & 0xFFFFFFFF == 0x800704C7:
             return None
         _check(result)
