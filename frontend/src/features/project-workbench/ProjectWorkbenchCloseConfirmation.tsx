@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import type { ProjectCloseReasonCategory, ProjectOutputStatusSummary } from "../../api/client";
 import { ProjectManagementDialog } from "../projects-registry/ProjectRegistryManagementDialog";
 import type { WorkbenchLifecycleActionsViewModel } from "./projectWorkbenchLifecycleSelectors";
@@ -36,12 +36,11 @@ export function ProjectWorkbenchCloseConfirmation({
   const [submitting, setSubmitting] = useState(false);
   const submitLock = useRef(false);
   const noteInput = useRef<HTMLTextAreaElement>(null);
-  const reasonGroupName = useId();
   useEffect(() => { if (noteExpanded) noteInput.current?.focus(); }, [noteExpanded]);
   if (!lifecycleActions.canClose) return null;
   const busy = lifecycleBusy || submitting;
-  const canSubmit = Boolean(reasonCategory) && (reasonCategory !== "other" || Boolean(note.trim())) && !busy;
-  const showNote = reasonCategory === "other" || noteExpanded || Boolean(note);
+  const canSubmit = Boolean(reasonCategory) && !busy;
+  const showNote = noteExpanded || Boolean(note);
   function resetConfirmation(): void {
     setConfirming(false); setReasonCategory(""); setNote(""); setNoteExpanded(false); setValidationMessage(null); onDismiss?.();
   }
@@ -62,19 +61,15 @@ export function ProjectWorkbenchCloseConfirmation({
       <p className="project-close-identity">{projectReference ?? projectIdentity}</p>
       <div className="project-close-body">
         <p className="project-close-description">Records will be kept. Reopen the project to edit again.</p>
-        <fieldset className="project-close-reasons" disabled={busy}>
-          <legend>Close reason</legend>
-          <div className="project-close-reason-options">
-            {CLOSE_REASON_OPTIONS.map((option, index) => <label key={option.value} className="project-close-reason">
-              <input type="radio" name={reasonGroupName} value={option.value} checked={reasonCategory === option.value}
-                data-dialog-initial-focus={index === 0 ? true : undefined}
-                onChange={() => setReasonCategory(option.value)} />
-              <span>{option.label}</span>
-            </label>)}
-          </div>
-        </fieldset>
-        {showNote ? <label className="project-close-note"><span>Additional note ({reasonCategory === "other" ? "required" : "optional"})</span>
-          <textarea ref={noteInput} value={note} required={reasonCategory === "other"} disabled={busy}
+        <label className="project-close-reason"><span>Close reason</span>
+          <select data-dialog-initial-focus value={reasonCategory} disabled={busy}
+            onChange={(event) => setReasonCategory(event.target.value as ProjectCloseReasonCategory | "")}>
+            <option value="">Select a reason</option>
+            {CLOSE_REASON_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        {showNote ? <label className="project-close-note"><span>Additional note (optional)</span>
+          <textarea ref={noteInput} value={note} disabled={busy}
             onChange={(event) => setNote(event.target.value)} rows={3} />
         </label> : <button className="project-close-add-note" type="button" disabled={busy} onClick={() => setNoteExpanded(true)}>Add note</button>}
         {validationMessage && <p className="project-close-error" role="alert">{validationMessage}</p>}

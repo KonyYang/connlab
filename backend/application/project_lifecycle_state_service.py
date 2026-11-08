@@ -368,8 +368,6 @@ class ProjectLifecycleStateService:
         if reason_category in {ProjectCloseReasonCategory.FAILED, ProjectCloseReasonCategory.DUPLICATE}:
             raise ProjectLifecycleStateError("Unsupported close reason category for a new closure.")
         note = (command.note or "").strip()
-        if reason_category is ProjectCloseReasonCategory.OTHER:
-            note = _required_text(note, "Close note")
         now = self._clock()
         legacy_closure_type = _legacy_closure_type(reason_category)
         previous_project_status = (

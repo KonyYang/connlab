@@ -216,7 +216,7 @@ def test_close_administrative_requires_reason() -> None:
         )
 
 
-@pytest.mark.parametrize("reason", ["completed", "cancelled", "cannot_test"])
+@pytest.mark.parametrize("reason", ["completed", "cancelled", "cannot_test", "other"])
 def test_explicit_business_close_reason_allows_empty_note_without_fabricating_it(reason: str) -> None:
     stores = _Stores(project=_project())
     result = stores.service().close_project(
@@ -224,14 +224,8 @@ def test_explicit_business_close_reason_allows_empty_note_without_fabricating_it
     )
     assert result.lifecycle_state is ProjectLifecycleState.CLOSED
     assert result.closed_reason == ""
+    assert result.close_reason_category == reason
     assert stores.events.items[-1].reason == ""
-
-
-def test_other_close_reason_still_requires_an_explanation() -> None:
-    with pytest.raises(ProjectLifecycleStateError, match="Close note is required"):
-        _Stores(project=_project()).service().close_project(
-            CloseProjectLifecycleCommand(project_id="P1", reason_category="other", note=" ")
-        )
 
 
 @pytest.mark.parametrize("reason", ["failed", "duplicate"])

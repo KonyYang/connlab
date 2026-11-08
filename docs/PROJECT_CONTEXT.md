@@ -100,9 +100,9 @@ Do not use a dated snapshot as a substitute for the code.
   audit can still resolve them; ordinary writes require restoration first.
 - Registry transitions and business writes share the project-generation lock. A queued or running
   generation prevents a registry move; transitions revalidate all conflicts in one transaction.
-- New closure actions require an explicit reason; the compact confirmation offers Completed,
-  Cancelled, Unable to continue and Other with no default selection. Only Other requires a note;
-  the other reasons reveal an optional note through Add note. Output status checks stay outside
+- New closure actions require an explicit reason; the compact confirmation offers a dropdown with
+  Completed, Cancelled, Unable to continue and Other, with no default selection. Every reason,
+  including Other, permits an empty note; Add note reveals the optional field. Output status checks stay outside
   this confirmation and do not block closure. Reopening is separate from restoring a hidden record.
 - [Management behavior and acceptance](project_registry_management.md) defines this boundary.
 
