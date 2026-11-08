@@ -431,13 +431,13 @@
   "tasks": {
     "TASK_SETTINGS_AUTO_VALIDATION_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/settings-auto-validation-20261108",
       "resources": [
         "settings-validation"
       ],
-      "integrated_head": null,
+      "integrated_head": "63ff150988b69e0b28583da77cde2030ee175b18",
       "task": {
         "task_id": "TASK_SETTINGS_AUTO_VALIDATION_20261108",
         "summary": "Automatically refresh Settings validation without stale results overwriting edits",
@@ -459,9 +459,76 @@
         "risk_reasons": [],
         "activation_head": "9a1e4334cee74698a2fa57ae86b75d84fe1a0c5a",
         "started_at": "2026-11-08T11:58:46.191276Z",
-        "updated_at": "2026-11-08T11:58:46.191276Z",
+        "updated_at": "2026-11-08T12:11:37.564685Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "version": 1,
+          "validation": [
+            {
+              "status": "passed",
+              "name": "RED/GREEN",
+              "result": "Before fix: automatic validation test failed and real two-session SQLite case restored old path; both passed after fix."
+            },
+            {
+              "status": "passed",
+              "name": "Backend final matrix",
+              "result": "27 passed, one pre-existing Starlette/httpx deprecation warning. Includes existing full content/resource checks and new two-session path/worksheet race protection."
+            },
+            {
+              "status": "passed",
+              "name": "Frontend final matrix",
+              "result": "12 passed. Entry/focus revalidation, focus coalescing, serial continuation after failure, stale result versus save, unsaved draft preservation, unmount and existing worksheet/autosave contracts."
+            },
+            {
+              "status": "passed",
+              "name": "Production build",
+              "result": "TypeScript and Vite build succeeded after final byte changes."
+            },
+            {
+              "status": "passed",
+              "name": "Focused review",
+              "result": "Primary Standards pass: business orchestration in feature hook, validation persistence in storage adapter, no schema/dependency changes, original Office readers retained. Primary Spec pass: no Enter needed, no progress popups, checks are current, edited values protected. No unresolved findings. Exact nine-file diffcheck clean."
+            }
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "cfee828966377665d366bbdd552278a06f86c3b9",
+            "primary_before": "5f907350ea82a5cf49053aa80c91504887349989",
+            "integrated_head": "63ff150988b69e0b28583da77cde2030ee175b18",
+            "recovered": false
+          },
+          "scope_ok": true,
+          "subject": "cfee828966377665d366bbdd552278a06f86c3b9",
+          "schema": "connlab.sol-task-report",
+          "changed_paths": [
+            "backend/application/external_resource_service.py",
+            "backend/infrastructure/storage/repositories/external_resources.py",
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
+            "frontend/src/features/settings/useSettingsResources.ts",
+            "frontend/src/pages/SettingsPage.test.tsx",
+            "frontend/src/pages/SettingsPage.tsx",
+            "tests/integration/test_external_resource_api.py",
+            "tests/unit/test_external_resource_service.py"
+          ],
+          "summary": "Automatically revalidate displayed configured active Settings resources on entry and window return. Coalesce focus events and serialize full probes and saves, prioritize folders, preserve unsaved drafts and reject stale UI results. Conditionally persist only validation fields for unchanged configuration, preventing slow Office checks restoring replaced paths or worksheets. No business source files modified; local only. Real browser check follows integration.",
+          "task_id": "TASK_SETTINGS_AUTO_VALIDATION_20261108",
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "method": "Primary agent separate focused Standards and Spec passes; not independent."
+            },
+            "qa": {
+              "status": "passed",
+              "method": "Primary agent proportional final27Python+12Vitest+build on final bytes, isolated files/SQLite/fake Office; live browser verification follows local integration."
+            },
+            "developer": {
+              "status": "passed",
+              "method": "Primary agent coherent RED/GREEN implementation."
+            }
+          }
+        }
       }
     }
   }
