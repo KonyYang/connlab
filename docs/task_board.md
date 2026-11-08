@@ -440,11 +440,11 @@
   "tasks": {
     "TASK_CLOSE_PROJECT_DIALOG_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/close-project-dialog-20261108",
       "resources": [],
-      "integrated_head": "bf1d4f15df3f713326bfab725bda97f393552712",
+      "integrated_head": "0ae696cf719685703bf6c747fb7d9c1d041f6af2",
       "task": {
         "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
         "summary": "Simplify and unify the Close project confirmation dialog",
@@ -466,7 +466,7 @@
         "risk_reasons": [],
         "activation_head": "adbb1338803c838981e2fc65b2edda590ac8c0dc",
         "started_at": "2026-11-08T12:31:40.974518Z",
-        "updated_at": "2026-11-08T13:21:20.038754Z",
+        "updated_at": "2026-11-08T13:29:10.078376Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -476,7 +476,66 @@
           "summary": "User requests removing the entire Close reason control and using Completed automatically when explicitly confirming closure. Keep notes optional and continue same local-only task, no push or publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
+          "subject": "4839f2c9624844cf59b26079f414c581de0a4261",
+          "summary": "Latest user revision removes the Close reason control entirely. Explicit confirmation submits Completed; optional note disclosure remains. Local-only delivery, no push/release.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "docs/project_registry_management.md",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.css",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "check": "Final affected frontend matrix: 113 passed (close confirmation 6, Workbench 83, registry dialog 4, App 20); worktree tmp/close-completed-qa.log."
+            },
+            {
+              "status": "passed",
+              "check": "TypeScript and Vite production build passed; worktree tmp/close-completed-build.log."
+            },
+            {
+              "status": "passed",
+              "check": "Real IAB preview at default viewport and 603x804: no Close reason control, enabled explicit Close button, Add note reveals optional textarea, no real project closed. Screenshot primary tmp/close-project-completed.png."
+            },
+            {
+              "status": "passed",
+              "check": "TDD RED before fix: obsolete select still present; worktree tmp/close-completed-red.log. Exact final diff reviewed, git diff --check clean."
+            },
+            {
+              "status": "passed",
+              "check": "Prior backend/API/guard 42-test evidence retained from ce56be73; no backend bytes changed in this revision. Broader ProjectListPage failures remain documented as preexisting from first round."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "Current agent; existing dialog test seam RED/GREEN, removed selector state/options/CSS, sends literal completed only after explicit click, no backend/schema/external-file changes in revision."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Current agent distinct Standards and Spec passes, not independent agents; zero unresolved findings. Removed unused controls/state/styles, preserved typed API compatibility, cancellation/errors/busy lock/focus; user explicitly requested automatic Completed category."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "113 affected frontend tests, build and real browser on exact final code; backend unchanged from prior 42 passing tests. Used Cancel only in real UI."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "4839f2c9624844cf59b26079f414c581de0a4261",
+            "primary_before": "ddd57c4f2df4f4ccc9517d785d6e0b9a51204fd2",
+            "integrated_head": "0ae696cf719685703bf6c747fb7d9c1d041f6af2",
+            "recovered": false
+          }
+        }
       }
     }
   }
