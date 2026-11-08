@@ -45,6 +45,7 @@ import {
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 import { TestReportDraftButton } from "./TestReportDraftButton";
 import { TemporaryProjectRegistrationDialog } from "./TemporaryProjectRegistrationDialog";
+import { ProjectBasicInformationSummaryCard } from "../project-basic-information/ProjectBasicInformationSummaryCard";
 
 type ProjectWorkbenchLayoutProps = {
   runtimeModel: ProjectRuntimeConsoleModel;
@@ -681,6 +682,15 @@ export function ProjectWorkbenchLayout({
           <>
             <NoMatrixWorkspaceEmptyState
               showPlaceholderSteps={!project.library_member_id}
+              ltrInformation={
+                <ProjectBasicInformationSummaryCard
+                  projectId={project.project_id}
+                  basicInformation={runtimeModel.basicInformation}
+                  registeredLtrNumber={projectNumber}
+                  loading={runtimeModel.basicInformationLoading}
+                  error={runtimeModel.basicInformationError}
+                />
+              }
               projectFolderTasks={projectFolderTasks}
               projectFolderHeaderAction={projectFolderHeaderAction}
               matrixDraft={matrixCandidateDraft ?? matrixDraft ?? null}

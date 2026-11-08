@@ -846,6 +846,26 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     );
   });
 
+  it.each(["starter", "draft", "imported-empty"] as const)("shows one LTR Information card after Folder Actions before Matrix confirmation (%s)", (matrixState) => {
+    renderWorkbench({
+      activeConfirmedMatrixSnapshot: null,
+      matrixDraft: matrixState === "draft" ? noMatrixPreviewDraft : null,
+      basicInformation: confirmedBasicInformation,
+    }, matrixState === "imported-empty" ? { library_member_id: "imported-member" } : {});
+
+    const card = screen.getByLabelText("LTR Information");
+    expect(screen.getAllByLabelText("LTR Information")).toHaveLength(1);
+    expect(Boolean(screen.getByLabelText("Folder Actions").compareDocumentPosition(card) &
+      globalThis.Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(within(card).getByRole("button", {name: "LTR update preview"})).toHaveProperty("disabled", false);
+    expect(screen.getByRole("button", {name: "Basic Information"})).toBeTruthy();
+    expect(screen.queryByRole("region", {name: "Test Execution Workspace"})).toBeNull();
+    if (matrixState === "starter") {
+      expect(screen.getByText("Draft preview")).toBeTruthy();
+      expect(screen.getByRole("complementary", {name: "Step workspace"})).toBeTruthy();
+    }
+  });
+
   it("shows the on-demand LTR Information update card after Folder Action", () => {
     const { container } = renderWorkbench({
       latestLtr: "DL-2026-06-001",

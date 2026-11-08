@@ -81,6 +81,9 @@ Do not use a dated snapshot as a substitute for the code.
   workspace; its Hide/Show step details toggle and collapse state have been removed.
   Close project is at the far right of the Workbench top bar and retains its confirmation dialog;
   standalone layouts without a top bar retain their in-place action.
+  LTR Information follows Folder Actions both before and after Matrix confirmation, including the
+  default single-row draft preview. It uses the same Basic Information status and LTR update workflow;
+  showing the card does not confirm a Matrix or change LTR update eligibility.
 
 - The unified project library distinguishes managed file membership from business
   Project identity and lifecycle. Full LTR stays the business reference; titles,

@@ -375,6 +375,7 @@ export function NoMatrixWorkspaceEmptyState({
   onPublicFolderAutoSyncChange,
   readonlyReason,
   showPlaceholderSteps = true,
+  ltrInformation,
 }: {
   projectFolderTasks: ProjectFolderTaskRow[];
   projectFolderHeaderAction: ProjectFolderHeaderAction;
@@ -385,6 +386,7 @@ export function NoMatrixWorkspaceEmptyState({
   onPublicFolderAutoSyncChange?: (enabled: boolean) => void;
   readonlyReason?: string;
   showPlaceholderSteps?: boolean;
+  ltrInformation?: ReactElement;
 }): ReactElement {
   const emptyImportedProject = !showPlaceholderSteps && !matrixDraft?.payload.groups?.some(group => (group.steps?.length ?? 0) > 0);
   const draftPreview = buildNoMatrixDraftPreview(matrixDraft);
@@ -501,6 +503,7 @@ export function NoMatrixWorkspaceEmptyState({
           onAutoSyncChange={onPublicFolderAutoSyncChange}
           readonlyReason={readonlyReason}
         />
+        {ltrInformation}
       </div>
     </section>
   );
