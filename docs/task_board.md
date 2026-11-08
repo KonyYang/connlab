@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_FOLDER_PARTIAL_GENERATION_20261107",
-    "tier": "high_risk",
-    "subject": "78e416e2ac95c24480af368b03b36c9da4b83325",
-    "summary": "Generate independent project folder outputs despite individual artifact failures and summarize missing outputs",
+    "task_id": "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108",
+    "tier": "standard",
+    "subject": "ee78bf1e7b56c88af4253f95271a59320639ffca",
+    "summary": "Make existing report result and appendix targeting discoverable and editable in the batch UI",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing current task locally only on 2026-11-08. Preserve integrated partial-generation fix, all API test repairs, package and evidence. No push or publication; publish-close intentionally omitted.",
-    "closed_at": "2026-11-08T01:38:18.677248Z"
+    "decision_ref": "User requested acceptance and local Close only, preserving commits without push. Acceptance passed: integrated bytes and raw evidence match; 19 focused regressions passed, prior 145 frontend and 15 backend tests plus isolated browser/file acceptance verified; no blocking Standards or Spec findings. No real report, template or project material modified. Publication explicitly not authorized.",
+    "closed_at": "2026-11-08T02:18:00.842368Z"
   },
   "retained_history": [
     {
@@ -390,106 +390,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly authorized autonomous acceptance and local completed close of batch6 part1. Independent Reviewer, QA, actual UI/API, all9 native Word pages, real file-lock partial/save/restart/resume, raw target/History identities and source preservation passed. Independent Integrator performed verified serial local merge. Preserve all commits/evidence; no push or formal issuance; publish-close intentionally omitted.",
       "closed_at": "2026-11-07T07:19:39.211426Z"
+    },
+    {
+      "task_id": "TASK_FOLDER_PARTIAL_GENERATION_20261107",
+      "tier": "high_risk",
+      "subject": "78e416e2ac95c24480af368b03b36c9da4b83325",
+      "summary": "Generate independent project folder outputs despite individual artifact failures and summarize missing outputs",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing current task locally only on 2026-11-08. Preserve integrated partial-generation fix, all API test repairs, package and evidence. No push or publication; publish-close intentionally omitted.",
+      "closed_at": "2026-11-08T01:38:18.677248Z"
     }
   ],
-  "tasks": {
-    "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\report-tools-bridge\\connlab",
-      "branch": "codex/report-existing-targets-20261108",
-      "resources": [],
-      "integrated_head": "4f15354c8b318283018c0dc97c6dbf35460ec98e",
-      "task": {
-        "task_id": "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108",
-        "summary": "Make existing report result and appendix targeting discoverable and editable in the batch UI",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Improve existing Report Workspace result/appendix selection and preview editing using current target/assembly APIs. Preserve backend authority, outcome, stale-plan and publication protections. Validate with isolated database and report copies plus page smoke and regression tests; real reports/templates/project materials read-only. No release packaging, second-machine acceptance, push or automatic Close; wait for User acceptance and Close.",
-        "scope_paths": [
-          "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
-          "frontend/src/features/report-workspace/ReportBatchPreparationSelections.tsx",
-          "frontend/src/features/report-workspace/ReportBatchPreparation.test.tsx",
-          "frontend/src/features/report-workspace/ReportBatchPreparation.css",
-          "frontend/src/api/reportAuthoringBatch.ts",
-          "tests/integration/test_report_batch_assembly_api.py",
-          "docs/PROJECT_CONTEXT.md",
-          "docs/operational/report_existing_targets_20261108.md"
-        ],
-        "risk_reasons": [],
-        "activation_head": "f31037a7cc339d2a18e5ff5f33f39407456401a8",
-        "started_at": "2026-11-08T01:42:29.162898Z",
-        "updated_at": "2026-11-08T02:05:00.227532Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_REPORT_EXISTING_TARGET_SELECTION_20261108",
-          "subject": "ee78bf1e7b56c88af4253f95271a59320639ffca",
-          "summary": "Existing result/appendix choices are explicit and saved previews reopen safely; real page and isolated file acceptance passed. Await User Close; no push or release work.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/PROJECT_CONTEXT.md",
-            "docs/operational/report_existing_targets_20261108.md",
-            "frontend/src/api/reportAuthoringBatch.ts",
-            "frontend/src/features/report-workspace/ReportBatchPreparation.test.tsx",
-            "frontend/src/features/report-workspace/ReportBatchPreparation.tsx",
-            "frontend/src/features/report-workspace/ReportBatchPreparationSelections.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Final report UI regressions and isolated API contracts",
-              "status": "passed",
-              "summary": "145 frontend tests, TypeScript and sequential Vite build passed on final frontend bytes;15 unchanged backend assembly/LLCR cases passed. Real browser existing A/B reuse generated one isolated copy, tables4→4, sources unchanged, console0 errors. No Word/release qualification claimed.",
-              "evidence": [
-                {
-                  "path": "D:\\PythonProject\\connlab\\tmp\\report_existing_targets_20261108\\acceptance.md",
-                  "sha256": "9dda7c8d70c7797b76c8b13374ae8c78f9283ce06dd1af13327c41b91ce0c5c9"
-                },
-                {
-                  "path": "D:\\PythonProject\\connlab\\tmp\\report_existing_targets_20261108\\vitest_final.json",
-                  "sha256": "e740379039c6051b94f69aad6704b97e983ce87bc5811317fdde809ccfad0d8d"
-                },
-                {
-                  "path": "D:\\PythonProject\\connlab\\tmp\\report_existing_targets_20261108\\pytest.xml",
-                  "sha256": "13972f431dc8fb7f70c1ba1335aa099717a56a5b40a0079d3700c10ab8449809"
-                },
-                {
-                  "path": "D:\\PythonProject\\connlab\\tmp\\report_existing_targets_20261108\\smoke\\result.json",
-                  "sha256": "f03b8d1a9155286e2d5f0555016d9a1ad5c8ddcb4b971ff5b47b024cee016635"
-                }
-              ]
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Scoped UI/API-type changes with actual RED/GREEN including nullable real API payload; no backend runtime change.",
-              "context": "/root (same-context sequential standard-task pass)"
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Separate Standards/Spec focused passes completed; scope, current coordinates, stale confirmation and real-data protections reviewed; no blocking finding.",
-              "context": "/root (same-context sequential standard-task pass)"
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Final affected regressions, typecheck/build, actual browser and raw DOCX/source acceptance passed; no independent-agent claim.",
-              "context": "/root (same-context sequential standard-task pass)"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "ee78bf1e7b56c88af4253f95271a59320639ffca",
-            "primary_before": "6e971f43cacc1b6e0101ddb1ad1b0a71266a14ba",
-            "integrated_head": "4f15354c8b318283018c0dc97c6dbf35460ec98e",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
