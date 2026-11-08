@@ -23,7 +23,7 @@ export type ReportCoverage = {
   llcr_dataset?: ReportLlcrDataset | null; llcr_unavailable_reason?: string;
 };
 export type ReportAssemblyResult = {
-  result_id: string; result_table?: number; result_row?: number; appendix_table?: number | null; appendix_title?: string;
+  result_id: string; result_table?: number | null; result_row?: number | null; appendix_table?: number | null; appendix_title?: string;
   evidence_start?: number | null; evidence_end?: number | null; evidence_selection_confirmed?: boolean;
 };
 export type ReportAssemblyPhoto = {

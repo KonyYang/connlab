@@ -301,7 +301,8 @@ it('requires choosing an existing appendix or explicitly adding a new one and pr
 
 it('reopens a blocked automatic preview for explicit existing-target correction without applying the old preview', async () => {
   const plan = existingPlan({ can_apply: false, issues: ['Select the existing result region or appendix instead of adding another copy.'],
-    request: { output_id: 'out1', output_sha256: 'a'.repeat(64), mapping_ids: [], results: [{ result_id: 'force1' }], assignments: [] } });
+    request: { output_id: 'out1', output_sha256: 'a'.repeat(64), mapping_ids: [],
+      results: [{ result_id: 'force1', result_table: null, result_row: null, appendix_table: null, appendix_title: '' }], assignments: [] } });
   vi.mocked(reportApi.getReportResultTargets).mockResolvedValue(existingTargets);
   vi.mocked(batchApi.previewReportAssembly).mockResolvedValue({ ...state, revision: 9, assembly_plan: existingPlan() });
   render(<Host initial={{ ...state, revision: 8, assembly_plan: plan }} />);

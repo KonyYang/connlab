@@ -10,7 +10,7 @@ export function initialResultChoice(targets?: ResultTargets): ResultChoice {
 }
 export function restoreResultChoice(selection: ReportAssemblyResult, targets: ResultTargets): ResultChoice {
   const initial = { ...initialResultChoice(targets), selected: true };
-  if (selection.result_table === undefined || selection.result_row === undefined) return initial;
+  if (selection.result_table == null || selection.result_row == null) return initial;
   const row = targets.result_rows.findIndex(item => item.table_index === selection.result_table && item.row_index === selection.result_row);
   if (selection.evidence_start != null && selection.evidence_end != null) {
     return { ...initial, row: row < 0 ? '' : String(row), destination: 'region',
