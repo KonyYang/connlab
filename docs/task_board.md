@@ -476,11 +476,11 @@
   "tasks": {
     "TASK_LTR_INFORMATION_WITHOUT_MATRIX_20261109": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/ltr-information-without-matrix-20261109",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "c075f262fe536825c98086bfe1ce462a32135777",
       "task": {
         "task_id": "TASK_LTR_INFORMATION_WITHOUT_MATRIX_20261109",
         "summary": "Show LTR Information before Matrix confirmation",
@@ -496,9 +496,50 @@
         "risk_reasons": [],
         "activation_head": "79771c2a97466653ffe0fb7f6d6346086135b269",
         "started_at": "2026-11-08T23:03:38.178215Z",
-        "updated_at": "2026-11-08T23:03:38.178215Z",
+        "updated_at": "2026-11-08T23:07:45.834262Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "task_id": "TASK_LTR_INFORMATION_WITHOUT_MATRIX_20261109",
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx"
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "760e90988ca3edd9cee7fc8a16f46375c2dceb48",
+            "primary_before": "65ee84804f08642d4719d2e0d63200663722a73e",
+            "integrated_head": "c075f262fe536825c98086bfe1ce462a32135777",
+            "recovered": false
+          },
+          "subject": "760e90988ca3edd9cee7fc8a16f46375c2dceb48",
+          "schema": "connlab.sol-task-report",
+          "summary": "Show the existing LTR Information card after Folder Actions before Matrix confirmation, including starter single-row Matrix, unconfirmed draft and imported project with no Matrix. Confirmed Matrix path and existing card eligibility/status/preview/commit behavior unchanged. Local-only.",
+          "scope_ok": true,
+          "version": 1,
+          "roles": {
+            "developer": {
+              "execution": "Micro current-agent TDD implementation and sequential Standards/Spec self-review of exact diff: zero unresolved findings. Existing card reused unchanged with identical project/basic-info/loading/error/LTR inputs. Four files changed, no backend/API/schema/output changes; no independent reviewer claimed.",
+              "status": "passed"
+            }
+          },
+          "validation": [
+            {
+              "check": "100 tests passed: WorkbenchLayout 90 and ProjectBasicInformationSummaryCard 10. New three-case no-confirmed-Matrix regression tests failed before implementation and passed after. Worktree tmp/ltr-without-matrix-red.log and tmp/ltr-without-matrix-tests.log.",
+              "status": "passed"
+            },
+            {
+              "check": "Final TypeScript and Vite production build passed; worktree tmp/ltr-without-matrix-build.log. git diff --check clean.",
+              "status": "passed"
+            },
+            {
+              "check": "Real IAB preview on existing project 87820d2a52e1486aaf81ca38ca440c90: No confirmed Matrix visible, LTR Information count 1 and LTR update preview enabled after Folder Actions. Primary tmp/ltr-before-matrix.png. Browser read-only, no LTR workbook/project mutation; preview tab closed and temporary dev server stopped.",
+              "status": "passed"
+            }
+          ]
+        }
       }
     }
   }
