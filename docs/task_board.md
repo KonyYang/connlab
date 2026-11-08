@@ -419,7 +419,40 @@
       "closed_at": "2026-11-08T10:41:16.238599Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_IMPORT_PICKER_COMPACT_20261108": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/import-picker-compact-20261108",
+      "resources": [
+        "project-import-folder-picker"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_IMPORT_PICKER_COMPACT_20261108",
+        "summary": "Hide routine import progress overlays and size folder picker compactly",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Keep routine picking/checking silent, retain actionable errors and decisions. Give native folder dialog a bounded initial size centered on the current monitor; retain manual resizing and all import validations. Local only.",
+        "scope_paths": [
+          "backend/infrastructure/files/windows_project_folder_dialog.py",
+          "backend/infrastructure/files/windows_dialog_layout.py",
+          "tests/unit/test_windows_project_folder_dialog.py",
+          "tests/unit/test_windows_dialog_layout.py",
+          "frontend/src/App.test.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "95159716738495ee6410f1b5f487a7d95676b230",
+        "started_at": "2026-11-08T11:36:00.524591Z",
+        "updated_at": "2026-11-08T11:36:00.524591Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
