@@ -5,8 +5,22 @@ export type ResultChoice = { selected: boolean; row: string; appendix: string; t
   destination: 'automatic' | 'appendix' | 'region'; start: string; end: string; regionConfirmed: boolean };
 export function initialResultChoice(targets?: ResultTargets): ResultChoice {
   return { selected: false, row: targets?.result_rows.length === 1 ? '0' : '', appendix: '', title: '',
-    destination: targets?.unreconciled_temperature_evidence ? 'region' : targets?.result_rows.length === 1 ? 'automatic' : 'appendix',
+    destination: targets?.unreconciled_temperature_evidence ? 'region' : targets?.appendix_tables.length ? 'appendix' : targets?.result_rows.length === 1 ? 'automatic' : 'appendix',
     start: '', end: '', regionConfirmed: false };
+}
+export function restoreResultChoice(selection: ReportAssemblyResult, targets: ResultTargets): ResultChoice {
+  const initial = { ...initialResultChoice(targets), selected: true };
+  if (selection.result_table == null || selection.result_row == null) return initial;
+  const row = targets.result_rows.findIndex(item => item.table_index === selection.result_table && item.row_index === selection.result_row);
+  if (selection.evidence_start != null && selection.evidence_end != null) {
+    return { ...initial, row: row < 0 ? '' : String(row), destination: 'region',
+      start: targets.evidence_blocks?.some(item => item.block_index === selection.evidence_start) ? String(selection.evidence_start) : '',
+      end: targets.evidence_blocks?.some(item => item.block_index === selection.evidence_end) ? String(selection.evidence_end) : '' };
+  }
+  const appendix = targets.appendix_tables.find(item => item.table_index === selection.appendix_table);
+  return { ...initial, row: row < 0 ? '' : String(row), destination: 'appendix',
+    appendix: appendix ? String(appendix.table_index) : selection.appendix_table == null && selection.appendix_title ? 'new' : '',
+    title: appendix ? selection.appendix_title || appendix.title : selection.appendix_table == null ? selection.appendix_title || '' : '' };
 }
 export function selectedResultRequest(resultId: string, choice: ResultChoice, targets?: ResultTargets): ReportAssemblyResult | null {
   const row = targets?.result_rows[Number(choice.row)];
@@ -17,7 +31,7 @@ export function selectedResultRequest(resultId: string, choice: ResultChoice, ta
     return { result_id: resultId, result_table: row.table_index, result_row: row.row_index, appendix_table: null, appendix_title: '',
       evidence_start: Number(choice.start), evidence_end: Number(choice.end), evidence_selection_confirmed: true };
   }
-  if (!choice.appendix || !choice.title.trim()) return null;
+  if (!choice.appendix || !choice.title.trim() || (choice.appendix !== 'new' && !targets?.appendix_tables.some(item => String(item.table_index) === choice.appendix))) return null;
   return { result_id: resultId, result_table: row.table_index, result_row: row.row_index,
     appendix_table: choice.appendix === 'new' ? null : Number(choice.appendix), appendix_title: choice.title.trim() };
 }
@@ -68,6 +82,7 @@ export function ReportBatchPreparationSelections({ state, mappingIds, onMappings
         {result.data.summary && <p>Confirmed summary: min {result.data.summary.min}, max {result.data.summary.max}, average {result.data.summary.average} {result.data.unit}.</p>}
         {targetErrors[id] && <p role="alert">{targetErrors[id]}</p>}
         {choice.selected && target && <div className="report-batch-fields">
+          {target.appendix_tables.length > 0 && <p className="report-batch-wide">Existing appendices were found. Choose the matching appendix to update it instead of adding another copy. No appendix is selected automatically.</p>}
           <label>Evidence destination<select value={choice.destination}
             onChange={event => edit({ destination: event.target.value as ResultChoice['destination'] })}>
             {target.result_rows.length === 1 && !target.unreconciled_temperature_evidence && <option value="automatic">Automatic matching — inspect exact placement in preview</option>}
@@ -96,7 +111,7 @@ export function ReportBatchPreparationSelections({ state, mappingIds, onMappings
           </> : <><label>Appendix destination<select value={choice.appendix} onChange={event => edit({ appendix: event.target.value,
               title: target.appendix_tables.find(item => String(item.table_index) === event.target.value)?.title || '' })}>
               <option value="">Choose explicitly</option><option value="new">Add a new appendix</option>
-              {target.appendix_tables.map(item => <option key={item.table_index} value={item.table_index}>{item.title} — {item.headers.join(' / ')}</option>)}
+              {target.appendix_tables.map(item => <option key={item.table_index} value={item.table_index}>Update existing {item.title} — {item.headers.join(' / ')} (table {item.table_index})</option>)}
             </select></label><label>Appendix identifier<input value={choice.title} placeholder="Appendix C" onChange={event => edit({ title: event.target.value })} /></label></>}
           </>}
         </div>}

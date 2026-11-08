@@ -273,9 +273,15 @@ Do not use a dated snapshot as a substitute for the code.
   closure are authorized for this task; primary board/Git establish actual integration/closure, with
   no push. Isolated native Word acceptance covered all six Internal and three Customer
   pages, real Windows file-lock partial save, same-database process restart and same-operation resume.
-  This does not qualify a release package or second computer. Existing batch UI cannot yet choose
-  pre-existing appendix targets; the accepted case bound them through the public API, not a UI-only
-  assembly path. See `docs/operational/report_delivery_controlled_save_20261107.md` for evidence/bounds.
+  This does not qualify a release package or second computer. That acceptance case bound existing
+  appendix targets through the public API; this was not evidence that basic UI controls were absent.
+  Batch preparation now defaults to explicit appendix selection when existing appendices are found,
+  distinguishes replacement from addition in preview, and reopens saved result locations for editing.
+  Restored locations match exact current coordinates, not candidate list order; missing candidates
+  never silently become a new appendix. Editing invalidates confirmation until another preview.
+  Automatic location coordinates may be null in saved API requests and are handled as automatic,
+  not as an unavailable explicit row. See `docs/operational/report_existing_targets_20261108.md` and
+  the earlier delivery acceptance record for their respective evidence and bounds.
 
 - Update report content includes source-bound semantic region review, confirmed batch photo mappings,
   figure-number changes and retained Word/PDF visual previews. These operate on the selected working
