@@ -97,6 +97,7 @@ it('restores a persisted preview after reopening and refuses a plan for a differ
     request: { expected_revision: 6, output_id: 'previous-output', output_sha256: 'old', mapping_ids: [], results: [], assignments: [] } };
   render(<Host initial={{ ...state, assembly_plan: plan }} />);
   expect(screen.getByText(/Preview no longer matches the selected working copy/)).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Edit result and appendix locations' }).matches(':disabled')).toBe(true);
   expect(screen.getByRole('button', { name: 'Generate one working copy' }).matches(':disabled')).toBe(true);
 });
 
@@ -176,7 +177,7 @@ it('uses automatic placement for a unique match and shows the resolved locations
   fireEvent.click(screen.getByRole('button', { name: 'Preview selected updates' }));
   await waitFor(() => expect(batchApi.previewReportAssembly).toHaveBeenCalledWith('P1', { ...plan.request, expected_revision: 7 }));
   expect(await screen.findByRole('table', { name: 'Resolved batch result locations' })).toBeTruthy();
-  expect(screen.getByRole('cell', { name: 'Appendix B' })).toBeTruthy();
+  expect(screen.getByRole('cell', { name: 'Add new Appendix B' })).toBeTruthy();
   expect(screen.getByRole('cell', { name: 'Table 2, row 3' })).toBeTruthy();
   expect(screen.getByRole('cell', { name: 'Old product' })).toBeTruthy();
   expect(screen.getByRole('cell', { name: 'New product' })).toBeTruthy();
@@ -264,4 +265,96 @@ it('explains why LLCR is unavailable without blocking an independent selected re
   expect(screen.queryByLabelText('Include current LLCR dataset')).toBeNull();
   fireEvent.click(screen.getByLabelText('Include Group Ab / 2 / mechanical'));
   expect(screen.getByRole('button', { name: 'Preview selected updates' }).matches(':disabled')).toBe(false);
+});
+
+const existingTargets: reportApi.ResultTargets = { output_sha256: 'a'.repeat(64), result_id: 'force1',
+  result_rows: [{ table_index: 2, row_index: 3, step: '2', test_item: 'Retention force' }],
+  appendix_tables: [{ table_index: 7, title: 'Appendix A', headers: ['Sample SN', 'Force (N)'] },
+    { table_index: 8, title: 'Appendix B', headers: ['Sample SN', 'Temperature (C)'] }] };
+
+function existingPlan(overrides: Partial<batchApi.ReportAssemblyPlan> = {}): batchApi.ReportAssemblyPlan {
+  return { plan_id: 'existing-plan', preview_sha256: 'p', base_output_id: 'out1', output_sha256: 'a'.repeat(64),
+    status: 'prepared', can_apply: true, changes: [{ kind: 'result', label: 'Update retention', result_id: 'force1' }],
+    issues: [], omitted: [], request: { output_id: 'out1', output_sha256: 'a'.repeat(64), mapping_ids: [],
+      results: [{ result_id: 'force1', result_table: 2, result_row: 3, appendix_table: 7, appendix_title: 'Appendix A' }], assignments: [] },
+    document_plan: { facts: [], results: [{ result_id: 'force1', target: { result_table: 2, result_row: 3,
+      appendix_table: 7, appendix_title: 'Appendix A' }, current_result: 'Old force', new_result: 'New force' }] }, ...overrides };
+}
+
+it('requires choosing an existing appendix or explicitly adding a new one and previews replacement rather than duplication', async () => {
+  vi.mocked(reportApi.getReportResultTargets).mockResolvedValue(existingTargets);
+  const plan = existingPlan();
+  vi.mocked(batchApi.previewReportAssembly).mockResolvedValue({ ...state, revision: 8, assembly_plan: plan });
+  render(<Host />);
+  fireEvent.click(screen.getByRole('button', { name: 'Inspect materials and coverage' }));
+  fireEvent.click(await screen.findByLabelText('Include Group Ab / 2 / mechanical'));
+  expect(screen.getByLabelText('Evidence destination')).toHaveProperty('value', 'appendix');
+  expect(screen.getByLabelText('Appendix destination')).toHaveProperty('value', '');
+  expect(screen.getByRole('button', { name: 'Preview selected updates' }).matches(':disabled')).toBe(true);
+  fireEvent.change(screen.getByLabelText('Appendix destination'), { target: { value: '7' } });
+  expect(screen.getByLabelText('Appendix identifier')).toHaveProperty('value', 'Appendix A');
+  fireEvent.click(screen.getByRole('button', { name: 'Preview selected updates' }));
+  await waitFor(() => expect(batchApi.previewReportAssembly).toHaveBeenCalledWith('P1', { ...plan.request, expected_revision: 7 }));
+  expect(await screen.findByRole('cell', { name: 'Update existing Appendix A (table 7)' })).toBeTruthy();
+  expect(batchApi.applyReportAssembly).not.toHaveBeenCalled();
+});
+
+it('reopens a blocked automatic preview for explicit existing-target correction without applying the old preview', async () => {
+  const plan = existingPlan({ can_apply: false, issues: ['Select the existing result region or appendix instead of adding another copy.'],
+    request: { output_id: 'out1', output_sha256: 'a'.repeat(64), mapping_ids: [], results: [{ result_id: 'force1' }], assignments: [] } });
+  vi.mocked(reportApi.getReportResultTargets).mockResolvedValue(existingTargets);
+  vi.mocked(batchApi.previewReportAssembly).mockResolvedValue({ ...state, revision: 9, assembly_plan: existingPlan() });
+  render(<Host initial={{ ...state, revision: 8, assembly_plan: plan }} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit result and appendix locations' }));
+  expect(await screen.findByLabelText('Include Group Ab / 2 / mechanical')).toHaveProperty('checked', true);
+  expect(screen.getByLabelText('Report result row')).toHaveProperty('value', '0');
+  expect(screen.getByLabelText('Appendix destination')).toHaveProperty('value', '');
+  fireEvent.change(screen.getByLabelText('Appendix destination'), { target: { value: '7' } });
+  expect(screen.getByLabelText('I checked this batch preview; unresolved items remain pending').matches(':disabled')).toBe(true);
+  expect(screen.getByRole('button', { name: 'Generate one working copy' }).matches(':disabled')).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Preview selected updates' }));
+  await waitFor(() => expect(batchApi.previewReportAssembly).toHaveBeenCalledWith('P1', { ...existingPlan().request, expected_revision: 8 }));
+  expect(batchApi.applyReportAssembly).not.toHaveBeenCalled();
+});
+
+it('restores saved locations by exact candidate coordinates and refuses to substitute a missing appendix', async () => {
+  const plan = existingPlan();
+  vi.mocked(reportApi.getReportResultTargets).mockResolvedValue({ ...existingTargets, appendix_tables: [existingTargets.appendix_tables[1]] });
+  render(<Host initial={{ ...state, revision: 8, assembly_plan: plan }} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit result and appendix locations' }));
+  expect(await screen.findByLabelText('Include Group Ab / 2 / mechanical')).toHaveProperty('checked', true);
+  expect(screen.getByLabelText('Appendix destination')).toHaveProperty('value', '');
+  expect(screen.getByRole('button', { name: 'Preview selected updates' }).matches(':disabled')).toBe(true);
+  expect(screen.getByRole('button', { name: 'Generate one working copy' }).matches(':disabled')).toBe(true);
+  expect(batchApi.applyReportAssembly).not.toHaveBeenCalled();
+});
+
+it('restores the exact result row after candidate reordering and preserves the other saved update choices', async () => {
+  const plan = existingPlan({ request: { ...existingPlan().request, mapping_ids: ['fact1'], renumber_figures: true,
+    llcr_dataset_id: llcrDataset.dataset_id } });
+  vi.mocked(batchApi.getReportCoverage).mockResolvedValue({ ...coverage, llcr_dataset: llcrDataset });
+  vi.mocked(reportApi.getReportResultTargets).mockResolvedValue({ ...existingTargets, result_rows: [
+    { table_index: 3, row_index: 1, step: '2', test_item: 'Other matching row' }, ...existingTargets.result_rows] });
+  vi.mocked(batchApi.previewReportAssembly).mockResolvedValue({ ...state, revision: 9, assembly_plan: plan });
+  render(<Host initial={{ ...state, revision: 8, assembly_plan: plan }} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit result and appendix locations' }));
+  expect(await screen.findByLabelText('Report result row')).toHaveProperty('value', '1');
+  expect(screen.getByLabelText('Appendix destination')).toHaveProperty('value', '7');
+  expect(screen.getByLabelText('Include current LLCR dataset')).toHaveProperty('checked', true);
+  expect(screen.getByLabelText('Renumber supported photo captions and exact references in visible order')).toHaveProperty('checked', true);
+  expect(screen.getByRole('button', { name: 'Generate one working copy' }).matches(':disabled')).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Preview selected updates' }));
+  await waitFor(() => expect(batchApi.previewReportAssembly).toHaveBeenCalledWith('P1', { ...plan.request, expected_revision: 8 }));
+});
+
+it('requires an explicit decision to omit an unavailable saved LLCR update when editing other result locations', async () => {
+  const plan = existingPlan({ request: { ...existingPlan().request, llcr_dataset_id: 'old-llcr' } });
+  vi.mocked(reportApi.getReportResultTargets).mockResolvedValue(existingTargets);
+  render(<Host initial={{ ...state, revision: 8, assembly_plan: plan }} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit result and appendix locations' }));
+  const omit = await screen.findByRole('button', { name: 'Leave the saved LLCR update out' });
+  expect(screen.getByRole('button', { name: 'Preview selected updates' }).matches(':disabled')).toBe(true);
+  fireEvent.click(omit);
+  expect(screen.getByRole('button', { name: 'Preview selected updates' }).matches(':disabled')).toBe(false);
+  expect(batchApi.applyReportAssembly).not.toHaveBeenCalled();
 });

@@ -4,7 +4,7 @@ import { getReportPhotoSlots, getReportResultTargets, type ReportAuthoringState,
 import { applyReportAssembly, getReportCoverage, getReportInventory, previewReportAssembly, retainReportInventory,
   type ReportAssemblyPhoto, type ReportAssemblyRequest, type ReportCoverage, type ReportInventory } from '../../api/reportAuthoringBatch';
 import { ReportBatchPreparationInventory } from './ReportBatchPreparationInventory';
-import { initialResultChoice, ReportBatchPreparationSelections, selectedResultRequest, type ResultChoice } from './ReportBatchPreparationSelections';
+import { initialResultChoice, restoreResultChoice, ReportBatchPreparationSelections, selectedResultRequest, type ResultChoice } from './ReportBatchPreparationSelections';
 import './ReportBatchPreparation.css';
 
 type ReadResult<T> = { value: T; error?: never } | { value?: never; error: string };
@@ -67,9 +67,10 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
     finally { release(); if (isCurrent()) setBusy(false); }
   }
 
-  async function inspect() {
+  async function inspect(restorePreview = false) {
     await run(async isCurrent => {
       setConfirmed(false);
+      setDraftChanged(true);
       const [scan, cover, photo, resultReads] = await Promise.all([
         read(getReportInventory(projectId)), read(getReportCoverage(projectId)),
         output ? read(getReportPhotoSlots(projectId, output.output_id, state.revision)) : Promise.resolve(null),
@@ -90,12 +91,19 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
         else if (result.response.value) nextTargets[result.id] = result.response.value;
       }
       setTargets(nextTargets); setTargetErrors(nextErrors);
-      setChoices(Object.fromEntries(Object.entries(nextTargets).map(([id, target]) => [id, initialResultChoice(target)])));
+      const saved = restorePreview && planMatches && plan?.status === 'prepared' ? plan.request : null;
+      setChoices(Object.fromEntries(Object.entries(nextTargets).map(([id, target]) => {
+        const selection = saved?.results.find(item => item.result_id === id);
+        return [id, selection ? restoreResultChoice(selection, target) : initialResultChoice(target)];
+      })));
+      if (saved?.results.some(item => !nextTargets[item.result_id])) errors.push('Some saved result locations cannot be restored. Resolve their inspection errors; these results remain unselected.');
       if (photo?.error) errors.push(`Photo slots: ${photo.error}`);
       const validPhoto = photo?.value?.output_sha256 === output?.artifact?.sha256;
       if (photo?.value && !validPhoto) errors.push('Photo slots no longer match the working copy. Reload saved evidence.');
       setSlots(validPhoto ? photo?.value?.slots || [] : []);
-      setReadErrors(errors); setRetainedSelection({}); setMappingIds([]); setLlcrDatasetId(''); setAssignments({}); setInspected(true);
+      setReadErrors(errors); setRetainedSelection({}); setMappingIds(saved?.mapping_ids || []); setLlcrDatasetId(saved?.llcr_dataset_id || '');
+      setAssignments(Object.fromEntries((saved?.assignments || []).map(item => [item.slot_id, item])));
+      setUsePhotoPlan(!!saved?.photo_plan_id); setRenumberFigures(!!saved?.renumber_figures); setInspected(true);
     });
   }
 
@@ -169,11 +177,15 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
         onResult={(id, choice) => { changed(); setChoices(previous => ({ ...previous, [id]: choice })); }}
         onPhoto={(id, assignment) => { changed(); setUsePhotoPlan(false); setAssignments(previous => { const next = { ...previous }; if (assignment) next[id] = assignment; else delete next[id]; return next; }); }} />
       {invalidResult && <p role="status">Choose the result location and complete evidence destination for each selected result.</p>}
+      {invalidLlcr && <div role="status"><p>The saved LLCR dataset is no longer available as the current dataset. Select the current dataset explicitly, or leave that update pending.</p>
+        <button type="button" disabled={locked} onClick={() => { changed(); setLlcrDatasetId(''); }}>Leave the saved LLCR update out</button></div>}
       {invalidPhoto && <p role="status">Review the selected photo slot and its rotation/flips before previewing.</p>}
       <button type="button" disabled={locked || !previewReady} onClick={() => void preview()}>Preview selected updates</button>
     </>}
     {plan && <section className="report-batch-plan" aria-label="Saved batch preview"><h5>Saved batch preview</h5>
       {plan.status === 'completed' ? <p role="status">This batch already produced a working copy. Inspect again to prepare a different batch; do not replay completed updates.</p> : <>
+        <button type="button" disabled={locked || !planMatches} onClick={() => void inspect(true)}>Edit result and appendix locations</button>
+        <p>Reopen the saved selections against this working copy. Preview again after editing; the old confirmation cannot generate changed selections.</p>
         <p>Base: {output?.file_name || plan.base_output_id}. {plan.changes.length} selected change(s). This is a review copy, not a complete-report or Pass declaration.</p>
         <ul>{plan.changes.map((change, index) => <li key={index}>{change.label}</li>)}</ul>
         {!!plan.document_plan?.facts.length && <div className="report-batch-table-wrap"><table aria-label="Exact fact replacements"><thead><tr><th>Existing text</th><th>Replacement</th><th>Occurrences / locations</th></tr></thead>
@@ -183,7 +195,8 @@ export function ReportBatchPreparation({ projectId, state, disabled, onChanged, 
             <td>{item.target ? `Table ${item.target.result_table}, row ${item.target.result_row}` : 'Needs review'}</td>
             <td>{item.current_result === undefined ? 'Not recorded in this preview' : item.current_result || '—'}<small>Comment: {item.current_comment === undefined ? 'Not recorded in this preview' : item.current_comment || '—'}</small></td>
             <td>{item.new_result === undefined ? 'Not recorded in this preview' : item.new_result || '—'}<small>Comment: {item.new_comment === undefined ? 'Not recorded in this preview' : item.new_comment || '—'}</small></td>
-            <td>{item.target?.evidence_start != null ? `Evidence blocks ${item.target.evidence_start}–${item.target.evidence_end}` : item.target?.appendix_title || 'Needs review'}</td></tr>)}</tbody></table></div>}
+            <td>{item.target?.evidence_start != null ? `Evidence blocks ${item.target.evidence_start}–${item.target.evidence_end}` : item.target?.appendix_title
+              ? item.target.appendix_table != null ? `Update existing ${item.target.appendix_title} (table ${item.target.appendix_table})` : `Add new ${item.target.appendix_title}` : 'Needs review'}</td></tr>)}</tbody></table></div>}
         {plan.document_plan?.llcr && <section aria-label="LLCR batch preview"><h5>LLCR dataset revision {plan.document_plan.llcr.revision}</h5>
           <p>Appendix A: {plan.document_plan.llcr.appendix.action} — {plan.document_plan.llcr.appendix.summary_rows} summary rows. No measurement recalculation.</p>
           <div className="report-batch-table-wrap"><table aria-label="LLCR exact result changes"><thead><tr><th>Group / Step / Word row</th><th>Requirement</th><th>Existing result / comment</th><th>New result / comment</th></tr></thead>
