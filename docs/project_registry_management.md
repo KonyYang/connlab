@@ -18,9 +18,10 @@ LTR records or ownership, source materials, external paths, or external files.
 
 ## Closing and reopening
 
-- The compact confirmation displays the project reference separately below its title. Close project
-  submits Completed after explicit confirmation, without a reason selector. Add note reveals an
-  optional field. Opening or cancelling the dialog never closes a project.
+- The compact confirmation displays the project reference separately below its title. Its reason
+  dropdown defaults to Completed, with Cancelled, Unable to continue and Other also available. There
+  is no Select a reason placeholder. Confirmation submits the selected reason; reopening resets it
+  to Completed. Add note reveals an optional field. Opening or cancelling never closes a project.
 - The lifecycle API retains its other reason categories for compatibility; every category, including
   Other, permits an empty note. Existing historical reasons remain readable.
 - Existing Failed and Duplicate closure reasons remain readable. A test failing
@@ -71,7 +72,8 @@ the confirmation instead of treated as authorization to delete or update them.
 Use synthetic projects and an isolated SQLite database, never real projects, for
 mutation tests. The required acceptance scenarios are:
 
-1. Workbench confirmation submits Completed with or without an optional note; Cancel submits nothing.
+1. Workbench defaults to Completed but submits the selected reason, with or without an optional note;
+   Cancel submits nothing and reopening restores Completed.
    The API still requires a reason category and permits an empty note for every category. Legacy
    reasons remain readable. Compatibility-only routes retain their existing required fields.
 2. Remove A, then create B with the same displayed DL number. Cancelled restore

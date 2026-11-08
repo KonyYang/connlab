@@ -328,7 +328,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     rerender(<ProjectWorkbenchLayout {...props} runtimeModel={second} project={second.project!} />);
     expect(screen.queryByRole("dialog")).toBeNull();
     await user.click(screen.getByRole("button", {name: "Close project"}));
-    expect(screen.queryByLabelText("Close reason")).toBeNull();
+    expect(screen.getByLabelText("Close reason")).toHaveProperty("value", "completed");
     expect(screen.queryByLabelText(/Additional note/)).toBeNull();
   });
 
@@ -718,13 +718,14 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     expect(screen.queryByText("Recorded outputs are current.")).toBeNull();
     await user.click(screen.getByRole("button", {name: "Add note"}));
+    await user.selectOptions(screen.getByLabelText("Close reason"), "cannot_test");
     await user.type(screen.getByLabelText(/Additional note/), "Outputs reviewed.");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close project" }));
 
-    expect(onCloseLifecycle).toHaveBeenCalledWith("completed", "Outputs reviewed.");
+    expect(onCloseLifecycle).toHaveBeenCalledWith("cannot_test", "Outputs reviewed.");
   });
 
-  it("uses Completed closure for the temporary no-LTR compatibility path", async () => {
+  it("allows a selected Other reason for the temporary no-LTR compatibility path", async () => {
     const user = userEvent.setup();
     const onCloseLifecycle = vi.fn().mockResolvedValue(undefined);
 
@@ -741,13 +742,14 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Close as completed")).toBeNull();
     expect(screen.queryByText("Close administratively")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Close project" }));
-    expect(screen.queryByLabelText("Close reason")).toBeNull();
+    expect(screen.getByLabelText("Close reason")).toHaveProperty("value", "completed");
     await user.click(screen.getByRole("button", {name: "Add note"}));
 
+    await user.selectOptions(screen.getByLabelText("Close reason"), "other");
     await user.type(screen.getByLabelText(/Additional note/), "Duplicate request.");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close project" }));
 
-    expect(onCloseLifecycle).toHaveBeenCalledWith("completed", "Duplicate request.");
+    expect(onCloseLifecycle).toHaveBeenCalledWith("other", "Duplicate request.");
   });
 
   it("renders closed completed projects with Activate when backend allows recovery", () => {
