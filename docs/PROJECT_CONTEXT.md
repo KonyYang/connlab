@@ -75,6 +75,11 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Project closure and registry location
 
+- Workbench action panels are always displayed alongside/below the Matrix. The Hide Actions / Show
+  Actions toggle and its collapse state have been removed; Step Actions, Folder Actions and the other
+  existing side-column content keep their behavior. Matrix Editor's own step-details toggle remains
+  separate.
+
 - The unified project library distinguishes managed file membership from business
   Project identity and lifecycle. Full LTR stays the business reference; titles,
   directory locations and ordinary file contents may change independently.

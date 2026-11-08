@@ -1,6 +1,4 @@
-import { useState, type ReactElement, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
+import type { ReactElement, ReactNode } from "react";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
@@ -32,8 +30,6 @@ export function ProjectWorkbenchExecutionConsole({
   setSelectedProjectionToken: (token: MatrixProjectionTokenCell | null) => void;
   sideColumnAfter?: ReactNode;
 }): ReactElement {
-  const [detailsOpen, setDetailsOpen] = useState(true);
-  const topBarActionsRoot = useTopBarActionsRoot();
   const selectedWorkspace = runtimeProjectionSnapshot?.step_workspace ?? null;
   const selectedWorkspaceToken = selectedWorkspace?.selected_token ?? null;
   const hasSelectedStep =
@@ -58,30 +54,16 @@ export function ProjectWorkbenchExecutionConsole({
     .toLowerCase()
     .replace(/\s+/g, "-");
 
-  const detailsToggle = (
-    <button
-      className="runtime-console-workbench-action"
-      type="button"
-      aria-expanded={detailsOpen}
-      aria-controls="workbench-details"
-      onClick={() => setDetailsOpen((open) => !open)}
-    >
-      {detailsOpen ? "Hide Actions" : "Show Actions"}
-    </button>
-  );
-
   return (
-    <section className={`runtime-console-workspace${detailsOpen ? "" : " is-details-collapsed"}`}>
+    <section className="runtime-console-workspace">
       <div className="runtime-console-main">
-        {topBarActionsRoot ? null : <div className="runtime-console-view-controls">{detailsToggle}</div>}
-        {topBarActionsRoot ? createPortal(detailsToggle, topBarActionsRoot) : null}
         <ProjectWorkbenchMatrixProjectionPanel
           projectId={projectId}
           onTokenSelect={setSelectedProjectionToken}
         />
       </div>
 
-      <div id="workbench-details" className="runtime-console-side-column" hidden={!detailsOpen}>
+      <div className="runtime-console-side-column">
         <aside className="runtime-console-step-workspace" aria-label="Step workspace">
           <header>
             <div>
