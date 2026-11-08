@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_REPORT_DELIVERY_CONTROLLED_SAVE_20261107",
+    "task_id": "TASK_FOLDER_PARTIAL_GENERATION_20261107",
     "tier": "high_risk",
-    "subject": "81b6934643cce76f748770343e9a717c0527ac14",
-    "summary": "Report batch 6 part 1: exact-version delivery checks and controlled Internal/Customer save through existing History protections",
+    "subject": "78e416e2ac95c24480af368b03b36c9da4b83325",
+    "summary": "Generate independent project folder outputs despite individual artifact failures and summarize missing outputs",
     "disposition": "completed",
-    "decision_ref": "User explicitly authorized autonomous acceptance and local completed close of batch6 part1. Independent Reviewer, QA, actual UI/API, all9 native Word pages, real file-lock partial/save/restart/resume, raw target/History identities and source preservation passed. Independent Integrator performed verified serial local merge. Preserve all commits/evidence; no push or formal issuance; publish-close intentionally omitted.",
-    "closed_at": "2026-11-07T07:19:39.211426Z"
+    "decision_ref": "User explicitly requested closing current task locally only on 2026-11-08. Preserve integrated partial-generation fix, all API test repairs, package and evidence. No push or publication; publish-close intentionally omitted.",
+    "closed_at": "2026-11-08T01:38:18.677248Z"
   },
   "retained_history": [
     {
@@ -381,175 +381,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly authorized autonomous acceptance and local close after batch5 completion. Independent code review, QA matrices, actual publicUI/API and all63 final Word pages passed; bounded pagination repair approved and verified. Preserve all local commits/evidence; no push or publication; publish-close intentionally omitted.",
       "closed_at": "2026-11-07T05:05:58.880106Z"
+    },
+    {
+      "task_id": "TASK_REPORT_DELIVERY_CONTROLLED_SAVE_20261107",
+      "tier": "high_risk",
+      "subject": "81b6934643cce76f748770343e9a717c0527ac14",
+      "summary": "Report batch 6 part 1: exact-version delivery checks and controlled Internal/Customer save through existing History protections",
+      "disposition": "completed",
+      "decision_ref": "User explicitly authorized autonomous acceptance and local completed close of batch6 part1. Independent Reviewer, QA, actual UI/API, all9 native Word pages, real file-lock partial/save/restart/resume, raw target/History identities and source preservation passed. Independent Integrator performed verified serial local merge. Preserve all commits/evidence; no push or formal issuance; publish-close intentionally omitted.",
+      "closed_at": "2026-11-07T07:19:39.211426Z"
     }
   ],
-  "tasks": {
-    "TASK_FOLDER_PARTIAL_GENERATION_20261107": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\folder-partial-generation\\connlab",
-      "branch": "codex/folder-partial-generation-20261107",
-      "resources": [
-        "folder-partial-isolated-tests"
-      ],
-      "integrated_head": "0a1ec9f0574ce999eaaa39874b879476affab931",
-      "task": {
-        "task_id": "TASK_FOLDER_PARTIAL_GENERATION_20261107",
-        "summary": "Generate independent project folder outputs despite individual artifact failures and summarize missing outputs",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Keep project identity, directory, authority race, publication recovery and explicit Backup/Rebuild protections. Separate per-output readiness and safe generation failures; persist and display partial outcomes. Local only; isolated test files; no push or publication.",
-        "scope_paths": [
-          "tests/integration/test_project_folder_required_forms_api.py",
-          "tests/integration/test_project_request_material_collection_api.py"
-        ],
-        "risk_reasons": [
-          "Changes external-file generation and durable partial/recovery semantics; existing files and confirmed authorities must remain protected."
-        ],
-        "activation_head": "19e8073bff43737bf8955ca6cac84f26e4f88430",
-        "started_at": "2026-11-07T11:52:04.329246Z",
-        "updated_at": "2026-11-07T15:37:55.719937Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_FOLDER_PARTIAL_GENERATION_20261107",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User explicitly requests fixing the seven previously documented existing API test failures. Continue current task locally; preserve real guards and business contracts, no push, no publication, no real business file mutation.",
-          "requires_user": false
-        },
-        "report": {
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "method": "Independent /root/folder_partial_reviewer completed Standards and Spec review at final cf78e011 with no unresolved findings. Earlier P1 junction and P2 material-collection findings were reproduced in isolated directories and fixed; final focused regressions passed. Independent reviewer also reviewed exact 24a90f28 one-line revision: Standards and Spec passed with no new findings; guard and concurrent-409 assertions unchanged. Independent reviewer additionally reviewed fixed 78e416e2: Standards/Spec passed with no findings. Actual write guard/read_delivery_projection run; no guard mock/bypass, stub changes, or changes to prior 200/409/lifecycle/no-mutation assertions."
-            },
-            "developer": {
-              "status": "passed",
-              "method": "Independent /root/folder_partial_developer implemented coherent RED/GREEN slices and corrections. Public-seam RED reproduced missing IR template, writer failure, missing Application, stale recovered issues, material suppression and unsafe redirected paths; targeted GREEN preceded immutable commits. The later one-line test fixture correction was implemented by root under explicit User authorization; no production code changes in that revision. Root subsequently corrected two SQLite test fixtures for the explicitly authorized seven-existing-failure repair; fresh root RED 7 failed/3 passed followed by GREEN 10 passed; production source unchanged."
-            },
-            "planner": {
-              "status": "passed",
-              "method": "Independent /root/folder_partial_planner inspected actual preflight, runner, required-forms dependencies, contact kinds, recovery boundaries and test seams."
-            },
-            "qa": {
-              "status": "passed",
-              "method": "Original independent QA covered partial generation: final 68 passed/1 skipped, frontend 169 passed plus 2 acceptance checks and production build passed. The original seven baseline API failures are now fixed: independent QA ran the exact 78e416e2 two revised API files plus real folder write-guard and prior LLCR/CR API file once, 35 passed, 1 existing Starlette warning in 17.30s, 0 failed/0 skipped. Root RED/GREEN and earlier root 14-pass runs remain separately identified. No real Office COM or browser E2E."
-            },
-            "integrator": {
-              "status": "passed",
-              "method": "Independent Integrator verified exact reviewed 78e416e2, clean primary and task roots, merge base 24a90f28, exact two-file revision within amended scope and git diff --check. Product tree unchanged; 24 cumulative task paths. Serial local integration pending sole writer; no duplicate tests, manual merge, close, push or publication."
-            }
-          },
-          "validation": [
-            {
-              "result": "On cf78e011: 68 passed, 1 skipped in 192.18s. Covers the 8 corrected failures, selected Required Forms, source failures, partial completion, recovery, target/context races and junction/ancestor guards. One Windows file-symlink test skipped for privilege WinError 1314; actual junction/ancestor tests passed.",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf78e011-final.log",
-              "name": "Final affected backend validation",
-              "status": "passed"
-            },
-            {
-              "result": "169 tests passed (152 + 17). Frontend tree unchanged from tested cf141ba5 to cf78e011, verified by Git diff.",
-              "evidence": [
-                "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-frontend.log",
-                "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-model.log"
-              ],
-              "name": "Frontend regression validation",
-              "status": "passed"
-            },
-            {
-              "result": "2 QA-only component acceptance tests passed; partial summary retained across remount and no generation restart. This is not browser E2E.",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-ui-acceptance.log",
-              "name": "Independent UI acceptance",
-              "status": "passed"
-            },
-            {
-              "result": "TypeScript and Vite production build passed. No frontend byte changes since the tested subject.",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-build.log",
-              "name": "Production frontend build",
-              "status": "passed"
-            },
-            {
-              "result": "With an unavailable IR template, five other output records/files were retained, partial issues persisted, and repeated observation/resume did not rewrite successful files. Uses isolated SQLite/files and fake Office boundary; real IR workbook generation and path protections are covered.",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/qa-folder-partial-cf141ba5-filesystem.log",
-              "name": "Isolated filesystem acceptance",
-              "status": "passed"
-            },
-            {
-              "observed_failures": 7,
-              "result": "Historical comparison passed: the seven API 503 failures reproduced on unchanged 19e8073 baseline (7 failed, 3 passed) and were excluded from earlier passing counts. They are now resolved by the authorized 78e416e2 fixture revision, confirmed by fresh RED/GREEN and independent final 35-pass matrix. Historical failed runs are not relabeled passed.",
-              "name": "Baseline comparison of seven API fixture failures",
-              "evidence": "D:/PythonProject/connlab/tmp/qa-folder-partial-baseline-19e8073-api.log",
-              "baseline_subject": "19e8073bff43737bf8955ca6cac84f26e4f88430",
-              "status": "passed"
-            },
-            {
-              "name": "Approved release fixture regression validation",
-              "status": "passed",
-              "evidence": "Root reported exact-subject full-file tool result for 24a90f28",
-              "result": "Root executed the complete revised tests/integration/test_matrix_editor_llcr_cr_record_generation_api.py file: 14 passed. The initialized fixture.sqlite is now used by Settings; service/session lock, success output and concurrent 409 assertions are unchanged. Root execution, not independent QA."
-            },
-            {
-              "name": "Release failure baseline comparison",
-              "status": "passed",
-              "evidence": [
-                "D:/PythonProject/connlab/tmp/folder-partial-browser-build.log",
-                "D:/PythonProject/connlab/tmp/folder-partial-release-baseline.log"
-              ],
-              "result": "Comparison verified the additional release-gate API 503 failure on original 19e8073 baseline before the one-line fixture correction. Initial release gate itself failed: 163 passed, 1 failed; do not count that run as passing."
-            },
-            {
-              "name": "Seven API fixture regression GREEN",
-              "evidence": [
-                "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/seven-api-red.log",
-                "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/seven-api-green.log"
-              ],
-              "status": "passed",
-              "result": "Root fresh RED reproduced 7 failed/3 passed; after real configured SQLite initialization and guaranteed engine disposal, both full API files GREEN: 10 passed, 1 warning in 9.69s. This is root validation; real guards and existing expected business results unchanged."
-            },
-            {
-              "name": "Independent final four-file API and guard QA",
-              "evidence": "C:/Users/White/.codex/worktrees/folder-partial-generation/connlab/tmp/seven-api-final-qa.log",
-              "status": "passed",
-              "result": "Exact 78e416e2: independent QA ran both revised API files, folder write guard and LLCR/CR record generation API together once: 35 passed, 1 existing Starlette warning in 17.30s; 0 failed, 0 skipped. No production changes or weakened assertions."
-            },
-            {
-              "name": "Previously completed local package applicability",
-              "evidence": [
-                "D:/PythonProject/connlab/tmp/folder-partial-browser-build-fixed.log",
-                "D:/PythonProject/connlab/tmp/folder-partial-packaged-smoke-result.json"
-              ],
-              "status": "passed",
-              "result": "Local ConnLab_Web_202611072146_v0.1.0_folderpartial was built from 3307d0a0: 164 release checks passed, frontend build and PyInstaller passed; actual EXE isolated health/home smoke passed and process stopped. Current revision only changes tests; package production remains identical, so no rebuild is claimed or required. Not real Office COM or browser E2E."
-            },
-            {
-              "name": "Integrator subject, scope and diff checks",
-              "status": "passed",
-              "result": "Verified reviewed 78e416e2, clean roots, merge base 24a90f28, two exact fixture files, no production changes, clean diff check and current board SHA. Cumulative task files now 24; current sole writer report covers two-file revision delta."
-            }
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "78e416e2ac95c24480af368b03b36c9da4b83325",
-            "primary_before": "86a7c0b45d78a7b29311c5f985622a1f6fcc7cc3",
-            "integrated_head": "0a1ec9f0574ce999eaaa39874b879476affab931",
-            "recovered": false
-          },
-          "changed_paths": [
-            "tests/integration/test_project_folder_required_forms_api.py",
-            "tests/integration/test_project_request_material_collection_api.py"
-          ],
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "subject": "78e416e2ac95c24480af368b03b36c9da4b83325",
-          "task_id": "TASK_FOLDER_PARTIAL_GENERATION_20261107",
-          "summary": "Partial project-folder generation preserves successful independent outputs and durable missing-output summaries, retaining context, path and publication guards. The originally documented 7 baseline API failures are now RESOLVED by this explicitly authorized two-fixture revision: initialize the actual configured SQLite schema and dispose resources, with no product code or business assertion changes. Fresh RED was 7 failed/3 passed; root GREEN 10 passed; independent final QA four-file matrix 35 passed/0 failed/0 skipped. The earlier one-file release fixture correction and local package already passed. No claim is made that the historical 183 passed/15 failed/1 skipped run was green or that the whole repository suite was rerun. Production tree unchanged since cf78; local-only integration, no final close or push/publication.",
-          "scope_ok": true
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
