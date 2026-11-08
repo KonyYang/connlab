@@ -872,13 +872,13 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(apiMocks.previewMatrixEditorLiveXlsxPublication).not.toHaveBeenCalled();
   });
 
-  it("collapses step details without losing edited text and locates invalid cells", async () => {
+  it("keeps step details editable without collapse controls and locates invalid cells", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await screen.findByLabelText("Step 1 description");
     fireEvent.change(screen.getByLabelText("Step 1 description"), { target: { value: "Keep my draft" } });
-    fireEvent.click(screen.getByRole("button", { name: "Hide step details" }));
-    expect(screen.queryByRole("complementary", { name: "Group Step Workspace" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Show step details" }));
+    expect(screen.queryByRole("button", { name: "Hide step details" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Show step details" })).toBeNull();
+    expect(screen.getByRole("complementary", { name: "Group Step Workspace" })).toBeTruthy();
     expect((screen.getByLabelText("Step 1 description") as HTMLTextAreaElement).value).toBe("Keep my draft");
 
     fireEvent.change(screen.getByLabelText("Row 1 1"), { target: { value: "invalid" } });
