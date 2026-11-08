@@ -19,9 +19,9 @@ LTR records or ownership, source materials, external paths, or external files.
 ## Closing and reopening
 
 - The compact confirmation displays the project reference separately below its title and offers
-  four directly selectable reasons: Completed, Cancelled, Unable to continue, or Other. No reason
-  is selected by default. Other requires a nonblank note; the other categories reveal an optional
-  note through Add note. Written notes stay visible when changing reason.
+  a reason dropdown: Completed, Cancelled, Unable to continue, or Other. No reason is selected by
+  default. Every category, including Other, allows an empty note and reveals the optional field
+  through Add note. Written notes stay visible when changing reason.
 - Existing Failed and Duplicate closure reasons remain readable. A test failing
   its acceptance requirement is not itself an incomplete project.
 - Output status reminders, counts and details are omitted from the close confirmation. Missing,
@@ -70,8 +70,8 @@ the confirmation instead of treated as authorization to delete or update them.
 Use synthetic projects and an isolated SQLite database, never real projects, for
 mutation tests. The required acceptance scenarios are:
 
-1. Common close reasons permit no note; Other rejects blank notes without changing
-   state. Missing reason cannot be submitted. Legacy reasons remain readable.
+1. Every close reason, including Other, permits no note. Missing reason cannot be submitted.
+   Legacy reasons remain readable. Compatibility-only routes retain their existing required fields.
 2. Remove A, then create B with the same displayed DL number. Cancelled restore
    changes neither. Explicit replacement restores A and retains B in history.
    Restoring only to history leaves B current. Both internal IDs and contents stay

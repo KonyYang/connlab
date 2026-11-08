@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -203,6 +204,27 @@ def test_unified_close_and_activate_closed_project_api(tmp_path: Path) -> None:
         assert activated.json()["status"] == "draft"
         assert activated.json()["closure_type"] is None
         assert activated.json()["close_reason_category"] is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+@pytest.mark.parametrize("note_fields", [{}, {"note": ""}, {"note": "   "}])
+def test_other_close_reason_accepts_an_optional_note_api(tmp_path: Path, note_fields: dict) -> None:
+    client, engine = _client(tmp_path)
+    try:
+        project_id = _create_project(client, project_no="DL-2026-06-013")
+        closed = client.post(
+            f"/api/projects/{project_id}/lifecycle/close",
+            json={"reason_category": "other", **note_fields},
+        )
+        assert closed.status_code == 200
+        assert closed.json()["lifecycle_state"] == "closed"
+        assert closed.json()["close_reason_category"] == "other"
+        assert closed.json()["closed_reason"] == ""
+        retained = client.get(f"/api/projects/{project_id}/lifecycle")
+        assert retained.json()["close_reason_category"] == "other"
+        assert retained.json()["closed_reason"] == ""
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

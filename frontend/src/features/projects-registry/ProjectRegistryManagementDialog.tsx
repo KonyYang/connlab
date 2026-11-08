@@ -81,13 +81,7 @@ export function ProjectManagementDialog({ title, children, busy = false, onCance
     siblings.forEach((element) => element.setAttribute("inert", ""));
     const focusable = () => Array.from(root.querySelectorAll<HTMLElement>(
       'button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), summary, a[href], [tabindex="0"]'
-    )).filter((element) => {
-      if (element.matches(":disabled") || element.closest("[hidden]") || element.closest("details:not([open]) > :not(summary)")) return false;
-      if (!(element instanceof HTMLInputElement) || element.type !== "radio" || !element.name) return true;
-      const group = Array.from(root.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
-        .filter((radio) => radio.name === element.name && !radio.matches(":disabled"));
-      return element === (group.find((radio) => radio.checked) ?? group[0]);
-    });
+    )).filter((element) => !element.closest("[hidden]") && !element.closest("details:not([open]) > :not(summary)"));
     (root.querySelector<HTMLElement>("[data-dialog-initial-focus]") ?? focusable()[0] ?? root).focus();
     function keydown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
