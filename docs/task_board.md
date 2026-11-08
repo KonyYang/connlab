@@ -428,7 +428,43 @@
       "closed_at": "2026-11-08T11:30:42.405240Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_SETTINGS_AUTO_VALIDATION_20261108": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/settings-auto-validation-20261108",
+      "resources": [
+        "settings-validation"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_SETTINGS_AUTO_VALIDATION_20261108",
+        "summary": "Automatically refresh Settings validation without stale results overwriting edits",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Quietly validate configured resources on Settings entry and window return, serialize and coalesce checks, preserve unsaved drafts, reject validation writes for superseded configuration. Retain full existing Office/template validation. No source business file mutation, no push or publication.",
+        "scope_paths": [
+          "frontend/src/pages/SettingsPage.tsx",
+          "frontend/src/pages/SettingsPage.test.tsx",
+          "frontend/src/features/settings/useSettingsResources.ts",
+          "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
+          "frontend/src/features/settings/SettingsStandardRecordSheet.test.tsx",
+          "backend/application/external_resource_service.py",
+          "backend/infrastructure/storage/repositories/external_resources.py",
+          "tests/unit/test_external_resource_service.py",
+          "tests/integration/test_external_resource_api.py",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "9a1e4334cee74698a2fa57ae86b75d84fe1a0c5a",
+        "started_at": "2026-11-08T11:58:46.191276Z",
+        "updated_at": "2026-11-08T11:58:46.191276Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
