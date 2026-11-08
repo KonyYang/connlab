@@ -458,11 +458,11 @@
   "tasks": {
     "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/remove-workbench-actions-toggle-20261108",
       "resources": [],
-      "integrated_head": "c538917019194a837bf278932a0396fbe7d2460f",
+      "integrated_head": "81dc5cb1946be40cdeb6f3427898ce9b45eb8192",
       "task": {
         "task_id": "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108",
         "summary": "Remove Hide/Show Actions toggle and keep Workbench action panels visible",
@@ -480,7 +480,7 @@
         "risk_reasons": [],
         "activation_head": "7b3c26dabfe610d0137d4bc04ab4a5f022b736eb",
         "started_at": "2026-11-08T15:00:53.133368Z",
-        "updated_at": "2026-11-08T15:21:56.009861Z",
+        "updated_at": "2026-11-08T15:23:03.570634Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -490,7 +490,53 @@
           "summary": "User requests moving Close project to the former Hide Actions position at the far right of the Workbench top bar, retaining the confirmation workflow and local-only delivery.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "summary": "Removed Hide/Show Actions and kept panels visible. User revision: moved Close project to the far-right top-bar slot, retained existing confirmation, no duplicate bottom close entry. Local only.",
+          "scope_ok": true,
+          "task_id": "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108",
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "Micro current-agent implementation and sequential Standards/Spec self-review of exact diff: zero unresolved findings. Portal uses existing top-bar host, retains standalone fallback and lifecycle permission/busy/error handling. No independent review claimed."
+            }
+          },
+          "subject": "3ee32a7b2afe1974d51981f9bb725e0af6236987",
+          "version": 1,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
+            "frontend/src/workbench.css"
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "3ee32a7b2afe1974d51981f9bb725e0af6236987",
+            "primary_before": "221b468c0f1b58748bd87ed85a3ce75020c35872",
+            "integrated_head": "81dc5cb1946be40cdeb6f3427898ce9b45eb8192",
+            "recovered": false
+          },
+          "validation": [
+            {
+              "status": "passed",
+              "check": "Final state: 101 tests passed (WorkbenchLayout 87, CloseConfirmation 9, TopBar 5). Worktree tmp/close-topbar-tests.log. New two-case shell-slot confirmation tests failed before implementation; tmp/close-topbar-red.log."
+            },
+            {
+              "status": "passed",
+              "check": "Final TypeScript and Vite production build passed. Worktree tmp/close-topbar-build.log. git diff --check passed."
+            },
+            {
+              "status": "passed",
+              "check": "IAB actual target project at 750x804: Close project is inside top header, x=599.61 width=123.39, header right=735; only one trigger; confirmation opens, Cancel dismisses without closing business project. Primary tmp/close-project-topbar-750.png. Temporary viewport reset, preview tab closed and preview server stopped."
+            },
+            {
+              "status": "passed",
+              "check": "Original removal acceptance retained: no Hide/Show controls, Step Actions and Folder Actions visible, Matrix Editor independent details toggle unchanged. Prior RED/90-test/build logs retained. No business data or backend mutations."
+            }
+          ],
+          "schema": "connlab.sol-task-report"
+        }
       }
     }
   }
