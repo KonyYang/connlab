@@ -455,7 +455,35 @@
       "closed_at": "2026-11-08T14:30:53.965058Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/remove-workbench-actions-toggle-20261108",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108",
+        "summary": "Remove Hide/Show Actions toggle and keep Workbench action panels visible",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Remove only Workbench Hide Actions/Show Actions button, collapse state, top-bar portal/fallback and unused feature CSS. Always display Step Actions, Folder Actions and existing side-column content. Preserve Matrix Editor step detail controls, navigation and all action functions. Local only, no push or publication.",
+        "scope_paths": [
+          "frontend/src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+          "frontend/src/workbench.css",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "7b3c26dabfe610d0137d4bc04ab4a5f022b736eb",
+        "started_at": "2026-11-08T15:00:53.133368Z",
+        "updated_at": "2026-11-08T15:00:53.133368Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
