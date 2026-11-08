@@ -440,7 +440,7 @@
   "tasks": {
     "TASK_CLOSE_PROJECT_DIALOG_20261108": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/close-project-dialog-20261108",
       "resources": [],
@@ -463,65 +463,17 @@
         "risk_reasons": [],
         "activation_head": "adbb1338803c838981e2fc65b2edda590ac8c0dc",
         "started_at": "2026-11-08T12:31:40.974518Z",
-        "updated_at": "2026-11-08T12:42:15.489392Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
+        "updated_at": "2026-11-08T13:05:30.643739Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_CLOSE_PROJECT_DIALOG_20261108",
-          "subject": "d6f968dc67c6e7ff6233f01cb2409ec25cc927e3",
-          "summary": "Compact, consistently styled closure dialog with four explicit reasons, optional notes and no output-status reminders. Local-only delivery. Expanded QA: 131 passed, 2 existing ProjectListPage failures individually reproduced on unchanged master at lines 355 and 479; no fixes outside scope.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/PROJECT_CONTEXT.md",
-            "docs/project_registry_management.md",
-            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.css",
-            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.test.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "check": "Close confirmation, Workbench layout, shared registry dialog and App navigation: 113 tests passed (6+83+4+20). Expanded ProjectListPage check: 18 passed, 2 failed; both failures reproduced individually on pre-change master. Logs: worktree tmp/close-dialog-qa.log and primary tmp/close-dialog-baseline*.log."
-            },
-            {
-              "status": "passed",
-              "check": "npm run build: TypeScript and Vite production build passed; worktree tmp/close-dialog-build.log."
-            },
-            {
-              "status": "passed",
-              "check": "Real IAB preview at 1280x720, 741x804 and 390x700. Four unselected reasons; Other reveals required note and disables submit when empty; Add note focuses textarea; no horizontal modal overflow at 390px. Used Cancel only, never submitted a real closure. Screenshot: primary tmp/close-project-dialog-741.png."
-            },
-            {
-              "status": "passed",
-              "check": "git diff --check; exact scoped diff, clean task HEAD."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "execution": "Current agent; grouped TDD RED then GREEN at public close-dialog seam. Retained lifecycle API and outputStatusSummary prop compatibility."
-            },
-            "reviewer": {
-              "status": "passed",
-              "execution": "Current agent distinct focused passes, not independent agents. Standards: zero unresolved findings; scoped CSS follows existing Save materials tokens, native radio semantics and shared focus management. Spec: zero unresolved findings; no default completion, optional note disclosure, Other required, errors preserved, Cancel then Close, no output reminders, no lifecycle or external-file changes."
-            },
-            "qa": {
-              "status": "passed",
-              "execution": "Current agent final affected QA matrix on exact reviewed state, build and real browser. All 113 directly affected tests passed. Two broader ProjectListPage failures explicitly accepted as baseline parity, reproduced on unmodified primary; full expanded suite is not represented as passing."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "d6f968dc67c6e7ff6233f01cb2409ec25cc927e3",
-            "primary_before": "3b1b8b2174b22bf18ccffa5361a68f03ab0e5233",
-            "integrated_head": "d74d0168210262a6a3849cc726422e88af2efd13",
-            "recovered": false
-          }
-        }
+          "stage": "revision",
+          "status": "running",
+          "summary": "User feedback: use a compact reason dropdown instead of radio cards; notes are optional for every reason including Other. Update UI and backend consistency. Continue same local-only task; no push or release.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
