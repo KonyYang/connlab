@@ -458,7 +458,7 @@
   "tasks": {
     "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/remove-workbench-actions-toggle-20261108",
       "resources": [],
@@ -478,54 +478,17 @@
         "risk_reasons": [],
         "activation_head": "7b3c26dabfe610d0137d4bc04ab4a5f022b736eb",
         "started_at": "2026-11-08T15:00:53.133368Z",
-        "updated_at": "2026-11-08T15:04:45.120571Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
+        "updated_at": "2026-11-08T15:17:20.044085Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_REMOVE_WORKBENCH_ACTIONS_TOGGLE_20261108",
-          "subject": "c90d0d83e67a2f41dcb97a91b6b6ca28d5cb9107",
-          "summary": "Removed Workbench Hide/Show Actions feature, local collapse state, toggle portal/fallback and unused CSS. Matrix and action panels remain visible; navigation and Matrix Editor details toggle preserved. Local-only.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-            "frontend/src/workbench.css"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "check": "90 targeted tests: Workbench layout 85 and TopBar 5; includes shell and standalone action-panel visibility with no hide/show controls. Worktree tmp/remove-actions-toggle-qa.log."
-            },
-            {
-              "status": "passed",
-              "check": "TypeScript and Vite production build; worktree tmp/remove-actions-toggle-build.log."
-            },
-            {
-              "status": "passed",
-              "check": "RED before removal: both new public-seam cases detect old button; tmp/remove-actions-toggle-red.log. Final exact diff self-reviewed; git diff --check clean; runtime toggle symbols and collapsed-workbench CSS removed while Matrix Editor selector remains."
-            },
-            {
-              "status": "passed",
-              "check": "Real IAB preview on user project: Hide Actions and Show Actions button counts both 0; Step workspace and Folder Actions isVisible true; Matrix and four top commands remain. Primary tmp/remove-actions-toggle-preview.png. Read-only browser actions, no business mutation."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "execution": "Current agent micro implementation, grouped TDD at existing Workbench seam, self-review Standards and Spec: zero unresolved findings. No independent role/agent claimed, no backend/dependency changes."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "c90d0d83e67a2f41dcb97a91b6b6ca28d5cb9107",
-            "primary_before": "687c530b4cc4852f813590d1e4ca15e5e41cb037",
-            "integrated_head": "c538917019194a837bf278932a0396fbe7d2460f",
-            "recovered": false
-          }
-        }
+          "stage": "revision",
+          "status": "running",
+          "summary": "User requests moving Close project to the former Hide Actions position at the far right of the Workbench top bar, retaining the confirmation workflow and local-only delivery.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
