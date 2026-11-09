@@ -485,13 +485,13 @@
   "tasks": {
     "TASK_PROJECT_FOLDER_BASIC_PHASE1_20261109": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/project-folder-basic-phase1-20261109",
       "resources": [
         "phase1-isolated-filesystem-and-database"
       ],
-      "integrated_head": null,
+      "integrated_head": "81c3f6b5062175ded44537378326cc3dc551f310",
       "task": {
         "task_id": "TASK_PROJECT_FOLDER_BASIC_PHASE1_20261109",
         "summary": "Separate basic project folder creation and preserve public folder identity",
@@ -562,7 +562,7 @@
         ],
         "activation_head": "db3c157468dd59ce2f5fcf14e5aece9733b18993",
         "started_at": "2026-11-09T14:31:29.780189Z",
-        "updated_at": "2026-11-09T23:22:13.688030Z",
+        "updated_at": "2026-11-09T23:23:50.979362Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -572,7 +572,128 @@
           "summary": "Backend and frontend merged at cd2ff75b; exact 54-file scope corrected. Independent final review found two staging P1 failures: pre-intent metadata errors can leave untracked stages, and material resume can ignore frozen effects when sources disappear. Developer is fixing durable preparation and source-independent effect recovery with RED/GREEN; other reviewed paths and legacy completion feedback pass. QA scripts prepared but final matrix not run. User stopped PyCharm frontend/backend; root verified no 5173/8000 listeners or old processes. No real business/database/public-drive mutations or publication. Next: fixed commit review, final isolated QA, independent Integrator and writer local integration; wait for user Close.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_PROJECT_FOLDER_BASIC_PHASE1_20261109",
+          "subject": "461f7e7f54cc90bb89508e82d3ae4fed57ff8449",
+          "summary": "Phase one: template-independent basic project directory creation/reuse and available-source archiving; manual file protection; independent trusted directory availability; durable exact-full-LTR public associations and safe legacy/interruption recovery. No phase-two generation or automatic public renaming. Local integration only; no real public-drive/business-data writes, push or publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/api/project_folder_generation_composition.py",
+            "backend/api/project_folder_write_guard.py",
+            "backend/api/project_registry_access_guard.py",
+            "backend/api/routes_official_project_workspace.py",
+            "backend/api/routes_public_folder_workflow.py",
+            "backend/application/basic_project_workspace_service.py",
+            "backend/application/official_folder_relocation_service.py",
+            "backend/application/official_project_workspace_service.py",
+            "backend/application/project_folder_open_service.py",
+            "backend/application/project_request_material_collection_service.py",
+            "backend/application/public_folder_binding.py",
+            "backend/application/public_folder_workflow_service.py",
+            "backend/infrastructure/files/basic_project_workspace_publisher.py",
+            "backend/infrastructure/files/recoverable_output_publisher.py",
+            "backend/infrastructure/files/recoverable_workspace_publisher.py",
+            "backend/infrastructure/official_workspace_manifest.py",
+            "backend/infrastructure/project_library/assets.py",
+            "backend/infrastructure/project_library/files.py",
+            "backend/infrastructure/project_library/portability.py",
+            "backend/infrastructure/storage/database.py",
+            "backend/infrastructure/storage/models.py",
+            "backend/infrastructure/storage/project_folder_schema_migration.py",
+            "backend/infrastructure/storage/repositories/official_workspace.py",
+            "backend/infrastructure/storage/repositories/public_folder_workflow.py",
+            "docs/PROJECT_CONTEXT.md",
+            "docs/operational/project_folder_basic_phase1_20261109.md",
+            "docs/project_folder_generation_recovery.md",
+            "frontend/src/api/client.ts",
+            "frontend/src/features/project-workbench/ProjectPublicFolderBindingDialog.test.tsx",
+            "frontend/src/features/project-workbench/ProjectPublicFolderBindingDialog.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchActiveMatrixWorkspace.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+            "frontend/src/features/project-workbench/useBasicProjectWorkspace.test.tsx",
+            "frontend/src/features/project-workbench/useBasicProjectWorkspace.ts",
+            "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
+            "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
+            "frontend/src/features/project-workbench/useProjectRuntimeConsoleModel.ts",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+            "frontend/src/workbench.css",
+            "tests/integration/test_basic_project_workspace_api.py",
+            "tests/integration/test_official_project_workspace_api.py",
+            "tests/integration/test_public_folder_binding_api.py",
+            "tests/unit/project_library/test_transfer_and_comparison.py",
+            "tests/unit/test_basic_project_workspace_publisher.py",
+            "tests/unit/test_basic_project_workspace_service.py",
+            "tests/unit/test_project_folder_open_service.py",
+            "tests/unit/test_project_folder_schema_migration.py",
+            "tests/unit/test_project_request_material_collection_service.py",
+            "tests/unit/test_public_folder_binding.py",
+            "tests/unit/test_public_folder_workflow_service.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "check": "Backend: 483 unique passing case coverage across the unchanged product tree and fixture-only final correction; initial 30-file matrix 479 passed / 3 uninitialized-fixture failures, final entire affected API and guard files 22 passed including all resolved failures plus new missing-database rejection. No skips.",
+              "evidence": "tmp/phase1-qa/backend-final.log; tmp/phase1-qa/backend-fixture-final.log; tmp/phase1-qa/final-report.md"
+            },
+            {
+              "status": "passed",
+              "check": "Frontend affected matrix: 10 files / 213 tests passed. Production TypeScript/Vite build passed after Vitest exited.",
+              "evidence": "tmp/phase1-qa/frontend-final.log; tmp/phase1-qa/build-final.log"
+            },
+            {
+              "status": "passed",
+              "check": "Independent actual isolated filesystem/SQLite acceptance: 4 cases passed, covering full-schema FK migration/fault rollback/retry, source partial failures/manual hash+mtime/restart, durable public binding/partial sync/exact suffix/candidates, and Submit move/fresh-engine identity recovery. Submit generated-output eligibility was stubbed; no Office completeness or live UI claim.",
+              "evidence": "tmp/phase1-qa/acceptance-final.log; tmp/phase1-qa/acceptance-migration-final.log; tmp/phase1-qa/acceptance-basic-final.log; tmp/phase1-qa/final-report.md"
+            },
+            {
+              "status": "passed",
+              "check": "Independent final review on exact subject: Standards PASS / Spec PASS, zero unresolved P1/P2. Directory and migration races, staged output provenance/recovery and legacy completion feedback findings were fixed and rechecked.",
+              "evidence": "Independent folder_phase1_reviewer final report for 461f7e7f54cc90bb89508e82d3ae4fed57ff8449"
+            },
+            {
+              "status": "passed",
+              "check": "Exact clean task state and 55-file diff; no primary product drift. Development listeners absent at 8000/5173/8765. Eight retained QA report/log SHA256 values match the saved handoff.",
+              "evidence": "tmp/phase1-integration-handoff.json; root fresh read-only preflight on 2026-11-10"
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "execution": "Independent folder_phase1_planner inspected real code and approved the bounded phase-one design; no unresolved product decision."
+            },
+            "developer": {
+              "status": "passed",
+              "execution": "Separate backend and frontend developer contexts completed isolated implementation, coherent RED/GREEN, focused compatibility checks and clean commits; bounded review and fixture corrections included."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Independent folder_phase1_reviewer completed separate Standards/Spec passes and fixed-snapshot rechecks; final exact subject 461f7e7f, no unresolved P1/P2."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "Independent folder_phase1_qa verified regression evidence and own filesystem/full-schema/fresh-engine acceptance; report tmp/phase1-qa/final-report.md transparently records fixture corrections and limits."
+            },
+            "integrator": {
+              "status": "passed",
+              "execution": "Independent folder_phase1_integrator pre-integration gate PASS on exact clean 461f7e7f: 55-file scope, primary board-only drift, ancestry, eight QA evidence SHA/bytes and no development listeners verified. Actual serial merge remains pending sole writer and will be independently verified afterward."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "461f7e7f54cc90bb89508e82d3ae4fed57ff8449",
+            "primary_before": "8d3474c3178c41a81c5491e76806366ee4294c97",
+            "integrated_head": "81c3f6b5062175ded44537378326cc3dc551f310",
+            "recovered": false
+          }
+        }
       }
     }
   }
