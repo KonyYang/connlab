@@ -544,6 +544,7 @@
           "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
           "frontend/src/workbench.css",
           "tests/integration/test_basic_project_workspace_api.py",
+          "tests/integration/test_official_project_workspace_api.py",
           "tests/integration/test_public_folder_binding_api.py",
           "tests/unit/project_library/test_transfer_and_comparison.py",
           "tests/unit/test_basic_project_workspace_publisher.py",
@@ -561,7 +562,7 @@
         ],
         "activation_head": "db3c157468dd59ce2f5fcf14e5aece9733b18993",
         "started_at": "2026-11-09T14:31:29.780189Z",
-        "updated_at": "2026-11-09T15:28:58.109398Z",
+        "updated_at": "2026-11-09T23:22:13.688030Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
