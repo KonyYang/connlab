@@ -586,3 +586,43 @@ it("explicitly restarts corrected inputs with the newly shown preview and no old
   expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
   expect(api.previewProjectFolderGeneration).not.toHaveBeenCalled();
 });
+
+it("resume-only does not start a new generator when the saved legacy operation completed meanwhile", async () => {
+ api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"interrupted"});
+ const {result}=renderHook(() => useProjectFolderGeneration("p",vi.fn(),"old"));
+ await waitFor(() => expect(result.current.canResume).toBe(true));
+ api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"completed"});
+ await act(() => result.current.resumeOnly());
+ expect(result.current.operation?.status).toBe("completed");
+ expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
+});
+it("resume-only sends only the still unfinished saved operation", async () => {
+ api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"interrupted"}); api.resumeProjectFolderGeneration.mockResolvedValue(operation);
+ const {result}=renderHook(() => useProjectFolderGeneration("p",vi.fn(),"old"));
+ await waitFor(() => expect(result.current.canResume).toBe(true));await act(() => result.current.resumeOnly());
+ expect(api.resumeProjectFolderGeneration).toHaveBeenCalledWith("p","operation");expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("exposes retained file issues after resume-only completes the legacy operation", async () => {
+  const issues = [{key:"ir_dwv_record",label:"IR&DWV blank record",message:"Record template is missing."}];
+  api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"interrupted"});
+  api.resumeProjectFolderGeneration.mockResolvedValue({...operation,status:"completed",outcome:"partial",issues});
+  const {result}=renderHook(()=>useProjectFolderGeneration("p",vi.fn(),"old"));
+  await waitFor(()=>expect(result.current.canResume).toBe(true));await act(()=>result.current.resumeOnly());
+  expect(result.current.canResume).toBe(false);expect(result.current.completionFeedback).toEqual({operationId:"operation",issues,error:null});
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+it("exposes a failed refresh after resume-only completes without restoring a generation action", async () => {
+  api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"interrupted"});
+  api.resumeProjectFolderGeneration.mockResolvedValue({...operation,status:"completed"});
+  const {result}=renderHook(()=>useProjectFolderGeneration("p",vi.fn().mockRejectedValue(new Error("Context refresh failed")),"old"));
+  await waitFor(()=>expect(result.current.canResume).toBe(true));await act(()=>result.current.resumeOnly());
+  await waitFor(()=>expect(result.current.completionFeedback?.error).toContain("could not refresh"));
+  expect(result.current.completionFeedback?.issues).toEqual([]);expect(result.current.canResume).toBe(false);expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("does not classify unfinished legacy issues as completed-generation feedback", async () => {
+  api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"interrupted",issues:[{key:"ir",label:"IR",message:"Not finished"}]});
+  const {result}=renderHook(()=>useProjectFolderGeneration("p",vi.fn(),"old"));
+  await waitFor(()=>expect(result.current.canResume).toBe(true));expect(result.current.completionFeedback).toBeNull();
+});

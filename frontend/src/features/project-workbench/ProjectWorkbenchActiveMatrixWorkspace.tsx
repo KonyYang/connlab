@@ -54,14 +54,6 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   selectedProjectionToken,
   setSelectedProjectionToken,
 }: ProjectWorkbenchActiveMatrixWorkspaceProps): ReactElement {
-  const canGenerateFolder =
-    officialWorkspaceStatus === "ready" ||
-    officialWorkspaceStatus === "adoptable" ||
-    officialWorkspaceStatus === "exists";
-  const visibleProjectFolderTasks =
-    !effectiveFolderReady && !canGenerateFolder
-      ? withoutUnavailableFolderAction(projectFolderTasks)
-      : projectFolderTasks;
   return (
     <section className="runtime-console-active-matrix" aria-label="Test Execution Workspace">
       <section className="runtime-console-workbench-canvas">
@@ -73,7 +65,7 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
           sideColumnAfter={
             <>
               <ProjectFolderActionsSurface
-                tasks={visibleProjectFolderTasks}
+                tasks={projectFolderTasks}
                 headerAction={projectFolderHeaderAction}
                 onTaskAction={onProjectFolderTaskAction}
                 onTaskConfirm={onProjectFolderTaskConfirm}
@@ -106,22 +98,6 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
         />
       </section>
     </section>
-  );
-}
-
-function withoutUnavailableFolderAction(
-  tasks: ProjectFolderTaskRow[]
-): ProjectFolderTaskRow[] {
-  return tasks.map((task) =>
-    task.key === "project_folder" && task.actionTarget !== "project_folder_open"
-      ? {
-          ...task,
-          actionLabel: undefined,
-          actionTarget: undefined,
-          summary:
-            "Project folder access is unavailable until the template and target path are ready.",
-        }
-      : task
   );
 }
 
