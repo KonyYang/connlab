@@ -258,6 +258,10 @@ class ProjectRequestMaterialCollectionService:
         workspace = self._workspaces.get_by_project(project_id)
         if workspace is None:
             raise ProjectRequestMaterialCollectionNotFoundError("Project folder association is missing.")
+        publisher = BasicMaterialPublisher(journal, state, "materials", verify_context)
+        # Frozen approved intents survive current source deletion/reclassification.
+        # Recover them before today's planner can skip an unavailable source.
+        publisher.recover_files(lambda _: None)
         issues, candidates, seen = [], [], set()
         for asset in sorted(self._assets.list_by_project(project_id), key=lambda item: role_priority(item.source_role)):
             key = canonical_path(asset.path)
@@ -276,7 +280,6 @@ class ProjectRequestMaterialCollectionService:
         form = forms[0] if forms else None
         plans = self._plan_targets(workspace, emails if len(emails) == 1 else [], form,
                                    [item for item in candidates if item not in emails and item not in forms])
-        publisher = BasicMaterialPublisher(journal, state, "materials", verify_context)
         for plan in plans:
             verify_context()
             require_safe_output_path(plan.target_path)

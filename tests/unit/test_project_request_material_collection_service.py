@@ -470,6 +470,36 @@ def test_basic_archive_skips_individual_target_conflict_and_missing_source(tmp_p
     assert any("missing.pdf" in message for message in issues)
 
 
+@pytest.mark.parametrize("target_changed", [False, True])
+def test_basic_material_resume_handles_frozen_intent_before_missing_source(tmp_path, monkeypatch, target_changed):
+    from backend.infrastructure.files.basic_project_workspace_publisher import BasicProjectWorkspaceJournal, BasicMaterialPublisher
+    source = _write(tmp_path / "sources" / "retained.pdf", b"approved original")
+    service = _service(tmp_path, [_asset("material", FileAssetType.ATTACHMENT, source, "retained.pdf", role="supporting_attachment")])
+    folder = service._workspaces.get_by_project("P1").official_folder_path / "Submitted Material"
+    journal = BasicProjectWorkspaceJournal(tmp_path / "journal")
+    state = journal.create("P1", None, "context")
+    original_publish = BasicMaterialPublisher._publish
+    monkeypatch.setattr(BasicMaterialPublisher, "_publish", lambda *_: (_ for _ in ()).throw(KeyboardInterrupt("process stopped after intent")))
+    with pytest.raises(KeyboardInterrupt):
+        service.collect_available("P1", journal, state, lambda: None)
+    source.unlink()
+    target = folder / "retained.pdf"
+    if target_changed:
+        target.write_bytes(b"operator changed target")
+    monkeypatch.setattr(BasicMaterialPublisher, "_publish", original_publish)
+    fresh_journal = BasicProjectWorkspaceJournal(journal.root)
+    fresh_state = fresh_journal.read("P1")
+    if target_changed:
+        with pytest.raises(ValueError, match="changed"):
+            service.collect_available("P1", fresh_journal, fresh_state, lambda: None)
+        assert target.read_bytes() == b"operator changed target"
+    else:
+        issues = service.collect_available("P1", fresh_journal, fresh_state, lambda: None)
+        assert target.read_bytes() == b"approved original"
+        assert not list(folder.glob(".connlab-*"))
+        assert any("missing" in item for item in issues)
+
+
 def _sha(label: str) -> str:
     return (label.encode().hex() * 64)[:64]
 
