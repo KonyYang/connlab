@@ -340,7 +340,7 @@ class RecoverableWorkspacePublisher:
             return None
         payload = dict(effect["record"])
         for key in ("local_workspace_path", "source_book_path", "official_folder_path", "manifest_path", "template_source_path"):
-            payload[key] = Path(payload[key])
+            payload[key] = Path(payload[key]) if payload.get(key) is not None else None
         record = OfficialWorkspaceRecord(**payload)
         target, staged = record.official_folder_path, Path(effect["stage"])
         if effect.get("archive_source_identity_only") and target.parent != record.local_workspace_path:
@@ -618,7 +618,8 @@ class RecoverableWorkspacePublisher:
                     "local_workspace_path": str(record.local_workspace_path), "source_book_path": str(record.source_book_path),
                     "official_project_folder_path": str(record.official_folder_path),
                     "official_folder_identity": stable_folder_identity(record.official_folder_path),
-                    "template_source_path": str(record.template_source_path),
+                    "template_source_path": str(record.template_source_path) if record.template_source_path else None,
+                    "creation_kind": record.creation_kind,
                     "created_at": record.created_at}
         manifest_source = self.journal.project_path(record.project_id) / f"{self.state['operation_id']}-manifest-{uuid4().hex}.json"
         with manifest_source.open("x", encoding="utf-8") as handle:

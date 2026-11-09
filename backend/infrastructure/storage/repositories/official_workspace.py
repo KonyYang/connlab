@@ -49,7 +49,8 @@ class ProjectOfficialWorkspaceRepository:
             row.source_book_path = str(record.source_book_path)
             row.official_folder_path = str(record.official_folder_path)
             row.manifest_path = str(record.manifest_path)
-            row.template_source_path = str(record.template_source_path)
+            row.template_source_path = str(record.template_source_path) if record.template_source_path else None
+            row.creation_kind = record.creation_kind
             row.created_at = record.created_at
         self._session.flush()
         return record
@@ -191,7 +192,8 @@ def _to_model(record: OfficialWorkspaceRecord) -> ProjectOfficialWorkspaceRecord
         source_book_path=str(record.source_book_path),
         official_folder_path=str(record.official_folder_path),
         manifest_path=str(record.manifest_path),
-        template_source_path=str(record.template_source_path),
+        template_source_path=str(record.template_source_path) if record.template_source_path else None,
+        creation_kind=record.creation_kind,
         created_at=record.created_at,
     )
 
@@ -206,6 +208,7 @@ def _to_domain(row: ProjectOfficialWorkspaceRecordModel) -> OfficialWorkspaceRec
         source_book_path=Path(row.source_book_path),
         official_folder_path=Path(row.official_folder_path),
         manifest_path=Path(row.manifest_path),
-        template_source_path=Path(row.template_source_path),
+        template_source_path=Path(row.template_source_path) if row.template_source_path else None,
+        creation_kind=row.creation_kind,
         created_at=row.created_at,
     )

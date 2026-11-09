@@ -81,7 +81,7 @@ class ProjectPortability:
             raise ProjectLibraryError("Take over this project before preparing test-data portability.")
         root = checked_path(member["folder_path"])
         journal_history = []
-        for name in ("project_folder_generation", "official_folder_relocation", "llcr_cr_record_publication", "ir_dwv_record_publication"):
+        for name in ("project_folder_generation", "basic_project_workspace", "official_folder_relocation", "llcr_cr_record_publication", "ir_dwv_record_publication"):
             journal = GenerationJournal(self.settings.data_dir / name)
             state = journal.read(member["project_id"])
             if state and state.get("status") != "completed":

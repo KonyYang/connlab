@@ -30,16 +30,24 @@ def require_project_folder_write_slot(
         if operation is not None and operation["status"] != "completed":
             raise HTTPException(status_code=409,
                 detail="Project folder generation is unfinished. Resume that operation before making separate folder changes.")
-        from backend.infrastructure.files.report_delivery_receipt import ReportDeliveryReceipts
-        try:
-            delivery = ReportDeliveryReceipts(settings.data_dir / 'report_delivery').active(project_id)
-        except (ValueError, OSError, RuntimeError) as exc:
-            raise HTTPException(409, 'Report save recovery needs review. Retain report files and check the diagnostic record.') from exc
-        from backend.infrastructure.storage.repositories.report_authoring import ReportAuthoringRepository
-        try:
-            projected = ReportAuthoringRepository.read_delivery_projection(settings, project_id)
-        except Exception as exc:
-            raise HTTPException(503, 'Report save recovery state cannot be read. Restore database access before writing project files.') from exc
-        if (delivery is not None or (projected and projected.get('status') != 'completed')) and not request.url.path.endswith('/report-workspace/authoring/delivery/resume'):
-            raise HTTPException(409, 'A reviewed report save is unfinished. Resume that save before changing project files.')
+        basic = GenerationJournal(settings.data_dir / "basic_project_workspace").read(project_id)
+        if basic and basic["status"] != "completed":
+            raise HTTPException(409, "Basic project folder creation is unfinished. Resume it before changing project files.")
+        if not request.url.path.endswith('/report-workspace/authoring/delivery/resume'):
+            try:
+                require_report_delivery_clear(settings, project_id)
+            except ValueError as exc:
+                raise HTTPException(409, str(exc)) from exc
         yield
+
+
+def require_report_delivery_clear(settings, project_id):
+    from backend.infrastructure.files.report_delivery_receipt import ReportDeliveryReceipts
+    from backend.infrastructure.storage.repositories.report_authoring import ReportAuthoringRepository
+    try:
+        delivery = ReportDeliveryReceipts(settings.data_dir / 'report_delivery').active(project_id)
+        projected = ReportAuthoringRepository.read_delivery_projection(settings, project_id)
+    except (ValueError, OSError, RuntimeError) as exc:
+        raise ValueError("Report save recovery state cannot be read. Retain files and restore access before writing.") from exc
+    if delivery is not None or (projected and projected.get('status') != 'completed'):
+        raise ValueError("A reviewed report save is unfinished. Resume that save before changing project files.")

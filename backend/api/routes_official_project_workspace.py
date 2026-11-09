@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.api.dependencies import (
     get_official_project_workspace_service, get_official_folder_relocation_service,
+    get_basic_project_workspace_service,
 )
 from backend.application.official_folder_relocation_service import (
     OfficialFolderRelocationPreview, OfficialFolderRelocationService,
@@ -77,7 +78,7 @@ class OfficialWorkspaceCreateResponse(BaseModel):
     source_book_path: str
     official_project_folder_path: str
     manifest_path: str
-    template_source_path: str
+    template_source_path: str | None
     created_paths: list[str]
     warnings: list[str]
     created_at: str
@@ -107,6 +108,49 @@ class OfficialFolderRelocationRequest(BaseModel):
         "rename_to_confirmed", "keep_current_name", "rebind_and_rename", "rebind_keep_custom", "resume"
     ]
     expected_context: str
+
+
+class BasicWorkspaceCreateRequest(BaseModel):
+    expected_context: str
+    request_id: str
+    confirm_existing: bool = False
+
+
+class BasicWorkspaceResumeRequest(BaseModel):
+    operation_id: str
+
+
+@router.get("/basic/preview")
+def preview_basic_workspace(project_id: str, service=Depends(get_basic_project_workspace_service)):
+    try:
+        return service.preview(project_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/basic/create")
+def create_basic_workspace(project_id: str, request: BasicWorkspaceCreateRequest,
+                           service=Depends(get_basic_project_workspace_service)):
+    try:
+        return service.create(project_id, request.expected_context, request.request_id,
+                              confirm_existing=request.confirm_existing)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/basic/resume")
+def resume_basic_workspace(project_id: str, request: BasicWorkspaceResumeRequest,
+                           service=Depends(get_basic_project_workspace_service)):
+    try:
+        return service.resume(project_id, request.operation_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.get("/preview", response_model=OfficialWorkspacePreviewResponse)
@@ -255,7 +299,7 @@ def _create_response(result: OfficialWorkspaceCreateResult) -> OfficialWorkspace
         source_book_path=str(record.source_book_path),
         official_project_folder_path=str(record.official_folder_path),
         manifest_path=str(record.manifest_path),
-        template_source_path=str(record.template_source_path),
+        template_source_path=str(record.template_source_path) if record.template_source_path else None,
         created_paths=[str(path) for path in result.created_paths],
         warnings=list(result.warnings),
         created_at=record.created_at,

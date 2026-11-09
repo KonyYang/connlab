@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserDisplayName } from "../../currentUser";
+import { useBasicProjectWorkspace } from "./useBasicProjectWorkspace";
 import { useProjectFolderGeneration } from "./useProjectFolderGeneration";
 import {
+  previewPublicProjectFolderBinding,
+  confirmPublicProjectFolderBinding,
+  type PublicProjectFolderBindingPreview,
   ApiRequestError,
   collectRequestMaterial,
   confirmProjectTestPlanMatrixDraft,
@@ -116,6 +120,16 @@ type PublicFolderWorkflowOperationMap<T> = Record<
 >;
 
 export type ProjectWorkbenchModel = {
+  onResumeLegacyWorkspace?: () => Promise<void>;
+  legacyWorkspaceCompletion?: ReturnType<typeof useProjectFolderGeneration>["completionFeedback"];
+  basicWorkspace?: ReturnType<typeof useBasicProjectWorkspace>;
+  publicFolderBinding?: {
+    preview: PublicProjectFolderBindingPreview | null;
+    busy: boolean;
+    error: string | null;
+    onConfirm: (candidateId: string) => Promise<void>;
+    onCancel: () => void;
+  };
   approvalInput: ApprovalPackageRequest;
   approvalInputSources: ApprovalInputSources;
   approvalPreview: ApprovalPackageResponse | null;
@@ -450,19 +464,36 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [section2SyncSyncing, setSection2SyncSyncing] = useState(false);
   const [section2SyncError, setSection2SyncError] = useState<string | null>(null);
 
+  const [bindingPreview, setBindingPreview] = useState<PublicProjectFolderBindingPreview | null>(null);
+  const [bindingBusy, setBindingBusy] = useState(false);
+  const [bindingError, setBindingError] = useState<string | null>(null);
+  const bindingIntent = useRef<"sync" | "auto_sync">("sync");
+  const basicWorkspace = useBasicProjectWorkspace(projectId, async () => {
+    await onRefreshPublicFolderWorkflowContext();
+  });
+
   const generation = useProjectFolderGeneration(projectId, async () => {
     await Promise.all([
-      onRefreshOfficialWorkspacePreview(), onRefreshPublicFolderWorkflowContext(),
+      basicWorkspace.refresh(), onRefreshOfficialWorkspacePreview(), onRefreshPublicFolderWorkflowContext(),
       onRefreshRequestMaterial(), onRefreshRequiredForms(), onRefreshOfficialFolderCheck(),
       onRefreshPackagePreview(), onRefreshPublicDriveUploadPreview(),
       refreshOutputStatus(projectId, setOutputStatusSummary),
     ]);
     setMessage("Project folder generation completed.");
   }, officialWorkspacePreview?.generation_context ?? null);
+  useEffect(() => {
+    if (generation.operation && generation.operation.status !== "completed") void onRefreshOfficialWorkspacePreview();
+  }, [generation.operation?.operation_id, generation.operation?.status]);
   const officialWorkspaceCreating = generation.busy;
   const officialWorkspaceProgressLabel = generation.progressLabel ?? legacyWorkspaceProgressLabel;
 
   useEffect(() => {
+    setBindingPreview(null);
+    setBindingBusy(false);
+    setBindingError(null);
+    setPublicFolderWorkflowError(null);
+    setPublicFolderWorkflowMessage(null);
+    setPublicFolderWorkflowAutoSyncBusy(false);
     setPublicFolderWorkflowPreviews(createPublicFolderWorkflowOperationMap(null));
     setPublicFolderWorkflowResults(createPublicFolderWorkflowOperationMap(null));
     setPublicFolderWorkflowConfirmingOperation(null);
@@ -485,7 +516,6 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     );
     void onRefreshSection2Sync();
     void onRefreshPackagePreview();
-    void onRefreshOfficialWorkspacePreview();
     void onRefreshRequestMaterial();
     void onRefreshRequiredForms();
     void onRefreshOfficialFolderCheck();
@@ -658,8 +688,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     };
   }, [matrixAuthorityDraft, matrixCandidateDraft, runtimeProjectionSnapshot, runtimeSelectedTokenCleared]);
 
-  const hasCompletedOfficialWorkspace = officialWorkspacePreview?.status === "completed";
-  const folderReady = project?.status === "folder_created" || hasCompletedOfficialWorkspace;
+  const folderReady = basicWorkspace.directoryAvailable;
   const latestLtr = ltrs.length > 0 ? ltrs[ltrs.length - 1].ltr_number : null;
   const folderResources = configuredFolderResources(resources);
   const baselineItems = useMemo(
@@ -741,16 +770,19 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   }
 
   async function onRefreshOfficialWorkspacePreview(): Promise<void> {
+    const epoch = lifecycleEpoch.current;
     setOfficialWorkspaceLoading(true);
     try {
       const preview = await previewProjectFolderGeneration(projectId);
+      if (epoch !== lifecycleEpoch.current) return;
       setOfficialWorkspacePreview(preview.workspace_preview);
       setOfficialWorkspaceError(null);
     } catch (err) {
+      if (epoch !== lifecycleEpoch.current) return;
       setOfficialWorkspacePreview(null);
       setOfficialWorkspaceError((err as Error).message);
     } finally {
-      setOfficialWorkspaceLoading(false);
+      if (epoch === lifecycleEpoch.current) setOfficialWorkspaceLoading(false);
     }
   }
 
@@ -941,31 +973,72 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
-  async function onSetPublicFolderWorkflowAutoSync(enabled: boolean): Promise<void> {
+  async function ensurePublicFolderBinding(intent: "sync" | "auto_sync", epoch: number, request: number): Promise<boolean> {
+    const preview = await previewPublicProjectFolderBinding(projectId);
+    if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current || preview.project_id !== projectId) return false;
+    if (preview.status === "bound") { setBindingPreview(null); return true; }
+    if (preview.status === "blocked") throw new Error(preview.blockers.join("\n") || "The public project folder cannot be accessed.");
+    bindingIntent.current = intent;
+    setBindingError(null);
+    setBindingPreview(preview);
+    return false;
+  }
+
+  async function confirmPublicBinding(candidateId: string): Promise<void> {
+    if (publicFolderExecutionRef.current || bindingPreview?.project_id !== projectId || bindingPreview.status !== "review_required" || bindingPreview.blockers.length) return;
+    if (!(candidateId === "create" ? bindingPreview.can_create : bindingPreview.candidates.some(candidate => candidate.candidate_id === candidateId))) return;
+    const epoch = lifecycleEpoch.current;
+    const request = ++publicFolderRequestEpoch.current;
+    const intent = bindingIntent.current;
+    publicFolderExecutionRef.current = true;
+    setBindingBusy(true);
+    setBindingError(null);
+    let confirmed = false;
+    try {
+      const next = await confirmPublicProjectFolderBinding(projectId, {expected_context: bindingPreview.expected_context, candidate_id: candidateId});
+      if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current || next.project_id !== projectId) return;
+      if (next.status !== "bound") { setBindingPreview(next); throw new Error(next.blockers.join("\n") || "Refresh the public folder selection before confirming."); }
+      setBindingPreview(null);
+      await onRefreshPublicFolderWorkflowContext();
+      confirmed = epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current;
+    } catch (error) {
+      if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setBindingError(error instanceof Error ? error.message : "Could not associate the public folder. Refresh and try again.");
+    } finally {
+      publicFolderExecutionRef.current = false;
+      if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setBindingBusy(false);
+    }
+    if (confirmed) {
+      if (intent === "auto_sync") await onSetPublicFolderWorkflowAutoSync(true, true);
+      else await onPreviewPublicFolderWorkflowOperation("sync", true);
+    }
+  }
+
+  function cancelPublicBinding() {
+    if (publicFolderExecutionRef.current) return;
+    publicFolderRequestEpoch.current += 1;
+    setBindingPreview(null);
+    setBindingError(null);
+    setPublicFolderWorkflowBusyOperation(null);
+  }
+
+  async function onSetPublicFolderWorkflowAutoSync(enabled: boolean, bindingConfirmed = false): Promise<void> {
+    if (publicFolderExecutionRef.current) return;
+    const epoch = lifecycleEpoch.current;
+    const request = ++publicFolderRequestEpoch.current;
     setPublicFolderWorkflowAutoSyncBusy(true);
     try {
+      if (enabled && !bindingConfirmed && !await ensurePublicFolderBinding("auto_sync", epoch, request)) return;
+      if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current) return;
       const state = await setPublicFolderWorkflowAutoSync(projectId, enabled);
-      setPublicFolderWorkflowContext((previous) =>
-        previous
-          ? {
-              ...previous,
-              auto_sync_enabled: state.auto_sync_enabled,
-              sync_locked: state.sync_locked,
-              submitted_at: state.submitted_at,
-            }
-          : previous
-      );
+      if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current) return;
+      setPublicFolderWorkflowContext(previous => previous ? {...previous, auto_sync_enabled: state.auto_sync_enabled, sync_locked: state.sync_locked, submitted_at: state.submitted_at} : previous);
       setPublicFolderWorkflowError(null);
-      setPublicFolderWorkflowMessage(
-        state.auto_sync_enabled ? "Auto sync enabled." : "Auto sync disabled."
-      );
+      setPublicFolderWorkflowMessage(state.auto_sync_enabled ? "Auto sync enabled." : "Auto sync disabled.");
       await onRefreshPublicFolderWorkflowContext();
-    } catch (err) {
-      setPublicFolderWorkflowError(
-        err instanceof Error ? err.message : "Failed to update Auto sync."
-      );
+    } catch (error) {
+      if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowError(error instanceof Error ? error.message : "Failed to update Auto sync.");
     } finally {
-      setPublicFolderWorkflowAutoSyncBusy(false);
+      if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowAutoSyncBusy(false);
     }
   }
 
@@ -992,7 +1065,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   }
 
   async function onPreviewPublicFolderWorkflowOperation(
-    operation: PublicFolderWorkflowOperationType
+    operation: PublicFolderWorkflowOperationType, bindingConfirmed = false
   ): Promise<void> {
     if (publicFolderExecutionRef.current) return;
     const epoch = lifecycleEpoch.current;
@@ -1002,6 +1075,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     setPublicFolderWorkflowError(null);
     setPublicFolderWorkflowMessage(null);
     try {
+      if (operation === "sync" && !bindingConfirmed && !await ensurePublicFolderBinding("sync", epoch, request)) return;
+      if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current) return;
       const preview = await previewPublicFolderWorkflowOperation(projectId, operation);
       if (epoch !== lifecycleEpoch.current || request !== publicFolderRequestEpoch.current || preview.project_id !== projectId) return;
       setPublicFolderWorkflowPreviews((previous) => ({
@@ -1132,6 +1207,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         if (request !== lifecycleEpoch.current) return;
         setProject(nextProject);
         setLtrs(nextLtrs);
+        await basicWorkspace.refresh();
+        if (request !== lifecycleEpoch.current) return;
       }
       setLifecycle(nextLifecycle);
       setLifecycleError(null);
@@ -1162,6 +1239,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       setProject(refreshedProject);
       setLifecycleError(null);
       setMessage("Project activated. Editing and project work are available again.");
+      await basicWorkspace.refresh();
     } catch (err) {
       if (request !== lifecycleEpoch.current) return;
       setLifecycleError(
@@ -1540,6 +1618,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   }
 
   return {
+    basicWorkspace,
+    onResumeLegacyWorkspace: generation.resumeOnly,
+    legacyWorkspaceCompletion: generation.completionFeedback,
+    publicFolderBinding: {preview: bindingPreview?.project_id === projectId ? bindingPreview : null, busy: bindingBusy, error: bindingError, onConfirm: confirmPublicBinding, onCancel: cancelPublicBinding},
     approvalInput,
     approvalInputSources,
     approvalPreview,
@@ -1585,7 +1667,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     publicDriveUploading,
     publicDriveUploadError,
     publicDriveUploadResult,
-    publicFolderWorkflowContext,
+    publicFolderWorkflowContext: publicFolderWorkflowContext?.project_id === projectId ? publicFolderWorkflowContext : null,
     publicFolderWorkflowContextLoading,
     publicFolderWorkflowContextError,
     publicFolderWorkflowPreviews,

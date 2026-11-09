@@ -29,6 +29,7 @@ def test_project_folder_open_service_opens_backend_resolved_directory(tmp_path):
             public_closed_path=None,
             blockers=(),
             warnings=(),
+            local_official_folder_available=True,
         )
     )
     gateway = FakeOpenGateway()
@@ -92,6 +93,18 @@ def test_public_folder_open_blocks_without_resolved_path():
     workflow = FakeWorkflowService(SimpleNamespace(public_open_path=None))
     result = ProjectFolderOpenService(workflow_service=workflow, gateway=gateway).open_public_project_folder("project-1")
     assert result.status == "blocked"
+    assert gateway.opened == []
+
+
+def test_existing_paths_with_failed_identity_validation_are_not_opened(tmp_path):
+    folder = tmp_path / "replaced-directory"
+    folder.mkdir()
+    gateway = FakeOpenGateway()
+    workflow = FakeWorkflowService(SimpleNamespace(local_official_folder_path=folder,
+        local_official_folder_available=False, public_open_path=folder, public_open_folder_available=False))
+    service = ProjectFolderOpenService(workflow_service=workflow, gateway=gateway)
+    assert service.open_local_project_folder("P1").status == "blocked"
+    assert service.open_public_project_folder("P1").status == "blocked"
     assert gateway.opened == []
 
 

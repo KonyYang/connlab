@@ -18,10 +18,11 @@ class OfficialWorkspaceManifest:
     local_workspace_path: str
     source_book_path: str
     official_project_folder_path: str
-    template_source_path: str
+    template_source_path: str | None
     created_at: str
     official_folder_identity: list[int] | None = None
     retained_confirmed_folder_name: str | None = None
+    creation_kind: str = "template"
 
 
 class OfficialWorkspaceManifestGateway:

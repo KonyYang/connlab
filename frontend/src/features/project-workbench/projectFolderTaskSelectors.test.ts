@@ -114,15 +114,15 @@ describe("deriveProjectFolderTasks", () => {
     );
   });
 
-  it("keeps the Basic Information folder blocker available for one-click folder commands", () => {
+  it("keeps incomplete forms independent of available folder actions", () => {
     const tasks = deriveProjectFolderTasks({
       ...readyInput(),
       requiredFormsPreview: basicInformationBlockedRequiredFormsPreview,
     });
 
-    expect(selectProjectFolderOneClickBlocker(tasks, true)).toBe(
-      "Confirm Basic Information before generating Project Folder outputs."
-    );
+    expect(selectProjectFolderOneClickBlocker(tasks, true)).toBeNull();
+    expect(tasks[0].actionTarget).toBe("project_folder_open");
+    expect(tasks[1].actionTarget).toBe("public_folder_workflow_sync");
     expect(selectProjectFolderOneClickBlocker(tasks, false)).toBeNull();
   });
 

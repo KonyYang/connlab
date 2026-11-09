@@ -54,6 +54,9 @@ class RecoverableOutputPublisher:
         require_safe_output_path(target)
         effect_key = f"{self.step}:{key}"
         effect = self.state["effects"].get(effect_key)
+        if effect is not None and effect.get("preparing"):
+            self._discard_preparing(effect_key, effect)
+            effect = None
         if effect is None:
             if file_hash(target) != prior:
                 raise ValueError("Generation target changed before publication.")
@@ -63,19 +66,59 @@ class RecoverableOutputPublisher:
             require_safe_output_path(stage_root)
             stage_root.mkdir(parents=True, exist_ok=True)
             staged = stage_root / f".connlab-{self.state['operation_id']}-{uuid4().hex}{target.suffix}"
-            with source.open("rb") as input_file, staged.open("xb") as output:
-                shutil.copyfileobj(input_file, output)
-                output.flush()
-                os.fsync(output.fileno())
+            # Save the pathname before creating a file: even failure to read the
+            # opened handle's identity must leave recovery provenance, not an orphan.
             effect = {"type": "file", "step": self.step, "target": str(target),
-                      "stage": str(staged), "prior": prior, "sha": file_hash(staged),
-                      "prior_identity": prior_identity,
-                      "identity": file_identity(staged), "record": json_value(record)}
+                      "stage": str(staged), "prior": prior, "sha": None,
+                      "prior_identity": prior_identity, "identity": None,
+                      "record": json_value(record), "preparing": True}
             self.state["effects"][effect_key] = effect
             self.journal.save(self.state)
+            try:
+                with source.open("rb") as input_file, staged.open("xb") as output:
+                    opened = os.fstat(output.fileno())
+                    if not opened.st_ino:
+                        raise ValueError("The filesystem cannot prove staged output ownership.")
+                    effect["identity"] = [opened.st_dev, opened.st_ino]
+                    self.journal.save(self.state)
+                    try:
+                        if file_identity(staged) != effect["identity"]:
+                            raise ValueError("Staged output was replaced before source copy.")
+                    except OSError as exc:
+                        raise ValueError("Staged output identity cannot be verified before source copy.") from exc
+                    shutil.copyfileobj(input_file, output)
+                    output.flush()
+                    os.fsync(output.fileno())
+                try:
+                    digest = file_hash(staged)
+                    if file_identity(staged) != effect["identity"]:
+                        raise ValueError("Staged output was replaced during source copy.")
+                except OSError as exc:
+                    raise ValueError("Staged output metadata cannot be verified after source copy.") from exc
+                effect.update(sha=digest, preparing=False)
+                self.journal.save(self.state)
+            except BaseException:
+                self._discard_preparing(effect_key, effect)
+                raise
         self._publish(effect)
 
+    def _discard_preparing(self, effect_key, effect):
+        self.verify_context()
+        staged = Path(effect["stage"])
+        try:
+            require_safe_output_path(staged)
+            if staged.exists():
+                if effect.get("identity") is None or file_identity(staged) != effect["identity"]:
+                    raise ValueError("Incomplete staged output ownership cannot be proved.")
+                staged.unlink()
+        except (ValueError, OSError) as exc:
+            raise ValueError(f"Incomplete staging needs manual recovery: {staged}. Reason: {exc}. Retain this file; the operation cannot complete or sync.") from exc
+        self.state["effects"].pop(effect_key)
+        self.journal.save(self.state)
+
     def _publish(self, effect):
+        if effect.get("preparing"):
+            raise ValueError("Incomplete output staging must be recovered before publication.")
         self.verify_context()
         target, staged = Path(effect["target"]), Path(effect["stage"])
         require_safe_output_path(target)
@@ -103,8 +146,11 @@ class RecoverableOutputPublisher:
             staged.unlink()
 
     def recover_files(self, register):
-        for effect in self.state["effects"].values():
+        for effect_key, effect in list(self.state["effects"].items()):
             if effect["type"] == "file" and effect["step"] == self.step:
+                if effect.get("preparing"):
+                    self._discard_preparing(effect_key, effect)
+                    continue
                 self._publish(effect)
                 if effect["record"] is not None:
                     register(effect["record"])

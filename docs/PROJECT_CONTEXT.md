@@ -497,7 +497,25 @@ Do not use a dated snapshot as a substitute for the code.
   confirmed name, while internal download artifacts retain unique task-owned paths.
 - If a CR fee row combines steps with different selected point counts, Matrix confirmation remains
   available, but that fee line requires human review rather than pricing from only the first step.
-- An approved Create folder operation generates LLCR/CR blank workbooks and one combined
+- Workbench **Create folder** now creates/reuses a basic, registered-LTR project directory and
+  archives available request materials. It requires an editable project and an existing writable
+  save root, but no confirmed Matrix/Fee/Basic Information or Office template. A linked directory is
+  retained even if its description changes. Missing structural subfolders may be added; manual files
+  are never replaced. Unknown same-name directories require explicit ownership confirmation. Manifest
+  and SQLite association commit before optional material copies. Individual unavailable sources or
+  copy conflicts become issues while the directory remains usable/openable/syncable.
+  Basic creation has its own recoverable journal, sharing the existing canonical project writer lock;
+  unfinished basic, legacy generation and report delivery operations cannot bypass one another.
+  See `docs/operational/project_folder_basic_phase1_20261109.md` for migration and recovery boundaries.
+- Public workflow retains a versioned, explicitly confirmed root/year/full-LTR/directory identity
+  association before copying any files. Description changes preserve the actual associated path;
+  there is no automatic public rename. Missing/invalid associations require immediate-child exact
+  full-LTR candidate review, including unique candidates; base and suffix numbers stay distinct.
+  Inaccessible enumeration blocks selection. Ordinary upload requires only the existing Open/year
+  parents, and Submit requires existing Closed/year parents. Imported bindings are provenance until
+  reconfirmed. Submit commits a move intent first; a restarted confirmation may finish metadata only
+  when the exact Closed directory identity proves the same move.
+- The retained legacy Project Folder generation operation generates LLCR/CR blank workbooks and one combined
   `<registered LTR> IR&DWV Record.xlsx` in the official `Test results` folder for corresponding
   confirmed Matrix steps. LLCR/CR require explicit point IDs; IR/DWV require explicit measurement
   pairs and use the same configured template, sample quantities, rounds, conditions and requirements
@@ -510,11 +528,11 @@ Do not use a dated snapshot as a substitute for the code.
   to recoverable Project Folder generation; direct material collection keeps its strict prerequisite.
   Ambiguous material sources and changed targets are not silently selected or overwritten.
   Each completed attempt persists an `issues` list and a partial
-  outcome, and Workbench summarizes the files that need manual completion or a later Create folder
-  attempt. An ordinary successful attempt remains quiet. Projects without electrical steps do not
+  outcome. Existing legacy recovery retains the files that need manual completion or a later explicit
+  compatibility attempt. An ordinary successful attempt remains quiet. Projects without electrical steps do not
   require an IR/DWV template. Project identity, lifecycle, directory/path safety, changed inputs,
   final-file publication, registration recovery and unfinished cleanup still stop the operation;
-  they are never treated as a harmless failed source artifact. Repeating Create folder retains the
+  they are never treated as a harmless failed source artifact. Retained legacy rebuild APIs retain the
   existing explicit Backup and Rebuild review and History protections; partial completion does not
   grant overwrite or deletion authority. Old journals without outcome/issue fields remain readable.
   The retained in-place update API binds an existing target's hash and filesystem identity. In that

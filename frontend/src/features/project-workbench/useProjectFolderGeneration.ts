@@ -267,7 +267,42 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
     }
   }
 
-  return { operation, error: errorState?.message ?? null, start, update,
+  async function resumeOnly(): Promise<void> {
+    const saved = operation;
+    if (!saved || !["blocked", "interrupted"].includes(saved.status) || starting || updating.current) return;
+    const sequence = ++requestSequence.current;
+    const isCurrent = () => alive.current && currentProject.current === projectId && requestSequence.current === sequence;
+    updating.current = {projectId, sequence};
+    setStarting(true);
+    setErrorState(null);
+    try {
+      const latest = await getProjectFolderGeneration(projectId);
+      if (!isCurrent()) return;
+      if (!latest || latest.operation_id !== saved.operation_id || latest.status === "completed") {
+        accept(latest);
+        return;
+      }
+      if (["queued", "running"].includes(latest.status)) { accept(latest); return; }
+      // No start/update fallback: a recovery action only ever resumes this journal.
+      const next = await resumeProjectFolderGeneration(projectId, saved.operation_id);
+      if (isCurrent()) accept(next);
+    } catch (error) {
+      if (isCurrent()) setErrorState({message: (error as Error).message, source: "action"});
+    } finally {
+      if (updating.current?.projectId === projectId && updating.current.sequence === sequence) updating.current = null;
+      if (isCurrent()) setStarting(false);
+    }
+  }
+
+  const completionFeedback = operation?.status === "completed" && operation.project_id === projectId
+    ? {
+        operationId: operation.operation_id,
+        issues: operation.issues ?? [],
+        error: errorState?.source === "completion" ? errorState.message : null,
+      }
+    : null;
+
+  return { operation, completionFeedback, error: errorState?.message ?? null, start, update, resumeOnly,
     restart: (strategy?: OfficialWorkspaceConflictStrategy, context?: string) => start(strategy, context, true),
     busy: starting || operation?.status === "queued" || operation?.status === "running",
     canResume: operation?.status === "blocked" || operation?.status === "interrupted",

@@ -130,6 +130,8 @@ def init_db(engine: Engine) -> None:
         table for table in Base.metadata.tables.values() if table.name not in dedicated_tables
     ]
     Base.metadata.create_all(bind=engine, tables=general_tables)
+    from backend.infrastructure.storage.project_folder_schema_migration import migrate_project_folder_schema
+    migrate_project_folder_schema(engine)
     _migrate_temporary_project_intake_snapshot(engine)
     migrate_group_completion_description(engine)
     migrate_standard_record_method_sync_schema(engine)

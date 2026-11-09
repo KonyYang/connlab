@@ -312,7 +312,8 @@ class ProjectOfficialWorkspaceRecordModel(Base):
     source_book_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     official_folder_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     manifest_path: Mapped[str] = mapped_column(String(1024), nullable=False)
-    template_source_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    template_source_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    creation_kind: Mapped[str] = mapped_column(String(32), nullable=False, default="template", server_default="template")
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
@@ -415,6 +416,7 @@ class ProjectPublicFolderWorkflowStateModel(Base):
         primary_key=True,
     )
     auto_sync_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    binding_json: Mapped[str | None] = mapped_column(Text)
     sync_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     submitted_at: Mapped[str | None] = mapped_column(String(64))
     submit_operation_id: Mapped[str | None] = mapped_column(String(64))

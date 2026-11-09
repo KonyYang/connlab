@@ -156,6 +156,7 @@ class PublicFolderWorkflowState:
     last_pull_operation_id: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
+    binding_json: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,6 +243,7 @@ class PublicFolderWorkflowPreview:
     auto_sync_enabled: bool
     sync_locked: bool
     public_open_identity: tuple[int, int] | None = None
+    binding_context: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -312,6 +314,8 @@ class PublicFolderWorkflowService:
         public_root: Path | None,
         path_resolver: PublicFolderPathResolver | None = None,
         gateway: PublicFolderWorkflowGatewayPort | None = None,
+        commit=None,
+        workspace_validator=None,
     ) -> None:
         """Create the workflow service."""
         self._projects = project_repository
@@ -328,6 +332,24 @@ class PublicFolderWorkflowService:
 
             gateway = PublicFolderWorkflowGateway()
         self._gateway = gateway
+        self._validate_workspace = workspace_validator or (lambda workspace: None)
+        from backend.application.public_folder_binding import PublicFolderBinding
+        self.bindings = PublicFolderBinding(repository=self._repository, workspaces=self._workspaces,
+            year_resolver=self._year_resolver, path_resolver=self._path_resolver, public_root=self._public_root,
+            commit=commit or (lambda: None))
+
+    def binding_preview(self, project_id):
+        self._require_project(project_id)
+        return self.bindings.preview(project_id)
+
+    def confirm_binding(self, project_id, expected_context, candidate_id):
+        from backend.application.project_lifecycle_write_guard import ProjectLifecycleWriteGuard, LifecycleWriteOperation
+        ProjectLifecycleWriteGuard(self._projects).require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE)
+        workspace = self._workspaces.get_by_project(project_id)
+        if workspace is None:
+            raise PublicFolderWorkflowBlockedError("Create local project folder first.")
+        self._validate_workspace(workspace)
+        return self.bindings.confirm(project_id, expected_context, candidate_id)
 
     def context(self, project_id: str) -> PublicFolderWorkflowContext:
         """Return workflow context without mutating files."""
@@ -337,7 +359,16 @@ class PublicFolderWorkflowService:
         year = self._resolve_year(project_id)
         blockers = list(year.blockers)
         warnings = list(year.warnings)
-        paths = self._resolve_paths(workspace, year, blockers, check_open=False, check_closed=False)
+        path_issues = []
+        paths = self._resolve_paths(workspace, year, path_issues, check_open=False, check_closed=False)
+        (warnings if paths else blockers).extend(path_issues)
+        public_available = False
+        if paths:
+            try:
+                trusted = self.bindings.verified(project_id, paths)
+                public_available = trusted.public_open_path.is_dir()
+            except (ValueError, OSError):
+                pass
         local_official_folder_path = workspace.official_folder_path if workspace else None
         return PublicFolderWorkflowContext(
             project_id=project_id,
@@ -354,10 +385,8 @@ class PublicFolderWorkflowService:
             public_closed_path=paths.public_closed_path if paths else None,
             blockers=tuple(blockers),
             warnings=tuple(warnings),
-            local_official_folder_available=bool(
-                local_official_folder_path and local_official_folder_path.is_dir()
-            ),
-            public_open_folder_available=bool(paths and paths.public_open_path.is_dir()),
+            local_official_folder_available=self._workspace_available(workspace),
+            public_open_folder_available=public_available,
         )
 
     def set_auto_sync(
@@ -418,7 +447,7 @@ class PublicFolderWorkflowService:
             and item.public_path.is_file() and self._gateway.fingerprint(item.public_path) == record.public_fingerprint
             for item in items if item.kind == "file"
         )
-        if public_open.is_dir() and not has_known_target:
+        if public_open.is_dir() and not has_known_target and not self._repository.get_state(project_id).binding_json:
             required.append("confirm_existing_public_folder")
         identity = _directory_identity(public_open) if public_open.is_dir() else None
         return self._final_preview(replace(base, items=tuple(items), warnings=tuple(warnings), required_confirmations=tuple(required), public_open_identity=identity))
@@ -429,8 +458,26 @@ class PublicFolderWorkflowService:
         command: PublicFolderWorkflowExecuteCommand,
     ) -> PublicFolderWorkflowResult:
         """Execute Sync after validating a fresh preview hash."""
+        from backend.application.project_lifecycle_write_guard import ProjectLifecycleWriteGuard, LifecycleWriteOperation
+        ProjectLifecycleWriteGuard(self._projects).require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE)
         preview = self.preview_sync(project_id)
         self._validate_execute_preview(preview, command)
+        if not self._repository.get_state(project_id).binding_json:
+            binding = self.bindings.preview(project_id)
+            if binding["blockers"]:
+                raise PublicFolderWorkflowBlockedError(binding["blockers"][0])
+            if binding["expected_context"] != preview.binding_context:
+                raise PublicFolderWorkflowConflictError("Public project folder appeared or changed after preview; review again.")
+            if binding["can_create"] and command.confirm_directory_creation:
+                choice = "create"
+            elif (len(binding["candidates"]) == 1 and command.confirm_existing_public_folder
+                    and binding["candidates"][0]["path"] == str(preview.public_open_path)):
+                choice = binding["candidates"][0]["candidate_id"]
+            else:
+                raise PublicFolderWorkflowBlockedError("Choose and confirm the public project folder before syncing.")
+            self.bindings.confirm(project_id, binding["expected_context"], choice)
+            preview = self.preview_sync(project_id)
+            self._validate_execute_preview(preview, replace(command, preview_hash=preview.preview_hash))
         operation_id = uuid4().hex
         errors: list[str] = []
         outcomes: list[PublicFolderWorkflowItem] = []
@@ -568,6 +615,10 @@ class PublicFolderWorkflowService:
         base = self._base_preview(project_id, "submit")
         if base.blockers:
             return base
+        if self.bindings.pending_moved(project_id):
+            item = PublicFolderWorkflowItem("directory", Path("."), base.public_open_path,
+                base.public_closed_path, "move", "ready", "Complete the retained approval move's directory association.")
+            return self._final_preview(replace(base, items=(item,)))
         folder_blockers = _folder_check_blockers(self._folder_check.preview(project_id))
         blockers = list(base.blockers) + list(folder_blockers)
         items = list(base.items)
@@ -630,10 +681,12 @@ class PublicFolderWorkflowService:
             assert preview.public_open_path is not None
             assert preview.public_closed_path is not None
             _require_public_directory(preview.public_closed_path.parent)
-            self._gateway.move_directory_no_overwrite(
-                preview.public_open_path,
-                preview.public_closed_path,
-            )
+            if not self.bindings.pending_moved(project_id):
+                self.bindings.prepare_submit(project_id, preview.public_closed_path)
+                self._gateway.move_directory_no_overwrite(
+                    preview.public_open_path,
+                    preview.public_closed_path,
+                )
             self._repository.rebase_files(
                 project_id=project_id,
                 old_root=preview.public_open_path,
@@ -641,7 +694,7 @@ class PublicFolderWorkflowService:
                 operation_id=operation_id,
                 updated_at=_now(),
             )
-        except (OSError, RuntimeError) as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             if preview.public_closed_path is not None and not preview.public_closed_path.parent.is_dir():
                 exc = RuntimeError(_missing_public_directory_message(preview.public_closed_path.parent))
             errors.append(str(exc))
@@ -658,6 +711,7 @@ class PublicFolderWorkflowService:
                     submit_operation_id=operation_id,
                     created_at=state.created_at or now,
                     updated_at=now,
+                    binding_json=self.bindings.after_submit(project_id, preview.public_closed_path),
                 )
             )
         return PublicFolderWorkflowResult(
@@ -750,10 +804,12 @@ class PublicFolderWorkflowService:
         workspace = self._workspaces.get_by_project(project_id)
         year = self._resolve_year(project_id)
         blockers = list(year.blockers)
-        if workspace is None or not workspace.official_folder_path.is_dir():
+        if not self._workspace_available(workspace):
             blockers.append("Create local project folder before public folder workflow.")
         if operation_type == "sync" and state.sync_locked:
             blockers.append("Sync is locked after Submit.")
+        if operation_type == "sync" and state.binding_json and self.bindings._read(state).get("pending_submit"):
+            blockers.append("Finish the interrupted approval Submit before syncing.")
         paths = self._resolve_paths(workspace, year, blockers, check_open=operation_type != "pull", check_closed=operation_type != "sync")
         if paths:
             required_year = paths.open_year_path if operation_type == "sync" else paths.closed_year_path
@@ -785,6 +841,7 @@ class PublicFolderWorkflowService:
                 next_action="none",
                 auto_sync_enabled=state.auto_sync_enabled,
                 sync_locked=state.sync_locked,
+                binding_context=self.bindings.preview(project_id)["expected_context"],
             )
         )
 
@@ -940,16 +997,37 @@ class PublicFolderWorkflowService:
         if workspace is None:
             return None
         try:
-            return self._path_resolver.resolve(
+            paths = self._path_resolver.resolve(
                 public_root=self._public_root,
                 year=year.year,
                 project_folder_name=workspace.official_folder_path.name,
                 check_open=check_open,
                 check_closed=check_closed,
             )
-        except PublicFolderPathError as exc:
+            if not self._repository.get_state(workspace.project_id).binding_json:
+                if check_open:
+                    reviewed = self.bindings.preview(workspace.project_id)
+                    if reviewed["blockers"]:
+                        blockers.extend(reviewed["blockers"])
+                    elif (not reviewed["can_create"] and (len(reviewed["candidates"]) != 1
+                            or reviewed["candidates"][0]["path"] != str(paths.public_open_path))):
+                        blockers.append("Choose and confirm the existing public project folder before syncing.")
+                return paths
+            return self.bindings.verified(workspace.project_id, paths)
+        except (PublicFolderPathError, ValueError, OSError) as exc:
             blockers.append(str(exc))
+            if not check_open and not check_closed and "paths" in locals():
+                return paths
             return None
+
+    def _workspace_available(self, workspace):
+        if workspace is None or not workspace.official_folder_path.is_dir():
+            return False
+        try:
+            self._validate_workspace(workspace)
+            return True
+        except (ValueError, OSError):
+            return False
 
     def _require_project(self, project_id: str) -> Project:
         project = self._projects.get(project_id)
@@ -1069,6 +1147,7 @@ def _preview_snapshot(preview: PublicFolderWorkflowPreview) -> dict[str, object]
         "local_official_folder_path": _path(preview.local_official_folder_path),
         "public_open_path": _path(preview.public_open_path),
         "public_open_identity": preview.public_open_identity,
+        "binding_context": preview.binding_context,
         "public_closed_path": _path(preview.public_closed_path),
         "target_path": _path(preview.target_path),
         "items": [

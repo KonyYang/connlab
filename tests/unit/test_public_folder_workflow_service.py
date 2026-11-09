@@ -48,6 +48,8 @@ def test_context_reports_public_project_folder_availability(tmp_path: Path) -> N
     context = service.context("P1")
     assert context.public_open_folder_available is False
     context.public_open_path.mkdir(parents=True)
+    assert service.context("P1").public_open_folder_available is False
+    _bind(service)
     assert service.context("P1").public_open_folder_available is True
 
 
@@ -450,6 +452,7 @@ def test_new_target_appearing_during_sync_is_skipped_and_other_files_continue(tm
 
 def test_completed_copy_is_reported_if_post_sync_refresh_fails(tmp_path: Path, monkeypatch) -> None:
     service, repository, paths = _service(tmp_path)
+    _bind(service)
     (paths["local"] / "file.txt").write_text("data", encoding="utf-8")
     preview = service.preview_sync("P1")
     original = PublicFolderWorkflowGateway.list_files
@@ -654,6 +657,7 @@ def test_sync_skips_files_if_project_folder_identity_changes(tmp_path: Path, mon
     import backend.application.public_folder_workflow_service as workflow
 
     service, _, paths = _service(tmp_path)
+    _bind(service)
     (paths["local"] / "file.txt").write_text("local data", encoding="utf-8")
     preview = service.preview_sync("P1")
     original = workflow._directory_identity
@@ -666,28 +670,31 @@ def test_sync_skips_files_if_project_folder_identity_changes(tmp_path: Path, mon
         return identity if calls == 1 else (identity[0], identity[1] + 1)
 
     monkeypatch.setattr(workflow, "_directory_identity", changed_identity)
-    result = service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
-        preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
-    ))
-    assert result.status == "failed"
+    with pytest.raises(PublicFolderWorkflowConflictError, match="identity changed"):
+        service.execute_sync("P1", PublicFolderWorkflowExecuteCommand(
+            preview_hash=preview.preview_hash, confirmed=True, confirm_directory_creation=True,
+        ))
     assert not (paths["public"] / "Open projects" / "2026" / paths["local"].name / "file.txt").exists()
-    assert any("identity changed" in error for error in result.errors)
 
 
 def test_sync_reports_partial_when_identity_becomes_unavailable_after_one_copy(tmp_path: Path, monkeypatch) -> None:
     import backend.application.public_folder_workflow_service as workflow
 
     service, repository, paths = _service(tmp_path)
+    _bind(service)
     for name in ("a.txt", "b.txt"):
         (paths["local"] / name).write_text(name, encoding="utf-8")
     preview = service.preview_sync("P1")
     original = workflow._directory_identity
-    calls = 0
-
+    copied = False
+    original_copy = service._gateway.copy_new_file
+    def copy_once(*args, **kwargs):
+        nonlocal copied
+        original_copy(*args, **kwargs)
+        copied = True
+    monkeypatch.setattr(service._gateway, "copy_new_file", copy_once)
     def unavailable_after_first_file(path):
-        nonlocal calls
-        calls += 1
-        if calls >= 3:
+        if copied:
             raise PublicFolderWorkflowConflictError("Directory identity unavailable")
         return original(path)
 
@@ -718,6 +725,12 @@ def test_sync_record_failure_reports_copied_file_and_preserves_it(tmp_path: Path
         ))
     target = paths["public"] / "Open projects" / "2026" / paths["local"].name / "file.txt"
     assert target.read_text(encoding="utf-8") == "local data"
+
+
+def _bind(service):
+    preview = service.binding_preview("P1")
+    choice = "create" if preview["can_create"] else preview["candidates"][0]["candidate_id"]
+    service.confirm_binding("P1", preview["expected_context"], choice)
 
 
 def _service(tmp_path: Path, *, existing_years: bool = True):
