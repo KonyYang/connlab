@@ -309,6 +309,16 @@ describe("useProjectWorkbenchModel", () => {
     });
   });
 
+  it("retains completed legacy issues after its resume-only recovery in the Workbench model", async () => {
+    const issues=[{key:"ir_dwv_record",label:"IR&DWV blank record",message:"Record template is missing."}];
+    const saved={project_id:"project-1",operation_id:"legacy",status:"interrupted",step:3,completed_steps:[],message:"Resume saved generation."};
+    apiMocks.getProjectFolderGeneration.mockResolvedValue(saved);
+    apiMocks.resumeProjectFolderGeneration.mockResolvedValue({...saved,status:"completed",issues,outcome:"partial"});
+    const {result}=renderHook(()=>useProjectWorkbenchModel("project-1"));
+    await waitFor(()=>expect(result.current.officialWorkspaceCanResume).toBe(true));await act(()=>result.current.onResumeLegacyWorkspace!());
+    expect(result.current.officialWorkspaceCanResume).toBe(false);expect(result.current.legacyWorkspaceCompletion).toEqual({operationId:"legacy",issues,error:null});
+    expect(apiMocks.startProjectFolderGeneration).not.toHaveBeenCalled();expect(apiMocks.createBasicProjectWorkspace).not.toHaveBeenCalled();
+  });
   it("cancels public folder selection without binding or syncing", async () => {
     apiMocks.previewPublicProjectFolderBinding.mockResolvedValue({project_id:"project-1",status:"review_required",expected_context:"new",candidates:[],can_create:true,proposed_path:"D:/isolated/new",blockers:[]});
     const {result}=renderHook(() => useProjectWorkbenchModel("project-1"));await waitFor(() => expect(result.current.project).toBeTruthy());

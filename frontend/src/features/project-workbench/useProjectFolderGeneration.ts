@@ -294,7 +294,15 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
     }
   }
 
-  return { operation, error: errorState?.message ?? null, start, update, resumeOnly,
+  const completionFeedback = operation?.status === "completed" && operation.project_id === projectId
+    ? {
+        operationId: operation.operation_id,
+        issues: operation.issues ?? [],
+        error: errorState?.source === "completion" ? errorState.message : null,
+      }
+    : null;
+
+  return { operation, completionFeedback, error: errorState?.message ?? null, start, update, resumeOnly,
     restart: (strategy?: OfficialWorkspaceConflictStrategy, context?: string) => start(strategy, context, true),
     busy: starting || operation?.status === "queued" || operation?.status === "running",
     canResume: operation?.status === "blocked" || operation?.status === "interrupted",

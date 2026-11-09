@@ -121,6 +121,7 @@ type PublicFolderWorkflowOperationMap<T> = Record<
 
 export type ProjectWorkbenchModel = {
   onResumeLegacyWorkspace?: () => Promise<void>;
+  legacyWorkspaceCompletion?: ReturnType<typeof useProjectFolderGeneration>["completionFeedback"];
   basicWorkspace?: ReturnType<typeof useBasicProjectWorkspace>;
   publicFolderBinding?: {
     preview: PublicProjectFolderBindingPreview | null;
@@ -1619,6 +1620,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   return {
     basicWorkspace,
     onResumeLegacyWorkspace: generation.resumeOnly,
+    legacyWorkspaceCompletion: generation.completionFeedback,
     publicFolderBinding: {preview: bindingPreview?.project_id === projectId ? bindingPreview : null, busy: bindingBusy, error: bindingError, onConfirm: confirmPublicBinding, onCancel: cancelPublicBinding},
     approvalInput,
     approvalInputSources,

@@ -47,6 +47,16 @@ it("requires explicit review before linking an unknown existing local folder", a
  await userEvent.click(within(dialog).getByRole("button",{name:"Use this folder"})); expect(basic.create).toHaveBeenCalledWith(true);
 });
 
+it("shows actual completed legacy operation issues while the basic directory remains available", () => {
+  renderWorkbench({basicWorkspace:basicDirectory({directoryAvailable:true}),legacyWorkspaceCompletion:{operationId:"old-operation",issues:[{key:"ir",label:"IR&DWV blank record",message:"Record template is missing."}],error:null}});
+  const alert=screen.getByRole("alert");expect(alert.textContent).toContain("IR&DWV blank record");expect(alert.textContent).toContain("Record template is missing.");
+  expect(getProjectFolderCommandButton()).toHaveProperty("disabled",false);expect(screen.queryByRole("button",{name:"Resume folder operation"})).toBeNull();expect(screen.queryByRole("button",{name:"Generate files"})).toBeNull();
+});
+it("shows the actual legacy completion refresh failure without gating basic creation", () => {
+  const error="Generation completed, but the displayed folder status could not refresh. Refresh this page to reconnect.";
+  renderWorkbench({basicWorkspace:basicDirectory({directoryAvailable:true}),legacyWorkspaceCompletion:{operationId:"old-operation",issues:[],error}});
+  expect(screen.getByRole("alert").textContent).toContain(error);expect(getProjectFolderCommandButton()).toHaveProperty("disabled",false);expect(screen.queryByRole("button",{name:"Backup and Rebuild"})).toBeNull();
+});
 it("keeps old completed generation issues separate from basic folder availability", () => {
  renderWorkbench({basicWorkspace:basicDirectory({directoryAvailable:true}),officialWorkspaceIssues:[{key:"ir",label:"IR",message:"Old template failure"}]});
  expect(screen.queryByText("Old template failure")).toBeNull();expect(getProjectFolderCommandButton()).toHaveProperty("disabled",false);

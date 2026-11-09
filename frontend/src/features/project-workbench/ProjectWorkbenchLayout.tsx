@@ -77,6 +77,7 @@ export function ProjectWorkbenchLayout({
 
   const {
     basicWorkspace,
+    legacyWorkspaceCompletion,
     publicFolderBinding,
     activeConfirmedMatrixSnapshot,
     folderReady,
@@ -520,6 +521,19 @@ export function ProjectWorkbenchLayout({
           <span>{folderAlert.guidance}</span>
           {folderAlert.diagnostic ? <details><summary>Diagnostic details</summary><span>{folderAlert.diagnostic}</span></details> : null}
           <span>After resolving the issue, use the project folder action in Folder Actions.</span>
+        </div>
+      ) : null}
+
+      {legacyWorkspaceCompletion && (legacyWorkspaceCompletion.error || legacyWorkspaceCompletion.issues.length > 0) ? (
+        <div className="runtime-console-workflow-alert is-danger" role="alert">
+          <strong>Previous folder generation needs attention.</strong>
+          {legacyWorkspaceCompletion.error ? <span>{legacyWorkspaceCompletion.error}</span> : null}
+          {legacyWorkspaceCompletion.issues.length > 0 ? <>
+            <ul>{legacyWorkspaceCompletion.issues.map((issue, index) => (
+              <li key={`${issue.key}-${index}`}><strong>{issue.label}:</strong> {issue.message}</li>
+            ))}</ul>
+            <span>Other files have been kept. Add the missing files manually.</span>
+          </> : null}
         </div>
       ) : null}
 
