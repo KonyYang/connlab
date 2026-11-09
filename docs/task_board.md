@@ -491,7 +491,40 @@
       "closed_at": "2026-11-09T14:27:46.097903Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_QA_TEMP_RETENTION_SAFE_20261110": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/qa-temp-retention-safe-20261110",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_QA_TEMP_RETENTION_SAFE_20261110",
+        "summary": "Manage isolated pytest artifacts on D with completed-run-only seven-day retention",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Repair a3999f4f without importing its unsafe sweep. Unique managed pytest scratch, active locks, finished-run retention, safe path checks, nonfatal diagnostics, isolated deletion acceptance. No legacy or business cleanup, publication, or task Close. Independent-context gate remains pending because side conversation forbids subagents.",
+        "scope_paths": [
+          "conftest.py",
+          "scripts/pytest_artifacts.py",
+          "scripts/clean_tmp.py",
+          "scripts/run_tests.ps1",
+          "tests/unit/test_pytest_artifacts.py",
+          "tests/integration/test_pytest_artifact_lifecycle.py",
+          "docs/operational/pytest_artifact_management.md"
+        ],
+        "risk_reasons": [
+          "Automatic deletion is restricted to positively identified disposable completed test runs; require explicit retention and path/lease boundaries."
+        ],
+        "activation_head": "ae906e7cb2f74388949e0006456cac44fbc978f6",
+        "started_at": "2026-11-09T23:36:03.179382Z",
+        "updated_at": "2026-11-09T23:36:03.179382Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
