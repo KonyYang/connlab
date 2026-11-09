@@ -51,7 +51,7 @@ class ProjectFolderOpenService:
         """Open the local official folder for a project."""
         context = self._workflow_service.context(project_id)
         path = context.local_official_folder_path
-        if path is None:
+        if path is None or not getattr(context, "local_official_folder_available", True):
             return ProjectFolderOpenResult(
                 project_id=project_id,
                 status="blocked",
@@ -68,8 +68,9 @@ class ProjectFolderOpenService:
 
     def open_public_project_folder(self, project_id: str) -> ProjectFolderOpenResult:
         """Open the project-specific public folder resolved by the workflow."""
-        path = self._workflow_service.context(project_id).public_open_path
-        if path is None:
+        context = self._workflow_service.context(project_id)
+        path = context.public_open_path
+        if path is None or not getattr(context, "public_open_folder_available", True):
             return ProjectFolderOpenResult(
                 project_id=project_id,
                 status="blocked",

@@ -42,6 +42,7 @@ class PublicFolderWorkflowRepository:
             last_pull_operation_id=row.last_pull_operation_id,
             created_at=row.created_at,
             updated_at=row.updated_at,
+            binding_json=row.binding_json,
         )
 
     def save_state(self, state: PublicFolderWorkflowState) -> PublicFolderWorkflowState:
@@ -59,6 +60,7 @@ class PublicFolderWorkflowRepository:
                     last_pull_operation_id=state.last_pull_operation_id,
                     created_at=state.created_at,
                     updated_at=state.updated_at,
+                    binding_json=state.binding_json,
                 )
             )
         else:
@@ -70,6 +72,7 @@ class PublicFolderWorkflowRepository:
             row.last_pull_operation_id = state.last_pull_operation_id
             row.created_at = state.created_at
             row.updated_at = state.updated_at
+            row.binding_json = state.binding_json
         self._session.flush()
         return state
 

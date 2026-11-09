@@ -1,6 +1,13 @@
 # Project Folder generation and interruption recovery
 
-The Workbench starts one backend operation; its browser does not issue the individual document writes.
+Workbench **Create folder** now uses the separate basic-folder workflow described in
+`operational/project_folder_basic_phase1_20261109.md`. It creates/reuses structural directories and
+archives available source materials, independently of generated forms. There is no new Generate
+files capability in this batch. Existing per-page generation and legacy recovery remain available.
+
+The rest of this document describes the retained legacy generation operation and its old approvals,
+not a policy that an ordinary Create folder click may rebuild or generate all files.
+The retained operation runs on the backend; its browser does not issue the individual document writes.
 The fixed sequence is workspace, request materials, folder check, Customer Feedback, Fee Form, Test
 Record, Test Status, copied Application Form write-back, and optional Matrix blank records.
 The last journal step retains its compatibility name `llcr_cr_records` and publishes LLCR, CR and
@@ -9,7 +16,7 @@ Project/Matrix/confirmed Fee/Basic Information and configured source/template au
 
 ## Ownership and approval
 
-- Workbench `Create folder` uses one creation policy: create a missing folder, or show an explicit
+- The retained legacy generation API uses its existing policy: create a missing folder, or require an explicit
   whole-folder `Backup and Rebuild` confirmation for a verified existing official folder. It does not
   compare old business-file contents to choose an update strategy, offer `Update existing folder`,
   or open a rename/rebind dialog. The confirmation shows the archive source and new authority-derived

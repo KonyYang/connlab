@@ -63,10 +63,23 @@ class RecoverableOutputPublisher:
             require_safe_output_path(stage_root)
             stage_root.mkdir(parents=True, exist_ok=True)
             staged = stage_root / f".connlab-{self.state['operation_id']}-{uuid4().hex}{target.suffix}"
-            with source.open("rb") as input_file, staged.open("xb") as output:
-                shutil.copyfileobj(input_file, output)
-                output.flush()
-                os.fsync(output.fileno())
+            staged_identity = None
+            try:
+                with source.open("rb") as input_file, staged.open("xb") as output:
+                    staged_identity = file_identity(staged)
+                    shutil.copyfileobj(input_file, output)
+                    output.flush()
+                    os.fsync(output.fileno())
+            except BaseException:
+                if staged_identity is not None:
+                    try:
+                        require_safe_output_path(staged)
+                        if file_identity(staged) != staged_identity:
+                            raise ValueError("Staged output identity changed during source-copy failure.")
+                        staged.unlink()
+                    except (ValueError, OSError) as cleanup_error:
+                        raise ValueError("Partial output staging could not be safely removed. Retain files and review recovery before syncing.") from cleanup_error
+                raise
             effect = {"type": "file", "step": self.step, "target": str(target),
                       "stage": str(staged), "prior": prior, "sha": file_hash(staged),
                       "prior_identity": prior_identity,

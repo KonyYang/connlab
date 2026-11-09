@@ -1,6 +1,7 @@
 """Project-scoped portable assets and explicit path rebinding, never source SQL access."""
 from hashlib import sha256
 from pathlib import Path
+import json
 import shutil
 import re
 from backend.domain.project_library import ProjectLibraryError, ProjectLibraryConflict
@@ -8,7 +9,7 @@ from backend.infrastructure.project_library.files import checked_path, file_hash
 from backend.infrastructure.project_library.ownership import transform_paths
 
 SPECIAL_DATA_ROOTS = ("report_authoring_assets", "report_working_drafts")
-JOURNAL_ROOTS = ("project_folder_generation", "official_folder_relocation", "llcr_cr_record_publication", "ir_dwv_record_publication")
+JOURNAL_ROOTS = ("project_folder_generation", "basic_project_workspace", "official_folder_relocation", "llcr_cr_record_publication", "ir_dwv_record_publication")
 REGISTERED_FILE_HASHES = {
     "file_assets": (("path", "sha256"),),
     "intake_assets": (("stored_path", "sha256"),),
@@ -76,7 +77,8 @@ class PortableAssets:
                 row["source_document_path"] = "manual:legacy-relative:" + value
         transformed = transform_paths({**rows, "source_matrix_import_records": sources}, encode_path)
         for row in transformed.get("project_official_workspace_records", []):
-            row["template_source_path"] = "@resource/project_folder_template"
+            if row.get("creation_kind", "template") != "basic":
+                row["template_source_path"] = "@resource/project_folder_template"
         project_hash = sha256(self.member["project_id"].encode()).hexdigest()
         for name in SPECIAL_DATA_ROOTS:
             folder = self.settings.data_dir / name / project_hash
@@ -200,5 +202,15 @@ def decode_rows(rows, settings, project_root):
         return value
     result = transform_paths(rows, replace)
     for row in result.get("project_official_workspace_records", []):
-        row["template_source_path"] = str(settings.templates_dir)
+        row["template_source_path"] = None if row.get("creation_kind") == "basic" else str(settings.templates_dir)
+    for row in result.get("project_public_folder_workflow_states", []):
+        if row.get("binding_json"):
+            try:
+                binding = json.loads(row["binding_json"])
+                if not isinstance(binding, dict):
+                    raise ValueError()
+                binding["requires_review"] = True
+                row["binding_json"] = json.dumps(binding, ensure_ascii=False)
+            except (ValueError, TypeError) as exc:
+                raise ProjectLibraryError("Imported public folder association is unreadable; restore stopped.") from exc
     return result

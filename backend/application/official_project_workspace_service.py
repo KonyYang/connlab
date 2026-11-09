@@ -115,8 +115,9 @@ class OfficialWorkspaceRecord:
     source_book_path: Path
     official_folder_path: Path
     manifest_path: Path
-    template_source_path: Path
+    template_source_path: Path | None
     created_at: str
+    creation_kind: str = "template"
 
 
 @dataclass(frozen=True, slots=True)
@@ -1074,6 +1075,8 @@ class OfficialProjectWorkspaceService:
                 "Workspace manifest does not match current project or cannot be read: "
                 f"{manifest_path}"
             )
+        if payload.get("schema_version", 1) not in {1, 2}:
+            return None, f"Workspace manifest version is unsupported: {manifest_path}"
         if payload.get("project_id") != project_id:
             return None, f"Workspace manifest does not match current project: {manifest_path}"
         manifest_dl = payload.get("dl_number")
@@ -1149,6 +1152,8 @@ class OfficialProjectWorkspaceService:
             return f"Workspace manifest does not match current project or cannot be read: {manifest_path}"
         if not isinstance(payload, dict):
             return f"Workspace manifest does not match current project or cannot be read: {manifest_path}"
+        if payload.get("schema_version", 1) not in {1, 2}:
+            return f"Workspace manifest version is unsupported: {manifest_path}"
         if payload.get("project_id") != project_id:
             return f"Workspace manifest does not match current project: {manifest_path}"
         if payload.get("official_project_folder_path") != str(official_folder_path):

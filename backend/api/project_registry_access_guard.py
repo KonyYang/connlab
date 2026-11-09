@@ -67,6 +67,8 @@ async def require_registry_write_access(
     generation_owns_lock = request.scope["route"].path in {
         "/api/projects/{project_id}/project-folder/generation/start",
         "/api/projects/{project_id}/project-folder/generation/resume",
+        "/api/projects/{project_id}/official-workspace/basic/create",
+        "/api/projects/{project_id}/official-workspace/basic/resume",
     }
     folder_slot_owns_lock = _has_folder_write_slot(request.scope["route"])
     revisions = {}

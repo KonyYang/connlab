@@ -1904,6 +1904,22 @@ def get_official_project_workspace_service(
     )
 
 
+def get_basic_project_workspace_service(
+    session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
+):
+    from backend.application.basic_project_workspace_service import BasicProjectWorkspaceService
+    from backend.api.project_folder_write_guard import require_report_delivery_clear
+    materials = get_project_request_material_collection_service(session)
+    return BasicProjectWorkspaceService(
+        projects=ProjectRepository(session), workspaces=ProjectOfficialWorkspaceRepository(session),
+        ltrs=LtrRecordRepository(session),
+        settings=_official_workspace_settings_from_registry(ExternalResourceRepository(session)),
+        data_dir=settings.data_dir, collect_materials=materials.collect_available,
+        commit=session.commit,
+        check_other_writes=lambda project_id: require_report_delivery_clear(settings, project_id),
+    )
+
+
 def _official_workspace_settings_from_registry(
     resources: ExternalResourceRepository,
 ) -> OfficialWorkspaceSettings:
@@ -2047,6 +2063,13 @@ def get_public_folder_workflow_service(
     resources = ExternalResourceRepository(session)
     project_repository = ProjectRepository(session)
     ltr_repository = LtrRecordRepository(session)
+    def validate_workspace(workspace):
+        from backend.application.basic_project_workspace_service import BasicProjectWorkspaceService
+        from backend.application.project_identity import resolve_project_identity
+        BasicProjectWorkspaceService._verify_record(workspace)
+        identity = resolve_project_identity(project_repository.get(workspace.project_id), ltr_repository.list_by_project(workspace.project_id))
+        if identity.ltr_number != workspace.dl_number:
+            raise ValueError("Local project folder registration changed; review its association.")
     return PublicFolderWorkflowService(
         project_repository=project_repository,
         workspace_repository=ProjectOfficialWorkspaceRepository(session),
@@ -2062,6 +2085,8 @@ def get_public_folder_workflow_service(
             ExternalResourceType.OFFICIAL_PUBLIC_DRIVE_ROOT,
         ),
         gateway=PublicFolderWorkflowGateway(),
+        commit=session.commit,
+        workspace_validator=validate_workspace,
     )
 
 

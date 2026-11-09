@@ -1,9 +1,25 @@
 import errno
 from pathlib import Path
 import pytest
+import json
+from types import SimpleNamespace
 from backend.domain.project_library import ProjectLibraryConflict
 from backend.infrastructure.project_library.files import move_verified
 from backend.infrastructure.project_library.comparison import snapshot_differences
+
+
+def test_restore_preserves_template_free_origin_and_requires_public_binding_review(tmp_path):
+    from backend.infrastructure.project_library.assets import decode_rows
+    rows = {"projects": [{"project_id": "P1"}],
+        "project_official_workspace_records": [{"creation_kind": "basic", "template_source_path": None}],
+        "project_public_folder_workflow_states": [{"binding_json": json.dumps({
+            "version": 1, "path": "Z:/Open projects/2026/DL-2026-09-002 Product", "identity": [1, 2]})}]}
+    settings = SimpleNamespace(data_dir=tmp_path / "data", templates_dir=tmp_path / "templates")
+    decoded = decode_rows(rows, settings, tmp_path / "project")
+    assert decoded["project_official_workspace_records"][0]["template_source_path"] is None
+    saved = json.loads(decoded["project_public_folder_workflow_states"][0]["binding_json"])
+    assert saved["requires_review"] is True
+    assert saved["path"] == "Z:/Open projects/2026/DL-2026-09-002 Product"
 
 
 @pytest.mark.parametrize("folder", [True, False])

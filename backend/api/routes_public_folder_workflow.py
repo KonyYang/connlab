@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from backend.api.project_folder_write_guard import require_project_folder_write_slot
 
 from backend.api.dependencies import get_public_folder_workflow_service
 from backend.application.public_folder_workflow_service import (
@@ -106,6 +107,32 @@ class PublicFolderAutoSyncRequest(BaseModel):
     auto_sync_enabled: bool
 
 
+class PublicFolderBindingRequest(BaseModel):
+    expected_context: str
+    candidate_id: str
+
+
+@router.get("/binding/preview")
+def preview_public_folder_binding(project_id: str, service=Depends(get_public_folder_workflow_service)):
+    try:
+        return service.binding_preview(project_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/binding/confirm", dependencies=[Depends(require_project_folder_write_slot)])
+def confirm_public_folder_binding(project_id: str, request: PublicFolderBindingRequest,
+                                  service=Depends(get_public_folder_workflow_service)):
+    try:
+        return service.confirm_binding(project_id, request.expected_context, request.candidate_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
 class PublicFolderWorkflowStateResponse(BaseModel):
     """Response DTO for persisted workflow state."""
 
@@ -174,7 +201,7 @@ def preview_sync(
     return _preview_route(lambda: service.preview_sync(project_id))
 
 
-@router.post("/sync/execute", response_model=PublicFolderWorkflowResultResponse)
+@router.post("/sync/execute", response_model=PublicFolderWorkflowResultResponse, dependencies=[Depends(require_project_folder_write_slot)])
 def execute_sync(
     project_id: str,
     request: PublicFolderWorkflowExecuteRequest,
@@ -193,7 +220,7 @@ def preview_submit(
     return _preview_route(lambda: service.preview_submit(project_id))
 
 
-@router.post("/submit/execute", response_model=PublicFolderWorkflowResultResponse)
+@router.post("/submit/execute", response_model=PublicFolderWorkflowResultResponse, dependencies=[Depends(require_project_folder_write_slot)])
 def execute_submit(
     project_id: str,
     request: PublicFolderWorkflowExecuteRequest,
@@ -212,7 +239,7 @@ def preview_pull(
     return _preview_route(lambda: service.preview_pull(project_id))
 
 
-@router.post("/pull/execute", response_model=PublicFolderWorkflowResultResponse)
+@router.post("/pull/execute", response_model=PublicFolderWorkflowResultResponse, dependencies=[Depends(require_project_folder_write_slot)])
 def execute_pull(
     project_id: str,
     request: PublicFolderWorkflowExecuteRequest,
@@ -229,6 +256,8 @@ def _preview_route(callback) -> PublicFolderWorkflowPreviewResponse:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PublicFolderWorkflowError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 def _result_route(callback) -> PublicFolderWorkflowResultResponse:
@@ -240,6 +269,8 @@ def _result_route(callback) -> PublicFolderWorkflowResultResponse:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PublicFolderWorkflowError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 def _execute_command(request: PublicFolderWorkflowExecuteRequest) -> PublicFolderWorkflowExecuteCommand:

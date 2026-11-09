@@ -449,6 +449,27 @@ def _write(path: Path, content: bytes) -> Path:
     return path
 
 
+def test_basic_archive_skips_individual_target_conflict_and_missing_source(tmp_path):
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+    good = _write(tmp_path / "sources" / "good.pdf", b"good")
+    blocked = _write(tmp_path / "sources" / "blocked.pdf", b"blocked")
+    missing = tmp_path / "sources" / "missing.pdf"
+    service = _service(tmp_path, [
+        _asset("good", FileAssetType.ATTACHMENT, good, "good.pdf", role="supporting_attachment"),
+        _asset("blocked", FileAssetType.ATTACHMENT, blocked, "blocked.pdf", role="supporting_attachment"),
+        _asset("missing", FileAssetType.ATTACHMENT, missing, "missing.pdf", role="supporting_attachment"),
+    ])
+    folder = service._workspaces.get_by_project("P1").official_folder_path
+    (folder / "Submitted Material" / "blocked.pdf").mkdir()
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", None, "context")
+    issues = service.collect_available("P1", journal, state, lambda: None)
+    assert (folder / "Submitted Material" / "good.pdf").read_bytes() == b"good"
+    assert (folder / "Submitted Material" / "blocked.pdf").is_dir()
+    assert any("blocked.pdf" in message for message in issues)
+    assert any("missing.pdf" in message for message in issues)
+
+
 def _sha(label: str) -> str:
     return (label.encode().hex() * 64)[:64]
 

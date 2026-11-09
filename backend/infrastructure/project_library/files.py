@@ -710,10 +710,13 @@ class LibraryFiles:
         payload = read_json(path) if path.is_file() else {}
         if payload and payload.get("project_id") != workspace["project_id"]:
             raise ProjectLibraryConflict("The project manifest belongs to another project.")
+        if payload and payload.get("schema_version", 1) not in {1, 2}:
+            raise ProjectLibraryConflict("The project manifest version is unsupported.")
         official = checked_path(workspace["official_folder_path"])
         if not official.is_relative_to(root):
             raise ProjectLibraryConflict("The restored official folder is outside its project root.")
-        payload.update(schema_version=1, project_id=workspace["project_id"], dl_number=workspace["dl_number"],
+        kind = workspace.get("creation_kind", "template")
+        payload.update(schema_version=2 if kind == "basic" else 1, creation_kind=kind, project_id=workspace["project_id"], dl_number=workspace["dl_number"],
                        local_workspace_path=workspace["local_workspace_path"], source_book_path=workspace["source_book_path"],
                        official_project_folder_path=workspace["official_folder_path"], template_source_path=workspace["template_source_path"],
                        created_at=workspace["created_at"], official_folder_identity=identity(official))
@@ -726,6 +729,9 @@ class LibraryFiles:
             return
         journal = GenerationJournal(self.settings.data_dir / "project_folder_generation")
         with journal.lock(project_id):
+            basic = GenerationJournal(self.settings.data_dir / "basic_project_workspace").read(project_id)
+            if basic and basic.get("status") != "completed":
+                raise ProjectLibraryConflict("Finish the interrupted basic folder operation before changing its location.")
             state = journal.read(project_id)
             matching_restore = bool(state and restore_id and state.get("strategy") == "project_library_replace"
                                     and state.get("operation_id") == restore_id

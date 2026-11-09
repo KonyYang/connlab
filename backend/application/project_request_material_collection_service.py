@@ -244,6 +244,63 @@ class ProjectRequestMaterialCollectionService:
             for asset in best_by_path.values()
         ]
 
+    def collect_available(self, project_id, journal, state, verify_context):
+        """Best-effort basic archive; no existing target is ever replaced.
+
+        This deliberately leaves the strict generation collection API unchanged.
+        Source access and ordinary copy failures are local issues; identity and
+        redirected output failures still stop writes.
+        """
+        from backend.infrastructure.files.recoverable_output_publisher import (
+            file_hash, require_safe_output_path,
+        )
+        from backend.infrastructure.files.basic_project_workspace_publisher import BasicMaterialPublisher
+        workspace = self._workspaces.get_by_project(project_id)
+        if workspace is None:
+            raise ProjectRequestMaterialCollectionNotFoundError("Project folder association is missing.")
+        issues, candidates, seen = [], [], set()
+        for asset in sorted(self._assets.list_by_project(project_id), key=lambda item: role_priority(item.source_role)):
+            key = canonical_path(asset.path)
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                candidates.append(candidate_from_asset(asset, "path:" + key))
+            except OSError as exc:
+                issues.append(f"{asset.path.name}: source could not be read: {exc}")
+        emails = [item for item in candidates if is_request_email(item)]
+        forms = sorted((item for item in candidates if is_application_form(item)),
+                       key=lambda item: application_form_authority_priority(item.asset.asset_type, item.role))
+        if len(emails) > 1:
+            issues.append("Request email is ambiguous; email sources were skipped for manual review.")
+        form = forms[0] if forms else None
+        plans = self._plan_targets(workspace, emails if len(emails) == 1 else [], form,
+                                   [item for item in candidates if item not in emails and item not in forms])
+        publisher = BasicMaterialPublisher(journal, state, "materials", verify_context)
+        for plan in plans:
+            verify_context()
+            require_safe_output_path(plan.target_path)
+            item = plan.candidate
+            publication_key = item.dedupe_key + plan.target_area
+            try:
+                if not item.source_exists or file_hash(item.path) != item.sha256:
+                    issues.append(f"{item.name}: source is missing or changed; skipped.")
+                    continue
+                if plan.target_path.exists() and not plan.target_path.is_file():
+                    issues.append(f"{plan.target_path.name}: target is not a regular file; retained without replacement.")
+                    continue
+                existing = file_hash(plan.target_path)
+                if existing is not None:
+                    if existing != item.sha256:
+                        issues.append(f"{plan.target_path.name}: existing file differs; retained without replacement.")
+                    continue
+                publisher.publish_file(publication_key, item.path, plan.target_path, None)
+            except OSError as exc:
+                verify_context()
+                publisher.skip_failed_file(publication_key)
+                issues.append(f"{item.name}: archive failed; other materials continued: {exc}")
+        return issues
+
     def _plan_targets(
         self,
         workspace: OfficialWorkspaceRecord,

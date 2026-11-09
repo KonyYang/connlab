@@ -321,8 +321,9 @@ class OfficialFolderRelocationService:
                 **record_payload,
                 **{key: Path(record_payload[key]) for key in (
                     "local_workspace_path", "source_book_path", "official_folder_path",
-                    "manifest_path", "template_source_path",
+                    "manifest_path",
                 )},
+                "template_source_path": Path(record_payload["template_source_path"]) if record_payload.get("template_source_path") else None,
             })
         else:
             record = record_payload
@@ -341,11 +342,12 @@ class OfficialFolderRelocationService:
             old_folder_path=record.official_folder_path,
             expected_identity=effect["directory_identity"],
             manifest=OfficialWorkspaceManifest(
-                schema_version=1, project_id=record.project_id, dl_number=record.dl_number,
+                schema_version=2 if record.creation_kind == "basic" else 1, project_id=record.project_id, dl_number=record.dl_number,
                 local_workspace_path=str(record.local_workspace_path),
                 source_book_path=str(record.source_book_path),
                 official_project_folder_path=str(target),
-                template_source_path=str(record.template_source_path),
+                template_source_path=str(record.template_source_path) if record.template_source_path else None,
+                creation_kind=record.creation_kind,
                 created_at=record.created_at,
                 official_folder_identity=effect["directory_identity"],
                 retained_confirmed_folder_name=(
