@@ -561,15 +561,15 @@
         ],
         "activation_head": "db3c157468dd59ce2f5fcf14e5aece9733b18993",
         "started_at": "2026-11-09T14:31:29.780189Z",
-        "updated_at": "2026-11-09T15:22:17.749792Z",
+        "updated_at": "2026-11-09T15:28:58.109398Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
-          "stage": "implementation",
-          "requires_user": false,
           "version": 1,
-          "summary": "Independent Planner passed. Sole Developer implementing basic workspace, migrations, public bindings and frontend. First 3 isolated basic-service RED/GREEN cases passed; independent Reviewer provisional migration/interruption and directory-race findings are being fixed. QA prepared affected matrix and isolated filesystem/SQLite durability acceptance; final tests/review pending frozen commit. No real public/business mutations or publication.",
+          "task_id": "TASK_PROJECT_FOLDER_BASIC_PHASE1_20261109",
+          "stage": "review_revision",
           "status": "running",
-          "task_id": "TASK_PROJECT_FOLDER_BASIC_PHASE1_20261109"
+          "summary": "Backend and frontend merged at cd2ff75b; exact 54-file scope corrected. Independent final review found two staging P1 failures: pre-intent metadata errors can leave untracked stages, and material resume can ignore frozen effects when sources disappear. Developer is fixing durable preparation and source-independent effect recovery with RED/GREEN; other reviewed paths and legacy completion feedback pass. QA scripts prepared but final matrix not run. User stopped PyCharm frontend/backend; root verified no 5173/8000 listeners or old processes. No real business/database/public-drive mutations or publication. Next: fixed commit review, final isolated QA, independent Integrator and writer local integration; wait for user Close.",
+          "requires_user": false
         },
         "report": null
       }
