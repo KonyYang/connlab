@@ -37,15 +37,42 @@ from backend.infrastructure.storage.models import (
     ProjectModel,
 )
 from backend.infrastructure.official_workspace_manifest import stable_folder_identity
+from backend.infrastructure.storage.database import create_database_engine, init_db
 
 
 @pytest.fixture(autouse=True)
 def _isolated_generation_storage(tmp_path):
-    app.dependency_overrides[get_settings] = lambda: Settings(
+    settings = Settings(
         data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
         templates_dir=tmp_path / "templates", database_path=tmp_path / "fixture.sqlite")
-    yield
-    app.dependency_overrides.pop(get_settings, None)
+    engine = create_database_engine(settings)
+    try:
+        # The real read-only report recovery guard requires an existing schema,
+        # including when a route's workspace service is replaced by a contract fake.
+        init_db(engine)
+        app.dependency_overrides[get_settings] = lambda: settings
+        yield settings
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+        engine.dispose()
+
+
+def test_workspace_writer_still_refuses_missing_report_recovery_database(_isolated_generation_storage, tmp_path):
+    unavailable = replace(_isolated_generation_storage, database_path=tmp_path / "missing-report-state.sqlite")
+    app.dependency_overrides[get_settings] = lambda: unavailable
+    entered = []
+    def forbidden_writer():
+        entered.append(True)
+        raise AssertionError("Unavailable recovery state must reject before workspace construction")
+    app.dependency_overrides[get_official_project_workspace_service] = forbidden_writer
+    try:
+        response = TestClient(app).post("/api/projects/P1/official-workspace/create", json={})
+    finally:
+        app.dependency_overrides.pop(get_official_project_workspace_service, None)
+    assert response.status_code == 409
+    assert "recovery state cannot be read" in response.json()["detail"]
+    assert entered == []
+    assert not unavailable.database_path.exists()
 
 
 def test_real_workspace_preview_tracks_confirmations_not_basic_drafts(tmp_path):
