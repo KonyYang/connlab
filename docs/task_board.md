@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PROJECT_FOLDER_BASIC_PHASE1_20261109",
+    "task_id": "TASK_QA_TEMP_RETENTION_SAFE_20261110",
     "tier": "high_risk",
-    "subject": "461f7e7f54cc90bb89508e82d3ae4fed57ff8449",
-    "summary": "Separate basic project folder creation and preserve public folder identity",
+    "subject": "9c169b8a8863dac4e5446a0217cd587b565122a0",
+    "summary": "Manage isolated pytest artifacts on D with completed-run-only seven-day retention",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested final Close of the completed phase-one project-folder creation separation task after local integration and acceptance. Existing no-push/no-publication instruction remains in force: local close only, no publish-close flag. Preserve local commits, workspaces and acceptance evidence; no real business/public-drive mutations.",
-    "closed_at": "2026-11-09T23:32:38.617342Z"
+    "decision_ref": "User confirmed final Close after local integration. Preserve all local commits and acceptance evidence; existing no-push/no-publication restriction remains in force. The User explicitly approved same-context self-review, automated tests and isolated acceptance instead of independent checks. Close locally only; --publish-close intentionally omitted. No real legacy cleanup or business-file operations.",
+    "closed_at": "2026-11-09T23:59:43.167424Z"
   },
   "retained_history": [
     {
@@ -489,125 +489,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly authorized closing the completed LTR Information task locally before starting phase-one folder separation implementation. Preserve commits and evidence; no push or publication.",
       "closed_at": "2026-11-09T14:27:46.097903Z"
+    },
+    {
+      "task_id": "TASK_PROJECT_FOLDER_BASIC_PHASE1_20261109",
+      "tier": "high_risk",
+      "subject": "461f7e7f54cc90bb89508e82d3ae4fed57ff8449",
+      "summary": "Separate basic project folder creation and preserve public folder identity",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested final Close of the completed phase-one project-folder creation separation task after local integration and acceptance. Existing no-push/no-publication instruction remains in force: local close only, no publish-close flag. Preserve local commits, workspaces and acceptance evidence; no real business/public-drive mutations.",
+      "closed_at": "2026-11-09T23:32:38.617342Z"
     }
   ],
-  "tasks": {
-    "TASK_QA_TEMP_RETENTION_SAFE_20261110": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
-      "branch": "codex/qa-temp-retention-safe-20261110",
-      "resources": [],
-      "integrated_head": "61a5694311de04d2dded4fc72c2c0a664306e2d3",
-      "task": {
-        "task_id": "TASK_QA_TEMP_RETENTION_SAFE_20261110",
-        "summary": "Manage isolated pytest artifacts on D with completed-run-only seven-day retention",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Repair a3999f4f without importing its unsafe sweep. Unique managed pytest scratch, active locks, finished-run retention, safe path checks, nonfatal diagnostics, isolated deletion acceptance. No legacy or business cleanup, publication, or task Close. Independent-context gate remains pending because side conversation forbids subagents.",
-        "scope_paths": [
-          "conftest.py",
-          "scripts/pytest_artifacts.py",
-          "scripts/clean_tmp.py",
-          "scripts/run_tests.ps1",
-          "tests/unit/test_pytest_artifacts.py",
-          "tests/integration/test_pytest_artifact_lifecycle.py",
-          "docs/operational/pytest_artifact_management.md"
-        ],
-        "risk_reasons": [
-          "Automatic deletion is restricted to positively identified disposable completed test runs; require explicit retention and path/lease boundaries."
-        ],
-        "activation_head": "ae906e7cb2f74388949e0006456cac44fbc978f6",
-        "started_at": "2026-11-09T23:36:03.179382Z",
-        "updated_at": "2026-11-09T23:57:45.945308Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_QA_TEMP_RETENTION_SAFE_20261110",
-          "stage": "independent_review_pending",
-          "status": "blocked",
-          "summary": "Implemented and committed 9c169b8a8863dac4e5446a0217cd587b565122a0 on codex/qa-temp-retention-safe-20261110. Exact six-file snapshot verified unchanged after 45 passed/1 Windows-symlink-privilege skip. Real concurrent pytest, lease/junction/open-file retry and isolated CLI deletion passed. Current-context Standards/Spec safety self-review has no open blocking findings; it is NOT independent. Evidence: D:/PythonProject/connlab/tmp/qa-retention-acceptance-20261110 (final-affected.log, reviewed.patch, reviewed-byte-hashes.json, safety-self-review.md). No real legacy cleanup/business data/push/publication or integration. High-risk independent role checks unavailable because this side conversation forbids subagents; need permitted independent-context handoff or explicit User-approved same-context alternative before local integration. Keep task open.",
-          "requires_user": true
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_QA_TEMP_RETENTION_SAFE_20261110",
-          "subject": "9c169b8a8863dac4e5446a0217cd587b565122a0",
-          "summary": "Default D-drive pytest scratch with unique managed runs and completed-only seven-day retention. User explicitly approved on 2026-11-10: completed self-review, automated tests and isolated acceptance replace independent checks for this task; continue local integration only. No independent agents were used; no push, publication or task Close authorized.",
-          "scope_ok": true,
-          "changed_paths": [
-            "conftest.py",
-            "docs/operational/pytest_artifact_management.md",
-            "scripts/clean_tmp.py",
-            "scripts/pytest_artifacts.py",
-            "tests/integration/test_pytest_artifact_lifecycle.py",
-            "tests/unit/test_pytest_artifacts.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Final affected pytest matrix",
-              "result": "45 passed, 1 skipped (Windows symlink privilege WinError 1314); junction, file-lock and locked-payload retry passed.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\qa-retention-acceptance-20261110\\final-affected.log"
-            },
-            {
-              "status": "passed",
-              "name": "Exact snapshot and local integration preflight",
-              "result": "Six file hashes match final tested state; AST and diff-check pass; main/task trees clean; primary drift only docs/task_board.md.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\qa-retention-acceptance-20261110\\reviewed-byte-hashes.json"
-            },
-            {
-              "status": "passed",
-              "name": "Sequential safety self-review with User-approved alternative",
-              "result": "Standards 0 open blocking findings; Spec 0 open blocking findings. This is not independent review.",
-              "evidence": "D:\\PythonProject\\connlab\\tmp\\qa-retention-acceptance-20261110\\safety-self-review.md"
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "method": "Current-context implementation plan and bounded six-file design; no independent Planner.",
-              "independent": false,
-              "user_approved_alternative": "User explicitly approved on 2026-11-10: completed self-review, automated tests and isolated acceptance replace independent checks for this task; continue local integration only. No independent agents were used; no push, publication or task Close authorized."
-            },
-            "developer": {
-              "status": "passed",
-              "method": "Implemented managed runs, OS leases, atomic markers, completed-only retention and CLI; preserved original WIP.",
-              "independent": false,
-              "user_approved_alternative": "User explicitly approved on 2026-11-10: completed self-review, automated tests and isolated acceptance replace independent checks for this task; continue local integration only. No independent agents were used; no push, publication or task Close authorized."
-            },
-            "reviewer": {
-              "status": "passed",
-              "method": "Sequential Standards/Spec safety self-review, with regression fixes for metadata retention, changed identity and concurrent root initialization; no independent Reviewer.",
-              "independent": false,
-              "user_approved_alternative": "User explicitly approved on 2026-11-10: completed self-review, automated tests and isolated acceptance replace independent checks for this task; continue local integration only. No independent agents were used; no push, publication or task Close authorized."
-            },
-            "qa": {
-              "status": "passed",
-              "method": "Current-context final affected matrix: 45 passed, 1 symlink privilege skip; real concurrent pytest, Windows junction/lease/locked-file and isolated CLI deletion exercised; no independent QA.",
-              "independent": false,
-              "user_approved_alternative": "User explicitly approved on 2026-11-10: completed self-review, automated tests and isolated acceptance replace independent checks for this task; continue local integration only. No independent agents were used; no push, publication or task Close authorized."
-            },
-            "integrator": {
-              "status": "passed",
-              "method": "Current-context preflight confirms exact reviewed/tested byte hashes, clean trees, exact scope and primary board-only drift. The sole writer verifies and performs actual local merge.",
-              "independent": false,
-              "user_approved_alternative": "User explicitly approved on 2026-11-10: completed self-review, automated tests and isolated acceptance replace independent checks for this task; continue local integration only. No independent agents were used; no push, publication or task Close authorized."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "9c169b8a8863dac4e5446a0217cd587b565122a0",
-            "primary_before": "f8a4a887b80b0292053affed661d90a87dd5d29e",
-            "integrated_head": "61a5694311de04d2dded4fc72c2c0a664306e2d3",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
