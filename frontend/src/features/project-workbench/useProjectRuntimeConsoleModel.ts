@@ -5,6 +5,9 @@ import {
 
 export type ProjectRuntimeConsoleModel = Pick<
   ProjectWorkbenchModel,
+  | "onResumeLegacyWorkspace"
+  | "basicWorkspace"
+  | "publicFolderBinding"
   | "baselineItems"
   | "error"
   | "folderReady"
@@ -112,6 +115,9 @@ export function selectProjectRuntimeConsoleModel(
   model: ProjectWorkbenchModel
 ): ProjectRuntimeConsoleModel {
   return {
+    onResumeLegacyWorkspace: model.onResumeLegacyWorkspace,
+    basicWorkspace: model.basicWorkspace,
+    publicFolderBinding: model.publicFolderBinding,
     baselineItems: model.baselineItems,
     error: model.error,
     folderReady: model.folderReady,

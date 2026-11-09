@@ -17,6 +17,11 @@ const MockApiRequestError = vi.hoisted(
 );
 
 const apiMocks = vi.hoisted(() => ({
+  previewBasicProjectWorkspace: vi.fn(),
+  createBasicProjectWorkspace: vi.fn(),
+  resumeBasicProjectWorkspace: vi.fn(),
+  previewPublicProjectFolderBinding: vi.fn(),
+  confirmPublicProjectFolderBinding: vi.fn(),
   getProjectFolderGeneration: vi.fn(),
   previewProjectFolderGeneration: vi.fn(),
   startProjectFolderGeneration: vi.fn(),
@@ -85,6 +90,9 @@ vi.mock("../../api/client", () => ({
 describe("useProjectWorkbenchModel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.createBasicProjectWorkspace.mockResolvedValue({operation_id:"basic-op",status:"completed",directory_available:true,official_project_folder_path:"D:/isolated/project",issues:[],message:null});
+    apiMocks.previewBasicProjectWorkspace.mockResolvedValue({project_id:"project-1", status:"ready", directory_available:false, official_project_folder_path:"D:/isolated/project", target_identity:null, blockers:[], operation_id:null, expected_context:"basic"});
+    apiMocks.previewPublicProjectFolderBinding.mockResolvedValue({project_id:"project-1", status:"bound", expected_context:"binding", public_folder_year:2026, full_ltr_number:"DL-2026-01-001", current_path:"D:/isolated/public", proposed_path:null, candidates:[], can_create:false, blockers:[]});
     apiMocks.getProjectFolderGeneration.mockResolvedValue(null);
     apiMocks.previewProjectFolderGeneration.mockImplementation(async () => ({ expected_context: "preview",
       workspace_preview: { ...await apiMocks.fetchOfficialWorkspacePreview(), generation_context: "preview" },
@@ -301,6 +309,56 @@ describe("useProjectWorkbenchModel", () => {
     });
   });
 
+  it("cancels public folder selection without binding or syncing", async () => {
+    apiMocks.previewPublicProjectFolderBinding.mockResolvedValue({project_id:"project-1",status:"review_required",expected_context:"new",candidates:[],can_create:true,proposed_path:"D:/isolated/new",blockers:[]});
+    const {result}=renderHook(() => useProjectWorkbenchModel("project-1"));await waitFor(() => expect(result.current.project).toBeTruthy());
+    await act(() => result.current.onPreviewPublicFolderWorkflowOperation("sync"));
+    act(() => result.current.publicFolderBinding!.onCancel());
+    expect(result.current.publicFolderBinding?.preview).toBeNull();expect(apiMocks.confirmPublicProjectFolderBinding).not.toHaveBeenCalled();expect(apiMocks.previewPublicFolderWorkflowSync).not.toHaveBeenCalled();
+  });
+  it("blocks inaccessible public discovery instead of offering a new folder", async () => {
+    apiMocks.previewPublicProjectFolderBinding.mockResolvedValue({project_id:"project-1",status:"blocked",expected_context:"blocked",candidates:[],can_create:false,blockers:["Cannot access D:/isolated/public/2026"]});
+    const {result}=renderHook(() => useProjectWorkbenchModel("project-1"));await waitFor(() => expect(result.current.project).toBeTruthy());
+    await act(() => result.current.onPreviewPublicFolderWorkflowOperation("sync"));
+    expect(result.current.publicFolderBinding?.preview).toBeNull();expect(result.current.publicFolderWorkflowError).toContain("Cannot access");expect(apiMocks.previewPublicFolderWorkflowSync).not.toHaveBeenCalled();
+  });
+  it("ignores late public binding discovery after switching projects", async () => {
+    let resolve!: (value: unknown) => void;apiMocks.previewPublicProjectFolderBinding.mockReturnValueOnce(new Promise(r => {resolve=r;}));
+    const {result,rerender}=renderHook(({id}) => useProjectWorkbenchModel(id),{initialProps:{id:"project-1"}});await waitFor(() => expect(result.current.project).toBeTruthy());
+    let pending!:Promise<void>;act(() => {pending=result.current.onPreviewPublicFolderWorkflowOperation("sync");});
+    apiMocks.getProject.mockResolvedValue({project_id:"project-2",product_name:"Second",requestor:"Lab",status:"active"});rerender({id:"project-2"});await waitFor(() => expect(result.current.project?.project_id).toBe("project-2"));
+    await act(async () => {resolve({project_id:"project-1",status:"review_required",expected_context:"old",candidates:[],can_create:true,blockers:[]});await pending;});
+    expect(result.current.publicFolderBinding?.preview).toBeNull();expect(apiMocks.previewPublicFolderWorkflowSync).not.toHaveBeenCalled();
+  });
+  it("does not continue sync after an old project's binding confirmation returns", async () => {
+    const binding={project_id:"project-1",status:"review_required",expected_context:"review",candidates:[{candidate_id:"one",path:"D:/isolated/one"}],can_create:false,blockers:[]};
+    apiMocks.previewPublicProjectFolderBinding.mockResolvedValue(binding);let resolve!:(value:unknown)=>void;apiMocks.confirmPublicProjectFolderBinding.mockReturnValueOnce(new Promise(r=>{resolve=r;}));
+    const {result,rerender}=renderHook(({id}) => useProjectWorkbenchModel(id),{initialProps:{id:"project-1"}});await waitFor(() => expect(result.current.project).toBeTruthy());
+    await act(() => result.current.onPreviewPublicFolderWorkflowOperation("sync"));let pending!:Promise<void>;act(()=>{pending=result.current.publicFolderBinding!.onConfirm("one");});
+    apiMocks.getProject.mockResolvedValue({project_id:"project-2",product_name:"Second",requestor:"Lab",status:"active"});rerender({id:"project-2"});await waitFor(() => expect(result.current.project?.project_id).toBe("project-2"));
+    await act(async()=>{resolve({...binding,status:"bound"});await pending;});expect(result.current.publicFolderBinding?.preview).toBeNull();expect(apiMocks.previewPublicFolderWorkflowSync).not.toHaveBeenCalled();
+  });
+  it("requires explicit confirmation even for one public folder candidate before sync preview", async () => {
+    const binding = {project_id:"project-1", status:"review_required", expected_context:"reviewed", public_folder_year:2026, full_ltr_number:"DL-2026-01-001", current_path:null, proposed_path:null, candidates:[{candidate_id:"candidate",path:"D:/isolated/public/old description"}],can_create:false,blockers:[]};
+    apiMocks.previewPublicProjectFolderBinding.mockResolvedValue(binding);
+    apiMocks.confirmPublicProjectFolderBinding.mockResolvedValue({...binding,status:"bound"});
+    const {result} = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(result.current.project).toBeTruthy());
+    await act(() => result.current.onPreviewPublicFolderWorkflowOperation("sync"));
+    expect(apiMocks.previewPublicFolderWorkflowSync).not.toHaveBeenCalled();
+    expect(result.current.publicFolderBinding?.preview?.status).toBe("review_required");
+    await act(() => result.current.publicFolderBinding!.onConfirm("candidate"));
+    expect(apiMocks.confirmPublicProjectFolderBinding).toHaveBeenCalledWith("project-1",{expected_context:"reviewed",candidate_id:"candidate"});
+    expect(apiMocks.previewPublicFolderWorkflowSync).toHaveBeenCalledTimes(1);
+  });
+  it("does not silently turn on auto sync before public binding is confirmed", async () => {
+    apiMocks.previewPublicProjectFolderBinding.mockResolvedValue({project_id:"project-1",status:"review_required",expected_context:"new",candidates:[],can_create:true,proposed_path:"D:/isolated/new",blockers:[]});
+    const {result} = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(result.current.project).toBeTruthy());
+    await act(() => result.current.onSetPublicFolderWorkflowAutoSync(true));
+    expect(apiMocks.setPublicFolderWorkflowAutoSync).not.toHaveBeenCalled();
+    expect(result.current.publicFolderBinding?.preview?.status).toBe("review_required");
+  });
   it("loads and saves backend-owned public folder Auto sync state", async () => {
     const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
 
@@ -383,6 +441,7 @@ describe("useProjectWorkbenchModel", () => {
     await waitFor(() => expect(result.current.project?.project_id).toBe("project-1"));
     let pending!: Promise<void>;
     act(() => { pending = result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    await waitFor(() => expect(apiMocks.previewPublicFolderWorkflowSync).toHaveBeenCalled());
     apiMocks.getProject.mockResolvedValue({ project_id: "project-2", product_name: "Second", requestor: "Lab", status: "active" });
     rerender({ id: "project-2" });
     await waitFor(() => expect(result.current.project?.project_id).toBe("project-2"));
@@ -457,7 +516,7 @@ describe("useProjectWorkbenchModel", () => {
     );
 
     await act(async () => {
-      await result.current.onCreateOfficialWorkspace();
+      await result.current.basicWorkspace!.create();
     });
 
     expect(apiMocks.getPublicFolderWorkflowContext).toHaveBeenCalledTimes(2);
@@ -493,6 +552,7 @@ describe("useProjectWorkbenchModel", () => {
       completed_steps: ["workspace", "materials", "check"], message: "Confirm Basic Information.",
     });
     const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await act(async () => { await result.current.onRefreshOfficialWorkspacePreview(); });
     await waitFor(() => expect(result.current.officialWorkspacePreview?.generation_context).toBeTruthy());
     await act(async () => { await result.current.onCreateOfficialWorkspace(); });
     expect(result.current.officialWorkspaceError).toBe("Confirm Basic Information.");
@@ -506,6 +566,7 @@ describe("useProjectWorkbenchModel", () => {
 
   it("clears an old preview error when the fresh check finds a completed folder", async () => {
     const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await act(async () => { await result.current.onRefreshOfficialWorkspacePreview(); });
     await waitFor(() => expect(result.current.officialWorkspacePreview?.generation_context).toBeTruthy());
     apiMocks.previewProjectFolderGeneration.mockRejectedValueOnce(new Error("Old storage error"));
     await act(async () => { await result.current.onRefreshOfficialWorkspacePreview(); });

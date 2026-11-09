@@ -4,20 +4,16 @@ import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsConte
 import {
   deleteTemporaryProject,
   openPublicProjectFolder,
-  type OfficialWorkspaceConflictStrategy,
   previewTemporaryProjectDelete,
   type PublicFolderWorkflowOperationType,
   type ProjectCloseReasonCategory,
   type Project,
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
+import { ProjectManagementDialog } from "../projects-registry/ProjectRegistryManagementDialog";
+import { ProjectPublicFolderBindingDialog } from "./ProjectPublicFolderBindingDialog";
 import { UiIcon } from "../../components/common/UiIcon";
-import type {
-  FolderUpdateReview,
-  ProjectFolderUpdateAction,
-} from "./useProjectFolderGeneration";
 import {
-  deriveActiveMatrixFolderCommand,
   ProjectWorkbenchActiveMatrixWorkspace,
 } from "./ProjectWorkbenchActiveMatrixWorkspace";
 import {
@@ -27,7 +23,6 @@ import {
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import {
   deriveProjectFolderTasks,
-  selectProjectFolderOneClickBlocker,
   type ProjectFolderTaskActionTarget,
 } from "./projectFolderTaskSelectors";
 import {
@@ -74,14 +69,15 @@ export function ProjectWorkbenchLayout({
     useState<TemporaryProjectDeletePreview | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [showBasicFolderReview, setShowBasicFolderReview] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [publicFolderOpenError, setPublicFolderOpenError] = useState<string | null>(null);
-  const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
-  const [folderUpdateReview, setFolderUpdateReview] = useState<FolderUpdateReview | null>(null);
   const [recoveryPreviewCheckedProject, setRecoveryPreviewCheckedProject] = useState<string | null>(null);
   const topBarActionsRoot = useTopBarActionsRoot();
 
   const {
+    basicWorkspace,
+    publicFolderBinding,
     activeConfirmedMatrixSnapshot,
     folderReady,
     folderResources,
@@ -96,8 +92,6 @@ export function ProjectWorkbenchLayout({
     onRefreshOfficialWorkspacePreview,
     officialWorkspaceProgressLabel,
     officialWorkspaceError,
-    officialWorkspaceIssues,
-    onUpdateOfficialWorkspace,
     officialFolderCheckPreview,
     officialFolderCheckError,
     onRefreshOfficialFolderCheck,
@@ -164,7 +158,7 @@ export function ProjectWorkbenchLayout({
   const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(runtimeModel.lifecycle);
   const activeMatrixAuthorityReady = Boolean(activeConfirmedMatrixSnapshot);
   const effectiveFolderReady =
-    folderReady || officialWorkspacePreview?.status === "completed";
+    basicWorkspace?.directoryAvailable ?? folderReady;
   const titleParts = [buildProjectIdentityLine({ project, latestLtr, projectId: project.project_id })];
   const lifecycle = deriveProjectWorkbenchLifecycle(
     {
@@ -242,51 +236,13 @@ export function ProjectWorkbenchLayout({
     lifecycle: runtimeModel.lifecycle,
     lifecycleReadonlyView,
   });
-  const activeMatrixFolderCommand = deriveActiveMatrixFolderCommand({
-    activeMatrixAuthorityReady,
-    confirmedFeeLatest,
-    creatingFolder: officialWorkspaceCreating,
-    projectFolderBlocker:
-      officialWorkspacePreview?.blockers?.find((blocker) =>
-        blocker.includes("Basic Information")
-      ) ?? selectProjectFolderOneClickBlocker(projectFolderWorkflowTasks, effectiveFolderReady),
-  });
-  const visibleActiveMatrixFolderCommand = lifecycleReadonlyView.readonly
-    ? {
-        ...activeMatrixFolderCommand,
-        disabled: true,
-        disabledReason: lifecycleReadonlyView.message,
-      }
-    : activeMatrixFolderCommand;
   const feeEvaluationButtonState = deriveFeeEvaluationButtonState(confirmedFeeLatest);
-  const officialWorkspaceConflictPaths =
-    deriveOfficialWorkspaceConflictPaths(officialWorkspacePreview);
-  const basicInformationGenerationGuidance = deriveBasicInformationGenerationGuidance(
-    officialWorkspaceError,
-    runtimeModel.basicInformation
-  );
-  const isBasicInformationGenerationBlocker = Boolean(
-    basicInformationGenerationGuidance
-  );
-  // A persisted failure is history until the initial recovery preview has settled.
-  // Derive the initial pending state during render so no error paints before the effect runs.
-  const checkingRecoveryPreview = Boolean(
-    officialWorkspaceCanRestart && recoveryPreviewCheckedProject !== project.project_id
-  );
-  const workspaceStatus = officialWorkspacePreview?.status ?? "ready";
-  const initialWorkspaceResourceBlocker =
-    workspaceStatus === "blocked"
-      ? officialWorkspacePreview?.blockers.find(isSettingsTemplateResourceBlocker) ?? null
-      : null;
-  const displayedOfficialWorkspaceError =
-    basicInformationGenerationGuidance
-    ?? officialWorkspaceError
-    ?? initialWorkspaceResourceBlocker;
+  const legacyRecovery = Boolean(runtimeModel.officialWorkspaceCanResume);
+  const checkingRecoveryPreview = Boolean(legacyRecovery && officialWorkspaceCanRestart && recoveryPreviewCheckedProject !== project.project_id);
+  const displayedOfficialWorkspaceError = basicWorkspace?.error
+    ?? (!lifecycleReadonlyView.readonly && basicWorkspace?.preview?.status === "blocked" ? basicWorkspace.preview.blockers.join("\n") : null)
+    ?? (legacyRecovery ? officialWorkspaceError : null);
   const folderAlert = deriveProjectFolderAlert(displayedOfficialWorkspaceError ?? "");
-  const isSettingsTemplateGenerationBlocker = Boolean(
-    displayedOfficialWorkspaceError
-    && isSettingsTemplateResourceBlocker(displayedOfficialWorkspaceError)
-  );
   const hasMatrixDraftForPlanning =
     activeMatrixAuthorityReady || Boolean(matrixCandidateDraft ?? matrixDraft);
   const visibleFeeEvaluationButtonState =
@@ -306,36 +262,17 @@ export function ProjectWorkbenchLayout({
           ...feeEvaluationButtonState,
           disabled: false,
         };
-  const visibleWorkbenchFolderCommand = isActiveMatrixWorkspace && Boolean(projectNumber)
-    ? visibleActiveMatrixFolderCommand
-    : {
-        disabled: true,
-        disabledReason: !projectNumber
-          ? "LTR registration is required before project folder outputs can be prepared."
-          : "Active Matrix authority is required before project folder outputs can be prepared.",
-      };
   const projectFolderTasks = projectFolderWorkflowTasks;
+  const basicBlocked = basicWorkspace?.preview?.status === "blocked";
   const projectFolderHeaderAction = {
-    label:
-      workspaceStatus === "adoptable"
-        ? "Link existing folder"
-        : "Create folder",
-    disabled:
-      checkingRecoveryPreview
-      || officialWorkspaceCreating
-      || lifecycleReadonlyView.readonly
-      || Boolean(initialWorkspaceResourceBlocker)
-      || (["ready", "blocked"].includes(workspaceStatus) && visibleWorkbenchFolderCommand.disabled),
-    title: checkingRecoveryPreview
-      ? "Checking project folder generation status..."
-      : initialWorkspaceResourceBlocker ?? visibleWorkbenchFolderCommand.disabledReason,
-    onClick: () => {
-      if (workspaceStatus === "adoptable") {
-        void performFolderUpdate("adopt_existing");
-      } else {
-        handleProjectFolderCreateClick();
-      }
-    },
+    label: legacyRecovery ? "Resume folder operation" : "Create folder",
+    disabled: lifecycleReadonlyView.readonly || officialWorkspaceCreating || checkingRecoveryPreview
+      || Boolean(basicWorkspace?.busy || basicWorkspace?.loading)
+      || (!legacyRecovery && (!projectNumber || !basicWorkspace?.preview || basicBlocked)),
+    title: lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message
+      : !projectNumber ? "LTR registration is required before creating a project folder."
+      : basicBlocked ? basicWorkspace?.preview?.blockers.join("\n") : undefined,
+    onClick: handleProjectFolderCreateClick,
   };
 
   useEffect(() => {
@@ -430,9 +367,12 @@ export function ProjectWorkbenchLayout({
     }
     if (actionTarget === "public_project_folder_open") {
       setPublicFolderOpenError(null);
-      void openPublicProjectFolder(project.project_id).then((result) => {
+      const targetProjectId = project.project_id;
+      void openPublicProjectFolder(targetProjectId).then((result) => {
+        if (currentFolderProject.current !== targetProjectId) return;
         if (result.status !== "opened") setPublicFolderOpenError(result.message);
       }).catch((error: unknown) => {
+        if (currentFolderProject.current !== targetProjectId) return;
         setPublicFolderOpenError(error instanceof Error ? error.message : "Could not open the public folder.");
       });
       return;
@@ -491,43 +431,22 @@ export function ProjectWorkbenchLayout({
       setLifecycleError(lifecycleReadonlyView.message);
       return;
     }
-    if (["completed", "conflict", "exists", "inconsistent"].includes(workspaceStatus)) {
-      void performFolderUpdate("backup_and_recreate");
+    if (legacyRecovery) {
+      void runtimeModel.onResumeLegacyWorkspace?.();
+    } else if (basicWorkspace?.preview?.status === "review_required") {
+      setShowBasicFolderReview(true);
     } else {
-      void performFolderUpdate();
+      void basicWorkspace?.create();
     }
   }
 
   const currentFolderProject = useRef(project.project_id);
   currentFolderProject.current = project.project_id;
   useEffect(() => {
-    setShowFolderConflictDialog(false);
-    setFolderUpdateReview(null);
+    setShowBasicFolderReview(false);
+    setPublicFolderOpenError(null);
     setShowRegistration(false);
   }, [project.project_id]);
-
-  async function performFolderUpdate(strategy?: ProjectFolderUpdateAction, reviewed?: FolderUpdateReview, resumeRebuild = false): Promise<void> {
-    if (lifecycleReadonlyView.readonly) {
-      setLifecycleError(lifecycleReadonlyView.message);
-      return;
-    }
-    const result = await onUpdateOfficialWorkspace(strategy, reviewed, resumeRebuild);
-    if (currentFolderProject.current !== project.project_id) return;
-    if (result) {
-      setFolderUpdateReview(result);
-      setShowFolderConflictDialog(true);
-    }
-  }
-
-  function handleProjectFolderConflictChoice(
-    strategy: OfficialWorkspaceConflictStrategy
-  ): void {
-    setShowFolderConflictDialog(false);
-    if (folderUpdateReview) {
-      void performFolderUpdate(strategy, folderUpdateReview);
-      return;
-    }
-  }
 
   const runtimeConsoleTopbar = (
     <div className="runtime-console-topbar">
@@ -583,7 +502,7 @@ export function ProjectWorkbenchLayout({
         onClose={() => setShowRegistration(false)} onRegistered={async () => {
           await runtimeModel.onRefreshLifecycle(true);
           setShowRegistration(false);
-          void onRefreshOfficialWorkspacePreview();
+          void basicWorkspace?.refresh();
         }} /> : null}
       {topBarActionsRoot ? createPortal(runtimeConsoleTopbar, topBarActionsRoot) : runtimeConsoleTopbar}
 
@@ -600,30 +519,25 @@ export function ProjectWorkbenchLayout({
           <strong>Project folder workflow</strong>
           <span>{folderAlert.guidance}</span>
           {folderAlert.diagnostic ? <details><summary>Diagnostic details</summary><span>{folderAlert.diagnostic}</span></details> : null}
-          {isBasicInformationGenerationBlocker &&
-          runtimeModel.basicInformation?.status !== "confirmed" ? (
-            <button type="button" onClick={onOpenBasicInformation}>
-              Open Basic Information
-            </button>
-          ) : null}
-          {!isBasicInformationGenerationBlocker && isSettingsTemplateGenerationBlocker ? (
-            <button type="button" onClick={onOpenSettings}>
-              Open Settings
-            </button>
-          ) : null}
           <span>After resolving the issue, use the project folder action in Folder Actions.</span>
         </div>
-      ) : officialWorkspaceIssues?.length ? (
-        <div className="runtime-console-workflow-alert is-danger" role="alert">
-          <strong>Project folder created; some files were not generated.</strong>
-          <ul>
-            {officialWorkspaceIssues.map((issue, index) => (
-              <li key={`${issue.key}-${index}`}><strong>{issue.label}:</strong> {issue.message}</li>
-            ))}
-          </ul>
-          <span>Other files have been kept. Add the missing files manually, or resolve these issues and use Create folder again.</span>
-        </div>
       ) : null}
+
+      {basicWorkspace?.directoryAvailable && basicWorkspace.result?.issues.length ? <div className="runtime-console-workflow-alert is-danger" role="alert">
+        <strong>Project folder is available; some materials could not be archived.</strong>
+        <ul>{basicWorkspace.result.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>
+      </div> : null}
+      {showBasicFolderReview && basicWorkspace?.preview?.project_id === project.project_id && basicWorkspace.preview.status === "review_required" ? <ProjectManagementDialog title="Use existing project folder" busy={basicWorkspace.busy} onCancel={() => setShowBasicFolderReview(false)}>
+        <p className="project-basic-folder-path">{basicWorkspace.folderPath}</p>
+        <p>Confirm this is this project's folder. Existing files will be kept.</p>
+        <div className="project-management-dialog-actions">
+          <button className="secondary-action ui-secondary-action" type="button" disabled={basicWorkspace.busy} onClick={() => setShowBasicFolderReview(false)}>Cancel</button>
+          <button className="primary-action ui-primary-action" type="button" disabled={basicWorkspace.busy} onClick={() => { setShowBasicFolderReview(false); void basicWorkspace.create(true); }}>Use this folder</button>
+        </div>
+      </ProjectManagementDialog> : null}
+      {publicFolderBinding?.preview ? <ProjectPublicFolderBindingDialog key={`${project.project_id}:${publicFolderBinding.preview.expected_context}`}
+        preview={publicFolderBinding.preview} busy={publicFolderBinding.busy} error={publicFolderBinding.error}
+        onConfirm={publicFolderBinding.onConfirm} onCancel={publicFolderBinding.onCancel} /> : null}
 
       <section
         className={`runtime-console-shell-primary workspace-${shellModel.primaryWorkspace}`}
@@ -729,16 +643,6 @@ export function ProjectWorkbenchLayout({
         )}
       </section>
 
-      {showFolderConflictDialog ? (
-        <ProjectFolderConflictDialog
-          resumeRebuild={folderUpdateReview?.resumeRebuild ?? false}
-          onResumeRebuild={() => { setShowFolderConflictDialog(false); if (folderUpdateReview) void performFolderUpdate(undefined, folderUpdateReview, true); }}
-          conflictPaths={folderUpdateReview ? deriveOfficialWorkspaceConflictPaths(folderUpdateReview.preview.workspace_preview) : officialWorkspaceConflictPaths}
-          newFolderPath={folderUpdateReview?.preview.workspace_preview.official_project_folder_path ?? null}
-          onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
-          onCancel={() => setShowFolderConflictDialog(false)}
-        />
-      ) : null}
       {officialWorkspaceCreating ? (
         <ProjectFolderProgressDialog currentStep={officialWorkspaceProgressLabel} />
       ) : null}
@@ -795,49 +699,6 @@ function deriveBasicInformationShellStatus(
   return "unknown";
 }
 
-function deriveBasicInformationGenerationGuidance(
-  workflowError: string | null,
-  basicInformation: ProjectRuntimeConsoleModel["basicInformation"]
-): string | null {
-  if (!workflowError?.includes("Basic Information") || !basicInformation) {
-    return null;
-  }
-  if (basicInformation.missing_required_labels.length > 0) {
-    return `Basic Information is incomplete. Complete these required fields before generating Project Folder outputs: ${basicInformation.missing_required_labels.join(", ")}.`;
-  }
-  if (basicInformation.status === "needs_review") {
-    return "Basic Information source data changed after confirmation. Review and confirm the current Basic Information before generating Project Folder outputs.";
-  }
-  if (basicInformation.status === "unconfirmed") {
-    return "Basic Information is complete but not confirmed. Open Basic Information and click Confirm before generating Project Folder outputs.";
-  }
-  return "Basic Information is now confirmed. Refresh the generation preview and start a new generation.";
-}
-
-function isSettingsTemplateResourceBlocker(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("template")
-    || normalized.includes("save location")
-    || normalized.includes("settings")
-  );
-}
-
-function deriveOfficialWorkspaceConflictPaths(
-  preview: ProjectRuntimeConsoleModel["officialWorkspacePreview"]
-): string[] {
-  if (!preview) {
-    return [];
-  }
-  if (preview.conflict_paths?.length) {
-    return preview.conflict_paths;
-  }
-  if (preview.status === "completed" && preview.official_project_folder_path) {
-    return [preview.official_project_folder_path];
-  }
-  return [];
-}
-
 function deriveFeeEvaluationButtonState(
   confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"]
 ): {
@@ -852,60 +713,6 @@ function deriveFeeEvaluationButtonState(
     className: "is-review-required",
     title: `${reviewCount} Fee Evaluation row${reviewCount === 1 ? "" : "s"} need pricing review.`,
   };
-}
-
-function ProjectFolderConflictDialog({
-  resumeRebuild,
-  onResumeRebuild,
-  conflictPaths,
-  newFolderPath,
-  onBackup,
-  onCancel,
-}: {
-  resumeRebuild: boolean;
-  onResumeRebuild: () => void;
-  conflictPaths: string[];
-  newFolderPath: string | null;
-  onBackup: () => void;
-  onCancel: () => void;
-}): ReactElement {
-  const visiblePath = conflictPaths[0] ?? "Existing project folder";
-  const extraPathCount = Math.max(conflictPaths.length - 1, 0);
-  return (
-    <div className="runtime-console-modal-backdrop">
-      <section
-        aria-label="Project folder already exists"
-        aria-modal="true"
-        className="runtime-console-conflict-dialog"
-        role="dialog"
-      >
-        <div className="runtime-console-conflict-path">
-          <span>Existing folder</span>
-          <strong>{visiblePath}</strong>
-          {extraPathCount > 0 ? <em>+{extraPathCount} more</em> : null}
-        </div>
-        {!resumeRebuild && newFolderPath && newFolderPath !== visiblePath ? (
-          <div className="runtime-console-conflict-path">
-            <span>New folder from confirmed information</span>
-            <strong>{newFolderPath}</strong>
-          </div>
-        ) : null}
-        <p>
-          {resumeRebuild
-            ? "An earlier generation has unfinished file or cleanup work. Resume its saved progress using the previously confirmed choices; this does not create a new generation."
-            : "The existing project folder and all its files will move to timestamped History. A new folder will be built from the template and latest confirmed information; old files are not copied into the new folder."}
-        </p>
-        <div className="runtime-console-conflict-actions">
-          {resumeRebuild
-            ? <button type="button" className="is-primary" onClick={onResumeRebuild}>Resume previous generation</button>
-            : <button type="button" className="is-primary" onClick={onBackup}>Backup and Rebuild</button>}
-          <button type="button" onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
-      </section>
-    </div>
-  );
 }
 
 function ProjectFolderProgressDialog({

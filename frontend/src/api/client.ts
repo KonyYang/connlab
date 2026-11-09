@@ -6005,3 +6005,50 @@ export function confirmProjectPointProfile(projectId: string, command: ProjectPo
     { method: "POST", body: JSON.stringify(command) }
   );
 }
+
+
+export type BasicProjectWorkspacePreview = {
+  project_id: string;
+  status: "ready" | "available" | "review_required" | "blocked" | "recovery_required";
+  directory_available: boolean;
+  official_project_folder_path: string | null;
+  target_identity: number[] | null;
+  blockers: string[];
+  operation_id: string | null;
+  expected_context: string;
+};
+export type BasicProjectWorkspaceResult = {
+  operation_id: string;
+  status: string;
+  directory_available: boolean;
+  official_project_folder_path: string | null;
+  issues: string[];
+  message: string | null;
+};
+export type PublicProjectFolderBindingPreview = {
+  project_id: string;
+  status: "bound" | "review_required" | "blocked";
+  expected_context: string;
+  public_folder_year: number | null;
+  full_ltr_number: string | null;
+  current_path: string | null;
+  proposed_path: string | null;
+  candidates: { candidate_id: string; path: string }[];
+  can_create: boolean;
+  blockers: string[];
+};
+export function previewBasicProjectWorkspace(projectId: string): Promise<BasicProjectWorkspacePreview> {
+  return requestJson(`/api/projects/${projectId}/official-workspace/basic/preview`);
+}
+export function createBasicProjectWorkspace(projectId: string, input: { expected_context: string; request_id: string; confirm_existing?: boolean }): Promise<BasicProjectWorkspaceResult> {
+  return requestJson(`/api/projects/${projectId}/official-workspace/basic/create`, { method: "POST", body: JSON.stringify(input) });
+}
+export function resumeBasicProjectWorkspace(projectId: string, operationId: string): Promise<BasicProjectWorkspaceResult> {
+  return requestJson(`/api/projects/${projectId}/official-workspace/basic/resume`, { method: "POST", body: JSON.stringify({ operation_id: operationId }) });
+}
+export function previewPublicProjectFolderBinding(projectId: string): Promise<PublicProjectFolderBindingPreview> {
+  return requestJson(`/api/projects/${projectId}/public-folder-workflow/binding/preview`);
+}
+export function confirmPublicProjectFolderBinding(projectId: string, input: { expected_context: string; candidate_id: string }): Promise<PublicProjectFolderBindingPreview> {
+  return requestJson(`/api/projects/${projectId}/public-folder-workflow/binding/confirm`, { method: "POST", body: JSON.stringify(input) });
+}

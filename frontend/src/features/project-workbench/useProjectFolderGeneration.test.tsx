@@ -586,3 +586,19 @@ it("explicitly restarts corrected inputs with the newly shown preview and no old
   expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
   expect(api.previewProjectFolderGeneration).not.toHaveBeenCalled();
 });
+
+it("resume-only does not start a new generator when the saved legacy operation completed meanwhile", async () => {
+ api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"interrupted"});
+ const {result}=renderHook(() => useProjectFolderGeneration("p",vi.fn(),"old"));
+ await waitFor(() => expect(result.current.canResume).toBe(true));
+ api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"completed"});
+ await act(() => result.current.resumeOnly());
+ expect(result.current.operation?.status).toBe("completed");
+ expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
+});
+it("resume-only sends only the still unfinished saved operation", async () => {
+ api.getProjectFolderGeneration.mockResolvedValue({...operation,status:"interrupted"}); api.resumeProjectFolderGeneration.mockResolvedValue(operation);
+ const {result}=renderHook(() => useProjectFolderGeneration("p",vi.fn(),"old"));
+ await waitFor(() => expect(result.current.canResume).toBe(true));await act(() => result.current.resumeOnly());
+ expect(api.resumeProjectFolderGeneration).toHaveBeenCalledWith("p","operation");expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});

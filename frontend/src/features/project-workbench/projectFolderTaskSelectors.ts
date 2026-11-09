@@ -104,7 +104,6 @@ export type ProjectFolderTaskSelectorInput = {
 export function deriveProjectFolderTasks(
   input: ProjectFolderTaskSelectorInput
 ): ProjectFolderTaskRow[] {
-  const basicInformationBlocker = findBasicInformationRequiredFormsBlocker(input);
   const contextBlocker = selectContextBlocker(input);
   const localProjectFolderPath =
     input.publicFolderWorkflowContext?.local_official_folder_path?.trim() ?? "";
@@ -131,7 +130,7 @@ export function deriveProjectFolderTasks(
       blockers: projectFolderOpenAvailable
         ? []
         : ["Project folder is not available yet."],
-      warnings: basicInformationBlocker ? [basicInformationBlocker] : [],
+      warnings: [],
     },
     deriveWorkflowTask(input, contextBlocker, projectFolderUnavailableBlocker, "sync"),
     deriveWorkflowTask(input, contextBlocker, projectFolderUnavailableBlocker, "submit"),
@@ -161,16 +160,6 @@ export function selectProjectFolderOneClickBlocker(
     }
   }
   return null;
-}
-
-function findBasicInformationRequiredFormsBlocker(
-  input: ProjectFolderTaskSelectorInput
-): string | null {
-  const blockers = [
-    ...(input.requiredFormsPreview?.blockers ?? []),
-    ...(input.requiredFormsError ? [input.requiredFormsError] : []),
-  ];
-  return blockers.find(isBasicInformationRequiredFormsBlocker) ?? null;
 }
 
 function isBasicInformationRequiredFormsBlocker(message: string): boolean {
