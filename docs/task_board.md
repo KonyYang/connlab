@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_QA_TEMP_RETENTION_SAFE_20261110",
+    "task_id": "TASK_PROJECT_FILE_GENERATION_PHASE2_20261110",
     "tier": "high_risk",
-    "subject": "9c169b8a8863dac4e5446a0217cd587b565122a0",
-    "summary": "Manage isolated pytest artifacts on D with completed-run-only seven-day retention",
+    "subject": "6cd6ec7b5da9b0f4a5d23c2abbe84e3b46fa2683",
+    "summary": "Independent Generate files with per-file prerequisites, protected replacement, recovery and isolated validation",
     "disposition": "completed",
-    "decision_ref": "User confirmed final Close after local integration. Preserve all local commits and acceptance evidence; existing no-push/no-publication restriction remains in force. The User explicitly approved same-context self-review, automated tests and isolated acceptance instead of independent checks. Close locally only; --publish-close intentionally omitted. No real legacy cleanup or business-file operations.",
-    "closed_at": "2026-11-09T23:59:43.167424Z"
+    "decision_ref": "User explicitly confirmed final Close after accepted local integration. Close this task locally only; retain all product commits and acceptance evidence. The explicit no-push/no-publication restriction persists, and --publish-close is intentionally omitted. No real business files, public drive, database, application startup or release operation.",
+    "closed_at": "2026-11-10T11:34:39.845485Z"
   },
   "retained_history": [
     {
@@ -498,192 +498,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested final Close of the completed phase-one project-folder creation separation task after local integration and acceptance. Existing no-push/no-publication instruction remains in force: local close only, no publish-close flag. Preserve local commits, workspaces and acceptance evidence; no real business/public-drive mutations.",
       "closed_at": "2026-11-09T23:32:38.617342Z"
+    },
+    {
+      "task_id": "TASK_QA_TEMP_RETENTION_SAFE_20261110",
+      "tier": "high_risk",
+      "subject": "9c169b8a8863dac4e5446a0217cd587b565122a0",
+      "summary": "Manage isolated pytest artifacts on D with completed-run-only seven-day retention",
+      "disposition": "completed",
+      "decision_ref": "User confirmed final Close after local integration. Preserve all local commits and acceptance evidence; existing no-push/no-publication restriction remains in force. The User explicitly approved same-context self-review, automated tests and isolated acceptance instead of independent checks. Close locally only; --publish-close intentionally omitted. No real legacy cleanup or business-file operations.",
+      "closed_at": "2026-11-09T23:59:43.167424Z"
     }
   ],
-  "tasks": {
-    "TASK_PROJECT_FILE_GENERATION_PHASE2_20261110": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
-      "branch": "codex/project-file-generation-phase2-20261110",
-      "resources": [
-        "phase2-isolated-filesystem-and-database"
-      ],
-      "integrated_head": "62fbbf48a1d21470273a8398b5a70a6d05cab166",
-      "task": {
-        "task_id": "TASK_PROJECT_FILE_GENERATION_PHASE2_20261110",
-        "summary": "Independent Generate files with per-file prerequisites, protected replacement, recovery and isolated validation",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Implement approved eight-kind second-batch Generate files on trusted existing workspaces; preserve phase-one and legacy behavior, public sync rules and manual files; isolated validation and local integration only. No push, publication, real business data or automatic public folder rename.",
-        "scope_paths": [
-          "backend/api/dependencies.py",
-          "backend/api/main.py",
-          "backend/api/project_customer_report_runner.py",
-          "backend/api/project_file_generation_composition.py",
-          "backend/api/project_file_generation_runner.py",
-          "backend/api/project_folder_generation_composition.py",
-          "backend/api/project_folder_write_guard.py",
-          "backend/api/project_registry_access_guard.py",
-          "backend/api/routes_project_file_generation.py",
-          "backend/application/project_application_form_write_back_service.py",
-          "backend/application/project_file_generation_guard.py",
-          "backend/application/project_file_generation_service.py",
-          "backend/application/project_file_generation_sources.py",
-          "backend/application/project_file_generation_staging.py",
-          "backend/application/project_file_generation_types.py",
-          "backend/application/project_registry_management_service.py",
-          "backend/infrastructure/files/project_file_generation_journal.py",
-          "backend/infrastructure/files/recoverable_project_file_publisher.py",
-          "backend/infrastructure/project_library/assets.py",
-          "backend/infrastructure/project_library/files.py",
-          "backend/infrastructure/project_library/portability.py",
-          "docs/PROJECT_CONTEXT.md",
-          "docs/architecture/project_file_generation.md",
-          "frontend/src/api/client.ts",
-          "frontend/src/features/project-workbench/ProjectFilesDialog.css",
-          "frontend/src/features/project-workbench/ProjectFilesDialog.test.tsx",
-          "frontend/src/features/project-workbench/ProjectFilesDialog.tsx",
-          "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-          "frontend/src/features/project-workbench/useProjectFiles.ts",
-          "tests/integration/test_project_file_generation_api.py",
-          "tests/integration/test_project_registry_management_api.py",
-          "tests/unit/test_project_file_generation_protocol.py",
-          "tests/unit/test_project_file_generation_service.py",
-          "tests/unit/test_project_file_generation_sources.py",
-          "tests/unit/test_project_file_generation_staging.py"
-        ],
-        "risk_reasons": [
-          "Recoverable filesystem mutation and explicit replacement of authoritative external outputs",
-          "Cross-writer durable mutual exclusion, idempotence and output registration"
-        ],
-        "activation_head": "12179ef09021ff12182b5b51596c213b195e0a46",
-        "started_at": "2026-11-10T05:07:04.315007Z",
-        "updated_at": "2026-11-10T11:22:31.870056Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_PROJECT_FILE_GENERATION_PHASE2_20261110",
-          "stage": "integration",
-          "status": "blocked",
-          "requires_user": true,
-          "summary": "All implementation/review/security/independentQA complete PASS atclean6cd6ec7b5da9b0f4a5d23c2abbe84e3b46fa2683; scope37. Backendeffective1009pass1privilegedsymlinkskip/70files,frontend322pass/build/25files,4realkillwindows8freshrecoveries+SQLite/XLSX+NTFSjunction+StrictModebrowserPASS. Evidence tasktmp/phase2-qa/final-report.md/effective-coverage.json, securityscan e5d17a77-2587-4993-8945-a5462c405bef+finalsupplementsPASS. IndependentIntegrator preflight found primary8000PID33080 (pythonparent39776,PS33540) and5173PID31788 (node) running since08:01/08:02; elevatedcheckconfirmed after earlierrestrictedchecks falselyempty. HALT localintegration toavoidautoreload/realDBeffects. No integrationorprocesskill. Userasyncquestionpending: stopservicesandnotifyorauthorizeboundedstopofverifiedprimaryservicegroups. Mainboardonlyprimarychanges, candidateclean; no realbusinessdata/push/publication/Close. After actualservicesstopped, followup files_phase2_integrator forfreshpreflight+writerfinishonly, thenrootcompletegoalawaitUserClose."
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_FILE_GENERATION_PHASE2_20261110",
-          "subject": "6cd6ec7b5da9b0f4a5d23c2abbe84e3b46fa2683",
-          "summary": "Independent Generate files: per-file readiness, explicit protected replacement, recoverable publication and lineage; all 37 scoped paths reviewed and independently validated. Local integration only; await User Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/main.py",
-            "backend/api/project_customer_report_runner.py",
-            "backend/api/project_file_generation_composition.py",
-            "backend/api/project_file_generation_runner.py",
-            "backend/api/project_folder_generation_composition.py",
-            "backend/api/project_folder_write_guard.py",
-            "backend/api/project_registry_access_guard.py",
-            "backend/api/routes_project_file_generation.py",
-            "backend/application/project_application_form_write_back_service.py",
-            "backend/application/project_file_generation_guard.py",
-            "backend/application/project_file_generation_service.py",
-            "backend/application/project_file_generation_sources.py",
-            "backend/application/project_file_generation_staging.py",
-            "backend/application/project_file_generation_types.py",
-            "backend/application/project_registry_management_service.py",
-            "backend/infrastructure/files/project_file_generation_journal.py",
-            "backend/infrastructure/files/recoverable_project_file_publisher.py",
-            "backend/infrastructure/project_library/assets.py",
-            "backend/infrastructure/project_library/files.py",
-            "backend/infrastructure/project_library/portability.py",
-            "docs/PROJECT_CONTEXT.md",
-            "docs/architecture/project_file_generation.md",
-            "frontend/src/api/client.ts",
-            "frontend/src/features/project-workbench/ProjectFilesDialog.css",
-            "frontend/src/features/project-workbench/ProjectFilesDialog.test.tsx",
-            "frontend/src/features/project-workbench/ProjectFilesDialog.tsx",
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-            "frontend/src/features/project-workbench/useProjectFiles.ts",
-            "tests/integration/test_project_file_generation_api.py",
-            "tests/integration/test_project_registry_management_api.py",
-            "tests/unit/test_project_file_generation_protocol.py",
-            "tests/unit/test_project_file_generation_service.py",
-            "tests/unit/test_project_file_generation_sources.py",
-            "tests/unit/test_project_file_generation_staging.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Backend selected risk matrix",
-              "detail": "70 related files: 1009 unique passes and one WinError1314 privileged file-symlink skip. Initial deep-C run 873 passed/131 failed/1 skipped; baseline reproduced fixture failures and obsolete Other assertion. Final short-D failed-node/Registry recheck139 passed plus staging4 passed. Combined unchanged-byte evidence, not a one-shot final full run.",
-              "evidence": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab\\tmp\\phase2-qa\\final-report.md"
-            },
-            {
-              "status": "passed",
-              "name": "Frontend and build",
-              "detail": "Final affected25files322tests passed; sequential TypeScript/Vite build passed."
-            },
-            {
-              "status": "passed",
-              "name": "Isolated filesystem/SQLite/browser acceptance",
-              "detail": "Four actual Popen.kill windows/eight fresh-process recoveries, native TestStatus XLSX/SQLite lineage and backup identity passed; real NTFS junction rejection passed;375px StrictMode component/browser focus, confirmation and explicit recovery passed. No installed OfficeCOM/business-template acceptance claimed."
-            },
-            {
-              "status": "passed",
-              "name": "Security",
-              "detail": "Sealed CodexSecurity e5d17a77-2587-4993-8945-a5462c405bef exact12179..2fa immutable36paths:0 findings/candidates/deferred. Independent static supplements for2fa..281 UI repair and281..6cd test-only Registry correction passed; all37currentpaths covered."
-            },
-            {
-              "status": "passed",
-              "name": "Integrator preflight",
-              "detail": "Clean exact primary/task HEADs, sole task and exact37path manifest, primary product unchanged since base, candidate diff--check passed. Elevated fresh CIM/network inspection: no8000/5173/8765listeners and no relevant application/reload/Vite processes. User confirmed services stopped."
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "context": "files_phase2_planner",
-              "detail": "Independent code-traced plan, high-risk constraints and lock audit."
-            },
-            "developer": {
-              "status": "passed",
-              "context": "files_phase2_developer + files_phase2_sources + files_phase2_frontend",
-              "detail": "Committed implementation and grouped RED/GREEN/focused checks; bounded UI fix and test-only approved Other-note correction."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "files_phase2_reviewer",
-              "detail": "Independent final review all37paths including UI/test supplements; Standards0/Spec0, no open findings."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "files_phase2_qa",
-              "detail": "Independent final QA PASS6cd; actual matrix, recovery/browser acceptance and platform/Office limitations retained in final-report.md."
-            },
-            "integrator": {
-              "status": "passed",
-              "context": "files_phase2_integrator",
-              "detail": "Independent fresh subject/scope/evidence/cleanliness/product-parent/process preflight passed; current primary writer owns actual no-ff merge and final tree verification."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "6cd6ec7b5da9b0f4a5d23c2abbe84e3b46fa2683",
-            "primary_before": "80113e6f7fe4b14206e4ef1a7807a2b96911b876",
-            "integrated_head": "62fbbf48a1d21470273a8398b5a70a6d05cab166",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
