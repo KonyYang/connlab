@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+class ProjectFileTargetLockedError(PermissionError):
+    """A specific file operation is locked; its frozen effect remains recoverable."""
+
+
 FILE_DEFINITIONS = (
     ("customer_feedback_form", "Customer Feedback Form", "customer_feedback_form"),
     ("fee_form", "Fee Form", "fee_evaluation"),

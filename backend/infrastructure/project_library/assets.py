@@ -9,7 +9,7 @@ from backend.infrastructure.project_library.files import checked_path, file_hash
 from backend.infrastructure.project_library.ownership import transform_paths
 
 SPECIAL_DATA_ROOTS = ("report_authoring_assets", "report_working_drafts")
-JOURNAL_ROOTS = ("project_folder_generation", "basic_project_workspace", "official_folder_relocation", "llcr_cr_record_publication", "ir_dwv_record_publication")
+JOURNAL_ROOTS = ("project_folder_generation", "basic_project_workspace", "official_folder_relocation", "llcr_cr_record_publication", "ir_dwv_record_publication", "project_file_generation")
 REGISTERED_FILE_HASHES = {
     "file_assets": (("path", "sha256"),),
     "intake_assets": (("stored_path", "sha256"),),

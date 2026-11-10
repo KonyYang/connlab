@@ -664,6 +664,17 @@ existing Projects view; selecting a directory does not change the existing impor
 validation, copy, conflict or confirmation rules. Native-dialog failures retain the
 existing manual path fallback. No dependencies or runtime installation were added.
 
+## Project file generation
+
+Workbench `Generate files` operates only in an existing trusted linked workspace. Its eight derived
+file types have independent readiness and source tokens; Test Status requires only Confirmed Matrix.
+The operation does not collect source materials, create project directories, or modify public-drive
+or report rules. Existing files default to Skip. Explicit replacement stages a new artifact first,
+retains a verified no-replace History/Files backup, and publishes without overwriting any reappeared
+target. A dedicated per-file journal shares the canonical project writer lock; unfinished or damaged
+recovery state fences other project writers until resolved. See
+`docs/architecture/project_file_generation.md` for the protocol and verification boundaries.
+
 ## Settings resource validation freshness
 
 Settings automatically revalidates its configured active file locations on entry and

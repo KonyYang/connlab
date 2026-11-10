@@ -8,6 +8,8 @@ from fastapi import Depends, HTTPException, Request
 from backend.api.dependencies import get_settings
 from backend.infrastructure.files.generation_journal import GenerationJournal
 from backend.shared.config import Settings
+from backend.application.project_file_generation_guard import require_project_file_generation_clear
+from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal
 
 
 def require_project_folder_write_slot(
@@ -23,6 +25,7 @@ def require_project_folder_write_slot(
         try:
             stack.enter_context(journal.lock(project_id))
             operation = journal.read(project_id)
+            require_project_file_generation_clear(ProjectFileGenerationJournal(settings.data_dir / "project_file_generation"), project_id)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except OSError as exc:

@@ -72,6 +72,9 @@ class ProjectFolderGenerationRunner:
         RecoverableWorkspacePublisher(self.journal, state, verify_context=verify_context).finalize()
 
     def context(self, project_id):
+        from backend.application.project_file_generation_guard import require_project_file_generation_clear
+        from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal
+        require_project_file_generation_clear(ProjectFileGenerationJournal(self.settings.data_dir / "project_file_generation"), project_id)
         basic = GenerationJournal(self.settings.data_dir / "basic_project_workspace").read(project_id)
         if basic and basic["status"] != "completed":
             raise ValueError("Basic project folder creation is unfinished. Resume it before generating files.")

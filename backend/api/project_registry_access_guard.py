@@ -15,6 +15,8 @@ from backend.infrastructure.storage.models import (
     PrecheckResultModel, ProjectModel,
 )
 from backend.shared.config import Settings
+from backend.application.project_file_generation_guard import require_project_file_generation_clear
+from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal
 
 
 _BOUND_PARAMETERS = {"project_id", "case_id", "package_id", "asset_id", "application_form_id", "issue_id"}
@@ -69,6 +71,8 @@ async def require_registry_write_access(
         "/api/projects/{project_id}/project-folder/generation/resume",
         "/api/projects/{project_id}/official-workspace/basic/create",
         "/api/projects/{project_id}/official-workspace/basic/resume",
+        "/api/projects/{project_id}/project-folder/files/start",
+        "/api/projects/{project_id}/project-folder/files/operations/{operation_id}/resume",
     }
     folder_slot_owns_lock = _has_folder_write_slot(request.scope["route"])
     revisions = {}
@@ -77,6 +81,7 @@ async def require_registry_write_access(
             if not generation_owns_lock and not folder_slot_owns_lock:
                 try:
                     locks.enter_context(journal.lock(project_id))
+                    require_project_file_generation_clear(ProjectFileGenerationJournal(settings.data_dir / "project_file_generation"), project_id)
                     state = journal.read(project_id)
                     if state and state["status"] in {"queued", "running"}:
                         raise ValueError("Project folder generation is pending or running.")
