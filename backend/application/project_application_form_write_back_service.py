@@ -185,16 +185,13 @@ class ProjectApplicationFormWriteBackService:
         """Check the same source, authority and target safety without writing files."""
         return self._write_back(project_id, preview_only=True)
 
-    def prepare_staging(self, project_id: str) -> dict:
-        """Resolve proven archived input and confirmed fields without publication."""
-        from backend.infrastructure.files.recoverable_output_publisher import require_safe_output_path
-        project = self._projects.get(project_id)
+    def staging_target(self, project_id: str, *, path_guard) -> dict:
+        """Select only a proven archived Word input, independently of fill fields."""
         workspace = self._workspaces.get_by_project(project_id)
-        if project is None or workspace is None:
-            raise ProjectApplicationFormWriteBackNotFoundError("Existing project and linked directory are required.")
+        if workspace is None:
+            raise ProjectApplicationFormWriteBackNotFoundError("Existing linked directory is required.")
         submitted = workspace.official_folder_path / "Submitted Material"
-        require_safe_output_path(submitted)
-        form = _single_form(self._forms.list_by_project(project_id))
+        path_guard(submitted)
         summary = self._outputs.get_status_summary(project_id)
         try:
             selected = target_application_form(submitted, project_id,
@@ -204,7 +201,7 @@ class ProjectApplicationFormWriteBackService:
         target = selected.path if selected is not None else None
         source_sha = selected.source_sha256 if selected is not None else None
         if target is not None:
-            require_safe_output_path(target)
+            path_guard(target)
         proven = bool(target is not None and source_sha and sha256_file(target) == source_sha)
         if not proven:
             managed = []
@@ -215,7 +212,7 @@ class ProjectApplicationFormWriteBackService:
                         or not getattr(item, "output_path", None) or not getattr(item, "output_sha256", None)):
                     continue
                 candidate = Path(item.output_path)
-                require_safe_output_path(candidate)
+                path_guard(candidate)
                 if (candidate.parent == submitted and candidate.suffix.lower() == ".docx"
                         and candidate.is_file() and sha256_file(candidate) == item.output_sha256):
                     managed.append(candidate)
@@ -226,6 +223,16 @@ class ProjectApplicationFormWriteBackService:
         if not proven or target is None or target.suffix.lower() != ".docx":
             raise ProjectApplicationFormWriteBackError(
                 "Application Form has no proven selected archived Word source or current managed target.")
+        return {"target": target, "selected_source_sha256": source_sha}
+
+    def prepare_staging(self, project_id: str, *, path_guard) -> dict:
+        """Resolve proven archived input and confirmed fields without publication."""
+        project = self._projects.get(project_id)
+        if project is None:
+            raise ProjectApplicationFormWriteBackNotFoundError("Existing project is required.")
+        selected = self.staging_target(project_id, path_guard=path_guard)
+        target, source_sha = selected["target"], selected["selected_source_sha256"]
+        form = _single_form(self._forms.list_by_project(project_id))
         basic = self._basic_information.get_latest_confirmed(project_id)
         if basic is None:
             raise ProjectApplicationFormWriteBackError("Confirm Basic Information before generating Application Form.")
@@ -237,14 +244,13 @@ class ProjectApplicationFormWriteBackService:
                 "context_signature": context + "|" + schedule.context_signature,
                 "fields": _fields(project, form, basic, schedule=schedule)}
 
-    def generate_staged(self, context: dict, *, stage_dir: Path, target_name: str) -> Path:
+    def generate_staged(self, context: dict, *, stage_dir: Path, target_name: str, path_guard) -> Path:
         """Write Word on a short working copy, then return only operation staging."""
-        from backend.infrastructure.files.recoverable_output_publisher import require_safe_output_path
         if Path(target_name).name != target_name or not target_name:
             raise ValueError("Invalid staged Application Form name.")
         target, output = Path(context["target"]), stage_dir / target_name
-        require_safe_output_path(target)
-        require_safe_output_path(stage_dir)
+        path_guard(target)
+        path_guard(stage_dir)
         if not stage_dir.is_dir() or output.exists():
             raise ValueError("Application Form staging must be an existing empty operation destination.")
         expected = context["source_sha256"]

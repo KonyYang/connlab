@@ -13,6 +13,19 @@ class Store:
     def get_latest_confirmed(self, _): return self.value
 
 
+class Files:
+    from backend.infrastructure.files.generation_journal import fingerprint
+    from backend.infrastructure.files.recoverable_output_publisher import file_hash as hash, file_identity as identity, require_safe_output_path as require_safe
+    fingerprint = staticmethod(fingerprint)
+    hash = staticmethod(hash)
+    identity = staticmethod(identity)
+    require_safe = staticmethod(require_safe)
+    is_dir = staticmethod(lambda path: path.is_dir())
+    is_file = staticmethod(lambda path: path.is_file())
+    is_empty = staticmethod(lambda path: not any(path.iterdir()))
+    size = staticmethod(lambda path: path.stat().st_size)
+
+
 def adapter(tmp_path, *, matrix=None, workspace=None):
     return ProjectFileGenerationSources(
         workspaces=Store(workspace), basic_workspace=SimpleNamespace(
@@ -20,7 +33,7 @@ def adapter(tmp_path, *, matrix=None, workspace=None):
         confirmed=Store(matrix), basic=Store(), fees=None, resources=None,
         settings=SimpleNamespace(), schedules=None, input_context=None, staging=None,
         application=None, llcr=None, llcr_writer=None, ir=None,
-        outputs=None, commit=lambda: None)
+        outputs=None, commit=lambda: None, files=Files())
 
 
 def linked(tmp_path):
@@ -201,3 +214,49 @@ def test_real_test_status_generator_stays_inside_operation_stage_and_registers_o
             assert len(sources.outputs.list_records("P1")) == 1
     finally:
         engine.dispose()
+
+
+def test_missing_test_results_does_not_block_submitted_test_status(tmp_path):
+    record = linked(tmp_path)
+    (record.official_folder_path / "Test results").rmdir()
+    record.source_book_path.rmdir()
+    sources = adapter(tmp_path, workspace=record, matrix=SimpleNamespace(version=SimpleNamespace(
+        confirmed_matrix_id="matrix-1",confirmed_revision=1)))
+    assert sources.workspace("P1")["token"]
+    assert sources.source("P1","test_status").status == "ready"
+
+
+def test_missing_source_preserves_known_target_for_skip_choice(tmp_path):
+    record = linked(tmp_path)
+    target = record.official_folder_path / "Submitted Material" / "DL-2026-11-001 test status.xlsx"
+    target.write_bytes(b"existing operator file")
+    sources = adapter(tmp_path,workspace=record)
+    item = sources.source("P1","test_status")
+    assert item.status == "blocked"
+    assert item.target == target
+    assert target.read_bytes() == b"existing operator file"
+
+
+def test_output_parent_identity_is_per_item_instead_of_shared_workspace_context(tmp_path):
+    record = linked(tmp_path)
+    sources = adapter(tmp_path,workspace=record,matrix=SimpleNamespace(version=SimpleNamespace(
+        confirmed_matrix_id="matrix-1",confirmed_revision=1)))
+    shared = sources.workspace("P1")["token"]
+    before = sources.source("P1","test_status").source_token
+    parent = record.official_folder_path / "Submitted Material"
+    parent.rename(parent.with_name("original submitted"))
+    parent.mkdir()
+    assert sources.workspace("P1")["token"] == shared
+    assert sources.source("P1","test_status").source_token != before
+
+
+def test_contact_record_does_not_promote_separate_profile_into_matrix_test_points(tmp_path):
+    record = linked(tmp_path)
+    sources = adapter(tmp_path,workspace=record,matrix=SimpleNamespace(version=SimpleNamespace(
+        confirmed_matrix_id="matrix-1",confirmed_revision=1,point_profile=None)))
+    sources.llcr = SimpleNamespace(preview=lambda *_: SimpleNamespace(status="ready",sections=(object(),),
+        diagnostics=(),preview_fingerprint="separate-profile",point_profile_fingerprint="confirmed-separate-profile"))
+    item = sources.source("P1","llcr_record")
+    assert item.status == "blocked"
+    assert item.target == record.official_folder_path / "Test results" / "DL-2026-11-001 LLCR Record.xlsx"
+    assert "Matrix" in item.message

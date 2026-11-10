@@ -1,4 +1,5 @@
 from pathlib import Path
+from backend.infrastructure.files.recoverable_output_publisher import require_safe_output_path
 from types import SimpleNamespace
 
 from backend.application.project_file_generation_staging import RequiredFormsStagingGenerator
@@ -26,7 +27,7 @@ def test_operation_stage_overrides_legacy_shared_stage(tmp_path: Path):
     assert not (tmp_path / "data").exists()
 
 
-def application_service(tmp_path, *, selected=True):
+def application_service(tmp_path, *, selected=True, basic_available=True):
     from backend.application.project_application_form_write_back_service import ProjectApplicationFormWriteBackService
     from backend.application.project_basic_information_output import ConfirmedBasicInformationSnapshot
     from backend.domain import FileAsset, FileAssetType
@@ -53,7 +54,7 @@ def application_service(tmp_path, *, selected=True):
         workspace_store=SimpleNamespace(get_by_project=lambda _: SimpleNamespace(official_folder_path=official)),
         application_form_store=SimpleNamespace(list_by_project=lambda _: [SimpleNamespace(form_id="F1",assigned_personnel="Leader")]),
         file_asset_store=SimpleNamespace(list_by_project=lambda _: [asset] if selected else []),
-        basic_information_reader=SimpleNamespace(get_latest_confirmed=lambda _: basic),
+        basic_information_reader=SimpleNamespace(get_latest_confirmed=lambda _: basic if basic_available else None),
         project_schedule_reader=SimpleNamespace(get_latest_confirmed=lambda _: SimpleNamespace(
             context_signature="schedule",estimated_completion_date="20 Nov 2026")),
         output_record_service=SimpleNamespace(get_status_summary=lambda _: SimpleNamespace(items=())),
@@ -63,10 +64,10 @@ def application_service(tmp_path, *, selected=True):
 
 def test_application_generation_stages_without_publishing_or_registering(tmp_path):
     service,target,calls = application_service(tmp_path)
-    context = service.prepare_staging("P1")
+    context = service.prepare_staging("P1",path_guard=require_safe_output_path)
     stage = tmp_path / "owned-stage"
     stage.mkdir()
-    output = service.generate_staged(context, stage_dir=stage, target_name=target.name)
+    output = service.generate_staged(context, stage_dir=stage, target_name=target.name,path_guard=require_safe_output_path)
     assert output == stage / "application.docx"
     assert output.read_bytes() == b"staged Word"
     assert target.read_bytes() == b"original Word"
@@ -77,6 +78,15 @@ def test_application_generation_does_not_accept_a_lone_unproven_docx(tmp_path):
     import pytest
     service,target,calls = application_service(tmp_path,selected=False)
     with pytest.raises(ValueError, match="proven"):
-        service.prepare_staging("P1")
+        service.prepare_staging("P1",path_guard=require_safe_output_path)
     assert target.read_bytes() == b"original Word"
+    assert calls == []
+
+
+def test_proven_application_target_remains_available_without_basic_fill_authority(tmp_path):
+    import pytest
+    service,target,calls = application_service(tmp_path,basic_available=False)
+    assert service.staging_target("P1",path_guard=require_safe_output_path)["target"] == target
+    with pytest.raises(ValueError,match="Basic Information"):
+        service.prepare_staging("P1",path_guard=require_safe_output_path)
     assert calls == []
