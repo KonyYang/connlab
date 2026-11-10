@@ -24,6 +24,10 @@ _BODY_PROJECT_FIELDS = {
     "/api/cleanup/project-ltr/no-ltr-projects/execute": "project_ids",
     "/api/test-plan/matrix-preview-from-path": "project_id",
 }
+_READ_ONLY_FOLDER_OPENS = {
+    "/api/projects/{project_id}/folder/open-local",
+    "/api/projects/{project_id}/folder/open-public",
+}
 
 
 def protect_project_mutations(router: APIRouter) -> APIRouter:
@@ -75,10 +79,11 @@ async def require_registry_write_access(
         "/api/projects/{project_id}/project-folder/files/operations/{operation_id}/resume",
     }
     folder_slot_owns_lock = _has_folder_write_slot(request.scope["route"])
+    readonly_folder_open = request.scope["route"].path in _READ_ONLY_FOLDER_OPENS
     revisions = {}
     with ExitStack() as locks:
         for project_id in sorted(project_ids):
-            if not generation_owns_lock and not folder_slot_owns_lock:
+            if not generation_owns_lock and not folder_slot_owns_lock and not readonly_folder_open:
                 try:
                     locks.enter_context(journal.lock(project_id))
                     require_project_file_generation_clear(ProjectFileGenerationJournal(settings.data_dir / "project_file_generation"), project_id)
@@ -94,7 +99,7 @@ async def require_registry_write_access(
                     "registry_state": project.registry_state,
                     "message": "This project is in the recycle bin or retained history. Restore it before editing.",
                 })
-            if project is not None and not generation_owns_lock:
+            if project is not None and not generation_owns_lock and not readonly_folder_open:
                 revisions[project_id] = project.registry_revision
         with _commit_project_writes(session, revisions):
             yield

@@ -57,6 +57,8 @@ file-lock errors can leave that item recoverable while other selected files fini
 database or ownership uncertainty stops shared writes. Ordinary terminal failures yield completed
 partial results and release the fence. Read-only status derives a dead or undispatched worker as
 interrupted without mutating the receipt; the browser does not own continuation.
+The non-mutating local/public folder-open actions retain registry visibility checks and remain
+available during generation or recovery; they do not acquire a generation write slot.
 
 ## Verification and remaining risks
 
