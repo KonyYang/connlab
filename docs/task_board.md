@@ -500,7 +500,68 @@
       "closed_at": "2026-11-09T23:32:38.617342Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_PROJECT_FILE_GENERATION_PHASE2_20261110": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/project-file-generation-phase2-20261110",
+      "resources": [
+        "phase2-isolated-filesystem-and-database"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PROJECT_FILE_GENERATION_PHASE2_20261110",
+        "summary": "Independent Generate files with per-file prerequisites, protected replacement, recovery and isolated validation",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Implement approved eight-kind second-batch Generate files on trusted existing workspaces; preserve phase-one and legacy behavior, public sync rules and manual files; isolated validation and local integration only. No push, publication, real business data or automatic public folder rename.",
+        "scope_paths": [
+          "backend/application/project_file_generation_service.py",
+          "backend/application/project_file_generation_types.py",
+          "backend/application/project_file_generation_sources.py",
+          "backend/application/project_file_generation_staging.py",
+          "backend/application/project_file_generation_guard.py",
+          "backend/application/project_application_form_write_back_service.py",
+          "backend/application/project_application_form_target_selection.py",
+          "backend/application/project_folder_required_forms_service.py",
+          "backend/application/basic_project_workspace_service.py",
+          "backend/application/project_registry_management_service.py",
+          "backend/application/official_folder_relocation_service.py",
+          "backend/api/project_file_generation_composition.py",
+          "backend/api/routes_project_file_generation.py",
+          "backend/api/dependencies.py",
+          "backend/api/main.py",
+          "backend/api/project_folder_write_guard.py",
+          "backend/api/project_registry_access_guard.py",
+          "backend/api/project_customer_report_runner.py",
+          "backend/api/project_folder_generation_composition.py",
+          "backend/infrastructure/files/project_file_generation_journal.py",
+          "backend/infrastructure/files/recoverable_project_file_publisher.py",
+          "backend/infrastructure/project_library/files.py",
+          "backend/infrastructure/project_library/assets.py",
+          "backend/infrastructure/project_library/portability.py",
+          "frontend/src/api/client.ts",
+          "frontend/src/features/project-workbench",
+          "frontend/src/styles.css",
+          "tests/unit",
+          "tests/integration",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/FRONTEND_GUIDE.md",
+          "docs/architecture/project_file_generation.md"
+        ],
+        "risk_reasons": [
+          "Recoverable filesystem mutation and explicit replacement of authoritative external outputs",
+          "Cross-writer durable mutual exclusion, idempotence and output registration"
+        ],
+        "activation_head": "12179ef09021ff12182b5b51596c213b195e0a46",
+        "started_at": "2026-11-10T05:07:04.315007Z",
+        "updated_at": "2026-11-10T05:07:04.315007Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
