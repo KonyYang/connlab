@@ -11,6 +11,7 @@ import {
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
 import { ProjectManagementDialog } from "../projects-registry/ProjectRegistryManagementDialog";
+import { ProjectFilesDialog } from "./ProjectFilesDialog";
 import { ProjectPublicFolderBindingDialog } from "./ProjectPublicFolderBindingDialog";
 import { UiIcon } from "../../components/common/UiIcon";
 import {
@@ -69,6 +70,7 @@ export function ProjectWorkbenchLayout({
     useState<TemporaryProjectDeletePreview | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [filesDialogProject, setFilesDialogProject] = useState<string | null>(null);
   const [showBasicFolderReview, setShowBasicFolderReview] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [publicFolderOpenError, setPublicFolderOpenError] = useState<string | null>(null);
@@ -266,6 +268,12 @@ export function ProjectWorkbenchLayout({
   const projectFolderTasks = projectFolderWorkflowTasks;
   const basicBlocked = basicWorkspace?.preview?.status === "blocked";
   const projectFolderHeaderAction = {
+    secondaryAction: {
+      label: "Generate files",
+      disabled: lifecycleReadonlyView.readonly || !basicWorkspace?.directoryAvailable || Boolean(basicWorkspace?.busy || basicWorkspace?.loading) || legacyRecovery || officialWorkspaceCreating,
+      title: lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : !basicWorkspace?.directoryAvailable ? "Create or link the project folder before generating files." : undefined,
+      onClick: () => setFilesDialogProject(project.project_id),
+    },
     label: legacyRecovery ? "Resume folder operation" : "Create folder",
     disabled: lifecycleReadonlyView.readonly || officialWorkspaceCreating || checkingRecoveryPreview
       || Boolean(basicWorkspace?.busy || basicWorkspace?.loading)
@@ -445,6 +453,7 @@ export function ProjectWorkbenchLayout({
   currentFolderProject.current = project.project_id;
   useEffect(() => {
     setShowBasicFolderReview(false);
+    setFilesDialogProject(null);
     setPublicFolderOpenError(null);
     setShowRegistration(false);
   }, [project.project_id]);
@@ -657,6 +666,7 @@ export function ProjectWorkbenchLayout({
         )}
       </section>
 
+      {filesDialogProject === project.project_id ? <ProjectFilesDialog key={project.project_id} projectId={project.project_id} readonly={lifecycleReadonlyView.readonly} onClose={() => setFilesDialogProject(null)} /> : null}
       {officialWorkspaceCreating ? (
         <ProjectFolderProgressDialog currentStep={officialWorkspaceProgressLabel} />
       ) : null}

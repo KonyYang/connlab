@@ -1,0 +1,18 @@
+.project-files-dialog { width: min(820px, 100%); }
+.project-files-list { display: grid; border: 1px solid var(--color-border); border-radius: 10px; }
+.project-files-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; padding: 12px; border-bottom: 1px solid var(--color-border); }
+.project-files-row:last-child { border-bottom: 0; }
+.project-files-dialog .project-files-choice { display: flex; align-items: flex-start; gap: 8px; }
+.project-files-choice input { flex: 0 0 auto; margin-top: 4px; }
+.project-files-choice span { min-width: 0; }
+.project-files-choice small { display: block; color: var(--color-ink-muted); overflow-wrap: anywhere; }
+.project-files-state { display: grid; gap: 6px; font-size: 13px; }
+.project-files-progress, .project-files-replacement { padding: 12px; border: 1px solid var(--color-border); border-radius: 10px; display: grid; gap: 8px; }
+.project-files-dialog ul { margin: 0; padding-left: 20px; }
+.project-files-dialog button:focus-visible, .project-files-dialog input:focus-visible, .project-files-dialog select:focus-visible { outline: 3px solid rgba(31, 102, 209, .3); outline-offset: 2px; }
+.runtime-console-folder-header-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 600px) { .project-files-row { grid-template-columns: minmax(0, 1fr); gap: 8px; } .runtime-console-folder-actions-header { flex-wrap: wrap; } }
+
+.runtime-console-folder-header-action:not(.is-primary) { background: var(--color-surface); border-color: var(--color-border); color: var(--color-ink); }
+.runtime-console-folder-header-action:not(.is-primary):hover:not(:disabled), .runtime-console-folder-header-action:not(.is-primary):focus-visible { background: var(--color-surface-muted); }
+.project-files-dialog .project-management-dialog-actions button:first-child { background: var(--color-surface); color: var(--color-ink); }

@@ -50,7 +50,7 @@ it("requires explicit review before linking an unknown existing local folder", a
 it("shows actual completed legacy operation issues while the basic directory remains available", () => {
   renderWorkbench({basicWorkspace:basicDirectory({directoryAvailable:true}),legacyWorkspaceCompletion:{operationId:"old-operation",issues:[{key:"ir",label:"IR&DWV blank record",message:"Record template is missing."}],error:null}});
   const alert=screen.getByRole("alert");expect(alert.textContent).toContain("IR&DWV blank record");expect(alert.textContent).toContain("Record template is missing.");
-  expect(getProjectFolderCommandButton()).toHaveProperty("disabled",false);expect(screen.queryByRole("button",{name:"Resume folder operation"})).toBeNull();expect(screen.queryByRole("button",{name:"Generate files"})).toBeNull();
+  expect(getProjectFolderCommandButton()).toHaveProperty("disabled",false);expect(screen.queryByRole("button",{name:"Resume folder operation"})).toBeNull();expect(screen.getByRole("button",{name:"Generate files"})).toHaveProperty("disabled",false);
 });
 it("shows the actual legacy completion refresh failure without gating basic creation", () => {
   const error="Generation completed, but the displayed folder status could not refresh. Refresh this page to reconnect.";
@@ -1254,7 +1254,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
   it("shows one basic folder creation action before package preparation", async () => {
  const basic=basicDirectory();renderWorkbench({basicWorkspace:basic,packagePreview:feeBlockedPackagePreview});
  expect(screen.getAllByRole("button",{name:"Create folder"})).toHaveLength(1);await userEvent.click(getProjectFolderCommandButton());expect(basic.create).toHaveBeenCalledOnce();
- expect(screen.queryByRole("button",{name:"Generate files"})).toBeNull();
+ expect(screen.getByRole("button",{name:"Generate files"})).toHaveProperty("disabled",true);
 });
 
   it.each([null,"missing","stale","current"])("allows basic creation independently of Fee authority %s", status => {
@@ -1275,7 +1275,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
   it("keeps saved legacy recovery behind a resume-only Folder Actions entry", async () => {
  const resume=vi.fn();const basic=basicDirectory();renderWorkbench({basicWorkspace:basic,officialWorkspaceCanResume:true,onResumeLegacyWorkspace:resume});
  await userEvent.click(screen.getByRole("button",{name:"Resume folder operation"}));expect(resume).toHaveBeenCalledOnce();expect(basic.create).not.toHaveBeenCalled();
- expect(screen.queryByRole("button",{name:"Generate files"})).toBeNull();expect(screen.queryByRole("button",{name:"Backup and Rebuild"})).toBeNull();
+ expect(screen.getByRole("button",{name:"Generate files"})).toHaveProperty("disabled",true);expect(screen.queryByRole("button",{name:"Backup and Rebuild"})).toBeNull();
 });
 
   it("keeps the recovery blocker visible when the initial preview check fails", async () => {

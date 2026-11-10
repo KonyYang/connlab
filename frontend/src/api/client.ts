@@ -6052,3 +6052,36 @@ export function previewPublicProjectFolderBinding(projectId: string): Promise<Pu
 export function confirmPublicProjectFolderBinding(projectId: string, input: { expected_context: string; candidate_id: string }): Promise<PublicProjectFolderBindingPreview> {
   return requestJson(`/api/projects/${projectId}/public-folder-workflow/binding/confirm`, { method: "POST", body: JSON.stringify(input) });
 }
+
+
+export type ProjectFileKey = "customer_feedback_form" | "fee_form" | "test_record" | "test_status" | "application_form" | "llcr_record" | "cr_record" | "ir_dwv_record";
+export type ProjectFileAction = "generate_missing" | "skip" | "replace_with_backup";
+export type ProjectFileSelection = { key: ProjectFileKey; source_token: string | null; action: ProjectFileAction };
+export type ProjectFileOperation = {
+  project_id: string; operation_id: string;
+  status: "queued" | "running" | "interrupted" | "blocked" | "completed";
+  outcome: "complete" | "partial" | null; can_resume: boolean;
+  summary?: {generated: number; replaced: number; skipped: number; needs_input: number; failed: number};
+  message: string | null; warnings: string[];
+  items: {key: ProjectFileKey; label: string; status: "pending" | "generating" | "published" | "completed" | "skipped" | "needs_input" | "failed";
+    action: ProjectFileAction; outcome: "generated" | "replaced" | null; message: string | null;
+    target_path: string | null; backup_path?: string | null; output_record_id?: string | null}[];
+};
+export type ProjectFilesPreview = {
+  project_id: string; workspace_token: string; status: "ready" | "blocked";
+  blockers: string[]; warnings: string[]; operation: ProjectFileOperation | null;
+  items: {key: ProjectFileKey; label: string; target_path: string | null; status: "ready" | "blocked" | "exists";
+    default_action: "generate_missing" | "skip"; source_token: string | null; message: string | null; warnings: string[]}[];
+};
+export function previewProjectFiles(projectId: string): Promise<ProjectFilesPreview> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/files`);
+}
+export function startProjectFiles(projectId: string, request: {request_id: string; workspace_token: string; items: ProjectFileSelection[]}): Promise<ProjectFileOperation> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/files/start`, {method: "POST", body: JSON.stringify(request)});
+}
+export function getProjectFilesOperation(projectId: string, operationId: string): Promise<ProjectFileOperation> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/files/operations/${encodeURIComponent(operationId)}`);
+}
+export function resumeProjectFilesOperation(projectId: string, operationId: string): Promise<ProjectFileOperation> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/files/operations/${encodeURIComponent(operationId)}/resume`, {method: "POST"});
+}
