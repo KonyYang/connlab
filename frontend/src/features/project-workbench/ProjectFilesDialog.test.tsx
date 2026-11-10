@@ -82,11 +82,21 @@ describe("project file review", () => {
   await act(async()=>{finish(preview());});
   expect(screen.queryByRole("checkbox",{name:"Fee Form"})).toBeNull();
  });
- it("contains keyboard focus and allows Escape to dismiss background generation", async () => {
+ it("contains keyboard focus while loading and ready and allows Escape to dismiss", async () => {
+  let finishPreview!: (value: ProjectFilesPreview) => void;
+  previewMock.mockReturnValueOnce(new Promise(resolve => {finishPreview=resolve;}));
   const close=vi.fn(); render(<ProjectFilesDialog projectId="p1" onClose={close}/>);
-  await screen.findByRole("checkbox",{name:"Fee Form"});
-  const dialog=screen.getByRole("dialog");const generate=within(dialog).getByRole("button",{name:"Generate selected files"});
-  generate.focus(); await userEvent.tab(); expect(document.activeElement).toBe(screen.getByRole("checkbox",{name:"Fee Form"}));
+  const dialog=screen.getByRole("dialog");
+  const generate=within(dialog).getByRole("button",{name:"Generate selected files"});
+  const closeButton=within(dialog).getByRole("button",{name:"Close"});
+  expect(generate).toHaveProperty("disabled",true);
+  expect(document.activeElement).toBe(closeButton);
+  await userEvent.tab(); expect(document.activeElement).toBe(closeButton);
+  await act(async () => {finishPreview(preview());});
+  // File rows can appear before the default selection enables generation.
+  await waitFor(() => expect(generate).toHaveProperty("disabled",false));
+  generate.focus(); expect(document.activeElement).toBe(generate);
+  await userEvent.tab(); expect(document.activeElement).toBe(screen.getByRole("checkbox",{name:"Fee Form"}));
   await userEvent.keyboard("{Escape}"); expect(close).toHaveBeenCalledOnce();
  });
  it("polls active work to a partial completion and reloads conditions without recovery", async () => {
