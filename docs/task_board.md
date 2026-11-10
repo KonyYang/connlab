@@ -561,7 +561,7 @@
         ],
         "activation_head": "12179ef09021ff12182b5b51596c213b195e0a46",
         "started_at": "2026-11-10T05:07:04.315007Z",
-        "updated_at": "2026-11-10T06:11:30.330791Z",
+        "updated_at": "2026-11-10T06:13:19.069632Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -569,7 +569,7 @@
           "stage": "validation",
           "status": "running",
           "requires_user": false,
-          "summary": "Clean candidate2fa147a225f06ada72e821af8cf83aa59925d31b contains all8 generators, source/UI integration and recoverable protection; scope corrected to exact36paths. Independent static Reviewer PASS Standards0/Spec0. Final independent QA started69backend-file risk matrix, affectedfrontend/build,4realPopen.kill SQLite/XLSX windows and isolatedactualdialogbrowser. Codex Security immutable diff scan e5d17a77-2587-4993-8945-a5462c405bef running after preflightREADY. No real business/publicdata, push/publication or primary product integration. Await QA/security then independent localIntegrator; stop ready_for_close awaiting User."
+          "summary": "Final clean candidate6cd6ec7b5da9b0f4a5d23c2abbe84e3b46fa2683 (backend production unchanged since2fa; UI focus+checkbox repair281; existing Other optional-note test-only correction6cd). Independent Reviewer+Security supplements PASS all37changed paths; sealedscan e5d17a77-2587-4993-8945-a5462c405bef core2fa. QA finalfrontend25files322tests/build+actual375pxStrictModebrowser PASS; real4processkill windows/8freshrecoveries SQLite+XLSX and NTFSjunction PASS; newstaging4PASS. Initial69backendmatrix873pass/131fail/1skip: representative Cdeepfixture failures baseline12179reproduced and shortC/Dpass; obsoleteOther409assert baselinefailed, correctedtestonly. QA final139mappedfailed-node/registry cases running isolated D:/ConnLabTestArtifacts/phase2-qa-final-78bc4370; no blindfullrerun. Await finalQAaggregate then independentlocalIntegrator, no realbusiness/publicdata/push/publication/Close."
         },
         "report": null
       }
