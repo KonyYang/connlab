@@ -549,6 +549,7 @@
           "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
           "frontend/src/features/project-workbench/useProjectFiles.ts",
           "tests/integration/test_project_file_generation_api.py",
+          "tests/integration/test_project_registry_management_api.py",
           "tests/unit/test_project_file_generation_protocol.py",
           "tests/unit/test_project_file_generation_service.py",
           "tests/unit/test_project_file_generation_sources.py",
@@ -560,7 +561,7 @@
         ],
         "activation_head": "12179ef09021ff12182b5b51596c213b195e0a46",
         "started_at": "2026-11-10T05:07:04.315007Z",
-        "updated_at": "2026-11-10T05:47:28.565976Z",
+        "updated_at": "2026-11-10T06:11:30.330791Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
