@@ -1,24 +1,7 @@
 """Compose existing authorities and generators for the per-file operation protocol."""
 from backend.application.project_file_generation_sources import ProjectFileGenerationSources
 from backend.application.project_file_generation_staging import RequiredFormsInputContextReader, RequiredFormsStagingGenerator
-
-
-class _SourceFilesystem:
-    from backend.infrastructure.files.generation_journal import fingerprint
-    from backend.infrastructure.files.recoverable_output_publisher import file_hash as hash, file_identity as identity, require_safe_output_path as require_safe
-    fingerprint = staticmethod(fingerprint)
-    hash = staticmethod(hash)
-    identity = staticmethod(identity)
-    require_safe = staticmethod(require_safe)
-
-    @staticmethod
-    def is_dir(path): return path.is_dir()
-    @staticmethod
-    def is_file(path): return path.is_file()
-    @staticmethod
-    def is_empty(path): return not any(path.iterdir())
-    @staticmethod
-    def size(path): return path.stat().st_size
+from backend.infrastructure.files.recoverable_project_file_publisher import ProjectFilePublicationGateway
 
 
 def build_components(session, settings):
@@ -62,4 +45,4 @@ def build_components(session, settings):
         llcr=d.get_llcr_cr_record_workbook_preview_service(session),
         llcr_writer=d.LlcrCrSpecializedRecordWorkbookGateway(),
         ir=d.get_matrix_editor_ir_dwv_record_generation_service(session,settings),
-        outputs=outputs,commit=session.commit,files=_SourceFilesystem(),forms=d.ApplicationFormRepository(session))
+        outputs=outputs,commit=session.commit,files=ProjectFilePublicationGateway(),forms=d.ApplicationFormRepository(session))
