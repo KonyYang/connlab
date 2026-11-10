@@ -13,6 +13,7 @@ import type {
 } from "./projectFolderTaskSelectors";
 
 export type ProjectFolderHeaderAction = {
+  secondaryAction?: Omit<ProjectFolderHeaderAction, "secondaryAction">;
   label: string;
   disabled: boolean;
   title?: string;
@@ -80,6 +81,7 @@ export function ProjectFolderActionsSurface({
       <header className="runtime-console-folder-actions-header">
         <p className="eyebrow">Folder Actions</p>
         {headerAction ? (
+          <div className="runtime-console-folder-header-actions">
           <button
             className="runtime-console-folder-header-action is-primary"
             type="button"
@@ -89,6 +91,14 @@ export function ProjectFolderActionsSurface({
           >
             {headerAction.label}
           </button>
+          {headerAction.secondaryAction ? (
+            <button className="runtime-console-folder-header-action" type="button"
+              disabled={headerAction.secondaryAction.disabled} title={headerAction.secondaryAction.title}
+              onClick={headerAction.secondaryAction.onClick}>
+              {headerAction.secondaryAction.label}
+            </button>
+          ) : null}
+          </div>
         ) : null}
       </header>
       <div className="runtime-console-folder-operation-list">

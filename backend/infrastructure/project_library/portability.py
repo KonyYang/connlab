@@ -81,6 +81,13 @@ class ProjectPortability:
             raise ProjectLibraryError("Take over this project before preparing test-data portability.")
         root = checked_path(member["folder_path"])
         journal_history = []
+        from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal
+        file_state = ProjectFileGenerationJournal(self.settings.data_dir / "project_file_generation").read(member["project_id"])
+        if file_state and file_state["status"] != "completed":
+            raise ProjectLibraryConflict("Resume unfinished file generation before preparing a portable snapshot.")
+        if file_state:
+            journal_history.append({"kind": "project_file_generation", "operation_id": file_state["operation_id"],
+                "status": "completed", "outcome": file_state.get("outcome"), "source_provenance_only": True})
         for name in ("project_folder_generation", "basic_project_workspace", "official_folder_relocation", "llcr_cr_record_publication", "ir_dwv_record_publication"):
             journal = GenerationJournal(self.settings.data_dir / name)
             state = journal.read(member["project_id"])
@@ -166,7 +173,7 @@ class ProjectPortability:
         return result
 
     def prepare(self, member, expected, *, locked=False, persist_member=True):
-        with nullcontext() if locked else self.files.lock():
+        with nullcontext() if locked else self.files.lock(), nullcontext() if locked else self.files.project_lock(member.get("project_id")):
             current, assets = self._capture(member)
             signature = fingerprint(current)
             if signature != expected:

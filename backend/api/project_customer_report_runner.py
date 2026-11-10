@@ -10,6 +10,8 @@ from backend.infrastructure.files.report_publication_gateway import ReportPublic
 from backend.infrastructure.office.customer_report_document_gateway import CustomerReportDocumentGateway
 from backend.infrastructure.office.customer_report_subprocess_runner import CustomerReportSubprocessRunner
 from backend.infrastructure.storage.models import ProjectModel
+from backend.application.project_file_generation_guard import require_project_file_generation_clear
+from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal
 
 
 class ProjectCustomerReportRunner:
@@ -35,6 +37,7 @@ class ProjectCustomerReportRunner:
                         raise ValueError("Project is busy with another operation. Retry after it finishes.")
                     time.sleep(0.05)
             state = journal.read(project_id)
+            require_project_file_generation_clear(ProjectFileGenerationJournal(self._settings.data_dir / "project_file_generation"), project_id)
             if state and state["status"] in {"queued", "running"}:
                 raise ValueError("Project folder generation is pending or running. Retry after it finishes.")
             with self._sessions() as session:

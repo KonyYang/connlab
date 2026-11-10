@@ -185,6 +185,87 @@ class ProjectApplicationFormWriteBackService:
         """Check the same source, authority and target safety without writing files."""
         return self._write_back(project_id, preview_only=True)
 
+    def staging_target(self, project_id: str, *, path_guard) -> dict:
+        """Select only a proven archived Word input, independently of fill fields."""
+        workspace = self._workspaces.get_by_project(project_id)
+        if workspace is None:
+            raise ProjectApplicationFormWriteBackNotFoundError("Existing linked directory is required.")
+        submitted = workspace.official_folder_path / "Submitted Material"
+        path_guard(submitted)
+        summary = self._outputs.get_status_summary(project_id)
+        try:
+            selected = target_application_form(submitted, project_id,
+                self._assets.list_by_project(project_id), self._request_material_collections)
+        except ApplicationFormTargetSelectionError:
+            selected = None
+        target = selected.path if selected is not None else None
+        source_sha = selected.source_sha256 if selected is not None else None
+        if target is not None:
+            path_guard(target)
+        proven = bool(target is not None and source_sha and sha256_file(target) == source_sha)
+        if not proven:
+            managed = []
+            for item in getattr(summary, "items", ()):
+                if (getattr(item, "output_kind", None) != ProjectOutputKind.SECTION2_WRITE_BACK
+                        or getattr(item, "status", None) != ProjectOutputStatus.CURRENT
+                        or getattr(item, "source", None) != ProjectOutputSource.SYSTEM_GENERATED
+                        or not getattr(item, "output_path", None) or not getattr(item, "output_sha256", None)):
+                    continue
+                candidate = Path(item.output_path)
+                path_guard(candidate)
+                if (candidate.parent == submitted and candidate.suffix.lower() == ".docx"
+                        and candidate.is_file() and sha256_file(candidate) == item.output_sha256):
+                    managed.append(candidate)
+            if target in managed:
+                proven = True
+            elif len(set(managed)) == 1 and not source_sha:
+                target, proven = managed[0], True
+        if not proven or target is None or target.suffix.lower() != ".docx":
+            raise ProjectApplicationFormWriteBackError(
+                "Application Form has no proven selected archived Word source or current managed target.")
+        return {"target": target, "selected_source_sha256": source_sha}
+
+    def prepare_staging(self, project_id: str, *, path_guard) -> dict:
+        """Resolve proven archived input and confirmed fields without publication."""
+        project = self._projects.get(project_id)
+        if project is None:
+            raise ProjectApplicationFormWriteBackNotFoundError("Existing project is required.")
+        selected = self.staging_target(project_id, path_guard=path_guard)
+        target, source_sha = selected["target"], selected["selected_source_sha256"]
+        form = _single_form(self._forms.list_by_project(project_id))
+        basic = self._basic_information.get_latest_confirmed(project_id)
+        if basic is None:
+            raise ProjectApplicationFormWriteBackError("Confirm Basic Information before generating Application Form.")
+        schedule = self._project_schedule.get_latest_confirmed(project_id) if self._project_schedule else None
+        if schedule is None:
+            raise ProjectApplicationFormWriteBackError("Confirm Matrix plan dates before generating Application Form.")
+        context = source_context_signature(form, basic, source_sha256=source_sha)
+        return {"target": target, "source_sha256": sha256_file(target),
+                "context_signature": context + "|" + schedule.context_signature,
+                "fields": _fields(project, form, basic, schedule=schedule)}
+
+    def generate_staged(self, context: dict, *, stage_dir: Path, target_name: str, path_guard) -> Path:
+        """Write Word on a short working copy, then return only operation staging."""
+        if Path(target_name).name != target_name or not target_name:
+            raise ValueError("Invalid staged Application Form name.")
+        target, output = Path(context["target"]), stage_dir / target_name
+        path_guard(target)
+        path_guard(stage_dir)
+        if not stage_dir.is_dir() or output.exists():
+            raise ValueError("Application Form staging must be an existing empty operation destination.")
+        expected = context["source_sha256"]
+        if sha256_file(target) != expected:
+            raise ValueError("Application Form input changed before generation.")
+        with TemporaryDirectory(prefix="connlab-word-") as directory:
+            working = Path(directory) / "form.docx"
+            shutil.copy2(target, working)
+            if sha256_file(working) != expected or sha256_file(target) != expected:
+                raise ValueError("Application Form input changed during staging.")
+            self._office.write_word_application_form_fields_with_owned_session(working, context["fields"])
+            with working.open("rb") as source, output.open("xb") as destination:
+                shutil.copyfileobj(source, destination)
+        return output
+
     def _write_back(self, project_id: str, recovery=None, *, preview_only=False):
         """Write known project/application fields into the copied Word form."""
         total_start = perf_counter()

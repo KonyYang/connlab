@@ -729,6 +729,12 @@ class LibraryFiles:
             return
         journal = GenerationJournal(self.settings.data_dir / "project_folder_generation")
         with journal.lock(project_id):
+            from backend.application.project_file_generation_guard import require_project_file_generation_clear
+            from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal
+            try:
+                require_project_file_generation_clear(ProjectFileGenerationJournal(self.settings.data_dir / "project_file_generation"), project_id)
+            except ValueError as exc:
+                raise ProjectLibraryConflict(str(exc)) from exc
             basic = GenerationJournal(self.settings.data_dir / "basic_project_workspace").read(project_id)
             if basic and basic.get("status") != "completed":
                 raise ProjectLibraryConflict("Finish the interrupted basic folder operation before changing its location.")

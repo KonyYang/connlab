@@ -469,6 +469,19 @@ def get_project_folder_generation_service():
     return ProjectFolderGenerationRunner(get_session_factory(), get_settings()).service()
 
 
+@lru_cache(maxsize=1)
+def get_project_file_generation_service():
+    """Cache the worker owner, never tie generation to one HTTP session."""
+    from backend.api.project_file_generation_runner import ProjectFileGenerationRunner
+    return ProjectFileGenerationRunner(get_session_factory(), get_settings()).service()
+
+
+def _require_project_files_clear(settings, project_id):
+    from backend.application.project_file_generation_guard import require_project_file_generation_clear
+    from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal
+    require_project_file_generation_clear(ProjectFileGenerationJournal(settings.data_dir / "project_file_generation"), project_id)
+
+
 def _ltr_duplicate_resolution_service(
     session: Session,
     *,
@@ -1788,8 +1801,9 @@ def get_matrix_editor_llcr_cr_record_publication_service(
         output_service=get_project_output_record_service(session),
         staging_root=settings.data_dir / "stage" / "llcr_cr_record_publication",
         commit=session.commit,
-        write_guard=lambda project_id: guard.require_write_allowed(
-            project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE,
+        write_guard=lambda project_id: (
+            _require_project_files_clear(settings, project_id),
+            guard.require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE),
         ),
     )
 
@@ -1852,7 +1866,10 @@ def get_matrix_editor_ir_dwv_record_publication_service(
         workbook_gateway=generation, draft_projection_builder=generation.build_draft_projection,
         output_service=get_project_output_record_service(session),
         staging_root=settings.data_dir / "stage" / "ir_dwv_record_publication", commit=session.commit,
-        write_guard=lambda project_id: guard.require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE),
+        write_guard=lambda project_id: (
+            _require_project_files_clear(settings, project_id),
+            guard.require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE),
+        ),
     )
 
 
@@ -1916,7 +1933,10 @@ def get_basic_project_workspace_service(
         settings=_official_workspace_settings_from_registry(ExternalResourceRepository(session)),
         data_dir=settings.data_dir, collect_materials=materials.collect_available,
         commit=session.commit,
-        check_other_writes=lambda project_id: require_report_delivery_clear(settings, project_id),
+        check_other_writes=lambda project_id: (
+            _require_project_files_clear(settings, project_id),
+            require_report_delivery_clear(settings, project_id),
+        ),
     )
 
 
@@ -2239,139 +2259,11 @@ def _fee_form_template_context(template: Path) -> str:
     return f"fee-template:{resolved}@sha256:{compute_sha256(template)}"
 
 
-class _RequiredFormsInputContextReader:
-    """Bind each form to its own template and additional document inputs."""
-
-    def __init__(self, resources, settings, schedules, test_record):
-        self.resources, self.settings = resources, settings
-        self.schedules, self.test_record = schedules, test_record
-
-    def context(self, project_id, key):
-        import json
-        if key == "test_record":
-            template = resolve_test_record_template_path(
-                self.resources, configured_template_path=self.settings.test_record.template_path)
-            inputs = self.test_record.preview_inputs(project_id)
-        elif key == "customer_feedback_form":
-            template = _CustomerFeedbackTemplateReader(self.resources).preview_template(project_id)
-            schedule = self.schedules.get_latest_confirmed(project_id)
-            if schedule is None:
-                raise ValueError("Confirm Matrix plan dates before generating Customer Feedback.")
-            inputs = {"schedule": schedule.context_signature}
-        else:
-            raise ValueError("Unsupported form input context.")
-        return f"template:{template.resolve()}@sha256:{compute_sha256(template)}|{json.dumps(inputs, sort_keys=True)}"
-
-
-class _RequiredFormsStagingGenerator:
-    """Generate Required forms into controlled staging without final output records."""
-
-    def __init__(
-        self,
-        *,
-        project_id: str | None = None,
-        settings: Settings,
-        fee_template_resource_store: FeeEvaluationTemplateResourceStore,
-        test_record_template_resource_store: TestRecordTemplateResourceStore | None = None,
-        test_record_service: ConfirmedMatrixTestRecordDocumentGenerationService,
-        fee_export_service: ConfirmedMatrixFeeEvaluationExportService,
-        customer_feedback_service: CustomerFeedbackFormGenerationService,
-        test_status_service: ConfirmedMatrixTestStatusWorkbookGenerationService | None = None,
-    ) -> None:
-        self._project_id = project_id
-        self._settings = settings
-        self._fee_template_resource_store = fee_template_resource_store
-        self._test_record_template_resource_store = (
-            test_record_template_resource_store or fee_template_resource_store
-        )
-        self._test_record_service = test_record_service
-        self._fee_export_service = fee_export_service
-        self._customer_feedback_service = customer_feedback_service
-        self._test_status_service = test_status_service
-
-    def generate(
-        self,
-        *,
-        project_id: str,
-        key: str,
-        target_name: str,
-        basic_information: ConfirmedBasicInformationSnapshot,
-        confirmed_fee: object,
-    ) -> Path:
-        """Generate one Required form into staging and return the staged file path."""
-        output_dir = self._settings.data_dir / "staged_required_forms" / project_id
-        output_dir.mkdir(parents=True, exist_ok=True)
-        if key == "test_record":
-            template_path = resolve_test_record_template_path(
-                self._test_record_template_resource_store,
-                configured_template_path=self._settings.test_record.template_path,
-            )
-            result = self._test_record_service.generate(
-                GenerateConfirmedMatrixTestRecordDocumentCommand(
-                    project_id=project_id,
-                    output_dir=output_dir,
-                    template_path=template_path,
-                )
-            )
-            return _rename_staged_file(result.output_path, target_name)
-        if key == "test_status":
-            if self._test_status_service is None:
-                raise ValueError("Test Status generation is not configured.")
-            return self._test_status_service.generate(
-                GenerateConfirmedMatrixTestStatusWorkbookCommand(
-                    project_id=project_id,
-                    output_dir=output_dir,
-                    target_name=target_name,
-                )
-            )
-        if key == "fee_form":
-            try:
-                edited_values = edited_values_from_json(
-                    edited_values_json_from_confirmed_fee_snapshot(
-                        str(getattr(confirmed_fee, "pricing_snapshot_json"))
-                    )
-                )
-            except (AttributeError, KeyError, TypeError, ValueError) as exc:
-                raise ValueError(
-                    "Confirmed Fee pricing snapshot is not available for Fee Form generation."
-                ) from exc
-            result = self._fee_export_service.export(
-                ExportConfirmedMatrixFeeEvaluationCommand(
-                    project_id=project_id,
-                    template_path=resolve_fee_evaluation_template_path(
-                        self._fee_template_resource_store
-                    ),
-                    output_dir=output_dir,
-                    output_file_name=target_name,
-                    overwrite=True,
-                    allow_review_required=True,
-                    fill_mode="matrix_basic",
-                    edited_values=edited_values,
-                    basic_information_values=fee_form_identity(
-                        basic_information
-                    ).as_dict(),
-                )
-            )
-            return result.output_path
-        if key == "customer_feedback_form":
-            result = self._customer_feedback_service.generate(
-                CustomerFeedbackFormGenerationCommand(
-                    project_id=project_id,
-                    basic_information_values=dict(basic_information.values),
-                )
-            )
-            return _rename_staged_file(result.output_path, target_name)
-        raise ValueError(f"Unsupported Required form key: {key}")
-
-
-def _rename_staged_file(path: Path, target_name: str) -> Path:
-    """Rename a staged file to the deterministic target name when needed."""
-    target = path.with_name(target_name)
-    if path == target:
-        return path
-    target.unlink(missing_ok=True)
-    path.replace(target)
-    return target
+from backend.application.project_file_generation_staging import (
+    RequiredFormsInputContextReader as _RequiredFormsInputContextReader,
+    RequiredFormsStagingGenerator as _RequiredFormsStagingGenerator,
+    _rename_staged_file,
+)
 
 
 def get_project_folder_required_forms_service(
@@ -3209,4 +3101,5 @@ def get_project_registry_management_service(
         basic_information=ProjectBasicInformationRepository(session),
         temporary_context=ProjectTemporaryContextRepository(session),
         project_library_store=ProjectLibraryRepository(session),
+        check_other_writes=lambda project_id: _require_project_files_clear(settings, project_id),
     )

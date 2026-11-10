@@ -218,6 +218,10 @@ def _include_project_router(router):
     app.include_router(protect_project_mutations(router))
 
 
+from backend.api.routes_project_file_generation import router as project_file_generation_router
+_include_project_router(project_file_generation_router)
+
+
 _include_project_router(project_registry_management_router)
 _include_project_router(cleanup_router)
 _include_project_router(approval_package_router)

@@ -28,11 +28,12 @@ class ProjectRegistryManagementService:
     """Conflict decisions and complete audited transitions behind one public seam."""
 
     def __init__(self, registry: RegistryStore, ltrs, generation_journal, *, basic_information=None,
-                 temporary_context=None, clock=None, project_library_store=None):
+                 temporary_context=None, clock=None, project_library_store=None, check_other_writes=None):
         self._registry, self._ltrs, self._generation = registry, ltrs, generation_journal
         self._basic, self._temporary = basic_information, temporary_context
         self._clock = clock or (lambda: datetime.now(timezone.utc).isoformat())
         self._library = project_library_store
+        self._check_other_writes = check_other_writes or (lambda _: None)
 
     def list_entries(self, location):
         if location not in {"trash", "history"}:
@@ -55,6 +56,7 @@ class ProjectRegistryManagementService:
         if action == "restore" and entry.registry_state == "active":
             blockers.append("Project is already in the normal registry.")
         try:
+            self._check_other_writes(project_id)
             state = self._generation.read(project_id)
             if state and state["status"] in {"queued", "running"}:
                 blockers.append("Project folder generation is queued or running. Wait for it to finish before moving the project.")
@@ -104,6 +106,7 @@ class ProjectRegistryManagementService:
                 for entry in sorted(entries, key=lambda item: item.project_id):
                     try:
                         locks.enter_context(self._generation.lock(entry.project_id))
+                        self._check_other_writes(entry.project_id)
                         generation = self._generation.read(entry.project_id)
                         if generation and generation["status"] in {"queued", "running"}:
                             raise ProjectRegistryConflict("Project generation is queued or running. Wait before moving it.")
