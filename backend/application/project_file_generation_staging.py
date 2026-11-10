@@ -159,4 +159,3 @@ def _rename_staged_file(path: Path, target_name: str) -> Path:
     target.unlink(missing_ok=True)
     path.replace(target)
     return target
-
