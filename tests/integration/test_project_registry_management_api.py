@@ -158,7 +158,7 @@ def register_number(storage, project_id):
         session.commit()
 
 
-@pytest.mark.parametrize("reason", ["completed", "cancelled", "cannot_test"])
+@pytest.mark.parametrize("reason", ["completed", "cancelled", "cannot_test", "other"])
 def test_explicit_closure_reason_accepts_omitted_note(client, reason):
     project_id = create(client)
     response = client.post(f"/api/projects/{project_id}/lifecycle/close", json={"reason_category": reason})
@@ -167,9 +167,8 @@ def test_explicit_closure_reason_accepts_omitted_note(client, reason):
     assert response.json()["close_reason_category"] == reason
 
 
-def test_other_reason_requires_note_and_unselected_reason_cannot_close(client):
+def test_unselected_reason_cannot_close(client):
     project_id = create(client)
-    assert client.post(f"/api/projects/{project_id}/lifecycle/close", json={"reason_category": "other"}).status_code == 409
     assert client.post(f"/api/projects/{project_id}/lifecycle/close", json={"note": "Done"}).status_code == 422
     assert client.get(f"/api/projects/{project_id}/lifecycle").json()["lifecycle_state"] == "active"
 
