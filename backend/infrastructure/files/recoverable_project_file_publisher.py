@@ -112,11 +112,13 @@ class RecoverableProjectFilePublisher:
                 # A manual replacement racing the move is retained in History;
                 # it is never discarded or silently accepted as the old file.
                 self._verify_backup(backup, effect)
-                target_action(sync_file, backup)
-                sync_directory(backup.parent)
-                sync_directory(target.parent)
             if target.exists():
                 raise ValueError("Target reappeared after backup; recovery stopped.")
+            # A process may have died immediately after the archive move, before
+            # any flush. Recovery must establish durability again before linking.
+            target_action(sync_file, backup)
+            sync_directory(backup.parent)
+            sync_directory(target.parent)
             effect["phase"] = "removed"
             self.journal.save(self.state)
         elif target.exists():

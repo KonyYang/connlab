@@ -139,3 +139,32 @@ def test_parent_directory_replacement_stops_publication_without_touching_files(t
     else:
         assert target.read_bytes() == b"old"
     assert not backup.exists()
+
+
+def test_recovery_flushes_verified_history_before_publishing_replacement(tmp_path, monkeypatch):
+    import backend.infrastructure.files.recoverable_project_file_publisher as module
+    journal = ProjectFileGenerationJournal(tmp_path / "journal")
+    state = operation(journal)
+    stage, target, backup = tmp_path / "stage", tmp_path / "target", tmp_path / "History" / "backup"
+    stage.write_bytes(b"new")
+    target.write_bytes(b"old")
+    publisher = RecoverableProjectFilePublisher(journal, state)
+    effect = publisher.prepare(stage, target, backup)
+    real_sync = module.sync_file
+    def lose_process(path):
+        if Path(path) == backup:
+            raise SystemExit("process lost after archive move before flush")
+        real_sync(path)
+    monkeypatch.setattr(module, "sync_file", lose_process)
+    with pytest.raises(SystemExit):
+        publisher.publish(effect)
+    assert backup.read_bytes() == b"old"
+    assert not target.exists()
+    flushed = []
+    def sync(path):
+        flushed.append(Path(path))
+        real_sync(path)
+    monkeypatch.setattr(module, "sync_file", sync)
+    publisher.publish(effect)
+    assert flushed.index(backup) < flushed.index(target)
+    assert target.read_bytes() == b"new"
