@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ProjectFileAction, ProjectFileKey } from "../../api/client";
 import { ProjectManagementDialog } from "../projects-registry/ProjectRegistryManagementDialog";
 import { useProjectFiles } from "./useProjectFiles";
@@ -9,6 +9,7 @@ export function ProjectFilesDialog({projectId, readonly = false, onClose}: {proj
   const {preview, operation, loading, busy, running} = model;
   const [actions, setActions] = useState<Partial<Record<ProjectFileKey, ProjectFileAction>>>({});
   const [confirmReplacement, setConfirmReplacement] = useState(false);
+  const closeButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     setActions(Object.fromEntries((preview?.items ?? []).map(item => [item.key,
       item.status === "ready" && item.default_action === "generate_missing" && item.source_token ? "generate_missing" : "skip"])));
@@ -16,6 +17,14 @@ export function ProjectFilesDialog({projectId, readonly = false, onClose}: {proj
   }, [preview]);
   const recovering = Boolean(operation && operation.status !== "completed" && !running);
   const locked = loading || busy || running || recovering || readonly || preview?.status !== "ready";
+  useEffect(() => {
+    const close = closeButton.current;
+    const dialog = close?.closest('[role="dialog"]');
+    const focused = document.activeElement;
+    // Disabling the active control can send native focus to the document body.
+    // Keep Escape and Tab inside this modal without moving a still-valid focus.
+    if (close && dialog && (!dialog.contains(focused) || focused?.matches(":disabled"))) close.focus();
+  }, [locked, loading, busy, running, recovering, preview, confirmReplacement]);
   const selections = (preview?.items ?? []).map(item => ({key: item.key, source_token: item.source_token, action: actions[item.key] ?? "skip" as ProjectFileAction}));
   const replacements = selections.filter(item => item.action === "replace_with_backup");
   const selected = selections.filter(item => item.action !== "skip");
@@ -78,7 +87,7 @@ export function ProjectFilesDialog({projectId, readonly = false, onClose}: {proj
       </ul>
     </details> : null}
     <div className="project-management-dialog-actions">
-      <button type="button" className="secondary-action" onClick={onClose}>Close</button>
+      <button ref={closeButton} type="button" className="secondary-action" onClick={onClose}>Close</button>
       <button type="button" className="secondary-action" disabled={loading || busy || running} onClick={() => void model.refresh()}>Refresh files</button>
       <button type="button" className="primary-action" disabled={locked || !selected.length} onClick={() => {
         if (replacements.length && !confirmReplacement) {setConfirmReplacement(true); return;}

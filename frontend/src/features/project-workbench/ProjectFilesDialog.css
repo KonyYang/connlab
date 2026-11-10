@@ -3,7 +3,7 @@
 .project-files-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; padding: 12px; border-bottom: 1px solid var(--color-border); }
 .project-files-row:last-child { border-bottom: 0; }
 .project-files-dialog .project-files-choice { display: flex; align-items: flex-start; gap: 8px; }
-.project-files-choice input { flex: 0 0 auto; margin-top: 4px; }
+.project-files-choice input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: 0 0 18px; margin: 3px 0 0; }
 .project-files-choice span { min-width: 0; }
 .project-files-choice small { display: block; color: var(--color-ink-muted); overflow-wrap: anywhere; }
 .project-files-state { display: grid; gap: 6px; font-size: 13px; }

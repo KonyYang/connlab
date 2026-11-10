@@ -1,3 +1,4 @@
+import { StrictMode, useState } from "react";
 import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -98,6 +99,47 @@ describe("project file review", () => {
   generate.focus(); expect(document.activeElement).toBe(generate);
   await userEvent.tab(); expect(document.activeElement).toBe(screen.getByRole("checkbox",{name:"Fee Form"}));
   await userEvent.keyboard("{Escape}"); expect(close).toHaveBeenCalledOnce();
+ });
+ it("keeps focus inside after starting generation so Escape dismisses without another operation", async () => {
+  const close=vi.fn(); render(<ProjectFilesDialog projectId="p1" onClose={close}/>);
+  const dialog=screen.getByRole("dialog");
+  const generate=within(dialog).getByRole("button",{name:"Generate selected files"});
+  await waitFor(() => expect(generate).toHaveProperty("disabled",false));
+  await userEvent.click(generate); await screen.findByText("Generating files…");
+  expect(dialog.contains(document.activeElement)).toBe(true);
+  expect(document.activeElement).toBe(within(dialog).getByRole("button",{name:"Close"}));
+  await userEvent.keyboard("{Escape}"); expect(close).toHaveBeenCalledOnce();
+  expect(startMock).toHaveBeenCalledOnce(); expect(resumeMock).not.toHaveBeenCalled();
+ });
+ it("hands focus to Close during a deferred refresh and preserves valid focus once ready", async () => {
+  render(<ProjectFilesDialog projectId="p1" onClose={vi.fn()}/>);
+  const dialog=screen.getByRole("dialog");
+  const generate=within(dialog).getByRole("button",{name:"Generate selected files"});
+  await waitFor(() => expect(generate).toHaveProperty("disabled",false));
+  let finishPreview!: (value: ProjectFilesPreview) => void;
+  previewMock.mockReturnValueOnce(new Promise(resolve => {finishPreview=resolve;}));
+  await userEvent.click(within(dialog).getByRole("button",{name:"Refresh files"}));
+  const closeButton=within(dialog).getByRole("button",{name:"Close"});
+  expect(document.activeElement).toBe(closeButton);
+  expect(closeButton).toHaveProperty("disabled",false);
+  await userEvent.tab(); expect(document.activeElement).toBe(closeButton);
+  await act(async () => {finishPreview({...preview()});});
+  await waitFor(() => expect(generate).toHaveProperty("disabled",false));
+  expect(document.activeElement).toBe(closeButton);
+  expect(startMock).not.toHaveBeenCalled(); expect(resumeMock).not.toHaveBeenCalled();
+ });
+ it("returns focus to its opening control after dismissal in StrictMode", async () => {
+  function Harness() {
+    const [open,setOpen]=useState(false);
+    return <><button type="button" onClick={() => setOpen(true)}>Open file review</button>
+      {open ? <ProjectFilesDialog projectId="p1" onClose={() => setOpen(false)}/> : null}</>;
+  }
+  render(<StrictMode><Harness/></StrictMode>);
+  const trigger=screen.getByRole("button",{name:"Open file review"});
+  await userEvent.click(trigger);
+  await waitFor(() => expect(screen.getByRole("button",{name:"Generate selected files"})).toHaveProperty("disabled",false));
+  await userEvent.click(screen.getByRole("button",{name:"Close"}));
+  expect(screen.queryByRole("dialog")).toBeNull(); expect(document.activeElement).toBe(trigger);
  });
  it("polls active work to a partial completion and reloads conditions without recovery", async () => {
   const completed=operation({status:"completed",outcome:"partial",items:[
