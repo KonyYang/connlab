@@ -560,15 +560,15 @@
         ],
         "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
         "started_at": "2026-11-11T00:16:52.501444Z",
-        "updated_at": "2026-11-11T04:46:58.219595Z",
+        "updated_at": "2026-11-11T05:10:34.034946Z",
         "checkpoint": {
+          "requires_user": true,
           "status": "running",
-          "stage": "scope-approved",
-          "version": 1,
+          "stage": "app-test-scope",
           "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
-          "schema": "connlab.sol-task-checkpoint",
-          "summary": "User explicitly approved adding tests/integration/test_project_import_destination_api.py, tests/integration/test_project_registry_management_api.py, frontend/src/pages/ProjectListPage.tsx, and frontend/src/pages/ProjectListPage.test.tsx. Resume by updating obsolete isolated fixtures, fixing deterministic ProjectListPage tests, renaming the entry to Add Existing Project, then amend the high-risk scope manifest to the exact committed diff and rerun final QA.",
-          "requires_user": false
+          "version": 1,
+          "summary": "Product and approved fixtures are complete at a39596b1. Exact-head QA: Python integration 1147 passed, 2 skipped, 29 Office deselected; unit 3524 passed, 7 skipped; targeted project-library/ProjectList 110 passed; build passed. Full frontend has 1309 passed and 13 failed: ReportWorkspace passes 58/58 alone (concurrency-only); App.test fails deterministically 12/20 because it still queries the old Import Projects accessible name after the approved Add Existing Project rename. Explicit User approval is required to re-add frontend/src/App.test.tsx to the corrected high-risk scope.",
+          "schema": "connlab.sol-task-checkpoint"
         },
         "report": null
       }
