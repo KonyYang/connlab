@@ -20,28 +20,6 @@
 .project-delete-identity { display: grid; gap: 4px; }
 .project-delete-identity strong { font-size: 16px; }
 .project-delete-identity span { overflow-wrap: anywhere; }
-.project-delete-help { color: var(--color-ink-muted); }
-.project-delete-dialog .project-delete-reason { display: flex; align-items: center; gap: 12px; }
-.project-delete-reason > span { flex: 0 0 auto; }
-.project-delete-reason select { min-width: 0; flex: 1; }
-.project-delete-dialog select,
-.project-delete-dialog textarea {
-  min-height: 42px;
-  padding: 9px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font: inherit;
-}
-.project-delete-dialog textarea { min-height: 72px; resize: vertical; }
-.project-delete-dialog select:focus-visible,
-.project-delete-dialog textarea:focus-visible,
-.project-delete-add-note:focus-visible { outline: 3px solid rgb(31 102 209 / 24%); outline-offset: 2px; }
-.project-delete-dialog select:disabled,
-.project-delete-dialog textarea:disabled { background: var(--color-surface-muted); }
-.project-delete-add-note { justify-self: start; padding: 0; border: 0; background: transparent; color: var(--color-primary-strong); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-.project-delete-add-note:disabled { color: var(--color-ink-muted); cursor: default; }
 .project-delete-error,
 .project-delete-warnings { padding: 10px 12px; border: 1px solid currentColor; border-radius: 10px; }
 .project-delete-error { color: var(--color-danger); }

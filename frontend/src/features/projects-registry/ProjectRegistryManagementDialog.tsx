@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactElement, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { ProjectRegistryAction, ProjectRegistryEntry, ProjectRegistryPreview } from "../../api/projectRegistryManagement";
 import "./ProjectRegistryManagementDialog.css";
@@ -10,16 +10,10 @@ export function ProjectRegistryManagementDialog({action, preview, loading, busy,
   onTrash: (reason: string) => void | Promise<void>;
   onRestore: (destination: "active" | "history", replaceConflicts: boolean) => void | Promise<void>;
 }): ReactElement {
-  const [reason, setReason] = useState("Created by mistake");
-  const [note, setNote] = useState("");
-  const [noteExpanded, setNoteExpanded] = useState(false);
-  const noteInput = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { if (noteExpanded) noteInput.current?.focus(); }, [noteExpanded]);
   const disabled = busy || loading || stale || !preview || Boolean(preview.blockers.length);
   const conflicts = preview?.conflicts ?? [];
   if (action === "trash") {
-    // This fixed API reassurance is already covered by the concise retention message.
-    // Keep any other server warning visible rather than treating it as boilerplate.
+    // Omit the routine retention reassurance, but preserve actionable server warnings.
     const warnings = preview?.warnings.filter((warning) => warning !== "Existing external files and LTR associations are retained.") ?? [];
     return <ProjectManagementDialog title="Delete project" className="project-delete-dialog" busy={busy} onCancel={onCancel}>
       <div className="project-delete-body">
@@ -28,27 +22,16 @@ export function ProjectRegistryManagementDialog({action, preview, loading, busy,
           <div className="project-delete-identity">
             <strong>{preview.project.display_project_id}</strong>
             <span>{preview.project.sample_description || "Sample not recorded"}</span>
-            <span>{preview.project.test_item || "Test item not recorded"}</span>
           </div>
-          <p className="project-delete-help">You can restore this project from Recycle. Files and LTR records stay unchanged.</p>
           {warnings.length > 0 && <ul className="project-delete-warnings">{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
           {preview.blockers.length > 0 && <div className="project-delete-error" role="alert"><ul>{preview.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul></div>}
-          <label className="project-delete-reason"><span>Deletion reason</span>
-            <select data-dialog-initial-focus value={reason} disabled={busy} onChange={(event) => setReason(event.target.value)}>
-              <option value="Created by mistake">Created by mistake</option>
-              <option value="Duplicate project">Duplicate project</option><option value="Other">Other</option>
-            </select>
-          </label>
-          {noteExpanded ? <label className="project-delete-note"><span>Additional note (optional)</span>
-            <textarea ref={noteInput} rows={2} value={note} disabled={busy} onChange={(event) => setNote(event.target.value)} />
-          </label> : <button className="project-delete-add-note" type="button" disabled={busy} onClick={() => setNoteExpanded(true)}>Add note</button>}
         </>}
         {error && <p className="project-delete-error" role="alert">{error}</p>}
         {(stale || error || Boolean(preview?.blockers.length)) && <button className="secondary-action ui-secondary-action" type="button" disabled={busy || loading} onClick={onRefresh}>Refresh preview</button>}
       </div>
       <div className="project-management-dialog-actions project-delete-actions">
-        <button className="secondary-action ui-secondary-action" type="button" disabled={busy} onClick={onCancel}>Cancel</button>
-        <button className="primary-action ui-primary-action" type="button" disabled={disabled || !reason} onClick={() => void onTrash(note.trim() ? `${reason}: ${note.trim()}` : reason)}>{busy ? "Moving…" : "Move to recycle bin"}</button>
+        <button data-dialog-initial-focus className="secondary-action ui-secondary-action" type="button" disabled={busy} onClick={onCancel}>Cancel</button>
+        <button className="primary-action ui-primary-action" type="button" disabled={disabled} onClick={() => void onTrash("User confirmed move to recycle bin.")}>{busy ? "Moving…" : "Move to recycle bin"}</button>
       </div>
     </ProjectManagementDialog>;
   }

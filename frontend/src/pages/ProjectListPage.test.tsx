@@ -185,10 +185,11 @@ describe("ProjectListPage lifecycle registry views", () => {
     render(<ProjectListPage onOpenProject={vi.fn()} />);
     await user.click(await screen.findByRole("button", {name: "Delete project DL-2026-01-002"}));
     const dialog = within(await screen.findByRole("dialog"));
-    await user.selectOptions(await dialog.findByLabelText("Deletion reason"), "Created by mistake");
+    expect(await dialog.findByText("Original connector")).toBeTruthy();
+    expect(dialog.queryByRole("combobox")).toBeNull();
     listProjectRegistryRowsMock.mockResolvedValue([]);
     await user.click(dialog.getByRole("button", {name: "Move to recycle bin"}));
-    expect(managementApi.moveProjectToTrash).toHaveBeenCalledWith("original-A", {token: "token-A", reason: "Created by mistake"});
+    expect(managementApi.moveProjectToTrash).toHaveBeenCalledWith("original-A", {token: "token-A", reason: "User confirmed move to recycle bin."});
     await waitFor(() => expect(screen.queryByRole("table")).toBeNull());
     await user.click(screen.getByRole("button", {name: "Undo"}));
     expect(managementApi.previewProjectRegistryAction).toHaveBeenLastCalledWith("original-A", "restore");
