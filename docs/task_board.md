@@ -536,6 +536,7 @@
           "backend/application/project_library/service.py",
           "backend/infrastructure/project_library/portability.py",
           "backend/infrastructure/storage/repositories/project_library.py",
+          "frontend/src/App.test.tsx",
           "frontend/src/api/projectLibrary.ts",
           "frontend/src/features/project-library/ProjectImportReviewList.tsx",
           "frontend/src/features/project-library/ProjectLibraryImport.tsx",
@@ -560,7 +561,7 @@
         ],
         "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
         "started_at": "2026-11-11T00:16:52.501444Z",
-        "updated_at": "2026-11-11T10:26:42.559338Z",
+        "updated_at": "2026-11-11T10:31:06.425020Z",
         "checkpoint": {
           "version": 1,
           "schema": "connlab.sol-task-checkpoint",
