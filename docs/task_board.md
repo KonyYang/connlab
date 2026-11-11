@@ -527,7 +527,35 @@
       "closed_at": "2026-11-11T22:25:15.103411Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_DELETE_CONFIRMATION_MINIMAL_20261112": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/delete-confirmation-minimal-20261112",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_DELETE_CONFIRMATION_MINIMAL_20261112",
+        "summary": "Reduce deletion confirmation to project number, description and two actions",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Simplify Delete project only: retain full project identifier and sample description with Cancel and Move to recycle bin. Remove test item, routine retention copy, reason and note fields; pass neutral user-confirmed audit reason through the existing API. Preserve real warnings, blockers, stale/error refresh, busy/loading guards, safe initial focus and restore behavior. No real delete, backend/schema changes, push, publication or release packaging. Validate with mocked APIs and read-only browser preview.",
+        "scope_paths": [
+          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx",
+          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.css",
+          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.test.tsx",
+          "frontend/src/pages/ProjectListPage.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "e5b1ca1e45f320b71ff70d6c333f29353971dc12",
+        "started_at": "2026-11-11T23:37:17.548812Z",
+        "updated_at": "2026-11-11T23:37:17.548812Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
