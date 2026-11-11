@@ -13,12 +13,16 @@ from backend.infrastructure.storage.models import ProjectModel
 from backend.infrastructure.storage.models_report_authoring import ReportAuthoringRevisionModel
 from backend.api.routes_project_library import router, get_project_library_service
 from backend.application.project_library.service import ProjectLibraryService
+from backend.application.project_library.existing_ltr_adoption import (
+    ExistingLtrAdoptionService,
+    UnavailableExistingLtrAuthority,
+)
 from backend.infrastructure.project_library.files import LibraryFiles
 from backend.infrastructure.project_library.portability import ProjectPortability
 from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
 
 
-def app_at(root, *, managed=True):
+def app_at(root, *, managed=True, ltr_authority=None):
     settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root if managed else None)
     settings.ensure_directories()
     engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
@@ -30,7 +34,8 @@ def app_at(root, *, managed=True):
             store = ProjectLibraryRepository(session)
             files = LibraryFiles(settings, destination_configured=True)
             yield ProjectLibraryService(store, settings, files=files,
-                portability=ProjectPortability(store, files, settings), opener=lambda path: None)
+                portability=ProjectPortability(store, files, settings), opener=lambda path: None,
+                existing_ltr=ExistingLtrAdoptionService(store, ltr_authority) if ltr_authority else None)
     app.dependency_overrides[get_project_library_service] = service
     return TestClient(app), settings, engine
 
@@ -193,6 +198,37 @@ def test_known_identity_conflicts_do_not_silently_switch_working_project(tmp_pat
         with Session(engine) as session:
             assert session.get(ProjectModel,"known").product_name == "Existing"
             assert len(list(session.scalars(select(ProjectModel)))) == 1
+    finally:
+        engine.dispose()
+
+
+def test_identity_conflict_takes_precedence_when_ltr_authority_is_unavailable(tmp_path):
+    client, settings, engine = app_at(
+        tmp_path / "library", ltr_authority=UnavailableExistingLtrAuthority()
+    )
+    source = tmp_path / "DL-2026-09-032 Incoming"
+    (source / ".connlab").mkdir(parents=True)
+    (source / ".connlab/manifest.json").write_text(
+        json.dumps({"project_id": "incoming-project", "dl_number": "DL-2026-09-032"}),
+        encoding="utf-8",
+    )
+    target = settings.projects_dir / "DL-2026-09-032"
+    (target / ".connlab").mkdir(parents=True)
+    (target / ".connlab/manifest.json").write_text(
+        json.dumps({"project_id": "different-project", "dl_number": "DL-2026-09-032"}),
+        encoding="utf-8",
+    )
+    try:
+        row = client.post(
+            "/api/project-library/intake-plan", json={"sources": [str(source)]}
+        ).json()["items"][0]
+
+        assert row["status"] == "conflict", row
+        assert row["can_keep_separate"] is False
+        warnings = " ".join(row["warnings"])
+        assert "different project identity" in warnings
+        assert "LTR workbook" in warnings
+        assert list(target.iterdir()) == [target / ".connlab"]
     finally:
         engine.dispose()
 

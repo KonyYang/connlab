@@ -141,22 +141,27 @@ class ProjectLibraryService:
                     and not (target_id or new_title)
                     and not self.store.project_exists(source.get("project_id"))
                 )
+                authority_problem = None
                 if self.existing_ltr and requires_existing_ltr_authority:
-                    proof = self.existing_ltr.review(source["ltr_number"])
-                    source["ltr_adoption"] = proof
-                    source["authority_status"] = "found"
-                    source["authority_message"] = (
-                        f"{proof['ltr_number']} was found in the authoritative LTR workbook. "
-                        "Confirm to copy the files and adopt this number locally; the workbook will not be changed."
-                    )
-                    if source.get("source_state") == "incomplete" and source.get("project_id"):
-                        source.update(
-                            original_project_id=source.get("project_id"),
-                            project_id=None,
-                            source_state="adopt_existing",
-                            adopt_existing=True,
+                    try:
+                        proof = self.existing_ltr.review(source["ltr_number"])
+                    except (OSError, ValueError, LookupError) as error:
+                        authority_problem = str(error)
+                    else:
+                        source["ltr_adoption"] = proof
+                        source["authority_status"] = "found"
+                        source["authority_message"] = (
+                            f"{proof['ltr_number']} was found in the authoritative LTR workbook. "
+                            "Confirm to copy the files and adopt this number locally; the workbook will not be changed."
                         )
-                        source["reception_layout"] = source["files_only_layout"]
+                        if source.get("source_state") == "incomplete" and source.get("project_id"):
+                            source.update(
+                                original_project_id=source.get("project_id"),
+                                project_id=None,
+                                source_state="adopt_existing",
+                                adopt_existing=True,
+                            )
+                            source["reception_layout"] = source["files_only_layout"]
                 if assignment.get("files_only"):
                     if source.get("source_state") != "incomplete":
                         raise ProjectLibraryConflict("Only a ConnLab folder missing its snapshot can use files-only import. Check this source again.")
@@ -273,6 +278,12 @@ class ProjectLibraryService:
                 ):
                     status, separate = "conflict", True
                     warnings.append("Another record shares this LTR. Review the source; no records will be merged.")
+                if authority_problem:
+                    source["authority_problem"] = authority_problem
+                    warnings.append(authority_problem)
+                    if status == "ready":
+                        status = "unavailable"
+                    separate = False
                 if source.get("authority_message") and status == "ready":
                     warnings.append(source["authority_message"])
                 if source.get("has_portable") and not reference_existing:
@@ -313,7 +324,8 @@ class ProjectLibraryService:
                     first["status"], first["can_keep_separate"] = "conflict", True
                     first["warnings"].append("Another selected source uses the same destination. Keep Separate preserves both without overwriting either source.")
         for row in rows:
-            if row.get("source_state") == "incomplete" and row["status"] != "already_added" and not row.get("reference_existing"):
+            if (row.get("source_state") == "incomplete" and row["status"] != "already_added"
+                    and not row.get("reference_existing") and not row.get("authority_problem")):
                 row["takeover_blocker"] = "This ConnLab project has no data snapshot. Export it from the original computer to restore its data, or explicitly import files only."
             if row.get("source_state") == "upgrade_required":
                 row["takeover_blocker"] = "Update ConnLab before importing this project. It was created with a newer format."
