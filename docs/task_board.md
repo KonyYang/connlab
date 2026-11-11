@@ -559,8 +559,16 @@
         ],
         "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
         "started_at": "2026-11-11T00:16:52.501444Z",
-        "updated_at": "2026-11-11T00:16:52.501444Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-11T02:13:44.649176Z",
+        "checkpoint": {
+          "version": 1,
+          "requires_user": true,
+          "status": "running",
+          "schema": "connlab.sol-task-checkpoint",
+          "stage": "scope-approval",
+          "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
+          "summary": "Implementation and independent review pass at fa4bb449. Exact-head QA: focused 161 passed; Python integration 1124 passed, 2 skipped, 29 office deselected; unit 3524 passed, 7 skipped; build/typecheck passed. Completion awaits explicit high-risk scope approval for two obsolete Python fixture files and ProjectListPage plus its tests. Full frontend has 1320 passed, 2 deterministic ProjectListPage test failures outside frozen scope."
+        },
         "report": null
       }
     }
