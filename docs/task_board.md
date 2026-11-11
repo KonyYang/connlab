@@ -559,15 +559,15 @@
         ],
         "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
         "started_at": "2026-11-11T00:16:52.501444Z",
-        "updated_at": "2026-11-11T02:13:44.649176Z",
+        "updated_at": "2026-11-11T02:14:23.756821Z",
         "checkpoint": {
-          "version": 1,
-          "requires_user": true,
-          "status": "running",
-          "schema": "connlab.sol-task-checkpoint",
-          "stage": "scope-approval",
           "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
-          "summary": "Implementation and independent review pass at fa4bb449. Exact-head QA: focused 161 passed; Python integration 1124 passed, 2 skipped, 29 office deselected; unit 3524 passed, 7 skipped; build/typecheck passed. Completion awaits explicit high-risk scope approval for two obsolete Python fixture files and ProjectListPage plus its tests. Full frontend has 1320 passed, 2 deterministic ProjectListPage test failures outside frozen scope."
+          "summary": "Implementation/review/isolated QA pass at fa4bb449. Blocked after three consecutive goal turns because high-risk frozen scope omitted tests/integration/test_project_import_destination_api.py, tests/integration/test_project_registry_management_api.py, frontend/src/pages/ProjectListPage.tsx, and frontend/src/pages/ProjectListPage.test.tsx. Explicit User approval is required before amending scope, updating obsolete isolated fixtures, fixing deterministic ProjectListPage tests, renaming the entry to Add Existing Project, rerunning full QA, and integrating locally.",
+          "version": 1,
+          "stage": "scope-approval",
+          "status": "blocked",
+          "requires_user": true,
+          "schema": "connlab.sol-task-checkpoint"
         },
         "report": null
       }
