@@ -671,11 +671,11 @@
     },
     "TASK_DELETE_PROJECT_DIALOG_COMPACT_20261112": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
       "branch": "codex/delete-project-dialog-20261112",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "5207e851701ffcd013ef2d71a1571237d510509c",
       "task": {
         "task_id": "TASK_DELETE_PROJECT_DIALOG_COMPACT_20261112",
         "summary": "Compact Delete project confirmation using established dialog styling",
@@ -690,9 +690,62 @@
         "risk_reasons": [],
         "activation_head": "a73b070f89c41b809e361e11f966870855a94c23",
         "started_at": "2026-11-11T17:44:48.444544Z",
-        "updated_at": "2026-11-11T17:44:48.444544Z",
+        "updated_at": "2026-11-11T17:54:55.759312Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_DELETE_PROJECT_DIALOG_COMPACT_20261112",
+          "subject": "3a7ac9a1a43fb8837179cb3dc91b96e94bc78960",
+          "summary": "Compact deletion confirmation with concise project identity, retention message, default editable reason and expandable note; backend and restore behavior preserved. Local only; no push/publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.css",
+            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.test.tsx",
+            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx"
+          ],
+          "validation": [
+            {
+              "name": "Focused RED/GREEN",
+              "status": "passed",
+              "summary": "Before implementation, 3 of 8 focused tests failed for the expected UI differences; final focused component suite has 11 passing tests."
+            },
+            {
+              "name": "Affected frontend regression",
+              "status": "passed",
+              "summary": "5 test files, 132 tests passed: deletion/restore dialog, ProjectListPage, ProjectWorkbenchLayout, ProjectFilesDialog and public binding dialog. One React act warning was emitted; no failing tests."
+            },
+            {
+              "name": "TypeScript and production build",
+              "status": "passed",
+              "summary": "npm run build succeeded on final files; no release packaging or publication."
+            },
+            {
+              "name": "Browser inspection",
+              "status": "passed",
+              "summary": "Actual Vite UI checked at 1280x720, 640x803 and 360x640. No horizontal overflow at 360; dialog fits viewport with expanded note. Add note focuses textarea; Escape cancels and original project remains listed. No trash/restore mutation submitted. Screenshot: tmp/delete-project-dialog-20261112/delete-dialog-640.jpg. Temporary frontend 5187 stopped."
+            },
+            {
+              "name": "Exact diff and scope",
+              "status": "passed",
+              "summary": "git diff --check passed; only three reserved frontend files changed. Standards review: 0 actionable findings. Spec review: 0 actionable findings. Same-agent self-review; no independent review claimed."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Implemented and tested micro task, self-reviewed final diff against user preferences and project design. No backend/API/business-data changes."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "3a7ac9a1a43fb8837179cb3dc91b96e94bc78960",
+            "primary_before": "a137cc6f8295c253d028e81e2328247445671cde",
+            "integrated_head": "5207e851701ffcd013ef2d71a1571237d510509c",
+            "recovered": false
+          }
+        }
       }
     }
   }
