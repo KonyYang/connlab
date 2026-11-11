@@ -35,6 +35,26 @@ it("automatically receives one safe folder and opens its verified workspace", as
   expect(screen.queryByRole("button", { name: "Confirm Import", exact: true })).toBeNull();
 });
 
+it("requires one explicit confirmation before adopting an authoritative existing LTR", async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.planLibraryIntake).mockResolvedValue({
+    plan_id: "authority-plan", fingerprint: "authority-fingerprint", warnings: [],
+    items: [{
+      ...item,
+      authority_status: "found",
+      authority_message: "The LTR exists in the authoritative workbook.",
+    }],
+  });
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={vi.fn()} />);
+
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
+  expect(await screen.findByRole("button", { name: "Confirm Import", exact: true })).toBeTruthy();
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole("button", { name: "Confirm Import", exact: true }));
+  await waitFor(() => expect(api.startLibraryBatch).toHaveBeenCalledOnce());
+});
+
 it("asks for the actual project when an upper folder is selected and creates no import review", async () => {
   const user = userEvent.setup();
   vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [], warnings: ["Choose the one project you want to import."], truncated: false, selection_issue: "choose_project" } as api.LibraryScan);

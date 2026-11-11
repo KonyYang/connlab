@@ -22,12 +22,16 @@ class FakeStore:
     def __init__(self, owner=None):
         self.owner = owner
         self.adopted = []
+        self.claimed = []
 
     def current_ltr_owner(self, ltr_number):
         return self.owner
 
     def adopt_existing_ltr(self, project_id, proof):
         self.adopted.append((project_id, proof))
+
+    def claim_existing_ltr(self, project_id, title, proof):
+        self.claimed.append((project_id, title, proof))
 
 
 def authority_row(*, description="Connector qualification"):
@@ -63,6 +67,17 @@ def test_adopt_blocks_when_the_authority_row_changes_after_review():
     with pytest.raises(ProjectLibraryConflict, match="changed"):
         service.adopt("local-project", proof)
     assert store.adopted == []
+
+
+def test_claim_revalidates_then_reserves_the_local_identity_before_copy():
+    store = FakeStore()
+    authority = FakeAuthority(authority_row())
+    service = ExistingLtrAdoptionService(store, authority)
+    proof = service.review("DL-2026-11-013")
+
+    service.claim("reserved-project", "Imported connector", proof)
+
+    assert store.claimed == [("reserved-project", "Imported connector", proof)]
 
 
 def test_review_blocks_a_different_current_local_owner_before_copy():

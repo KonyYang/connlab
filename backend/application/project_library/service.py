@@ -136,8 +136,12 @@ class ProjectLibraryService:
                     source = self.files.inspect_source(value, ltr_number=assignment["ltr_number"])
                 else:
                     source = self.files.inspect_source(value)
-                if (self.existing_ltr and source.get("ltr_number") and not source.get("has_portable")
-                        and not (target_id or new_title) and not self.store.project_exists(source.get("project_id"))):
+                requires_existing_ltr_authority = (
+                    source.get("ltr_number") and not source.get("has_portable")
+                    and not (target_id or new_title)
+                    and not self.store.project_exists(source.get("project_id"))
+                )
+                if self.existing_ltr and requires_existing_ltr_authority:
                     proof = self.existing_ltr.review(source["ltr_number"])
                     source["ltr_adoption"] = proof
                     source["authority_status"] = "found"
@@ -433,8 +437,11 @@ class ProjectLibraryService:
         if source.get("ltr_adoption"):
             if self.existing_ltr is None:
                 raise ProjectLibraryConflict("LTR authority verification is unavailable. Check the project again.")
-            # Revalidate before any copy so stale authority cannot create project files.
-            self.existing_ltr.verify(source["ltr_adoption"])
+            claimed_project_id = item.get("claimed_project_id")
+            if not claimed_project_id:
+                claimed_project_id = uuid4().hex
+                item["claimed_project_id"] = claimed_project_id
+                self.store.save_batch(batch)
         existing = source.get("target_member_id")
         if existing:
             member = self.store.member(existing)
@@ -447,7 +454,7 @@ class ProjectLibraryService:
         else:
             title = source.get("new_project_title") or source["title"]
             root = self.files.root_for_target(item["target"], source, bool(source.get("new_project_title")))
-            project_id = source.get("project_id") if source.get("reference_existing") else None
+            project_id = item.get("claimed_project_id") or (source.get("project_id") if source.get("reference_existing") else None)
             member = {"member_id": item["working_member_id"], "project_id": project_id,
                       "ltr_number": source.get("ltr_number"), "title": title, "folder_path": root,
                       "source_path": source["source_path"], "source_project_id": source.get("original_project_id") or source.get("project_id"), "revision": 1, "batch_id": batch["batch_id"],
@@ -467,6 +474,10 @@ class ProjectLibraryService:
             if not owned_copy or not self.files.same_content(source, item["target"]):
                 raise ProjectLibraryConflict("The destination is occupied or its received files changed. Nothing was registered; review both copies.")
             received = True
+        if source.get("ltr_adoption"):
+            # All destination checks above are read-only. Claim ownership before
+            # the first target mutation; the saved id makes a resume idempotent.
+            self.existing_ltr.claim(item["claimed_project_id"], source["title"], source["ltr_adoption"])
         if not received:
             item["phase"] = "copying"
             self.store.save_batch(batch)
@@ -491,8 +502,6 @@ class ProjectLibraryService:
                 # A retained conflict copy must still follow its reviewed takeover rules.
                 self.store.create_planning_project(member, preserve_source_identity=not (source.get("files_only") or source.get("adopt_existing")))
                 member = self.store.member(member["member_id"])
-            if source.get("ltr_adoption") and member["project_id"]:
-                self.existing_ltr.adopt(member["project_id"], source["ltr_adoption"])
             if source.get("reception_layout") and member["project_id"] and member["ltr_number"] and not item["keep_separate"]:
                 workspace = self.store.bind_imported_workspace(member, self.files.business_path(member), self.settings.templates_dir)
                 self.files.publish_workspace_metadata(member["folder_path"], workspace)

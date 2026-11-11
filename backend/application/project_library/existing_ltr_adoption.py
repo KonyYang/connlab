@@ -23,6 +23,15 @@ class ExistingLtrAuthority(Protocol):
     def find(self, ltr_number: str) -> ExistingLtrAuthorityRow | None: ...
 
 
+class UnavailableExistingLtrAuthority:
+    """Explicit production boundary when the configured workbook cannot be read."""
+
+    def find(self, ltr_number: str) -> ExistingLtrAuthorityRow | None:
+        raise ProjectLibraryConflict(
+            "The configured LTR workbook is unavailable. Configure it before adding this numbered project."
+        )
+
+
 class ExcelExistingLtrAuthority:
     """Read exact LTR rows through a gateway configured read-only."""
 
@@ -81,6 +90,19 @@ class ExistingLtrAdoptionService:
             return
         self.verify(proof)
         self._store.adopt_existing_ltr(project_id, proof)
+
+    def claim(self, project_id: str, title: str, proof: dict) -> None:
+        """Claim local ownership before any project files are copied."""
+        normalized = str(proof.get("ltr_number") or "").strip().upper()
+        owner = self._store.current_ltr_owner(normalized)
+        if owner is not None:
+            if owner["project_id"] == project_id:
+                return
+            raise ProjectLibraryConflict(
+                f"{normalized} already belongs to another local project. Nothing was imported."
+            )
+        self.verify(proof)
+        self._store.claim_existing_ltr(project_id, title, proof)
 
     def verify(self, proof: dict) -> None:
         normalized = str(proof.get("ltr_number") or "").strip().upper()

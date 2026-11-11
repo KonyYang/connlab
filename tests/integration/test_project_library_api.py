@@ -14,6 +14,7 @@ from backend.infrastructure.storage.repositories.project_library import ProjectL
 from backend.application.project_library.existing_ltr_adoption import (
     ExistingLtrAdoptionService,
     ExistingLtrAuthorityRow,
+    UnavailableExistingLtrAuthority,
 )
 from backend.application.project_library.automatic_snapshot import AutomaticPortableSnapshotService
 from backend.infrastructure.project_library.portability import ProjectPortability
@@ -135,6 +136,75 @@ def test_existing_ltr_local_owner_conflict_is_blocked_before_copy(authority_libr
     assert plan["items"][0]["status"] == "unavailable"
     assert "already belongs" in " ".join(plan["items"][0]["warnings"])
     assert not list(settings.projects_dir.iterdir())
+
+
+def test_numbered_legacy_project_is_unavailable_when_ltr_authority_is_not_configured(library, tmp_path):
+    _, settings, _ = library
+    engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
+    app = FastAPI()
+    app.include_router(router)
+
+    def unavailable_service():
+        with Session(engine) as session:
+            store = ProjectLibraryRepository(session)
+            yield ProjectLibraryService(
+                store, settings, files=LibraryFiles(settings),
+                existing_ltr=ExistingLtrAdoptionService(store, UnavailableExistingLtrAuthority()),
+            )
+
+    app.dependency_overrides[get_project_library_service] = unavailable_service
+    client = TestClient(app)
+    source = tmp_path / "DL-2026-11-013 Other computer"
+    source.mkdir()
+    (source / "evidence.txt").write_text("unchanged", encoding="utf-8")
+
+    plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+
+    assert plan["items"][0]["status"] == "unavailable"
+    assert "LTR workbook" in " ".join(plan["items"][0]["warnings"])
+    assert not list(settings.projects_dir.iterdir())
+    engine.dispose()
+
+
+def test_competing_ltr_claim_after_review_is_blocked_before_target_copy(authority_library, tmp_path, monkeypatch):
+    client, settings, engine, _ = authority_library
+    source = tmp_path / "DL-2026-11-013 Other computer"
+    source.mkdir()
+    (source / "evidence.txt").write_text("unchanged", encoding="utf-8")
+    plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    target = Path(plan["items"][0]["target_path"])
+    original_verify = ExistingLtrAdoptionService.verify
+    injected = False
+
+    def verify_then_inject_competing_owner(service, proof):
+        nonlocal injected
+        original_verify(service, proof)
+        if not injected:
+            injected = True
+            session = service._store.session
+            session.add(ProjectModel(
+                project_id="competing-owner", project_no="DL-2026-11-013",
+                product_name="Competing", requestor="Lab", status="draft",
+            ))
+            session.add(LtrRecordModel(
+                ltr_id="competing-ltr", project_id="competing-owner",
+                ltr_number="DL-2026-11-013", status="registered", is_current_owner=True,
+            ))
+            session.commit()
+
+    monkeypatch.setattr(ExistingLtrAdoptionService, "verify", verify_then_inject_competing_owner)
+    batch = client.post("/api/project-library/batches", json={
+        "plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
+        "selected": [str(source)],
+    }).json()
+
+    assert batch["counts"]["added"] == 0
+    assert not target.exists()
+    with Session(engine) as session:
+        owners = session.query(LtrRecordModel).filter_by(
+            ltr_number="DL-2026-11-013", status="registered", is_current_owner=True,
+        ).all()
+        assert [row.project_id for row in owners] == ["competing-owner"]
 
 
 def test_single_project_check_keeps_ltr_root_whole_and_does_not_expand_parent(library, tmp_path):

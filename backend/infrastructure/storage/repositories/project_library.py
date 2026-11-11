@@ -4,6 +4,7 @@ import json
 from uuid import uuid4
 from pathlib import Path
 from sqlalchemy import select, or_
+from sqlalchemy.exc import IntegrityError
 from backend.domain.project_library import ProjectLibraryConflict
 from backend.infrastructure.storage.models import ProjectModel, LtrRecordModel, ProjectOfficialWorkspaceRecordModel, ProjectFolderRecordModel
 from backend.infrastructure.storage.models_project_library import ProjectLibraryMemberModel, ProjectLibraryBatchModel
@@ -135,6 +136,51 @@ class ProjectLibraryRepository:
         project.project_no = ltr_number
         self.session.add(record)
         self.session.commit()
+        return {"ltr_id": record.ltr_id, "project_id": project_id, "ltr_number": ltr_number}
+
+    def claim_existing_ltr(self, project_id, title, proof):
+        """Atomically create the local lifecycle identity and claim its LTR."""
+        ltr_number = proof["ltr_number"]
+        owner = self.current_ltr_owner(ltr_number)
+        if owner is not None:
+            if owner["project_id"] == project_id:
+                return owner
+            raise ProjectLibraryConflict(f"{ltr_number} already belongs to another local project.")
+        if self.session.get(ProjectModel, project_id) is not None:
+            raise ProjectLibraryConflict("The reserved local project identity is already in use.")
+        record = LtrRecordModel(
+            ltr_id=uuid4().hex,
+            project_id=project_id,
+            ltr_number=ltr_number,
+            status="registered",
+            registered_on=date.today(),
+            notes=json.dumps({
+                "kind": "adopt_existing_authority",
+                "sheet_name": proof["sheet_name"],
+                "row_number": proof["row_number"],
+                "row_fingerprint": proof["row_fingerprint"],
+            }, ensure_ascii=False, sort_keys=True),
+            is_current_owner=True,
+        )
+        self.session.add(ProjectModel(
+            project_id=project_id,
+            project_no=ltr_number,
+            product_name=title,
+            requestor="Imported project",
+            status="draft",
+            lifecycle_state="active",
+            registry_state="active",
+            registry_revision=0,
+            created_on=date.today(),
+        ))
+        self.session.add(record)
+        try:
+            self.session.commit()
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise ProjectLibraryConflict(
+                f"{ltr_number} already belongs to another local project. Nothing was imported."
+            ) from exc
         return {"ltr_id": record.ltr_id, "project_id": project_id, "ltr_number": ltr_number}
 
     def create_planning_project(self, member, *, preserve_source_identity=True):
