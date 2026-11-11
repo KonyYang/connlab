@@ -39,8 +39,13 @@ class ExcelExistingLtrAuthority:
         self._gateway = gateway
 
     def find(self, ltr_number: str) -> ExistingLtrAuthorityRow | None:
-        with self._gateway.open_read_session() as session:
-            row = session.find_ltr_number(ltr_number)
+        try:
+            with self._gateway.open_read_session() as session:
+                row = session.find_ltr_number(ltr_number)
+        except (OSError, RuntimeError) as exc:
+            raise ProjectLibraryConflict(
+                "The configured LTR workbook could not be read. Check its path and access in Settings, then try again."
+            ) from exc
         if row is None:
             return None
         return ExistingLtrAuthorityRow(

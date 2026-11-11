@@ -14,6 +14,7 @@ from backend.infrastructure.storage.repositories.project_library import ProjectL
 from backend.application.project_library.existing_ltr_adoption import (
     ExistingLtrAdoptionService,
     ExistingLtrAuthorityRow,
+    ExcelExistingLtrAuthority,
     UnavailableExistingLtrAuthority,
 )
 from backend.application.project_library.automatic_snapshot import AutomaticPortableSnapshotService
@@ -162,6 +163,42 @@ def test_numbered_legacy_project_is_unavailable_when_ltr_authority_is_not_config
 
     assert plan["items"][0]["status"] == "unavailable"
     assert "LTR workbook" in " ".join(plan["items"][0]["warnings"])
+    assert not list(settings.projects_dir.iterdir())
+    engine.dispose()
+
+
+def test_numbered_legacy_project_is_unavailable_when_configured_ltr_gateway_cannot_read(library, tmp_path):
+    _, settings, _ = library
+    engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
+    app = FastAPI()
+    app.include_router(router)
+
+    class FailingConfiguredGateway:
+        def open_read_session(self):
+            raise RuntimeError("Unable to open configured LTR workbook")
+
+    def failing_service():
+        with Session(engine) as session:
+            store = ProjectLibraryRepository(session)
+            yield ProjectLibraryService(
+                store, settings, files=LibraryFiles(settings),
+                existing_ltr=ExistingLtrAdoptionService(
+                    store, ExcelExistingLtrAuthority(FailingConfiguredGateway())
+                ),
+            )
+
+    app.dependency_overrides[get_project_library_service] = failing_service
+    client = TestClient(app)
+    source = tmp_path / "DL-2026-11-013 Unreadable authority"
+    source.mkdir()
+    (source / "evidence.txt").write_text("unchanged", encoding="utf-8")
+
+    response = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]})
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["status"] == "unavailable"
+    assert "could not be read" in " ".join(item["warnings"])
     assert not list(settings.projects_dir.iterdir())
     engine.dispose()
 
