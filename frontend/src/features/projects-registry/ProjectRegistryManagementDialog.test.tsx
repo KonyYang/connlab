@@ -43,52 +43,39 @@ describe("project management decisions", () => {
     await user.click(screen.getByRole("button", {name: "Cancel"}));
     expect(onCancel).toHaveBeenCalledOnce(); expect(onRestore).not.toHaveBeenCalled();
   });
-  it("shows the deletion boundary and blocks deletion during an active operation", async () => {
+  it("shows blockers and prevents confirmation during an active operation", async () => {
     const {onTrash} = setup({...base, action: "trash", conflicts: [], blockers: ["A file generation is running."]});
-    expect(screen.getByText(/Files and LTR records stay unchanged/)).toBeTruthy();
     expect(screen.getByText("A file generation is running.")).toBeTruthy();
     expect(screen.getByRole("button", {name: "Move to recycle bin"})).toHaveProperty("disabled", true);
     expect(onTrash).not.toHaveBeenCalled();
   });
 
-  it("keeps the deletion identity compact and starts with an editable existing reason", async () => {
+  it("shows only the project number and description before explicit confirmation", async () => {
     const {user, onTrash} = setup({...base, action: "trash", conflicts: [],
       warnings: ["Existing external files and LTR associations are retained."]});
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByText("DL-2026-01-002")).toBeTruthy();
     expect(dialog.getByText("Sample original-record")).toBeTruthy();
-    expect(dialog.getByText("LLCR")).toBeTruthy();
+    expect(dialog.queryByText("LLCR")).toBeNull();
     expect(dialog.queryByText(/Created 2026/)).toBeNull();
     expect(dialog.queryByText(/Record original/)).toBeNull();
     expect(dialog.queryByText("Retained project records")).toBeNull();
     expect(dialog.queryByText("Existing external files and LTR associations are retained.")).toBeNull();
-    expect(dialog.getByLabelText("Deletion reason")).toHaveProperty("value", "Created by mistake");
-    expect(dialog.queryByRole("option", {name: "Select a reason"})).toBeNull();
+    expect(dialog.queryByText(/Files and LTR records stay unchanged/)).toBeNull();
+    expect(dialog.queryByRole("combobox")).toBeNull();
+    expect(dialog.queryByRole("textbox")).toBeNull();
+    expect(dialog.queryByRole("button", {name: "Add note"})).toBeNull();
+    expect(dialog.getAllByRole("button")).toHaveLength(2);
     expect(onTrash).not.toHaveBeenCalled();
     await user.click(dialog.getByRole("button", {name: "Move to recycle bin"}));
-    expect(onTrash).toHaveBeenCalledWith("Created by mistake");
+    expect(onTrash).toHaveBeenCalledWith("User confirmed move to recycle bin.");
   });
 
-  it("expands an optional note only on request and submits the chosen reason with trimmed notes", async () => {
-    const {user, onTrash} = setup({...base, action: "trash", conflicts: []});
-    expect(screen.queryByLabelText("Additional note (optional)")).toBeNull();
-    await user.selectOptions(screen.getByLabelText("Deletion reason"), "Duplicate project");
-    await user.click(screen.getByRole("button", {name: "Add note"}));
-    const note = screen.getByLabelText("Additional note (optional)");
-    expect(document.activeElement).toBe(note);
-    await user.type(note, "  Duplicate intake  ");
-    await user.click(screen.getByRole("button", {name: "Move to recycle bin"}));
-    expect(onTrash).toHaveBeenCalledWith("Duplicate project: Duplicate intake");
-  });
-
-  it("allows Other without requiring a note and Cancel never deletes", async () => {
+  it("does not submit when Cancel is clicked", async () => {
     const {user, onTrash, onCancel} = setup({...base, action: "trash", conflicts: []});
-    await user.selectOptions(screen.getByLabelText("Deletion reason"), "Other");
     await user.click(screen.getByRole("button", {name: "Cancel"}));
     expect(onCancel).toHaveBeenCalledOnce();
     expect(onTrash).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", {name: "Move to recycle bin"}));
-    expect(onTrash).toHaveBeenCalledWith("Other");
   });
 
   it("keeps new warnings and stale-preview safeguards visible", async () => {
@@ -105,8 +92,6 @@ describe("project management decisions", () => {
     const {user, onTrash, onCancel} = setup({...base, action: "trash", conflicts: []}, false, state);
     expect(screen.getByRole("button", {name: state.busy ? "Moving…" : "Move to recycle bin"})).toHaveProperty("disabled", true);
     if (state.busy) {
-      expect(screen.getByLabelText("Deletion reason")).toHaveProperty("disabled", true);
-      expect(screen.getByRole("button", {name: "Add note"})).toHaveProperty("disabled", true);
       expect(screen.getByRole("button", {name: "Cancel"})).toHaveProperty("disabled", true);
       await user.keyboard("{Escape}");
       expect(onCancel).not.toHaveBeenCalled();
@@ -114,9 +99,17 @@ describe("project management decisions", () => {
     expect(onTrash).not.toHaveBeenCalled();
   });
 
-  it("focuses the reason rather than the deletion action and cancels with Escape", async () => {
+  it("starts on Cancel, traps keyboard focus and cancels with Escape", async () => {
     const {user, onTrash, onCancel} = setup({...base, action: "trash", conflicts: []});
-    expect(document.activeElement).toBe(screen.getByLabelText("Deletion reason"));
+    const cancel = screen.getByRole("button", {name: "Cancel"});
+    const confirm = screen.getByRole("button", {name: "Move to recycle bin"});
+    expect(document.activeElement).toBe(cancel);
+    await user.tab();
+    expect(document.activeElement).toBe(confirm);
+    await user.tab();
+    expect(document.activeElement).toBe(cancel);
+    await user.tab({shift: true});
+    expect(document.activeElement).toBe(confirm);
     await user.keyboard("{Escape}");
     expect(onCancel).toHaveBeenCalledOnce();
     expect(onTrash).not.toHaveBeenCalled();
