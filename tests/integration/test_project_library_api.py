@@ -14,11 +14,13 @@ from backend.infrastructure.storage.repositories.project_library import ProjectL
 from backend.application.project_library.existing_ltr_adoption import (
     ExistingLtrAdoptionService,
     ExistingLtrAuthorityRow,
-    ExcelExistingLtrAuthority,
     UnavailableExistingLtrAuthority,
 )
 from backend.application.project_library.automatic_snapshot import AutomaticPortableSnapshotService
-from backend.infrastructure.project_library.portability import ProjectPortability
+from backend.infrastructure.project_library.portability import (
+    ExcelExistingLtrAuthority,
+    ProjectPortability,
+)
 from backend.infrastructure.storage.models import LtrRecordModel, ProjectModel
 
 

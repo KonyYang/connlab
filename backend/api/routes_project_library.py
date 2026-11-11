@@ -18,18 +18,15 @@ from backend.infrastructure.storage.repositories import ExternalResourceReposito
 from backend.application.external_resource_service import ExternalResourceService
 from backend.domain import ExternalResourceType
 from backend.application.project_library.automatic_snapshot import AutomaticPortableSnapshotService
-from backend.application.project_library.existing_ltr_adoption import (
-    ExistingLtrAdoptionService,
-    ExcelExistingLtrAuthority,
-    UnavailableExistingLtrAuthority,
-)
-from backend.infrastructure.office import ExcelComLTRWorkbookGateway, LtrWorkbookWriteConfig, OfficeFacade
 
 router = APIRouter(prefix="/api/project-library", tags=["project-library"])
 
 
 def get_project_library_service(session=Depends(get_session), settings=Depends(get_settings)):
-    from backend.infrastructure.project_library.portability import ProjectPortability
+    from backend.infrastructure.project_library.portability import (
+        ProjectPortability,
+        build_existing_ltr_adoption_service,
+    )
     resources = ExternalResourceRepository(session)
     registered = resources.get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT)
     selected = registered.path if registered and registered.active else None
@@ -40,16 +37,7 @@ def get_project_library_service(session=Depends(get_session), settings=Depends(g
     store = ProjectLibraryRepository(session)
     files = LibraryFiles(settings, destination_configured=bool(settings.library_root or selected))
     portability = ProjectPortability(store, files, settings)
-    ltr_authority = UnavailableExistingLtrAuthority()
-    if settings.ltr_workbook.path is not None:
-        ltr_authority = ExcelExistingLtrAuthority(
-            ExcelComLTRWorkbookGateway(OfficeFacade(), LtrWorkbookWriteConfig(
-                path=settings.ltr_workbook.path,
-                write_enabled=False,
-                modify_password=None,
-            ))
-        )
-    existing_ltr = ExistingLtrAdoptionService(store, ltr_authority)
+    existing_ltr = build_existing_ltr_adoption_service(store, settings)
     automatic_snapshot = AutomaticPortableSnapshotService(store, portability)
     return ProjectLibraryService(store, settings, files=files, portability=portability,
         existing_ltr=existing_ltr, automatic_snapshot=automatic_snapshot,

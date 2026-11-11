@@ -32,30 +32,6 @@ class UnavailableExistingLtrAuthority:
         )
 
 
-class ExcelExistingLtrAuthority:
-    """Read exact LTR rows through a gateway configured read-only."""
-
-    def __init__(self, gateway) -> None:
-        self._gateway = gateway
-
-    def find(self, ltr_number: str) -> ExistingLtrAuthorityRow | None:
-        try:
-            with self._gateway.open_read_session() as session:
-                row = session.find_ltr_number(ltr_number)
-        except (OSError, RuntimeError) as exc:
-            raise ProjectLibraryConflict(
-                "The configured LTR workbook could not be read. Check its path and access in Settings, then try again."
-            ) from exc
-        if row is None:
-            return None
-        return ExistingLtrAuthorityRow(
-            ltr_number=row.dl_number,
-            sheet_name=row.sheet_name,
-            row_number=row.row_number,
-            values=tuple(row.values),
-        )
-
-
 class ExistingLtrAdoptionService:
     """Review then atomically adopt a workbook-owned LTR in local storage."""
 
