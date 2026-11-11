@@ -11,10 +11,13 @@ def now():
 
 
 class ProjectLibraryService:
-    def __init__(self, store, settings, *, files, portability=None, opener=None, destination_writer=None):
+    def __init__(self, store, settings, *, files, portability=None, opener=None, destination_writer=None,
+                 existing_ltr=None, automatic_snapshot=None):
         self.store, self.settings, self.files = store, settings, files
         self.portability, self.opener = portability, opener
         self.destination_writer = destination_writer
+        self.existing_ltr = existing_ltr
+        self.automatic_snapshot = automatic_snapshot
 
     def runtime(self):
         return self.files.runtime()
@@ -133,6 +136,32 @@ class ProjectLibraryService:
                     source = self.files.inspect_source(value, ltr_number=assignment["ltr_number"])
                 else:
                     source = self.files.inspect_source(value)
+                requires_existing_ltr_authority = (
+                    source.get("ltr_number") and not source.get("has_portable")
+                    and not (target_id or new_title)
+                    and not self.store.project_exists(source.get("project_id"))
+                )
+                authority_problem = None
+                if self.existing_ltr and requires_existing_ltr_authority:
+                    try:
+                        proof = self.existing_ltr.review(source["ltr_number"])
+                    except (OSError, ValueError, LookupError) as error:
+                        authority_problem = str(error)
+                    else:
+                        source["ltr_adoption"] = proof
+                        source["authority_status"] = "found"
+                        source["authority_message"] = (
+                            f"{proof['ltr_number']} was found in the authoritative LTR workbook. "
+                            "Confirm to copy the files and adopt this number locally; the workbook will not be changed."
+                        )
+                        if source.get("source_state") == "incomplete" and source.get("project_id"):
+                            source.update(
+                                original_project_id=source.get("project_id"),
+                                project_id=None,
+                                source_state="adopt_existing",
+                                adopt_existing=True,
+                            )
+                            source["reception_layout"] = source["files_only_layout"]
                 if assignment.get("files_only"):
                     if source.get("source_state") != "incomplete":
                         raise ProjectLibraryConflict("Only a ConnLab folder missing its snapshot can use files-only import. Check this source again.")
@@ -249,6 +278,14 @@ class ProjectLibraryService:
                 ):
                     status, separate = "conflict", True
                     warnings.append("Another record shares this LTR. Review the source; no records will be merged.")
+                if authority_problem:
+                    source["authority_problem"] = authority_problem
+                    warnings.append(authority_problem)
+                    if status == "ready":
+                        status = "unavailable"
+                    separate = False
+                if source.get("authority_message") and status == "ready":
+                    warnings.append(source["authority_message"])
                 if source.get("has_portable") and not reference_existing:
                     status, separate = "conflict", False
                     warnings.append("This project carries saved test data. Use Inspect and Restore Portable Project to preserve it; plain intake cannot create an empty replacement.")
@@ -287,7 +324,8 @@ class ProjectLibraryService:
                     first["status"], first["can_keep_separate"] = "conflict", True
                     first["warnings"].append("Another selected source uses the same destination. Keep Separate preserves both without overwriting either source.")
         for row in rows:
-            if row.get("source_state") == "incomplete" and row["status"] != "already_added" and not row.get("reference_existing"):
+            if (row.get("source_state") == "incomplete" and row["status"] != "already_added"
+                    and not row.get("reference_existing") and not row.get("authority_problem")):
                 row["takeover_blocker"] = "This ConnLab project has no data snapshot. Export it from the original computer to restore its data, or explicitly import files only."
             if row.get("source_state") == "upgrade_required":
                 row["takeover_blocker"] = "Update ConnLab before importing this project. It was created with a newer format."
@@ -298,7 +336,7 @@ class ProjectLibraryService:
                 row["status"], row["can_keep_separate"] = "conflict", False
                 row["warnings"].append(problem)
         plan = self.files.save_plan("intake", {"items": rows})
-        keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title", "source_state", "differences")
+        keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title", "source_state", "differences", "authority_status", "authority_message")
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
                 "projects_root": str(self.settings.projects_dir),
                 "items": [{**{key: row.get(key) for key in keys},
@@ -408,6 +446,14 @@ class ProjectLibraryService:
             raise ProjectLibraryConflict("Inspect and restore this project's carried test data instead of using plain intake.")
         if not self.files.source_unchanged(source):
             raise ProjectLibraryConflict("The source changed after review. Create a new intake review.")
+        if source.get("ltr_adoption"):
+            if self.existing_ltr is None:
+                raise ProjectLibraryConflict("LTR authority verification is unavailable. Check the project again.")
+            claimed_project_id = item.get("claimed_project_id")
+            if not claimed_project_id:
+                claimed_project_id = uuid4().hex
+                item["claimed_project_id"] = claimed_project_id
+                self.store.save_batch(batch)
         existing = source.get("target_member_id")
         if existing:
             member = self.store.member(existing)
@@ -420,7 +466,7 @@ class ProjectLibraryService:
         else:
             title = source.get("new_project_title") or source["title"]
             root = self.files.root_for_target(item["target"], source, bool(source.get("new_project_title")))
-            project_id = source.get("project_id") if source.get("reference_existing") else None
+            project_id = item.get("claimed_project_id") or (source.get("project_id") if source.get("reference_existing") else None)
             member = {"member_id": item["working_member_id"], "project_id": project_id,
                       "ltr_number": source.get("ltr_number"), "title": title, "folder_path": root,
                       "source_path": source["source_path"], "source_project_id": source.get("original_project_id") or source.get("project_id"), "revision": 1, "batch_id": batch["batch_id"],
@@ -440,6 +486,10 @@ class ProjectLibraryService:
             if not owned_copy or not self.files.same_content(source, item["target"]):
                 raise ProjectLibraryConflict("The destination is occupied or its received files changed. Nothing was registered; review both copies.")
             received = True
+        if source.get("ltr_adoption"):
+            # All destination checks above are read-only. Claim ownership before
+            # the first target mutation; the saved id makes a resume idempotent.
+            self.existing_ltr.claim(item["claimed_project_id"], source["title"], source["ltr_adoption"])
         if not received:
             item["phase"] = "copying"
             self.store.save_batch(batch)
@@ -459,15 +509,17 @@ class ProjectLibraryService:
                 self.files.locate_context(member, member["folder_path"], self.store.workspace(project_id))
                 self.store.link_existing_project(member, project_id, self.files.business_path(member))
                 member = self.store.member(member["member_id"])
-            if not member["project_id"] and not item["keep_separate"] and (source.get("files_only") or not self.store.project_exists(member.get("source_project_id"))):
+            if not member["project_id"] and not item["keep_separate"] and (source.get("files_only") or source.get("adopt_existing") or not self.store.project_exists(member.get("source_project_id"))):
                 # The final intake confirmation also establishes the lifecycle container.
                 # A retained conflict copy must still follow its reviewed takeover rules.
-                self.store.create_planning_project(member, preserve_source_identity=not source.get("files_only"))
+                self.store.create_planning_project(member, preserve_source_identity=not (source.get("files_only") or source.get("adopt_existing")))
                 member = self.store.member(member["member_id"])
             if source.get("reception_layout") and member["project_id"] and member["ltr_number"] and not item["keep_separate"]:
                 workspace = self.store.bind_imported_workspace(member, self.files.business_path(member), self.settings.templates_dir)
                 self.files.publish_workspace_metadata(member["folder_path"], workspace)
             self.files.write_marker(member)
+            if self.automatic_snapshot and member["project_id"]:
+                self.automatic_snapshot.refresh(member["project_id"], locked=True)
         item.update(status="added", message="Received and verified. Original source files remain unchanged.", member_id=member["member_id"])
 
     @staticmethod

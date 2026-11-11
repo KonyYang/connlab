@@ -144,7 +144,21 @@ function BusinessProjectListPage({
     () => lifecycleRows.filter((entry) => entry.lifecycleError).length,
     [lifecycleRows]
   );
-  const catalogRows = useMemo(() => buildProjectCatalog(lifecycleRows, members, linked, { batchId, retainedProjectIds, registryComplete }), [lifecycleRows, members, linked, batchId, retainedProjectIds, registryComplete]);
+  const catalogRows = useMemo(() => {
+    const catalog = buildProjectCatalog(lifecycleRows, members, linked, { batchId, retainedProjectIds, registryComplete });
+    if (batchId) return catalog;
+    const memberProjectIds = new Set(members.filter((member) => !member.is_history && member.project_id).map((member) => member.project_id));
+    const retained = new Set(retainedProjectIds);
+    const planningRows: ProjectCatalogRow[] = lifecycleRows
+      .filter(({ row }) =>
+        row.display_project_id_kind === "temporary"
+        && (!row.registry_state || row.registry_state === "active")
+        && !memberProjectIds.has(row.project_id)
+        && !retained.has(row.project_id)
+      )
+      .map((entry) => ({ kind: "registered", key: `project:${entry.row.project_id}`, entry, members: [] }));
+    return [...catalog, ...planningRows];
+  }, [lifecycleRows, members, linked, batchId, retainedProjectIds, registryComplete]);
   const viewRows = useMemo(() => selectProjectCatalog(catalogRows, selectedView, ""), [catalogRows, selectedView]);
   const filteredRows = useMemo(
     () => selectProjectCatalog(viewRows, "all", deferredSearch),
@@ -243,7 +257,7 @@ function BusinessProjectListPage({
         </label>}
       </div>
       <nav className="project-registry-areas" aria-label="Project management areas">
-        {area === "active" && onImport && <button className="primary-action" type="button" disabled={management.busy} title="Choose one existing project folder. ConnLab checks and receives it; original files stay in place." onClick={onImport}>Import Projects</button>}
+        {area === "active" && onImport && <button className="primary-action" type="button" disabled={management.busy} title="Choose one existing project folder. ConnLab checks and receives it; original files stay in place." onClick={onImport}>Add Existing Project</button>}
         {area !== "active" && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={() => setArea("active")}>Back to Projects</button>}
         <button className="registry-area-button ui-secondary-action" type="button" aria-pressed={area === "recycle"} disabled={management.busy} onClick={() => setArea("recycle")}>Recycle</button>
       </nav>
@@ -298,7 +312,7 @@ function BusinessProjectListPage({
         {!loading && !error && catalogRows.length === 0 && (
           <EmptyState
             title="No projects yet"
-            message="Use Import Projects to add existing folders, or New Project to start a new request."
+            message="Use Add Existing Project to add an existing folder, or New Project to start a new request."
           />
         )}
         {!loading && !error && catalogRows.length > 0 && viewRows.length === 0 && (

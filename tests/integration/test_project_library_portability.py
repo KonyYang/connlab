@@ -13,12 +13,16 @@ from backend.infrastructure.storage.models import ProjectModel
 from backend.infrastructure.storage.models_report_authoring import ReportAuthoringRevisionModel
 from backend.api.routes_project_library import router, get_project_library_service
 from backend.application.project_library.service import ProjectLibraryService
+from backend.application.project_library.existing_ltr_adoption import (
+    ExistingLtrAdoptionService,
+    UnavailableExistingLtrAuthority,
+)
 from backend.infrastructure.project_library.files import LibraryFiles
 from backend.infrastructure.project_library.portability import ProjectPortability
 from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
 
 
-def app_at(root, *, managed=True):
+def app_at(root, *, managed=True, ltr_authority=None):
     settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root if managed else None)
     settings.ensure_directories()
     engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
@@ -30,7 +34,8 @@ def app_at(root, *, managed=True):
             store = ProjectLibraryRepository(session)
             files = LibraryFiles(settings, destination_configured=True)
             yield ProjectLibraryService(store, settings, files=files,
-                portability=ProjectPortability(store, files, settings), opener=lambda path: None)
+                portability=ProjectPortability(store, files, settings), opener=lambda path: None,
+                existing_ltr=ExistingLtrAdoptionService(store, ltr_authority) if ltr_authority else None)
     app.dependency_overrides[get_project_library_service] = service
     return TestClient(app), settings, engine
 
@@ -193,6 +198,37 @@ def test_known_identity_conflicts_do_not_silently_switch_working_project(tmp_pat
         with Session(engine) as session:
             assert session.get(ProjectModel,"known").product_name == "Existing"
             assert len(list(session.scalars(select(ProjectModel)))) == 1
+    finally:
+        engine.dispose()
+
+
+def test_identity_conflict_takes_precedence_when_ltr_authority_is_unavailable(tmp_path):
+    client, settings, engine = app_at(
+        tmp_path / "library", ltr_authority=UnavailableExistingLtrAuthority()
+    )
+    source = tmp_path / "DL-2026-09-032 Incoming"
+    (source / ".connlab").mkdir(parents=True)
+    (source / ".connlab/manifest.json").write_text(
+        json.dumps({"project_id": "incoming-project", "dl_number": "DL-2026-09-032"}),
+        encoding="utf-8",
+    )
+    target = settings.projects_dir / "DL-2026-09-032"
+    (target / ".connlab").mkdir(parents=True)
+    (target / ".connlab/manifest.json").write_text(
+        json.dumps({"project_id": "different-project", "dl_number": "DL-2026-09-032"}),
+        encoding="utf-8",
+    )
+    try:
+        row = client.post(
+            "/api/project-library/intake-plan", json={"sources": [str(source)]}
+        ).json()["items"][0]
+
+        assert row["status"] == "conflict", row
+        assert row["can_keep_separate"] is False
+        warnings = " ".join(row["warnings"])
+        assert "different project identity" in warnings
+        assert "LTR workbook" in warnings
+        assert list(target.iterdir()) == [target / ".connlab"]
     finally:
         engine.dispose()
 
@@ -638,6 +674,8 @@ def test_portable_preflight_blocks_missing_history_without_repairing_source(tmp_
         plan = lab["client"].post("/api/project-library/intake-plan", json={"sources": [source]}).json()
         batch = lab["client"].post("/api/project-library/batches", json={**{k:plan[k] for k in ("plan_id","fingerprint")}, "selected":[source]}).json()
         member_id = batch["items"][0]["member_id"]
+        snapshot_path = Path(source) / ".connlab/portable/snapshot.json"
+        initial_snapshot = snapshot_path.read_bytes()
         with lab["factory"]() as session:
             if gap == "non_fk_report_base":
                 session.execute(text("UPDATE report_draft_revisions SET base_report_revision_id='missing-history' WHERE report_revision_id='qa-report-2'"))
@@ -652,7 +690,7 @@ def test_portable_preflight_blocks_missing_history_without_repairing_source(tmp_
         status = lab["client"].get(f"/api/project-library/members/{member_id}/portable").json()
         assert status["status"] == "unavailable", status
         assert status["blockers"], status
-        assert not (Path(source) / ".connlab/portable/snapshot.json").exists()
+        assert snapshot_path.read_bytes() == initial_snapshot
         with lab["factory"]() as session:
             if gap == "non_fk_report_base":
                 assert session.execute(text("SELECT base_report_revision_id FROM report_draft_revisions WHERE report_revision_id='qa-report-2'")).scalar_one() == "missing-history"
@@ -1332,7 +1370,7 @@ def test_missing_project_file_is_local_warning_and_keeps_structured_results_and_
     engine.dispose()
 
 
-def test_same_material_cannot_hide_known_workspace_identity_when_manifest_is_missing(tmp_path):
+def test_files_only_cannot_bypass_known_workspace_identity_when_manifest_is_missing(tmp_path):
     from tests.fixtures.project_library.full_graph import seed_full_graph
     with seed_full_graph(tmp_path/"A") as graph:
         root=graph["project_root"];client=graph["lab"]["client"]
@@ -1344,7 +1382,15 @@ def test_same_material_cannot_hide_known_workspace_identity_when_manifest_is_mis
         assert plan["items"][0]["source_state"]=="incomplete"
         assert any("identity" in warning.lower() for warning in plan["items"][0]["warnings"]),plan
         files=client.post("/api/project-library/intake-plan",json={"sources":[str(source)],"assignments":[{"source_path":str(source),"files_only":True}]}).json()
-        assert files["items"][0]["status"]=="conflict" and files["items"][0]["can_keep_separate"],files
+        files_item=files["items"][0]
+        assert files_item["status"]=="conflict" and not files_item["can_keep_separate"],files
+        assert any("identity" in warning.lower() for warning in files_item["warnings"]),files
+        assert any("already belongs" in warning.lower() for warning in files_item["warnings"]),files
+        blocked=client.post("/api/project-library/batches",json={
+            **{key:files[key] for key in ("plan_id","fingerprint")},
+            "selected":[str(source)],"keep_separate":[str(source)],
+        }).json()
+        assert blocked["counts"]["added"]==0 and blocked["counts"]["review"]==1,blocked
         assert client.get("/api/project-library/members").json()["items"]==[]
 
 
@@ -1378,7 +1424,7 @@ def test_changed_registered_workbook_has_local_review_warning_without_rewriting_
         listed=client.get("/api/project-library/members").json()
         assert listed["items"][0]["snapshot_status"]=="not_checked" and reads==[]
         current=client.get(f"/api/project-library/members/{member_id}/portable").json()
-        assert current["status"]==("stale" if prepared_first else "missing"),current
+        assert current["status"]=="stale",current
         assert not current["blockers"],current
         assert any(path.relative_to(root).as_posix() in warning and "changed" in warning.lower() for warning in current["warnings"]),current
         assert reads.count(str(path))==1,reads

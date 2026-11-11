@@ -17,12 +17,16 @@ from backend.infrastructure.files.local_folder_open_gateway import LocalFolderOp
 from backend.infrastructure.storage.repositories import ExternalResourceRepository
 from backend.application.external_resource_service import ExternalResourceService
 from backend.domain import ExternalResourceType
+from backend.application.project_library.automatic_snapshot import AutomaticPortableSnapshotService
 
 router = APIRouter(prefix="/api/project-library", tags=["project-library"])
 
 
 def get_project_library_service(session=Depends(get_session), settings=Depends(get_settings)):
-    from backend.infrastructure.project_library.portability import ProjectPortability
+    from backend.infrastructure.project_library.portability import (
+        ProjectPortability,
+        build_existing_ltr_adoption_service,
+    )
     resources = ExternalResourceRepository(session)
     registered = resources.get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT)
     selected = registered.path if registered and registered.active else None
@@ -33,7 +37,10 @@ def get_project_library_service(session=Depends(get_session), settings=Depends(g
     store = ProjectLibraryRepository(session)
     files = LibraryFiles(settings, destination_configured=bool(settings.library_root or selected))
     portability = ProjectPortability(store, files, settings)
+    existing_ltr = build_existing_ltr_adoption_service(store, settings)
+    automatic_snapshot = AutomaticPortableSnapshotService(store, portability)
     return ProjectLibraryService(store, settings, files=files, portability=portability,
+        existing_ltr=existing_ltr, automatic_snapshot=automatic_snapshot,
         opener=lambda value: LocalFolderOpenGateway().open_directory(Path(value)),
         destination_writer=lambda root: ExternalResourceService(resources).upsert_resource(
             ExternalResourceType.PROJECT_OUTPUT_ROOT, root, True))

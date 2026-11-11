@@ -154,12 +154,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     renderWorkbench({ latestLtr: null, lifecycle: lifecycleResponse({ lifecycle_state: 'closed' }) }, { project_no: null, status: 'closed' });
     expect(screen.queryByRole('button', { name: 'Apply LTR Number' })).toBeNull();
   });
-  it.each([false, true])("shows an honest empty Matrix state for imported files instead of example test steps (empty saved draft: %s)", async hasEmptyDraft => {
+  it.each([false, true])("shows the same unconfirmed starter Matrix for imported projects (empty saved draft: %s)", async hasEmptyDraft => {
     const onOpenMatrixEditor = vi.fn();
     renderWorkbench({ matrixDraft: hasEmptyDraft ? testPlanDraft : null }, { library_member_id: "imported-member" }, { onOpenMatrixEditor });
-    expect(screen.getByText("No confirmed Matrix")).toBeTruthy();
-    expect(screen.queryByText("Visual Examination")).toBeNull();
-    expect(screen.queryByText("Draft preview")).toBeNull();
+    expect(screen.getByLabelText("No active Matrix workspace")).toBeTruthy();
+    expect(screen.getByText("Visual Examination")).toBeTruthy();
+    expect(screen.getAllByText("EIA-364-18B").length).toBeGreaterThan(0);
+    expect(screen.getByText("Draft preview")).toBeTruthy();
     await userEvent.setup().click(screen.getByRole("button", { name: "Matrix Editor", exact: true }));
     expect(onOpenMatrixEditor).toHaveBeenCalledOnce();
   });

@@ -57,12 +57,12 @@ describe("ProjectListPage lifecycle registry views", () => {
     mockRows([]);
     const onImport = vi.fn(), user = userEvent.setup();
     render(<ProjectListPage onOpenProject={vi.fn()} onImport={onImport} />);
-    expect(await screen.findByRole("button", { name: "Import Projects" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Add Existing Project" })).toBeTruthy();
     await user.click(screen.getByRole("button", {name: "Recycle", exact: true}));
-    expect(screen.queryByRole("button", {name: "Import Projects", exact: true})).toBeNull();
+    expect(screen.queryByRole("button", {name: "Add Existing Project", exact: true})).toBeNull();
     expect(screen.getByRole("button", {name: "Back to Projects"})).toBeTruthy();
     await user.click(screen.getByRole("button", {name: "Back to Projects"}));
-    await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+    await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
     expect(onImport).toHaveBeenCalledOnce();
   });
 
@@ -87,7 +87,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(screen.getByText("Linked connector")).toBeTruthy();
     expect(screen.getByLabelText("Project view")).toHaveProperty("value", "all");
     expect(screen.queryByRole("button", { name: "Project Library" })).toBeNull();
-    expect(screen.getAllByRole("button", { name: "Import Projects" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Add Existing Project" })).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Open Received connector" }));
     await user.click(screen.getByRole("button", { name: "Open Linked connector" }));
     expect(onOpenMember).toHaveBeenCalledWith("same-id");

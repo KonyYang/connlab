@@ -222,6 +222,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     if (!onOpenProject) return "";
     const ordinary = plan?.items.length === 1 ? plan.items[0] : null;
     if (ordinary && selected.includes(ordinary.source_path)
+        && !ordinary.authority_status
         && (ordinary.status === "ready" || ordinary.status === "conflict" && ordinary.can_keep_separate && separate.includes(ordinary.source_path))) {
       return `ordinary:${plan!.plan_id}:${plan!.fingerprint}:${ordinary.source_path}`;
     }

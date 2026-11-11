@@ -13,11 +13,30 @@ from backend.api.routes_project_library import router
 from backend.domain import ExternalResource, ExternalResourceType
 from backend.infrastructure.storage.database import init_db
 from backend.infrastructure.storage.repositories import ExternalResourceRepository
+from backend.application.project_library.existing_ltr_adoption import (
+    ExistingLtrAdoptionService,
+    ExistingLtrAuthorityRow,
+)
+from backend.infrastructure.project_library import portability
 from backend.shared.config import Settings
 
 
 @pytest.fixture
-def instance(tmp_path):
+def instance(tmp_path, monkeypatch):
+    class IsolatedLtrAuthority:
+        def find(self, ltr_number):
+            return ExistingLtrAuthorityRow(
+                ltr_number=ltr_number,
+                sheet_name="Isolated LTR Authority",
+                row_number=1,
+                values=(ltr_number, "fixture-only"),
+            )
+
+    monkeypatch.setattr(
+        portability,
+        "build_existing_ltr_adoption_service",
+        lambda store, settings: ExistingLtrAdoptionService(store, IsolatedLtrAuthority()),
+    )
     settings = Settings(tmp_path / "Data", tmp_path / "unused-default", tmp_path / "Templates", tmp_path / "Data/connlab.sqlite3")
     settings.ensure_directories()
     engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
@@ -89,7 +108,7 @@ def test_first_use_saves_location_then_requires_final_confirmation_before_copy(i
     member = client.get("/api/project-library/members").json()["items"][0]
     assert member["ltr_number"] == "DL-2021-01-030A1"
     assert Path(member["folder_path"]).is_relative_to(destination)
-    assert (Path(member["folder_path"]) / "notes.txt").read_text(encoding="utf-8") == "Original measurements"
+    assert (Path(member["folder_path"]) / source.name / "notes.txt").read_text(encoding="utf-8") == "Original measurements"
     assert (source / "notes.txt").read_text(encoding="utf-8") == "Original measurements"
     assert client.get("/api/project-library/runtime").json()["database_path"] == str(settings.database_path)
 

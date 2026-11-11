@@ -24,6 +24,57 @@ from backend.infrastructure.project_library.assets import PortableAssets, projec
 from backend.infrastructure.project_library.ownership import capture, table, TABLES, validate_relations, typed_record
 from backend.infrastructure.storage.models_project_library import ProjectLibraryMemberModel
 from backend.infrastructure.storage.database import Base
+from backend.application.project_library.existing_ltr_adoption import (
+    ExistingLtrAdoptionService,
+    ExistingLtrAuthorityRow,
+    UnavailableExistingLtrAuthority,
+)
+from backend.infrastructure.office import (
+    ExcelComLTRWorkbookGateway,
+    LtrWorkbookWriteConfig,
+    OfficeFacade,
+)
+
+
+class ExcelExistingLtrAuthority:
+    """Infrastructure adapter for exact, read-only LTR workbook lookup."""
+
+    def __init__(self, gateway) -> None:
+        self._gateway = gateway
+
+    def find(self, ltr_number: str) -> ExistingLtrAuthorityRow | None:
+        try:
+            with self._gateway.open_read_session() as session:
+                row = session.find_ltr_number(ltr_number)
+        except (OSError, RuntimeError) as exc:
+            raise ProjectLibraryConflict(
+                "The configured LTR workbook could not be read. Check its path and access in Settings, then try again."
+            ) from exc
+        if row is None:
+            return None
+        return ExistingLtrAuthorityRow(
+            ltr_number=row.dl_number,
+            sheet_name=row.sheet_name,
+            row_number=row.row_number,
+            values=tuple(row.values),
+        )
+
+
+def build_existing_ltr_adoption_service(store, settings):
+    """Compose the production authority without leaking Office into the API layer."""
+    authority = UnavailableExistingLtrAuthority()
+    if settings.ltr_workbook.path is not None:
+        authority = ExcelExistingLtrAuthority(
+            ExcelComLTRWorkbookGateway(
+                OfficeFacade(),
+                LtrWorkbookWriteConfig(
+                    path=settings.ltr_workbook.path,
+                    write_enabled=False,
+                    modify_password=None,
+                ),
+            )
+        )
+    return ExistingLtrAdoptionService(store, authority)
 
 
 class ProjectPortability:
@@ -193,6 +244,14 @@ class ProjectPortability:
             if persist_member:
                 self.store.update_member(member["member_id"], {"snapshot_fingerprint": signature})
             return self.status(self.store.member(member["member_id"]))
+
+    def prepare_latest(self, member, *, locked=False, project_locked=False, persist_member=False):
+        """Refresh the latest safe snapshot without a separate user preview token."""
+        library_context = nullcontext() if locked else self.files.lock()
+        project_context = nullcontext() if locked or project_locked else self.files.project_lock(member.get("project_id"))
+        with library_context, project_context:
+            current, _ = self._capture(member)
+            return self.prepare(member, fingerprint(current), locked=True, persist_member=persist_member)
 
     def _read_snapshot(self, folder):
         root = checked_path(folder)

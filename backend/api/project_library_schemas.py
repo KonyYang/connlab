@@ -84,6 +84,8 @@ class IntakeItemResponse(BaseModel):
     target_member_id: str | None = None
     existing_member_id: str | None = None
     new_project_title: str | None = None
+    authority_status: Literal["found"] | None = None
+    authority_message: str | None = None
 
 
 class IntakePlanResponse(BaseModel):
