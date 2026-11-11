@@ -134,8 +134,10 @@ def test_existing_ltr_local_owner_conflict_is_blocked_before_copy(authority_libr
         session.add(LtrRecordModel(ltr_id="local-ltr", project_id="local-owner", ltr_number="DL-2026-11-013", status="registered", is_current_owner=True))
         session.commit()
     plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
-    assert plan["items"][0]["status"] == "unavailable"
-    assert "already belongs" in " ".join(plan["items"][0]["warnings"])
+    item = plan["items"][0]
+    assert item["status"] == "conflict"
+    assert item["can_keep_separate"] is False
+    assert "already belongs" in " ".join(item["warnings"])
     assert not list(settings.projects_dir.iterdir())
 
 

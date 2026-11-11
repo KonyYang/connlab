@@ -1370,7 +1370,7 @@ def test_missing_project_file_is_local_warning_and_keeps_structured_results_and_
     engine.dispose()
 
 
-def test_same_material_cannot_hide_known_workspace_identity_when_manifest_is_missing(tmp_path):
+def test_files_only_cannot_bypass_known_workspace_identity_when_manifest_is_missing(tmp_path):
     from tests.fixtures.project_library.full_graph import seed_full_graph
     with seed_full_graph(tmp_path/"A") as graph:
         root=graph["project_root"];client=graph["lab"]["client"]
@@ -1382,7 +1382,15 @@ def test_same_material_cannot_hide_known_workspace_identity_when_manifest_is_mis
         assert plan["items"][0]["source_state"]=="incomplete"
         assert any("identity" in warning.lower() for warning in plan["items"][0]["warnings"]),plan
         files=client.post("/api/project-library/intake-plan",json={"sources":[str(source)],"assignments":[{"source_path":str(source),"files_only":True}]}).json()
-        assert files["items"][0]["status"]=="conflict" and files["items"][0]["can_keep_separate"],files
+        files_item=files["items"][0]
+        assert files_item["status"]=="conflict" and not files_item["can_keep_separate"],files
+        assert any("identity" in warning.lower() for warning in files_item["warnings"]),files
+        assert any("already belongs" in warning.lower() for warning in files_item["warnings"]),files
+        blocked=client.post("/api/project-library/batches",json={
+            **{key:files[key] for key in ("plan_id","fingerprint")},
+            "selected":[str(source)],"keep_separate":[str(source)],
+        }).json()
+        assert blocked["counts"]["added"]==0 and blocked["counts"]["review"]==1,blocked
         assert client.get("/api/project-library/members").json()["items"]==[]
 
 
