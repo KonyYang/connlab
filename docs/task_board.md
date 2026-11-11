@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
-    "tier": "high_risk",
-    "subject": "edbbf91472355cf4ee19f57e1a483793a56bdc6b",
-    "summary": "Single-project existing-project adoption with authoritative LTR reuse, starter Matrix, stable identity, and automatic portable snapshots",
+    "task_id": "TASK_DELETE_CONFIRMATION_MINIMAL_20261112",
+    "tier": "micro",
+    "subject": "73f526ce1b7b1b993e27901ad1e5359f61d26302",
+    "summary": "Reduce deletion confirmation to project number, description and two actions",
     "disposition": "completed",
-    "decision_ref": "User conditionally authorized local Close of Add Existing Project once completion was verified. Verified ready_for_close, successful validation/review records, and implementation/integration retained in current master. Close locally only, preserve code and acceptance evidence. No push or publication; --publish-close intentionally omitted. No business files or databases are modified.",
-    "closed_at": "2026-11-11T23:27:15.967530Z"
+    "decision_ref": "User explicitly confirmed local Close of the completed minimal deletion confirmation task. Preserve implementation and acceptance evidence. No push or publication; --publish-close intentionally omitted. No business files or database operations.",
+    "closed_at": "2026-11-11T23:46:50.999417Z"
   },
   "retained_history": [
     {
@@ -525,91 +525,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly confirmed closing the completed deletion confirmation dialog task locally only. Preserve implementation commits and acceptance evidence. Do not push or publish; --publish-close is intentionally omitted. Leave the separate existing-project-admission task unchanged. No business file or database operations.",
       "closed_at": "2026-11-11T22:25:15.103411Z"
+    },
+    {
+      "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
+      "tier": "high_risk",
+      "subject": "edbbf91472355cf4ee19f57e1a483793a56bdc6b",
+      "summary": "Single-project existing-project adoption with authoritative LTR reuse, starter Matrix, stable identity, and automatic portable snapshots",
+      "disposition": "completed",
+      "decision_ref": "User conditionally authorized local Close of Add Existing Project once completion was verified. Verified ready_for_close, successful validation/review records, and implementation/integration retained in current master. Close locally only, preserve code and acceptance evidence. No push or publication; --publish-close intentionally omitted. No business files or databases are modified.",
+      "closed_at": "2026-11-11T23:27:15.967530Z"
     }
   ],
-  "tasks": {
-    "TASK_DELETE_CONFIRMATION_MINIMAL_20261112": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
-      "branch": "codex/delete-confirmation-minimal-20261112",
-      "resources": [],
-      "integrated_head": "b72954ad4fa607cb8be3eab376cf65ca5e164715",
-      "task": {
-        "task_id": "TASK_DELETE_CONFIRMATION_MINIMAL_20261112",
-        "summary": "Reduce deletion confirmation to project number, description and two actions",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Simplify Delete project only: retain full project identifier and sample description with Cancel and Move to recycle bin. Remove test item, routine retention copy, reason and note fields; pass neutral user-confirmed audit reason through the existing API. Preserve real warnings, blockers, stale/error refresh, busy/loading guards, safe initial focus and restore behavior. No real delete, backend/schema changes, push, publication or release packaging. Validate with mocked APIs and read-only browser preview.",
-        "scope_paths": [
-          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx",
-          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.css",
-          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.test.tsx",
-          "frontend/src/pages/ProjectListPage.test.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "e5b1ca1e45f320b71ff70d6c333f29353971dc12",
-        "started_at": "2026-11-11T23:37:17.548812Z",
-        "updated_at": "2026-11-11T23:44:57.510350Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_DELETE_CONFIRMATION_MINIMAL_20261112",
-          "subject": "73f526ce1b7b1b993e27901ad1e5359f61d26302",
-          "summary": "Delete confirmation now shows only project number and description with Cancel/Move to recycle bin; neutral audit reason is automatic, required safeguards and Restore unchanged. Local-only integration; no push/publication.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.css",
-            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.test.tsx",
-            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx",
-            "frontend/src/pages/ProjectListPage.test.tsx"
-          ],
-          "validation": [
-            {
-              "name": "TDD RED/GREEN",
-              "status": "passed",
-              "summary": "Before implementation 3 of 30 affected component/page tests failed for expected old fields, test-item display and initial focus; final affected validation passed."
-            },
-            {
-              "name": "Frontend regression",
-              "status": "passed",
-              "summary": "7 files, 138 tests passed. Covers neutral reason in actual mocked Projects request, explicit confirmation, cancellation, Escape/tab focus, busy/loading/stale/blockers, restore conflicts and shared dialogs. One React Sidebar act warning, no failures. UTF-8 log: tmp/delete-confirmation-minimal-20261112/frontend-final.log."
-            },
-            {
-              "name": "TypeScript and Vite build",
-              "status": "passed",
-              "summary": "npm run build passed on final source/test state, 249 transformed modules. No release packaging."
-            },
-            {
-              "name": "Real browser preview",
-              "status": "passed",
-              "summary": "Actual local UI at 640x803 showed only number/description and two buttons; at 360x640 dialog width313 height222.5 fit without horizontal overflow. Default focus Cancel; Escape closed preview and project remained listed. No real trash/restore request. Screenshot tmp/delete-confirmation-minimal-20261112/delete-confirmation-640.jpg. Temporary frontend 5187 stopped."
-            },
-            {
-              "name": "Exact diff self-review",
-              "status": "passed",
-              "summary": "Four reserved frontend files only; obsolete form state and CSS removed. Standards0/Spec0 actionable findings. Backend/API contracts, restore logic and shared focus implementation unchanged. Same-agent review, no independent review claimed."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Implemented micro task with public component/page RED/GREEN, targeted regression, build, browser preview and final self-review."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "73f526ce1b7b1b993e27901ad1e5359f61d26302",
-            "primary_before": "3090262ea984bac349e97fa20bd5dcd0d8b6181a",
-            "integrated_head": "b72954ad4fa607cb8be3eab376cf65ca5e164715",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
