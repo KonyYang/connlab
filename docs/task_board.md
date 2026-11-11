@@ -559,15 +559,15 @@
         ],
         "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
         "started_at": "2026-11-11T00:16:52.501444Z",
-        "updated_at": "2026-11-11T02:14:23.756821Z",
+        "updated_at": "2026-11-11T04:38:20.850005Z",
         "checkpoint": {
-          "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
-          "summary": "Implementation/review/isolated QA pass at fa4bb449. Blocked after three consecutive goal turns because high-risk frozen scope omitted tests/integration/test_project_import_destination_api.py, tests/integration/test_project_registry_management_api.py, frontend/src/pages/ProjectListPage.tsx, and frontend/src/pages/ProjectListPage.test.tsx. Explicit User approval is required before amending scope, updating obsolete isolated fixtures, fixing deterministic ProjectListPage tests, renaming the entry to Add Existing Project, rerunning full QA, and integrating locally.",
+          "status": "running",
+          "stage": "scope-approved",
           "version": 1,
-          "stage": "scope-approval",
-          "status": "blocked",
-          "requires_user": true,
-          "schema": "connlab.sol-task-checkpoint"
+          "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
+          "schema": "connlab.sol-task-checkpoint",
+          "summary": "User explicitly approved adding tests/integration/test_project_import_destination_api.py, tests/integration/test_project_registry_management_api.py, frontend/src/pages/ProjectListPage.tsx, and frontend/src/pages/ProjectListPage.test.tsx. Resume by updating obsolete isolated fixtures, fixing deterministic ProjectListPage tests, renaming the entry to Add Existing Project, then amend the high-risk scope manifest to the exact committed diff and rerun final QA.",
+          "requires_user": false
         },
         "report": null
       }
