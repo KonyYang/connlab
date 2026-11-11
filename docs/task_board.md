@@ -668,6 +668,32 @@
           "summary": "Unified single-project Existing Project adoption is complete: read-only authoritative LTR adoption with confirmation and revalidation, pre-copy conflict safety, new local identity for no-snapshot sources, unconfirmed starter Matrix, lifecycle portable snapshots, stable identity across title/path changes, and consolidated Add Existing Project entry."
         }
       }
+    },
+    "TASK_DELETE_PROJECT_DIALOG_COMPACT_20261112": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\import-folder-picker\\connlab",
+      "branch": "codex/delete-project-dialog-20261112",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_DELETE_PROJECT_DIALOG_COMPACT_20261112",
+        "summary": "Compact Delete project confirmation using established dialog styling",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Simplify only the deletion confirmation UI: compact project identity, concise reversible-delete and file-retention boundary, existing reason options with Created by mistake initially selected, expandable optional note, styled responsive inputs and Cancel/Move to recycle bin footer. Preserve backend, preview/blocker/stale guards, restore behavior, focus and cancellation. No real deletion or business data writes; local only, no push or publication.",
+        "scope_paths": [
+          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx",
+          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.test.tsx",
+          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "a73b070f89c41b809e361e11f966870855a94c23",
+        "started_at": "2026-11-11T17:44:48.444544Z",
+        "updated_at": "2026-11-11T17:44:48.444544Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
