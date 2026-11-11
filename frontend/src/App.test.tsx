@@ -39,7 +39,7 @@ it("opens the native project-folder picker directly from Projects and stays ther
   const user = userEvent.setup();
   render(<App />);
 
-  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
 
   await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce());
   expect(window.location.pathname).toBe("/projects");
@@ -75,7 +75,7 @@ it("receives one safe selected project in the background and opens its workspace
   const user = userEvent.setup();
   render(<App />);
 
-  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
 
   await waitFor(() => expect(window.location.pathname).toBe("/projects/verified-project"));
   expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
@@ -93,7 +93,7 @@ it("keeps routine checking silent before presenting a required decision", async 
   const user = userEvent.setup();
   render(<App />);
 
-  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
   await waitFor(() => expect(libraryApi.scanLibrarySources).toHaveBeenCalledOnce());
   expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
   expect(screen.queryByText("Checking selected folders…")).toBeNull();
@@ -116,7 +116,7 @@ it("stays on Projects and opens a focused decision dialog only when information 
   const user = userEvent.setup();
   render(<App />);
 
-  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
 
   expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
   expect(await screen.findByRole("textbox", { name: "LTR number" })).toBeTruthy();
@@ -135,13 +135,13 @@ it("does not reopen the folder picker after leaving Projects from an import deci
   const user = userEvent.setup();
   render(<App />);
 
-  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
   expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "Settings" }));
   expect(window.location.pathname).toBe("/settings");
   await user.click(screen.getByRole("button", { name: "Projects" }));
 
-  expect(await screen.findByRole("button", { name: "Import Projects" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Add Existing Project" })).toBeTruthy();
   expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
   expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce();
 });
@@ -155,7 +155,7 @@ it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project
   expect(screen.getByTestId("active-area").textContent).toBe("projects");
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe("/projects");
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
+  await userEvent.setup().click(await screen.findByRole("button", { name: "Add Existing Project" }));
   await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
   expect(window.location.pathname).toBe("/projects");
   expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
@@ -181,7 +181,7 @@ it.each(["", "batch-1"])("preserves browsing context but returns from import to 
   render(<App />);
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
-  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
   await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: /Open Workbench.*DL-2026-09-032/ }));
@@ -209,7 +209,7 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   expect(await screen.findByRole("button", { name: "Open Manual legacy" })).toBeTruthy();
   expect(window.location.pathname).toBe("/projects");
   expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
-  await user.click(screen.getByRole("button", { name: "Import Projects" }));
+  await user.click(screen.getByRole("button", { name: "Add Existing Project" }));
   await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
   expect(window.location.pathname).toBe("/projects");
   expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
@@ -386,7 +386,7 @@ it("keeps the page clear while the system folder picker is pending", async () =>
   vi.mocked(libraryApi.pickLibraryFolder).mockReturnValue(new Promise(() => {}));
   window.history.replaceState({}, "", "/projects");
   render(<App />);
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
+  await userEvent.setup().click(await screen.findByRole("button", { name: "Add Existing Project" }));
   await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce());
   expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
   expect(screen.queryByText("Choose a project folder in the system window…")).toBeNull();
