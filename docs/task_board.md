@@ -509,7 +509,62 @@
       "closed_at": "2026-11-09T23:59:43.167424Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_EXISTING_PROJECT_ADMISSION_20261111": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
+      "branch": "codex/existing-project-admission-20261111",
+      "resources": [
+        "ltr-workbook-authority",
+        "portable-project-snapshots",
+        "project-library-schema"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
+        "summary": "Single-project existing-project adoption with authoritative LTR reuse, starter Matrix, stable identity, and automatic portable snapshots",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Implement the confirmed single-project Add Existing Project flow. Read the configured authoritative LTR workbook without writing it; adopt an existing full LTR only after preview and fingerprint revalidation; block local owner conflicts before copy; give missing-Matrix takeovers the same unconfirmed starter as local new projects; refresh portable snapshots after successful lifecycle writes and after initial adoption; keep project_id stable across title/path changes; simplify the UI to one confirmation. Do not implement batch UI, owner overwrite, workbook writes, automatic Matrix confirmation, or fabrication of missing historical records. Use only isolated database/workbook/project copies; do not alter real business data or source folders; do not push or publish.",
+        "scope_paths": [
+          "backend/application/project_library/existing_ltr_adoption.py",
+          "backend/application/project_library/automatic_snapshot.py",
+          "backend/application/project_library/service.py",
+          "backend/infrastructure/project_library/portability.py",
+          "backend/infrastructure/storage/repositories/project_library.py",
+          "backend/api/project_registry_access_guard.py",
+          "backend/api/routes_project_library.py",
+          "backend/api/project_library_schemas.py",
+          "frontend/src/api/projectLibrary.ts",
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "frontend/src/features/project-library/ProjectImportReviewList.tsx",
+          "frontend/src/features/project-library/projectImportReview.ts",
+          "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+          "tests/unit/test_existing_ltr_adoption_service.py",
+          "tests/unit/test_project_automatic_snapshot_service.py",
+          "tests/integration/test_project_library_api.py",
+          "tests/integration/test_project_library_portability.py",
+          "tests/integration/test_project_lifecycle_auto_snapshot.py"
+        ],
+        "risk_reasons": [
+          "Adopts authoritative LTR identity across workbook and local database boundaries",
+          "Writes and restores project portability snapshots containing cross-computer project data",
+          "Changes project import conflict handling and initial lifecycle identity",
+          "Runs after successful lifecycle commits and must not corrupt or falsely roll back business writes"
+        ],
+        "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
+        "started_at": "2026-11-11T00:16:52.501444Z",
+        "updated_at": "2026-11-11T00:16:52.501444Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
