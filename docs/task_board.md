@@ -512,7 +512,7 @@
   "tasks": {
     "TASK_EXISTING_PROJECT_ADMISSION_20261111": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/existing-project-admission-20261111",
       "resources": [
@@ -520,7 +520,7 @@
         "portable-project-snapshots",
         "project-library-schema"
       ],
-      "integrated_head": null,
+      "integrated_head": "26566795b87ccc41e6add09aa6ad6910a8ab45b5",
       "task": {
         "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
         "summary": "Single-project existing-project adoption with authoritative LTR reuse, starter Matrix, stable identity, and automatic portable snapshots",
@@ -561,7 +561,7 @@
         ],
         "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
         "started_at": "2026-11-11T00:16:52.501444Z",
-        "updated_at": "2026-11-11T10:31:06.425020Z",
+        "updated_at": "2026-11-11T10:38:19.211032Z",
         "checkpoint": {
           "version": 1,
           "schema": "connlab.sol-task-checkpoint",
@@ -571,7 +571,102 @@
           "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
           "summary": "User explicitly approved adding frontend/src/App.test.tsx. Resume by changing only the ten Projects button queries from Import Projects to Add Existing Project, preserving legacy import-page headings and Back to Import Projects, then amend exact committed scope, rerun final frontend QA, and integrate locally."
         },
-        "report": null
+        "report": {
+          "changed_paths": [
+            "backend/api/project_library_schemas.py",
+            "backend/api/project_registry_access_guard.py",
+            "backend/api/routes_project_library.py",
+            "backend/application/project_library/automatic_snapshot.py",
+            "backend/application/project_library/existing_ltr_adoption.py",
+            "backend/application/project_library/service.py",
+            "backend/infrastructure/project_library/portability.py",
+            "backend/infrastructure/storage/repositories/project_library.py",
+            "frontend/src/api/projectLibrary.ts",
+            "frontend/src/App.test.tsx",
+            "frontend/src/features/project-library/ProjectImportReviewList.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx",
+            "tests/integration/test_project_import_destination_api.py",
+            "tests/integration/test_project_library_api.py",
+            "tests/integration/test_project_library_portability.py",
+            "tests/integration/test_project_lifecycle_auto_snapshot.py",
+            "tests/integration/test_project_registry_management_api.py",
+            "tests/unit/test_existing_ltr_adoption_service.py",
+            "tests/unit/test_project_automatic_snapshot_service.py"
+          ],
+          "validation": [
+            {
+              "name": "Python integration matrix",
+              "status": "passed",
+              "summary": "1147 passed, 2 skipped, 29 Office tests deselected; repaired fixtures included."
+            },
+            {
+              "name": "Python unit matrix",
+              "status": "passed",
+              "summary": "3524 passed, 7 skipped."
+            },
+            {
+              "name": "Frontend full matrix",
+              "status": "passed",
+              "summary": "1322 passed, 1 skipped, 0 failed."
+            },
+            {
+              "name": "Frontend focused existing-project workflow",
+              "status": "passed",
+              "summary": "130 passed across App, ProjectList and Project Library suites."
+            },
+            {
+              "name": "TypeScript and Vite build",
+              "status": "passed",
+              "summary": "tsc -b and Vite build passed for 248 modules."
+            },
+            {
+              "name": "Isolation and integrity",
+              "status": "passed",
+              "summary": "Only isolated databases, read-only LTR authority fixtures and temporary project copies used; real business data and source directories untouched."
+            }
+          ],
+          "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
+          "subject": "edbbf91472355cf4ee19f57e1a483793a56bdc6b",
+          "scope_ok": true,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "edbbf91472355cf4ee19f57e1a483793a56bdc6b",
+            "primary_before": "39fd65dc5dc2d755ee2731ffe881116960b9a75d",
+            "integrated_head": "26566795b87ccc41e6add09aa6ad6910a8ab45b5",
+            "recovered": false
+          },
+          "version": 1,
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "summary": "Independent Standards and Spec review passed with zero remaining findings."
+            },
+            "integrator": {
+              "status": "passed",
+              "summary": "Independent integration audit passed: 24 exact scoped paths, clean branch, no primary product drift or merge conflict."
+            },
+            "developer": {
+              "status": "passed",
+              "summary": "TDD implementation committed in a clean named task branch with all review findings resolved."
+            },
+            "planner": {
+              "status": "passed",
+              "summary": "Independent planner established minimal single-project architecture, exact seams and acceptance criteria."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Independent exact-head Python, frontend, build and focused safety validation passed."
+            }
+          },
+          "schema": "connlab.sol-task-report",
+          "summary": "Unified single-project Existing Project adoption is complete: read-only authoritative LTR adoption with confirmation and revalidation, pre-copy conflict safety, new local identity for no-snapshot sources, unconfirmed starter Matrix, lifecycle portable snapshots, stable identity across title/path changes, and consolidated Add Existing Project entry."
+        }
       }
     }
   }
