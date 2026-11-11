@@ -91,6 +91,52 @@ class ProjectLibraryRepository:
                                           ProjectLibraryMemberModel.title).where(ProjectLibraryMemberModel.project_id == project_id)).first()
         return {"member_id": row.member_id, "ltr_number": row.ltr_number, "title": row.title} if row else None
 
+    def member_for_project(self, project_id):
+        row = self.session.scalar(select(ProjectLibraryMemberModel).where(
+            ProjectLibraryMemberModel.project_id == project_id,
+            ProjectLibraryMemberModel.disposition != "recovery",
+        ))
+        return self._view(row) if row is not None else None
+
+    def current_ltr_owner(self, ltr_number):
+        row = self.session.scalar(select(LtrRecordModel).where(
+            LtrRecordModel.ltr_number == ltr_number,
+            LtrRecordModel.status == "registered",
+            LtrRecordModel.is_current_owner.is_(True),
+        ))
+        if row is None:
+            return None
+        return {"ltr_id": row.ltr_id, "project_id": row.project_id, "ltr_number": row.ltr_number}
+
+    def adopt_existing_ltr(self, project_id, proof):
+        ltr_number = proof["ltr_number"]
+        owner = self.current_ltr_owner(ltr_number)
+        if owner is not None:
+            if owner["project_id"] == project_id:
+                return owner
+            raise ProjectLibraryConflict(f"{ltr_number} already belongs to another local project.")
+        project = self.session.get(ProjectModel, project_id)
+        if project is None:
+            raise LookupError("Project not found for existing LTR adoption.")
+        record = LtrRecordModel(
+            ltr_id=uuid4().hex,
+            project_id=project_id,
+            ltr_number=ltr_number,
+            status="registered",
+            registered_on=date.today(),
+            notes=json.dumps({
+                "kind": "adopt_existing_authority",
+                "sheet_name": proof["sheet_name"],
+                "row_number": proof["row_number"],
+                "row_fingerprint": proof["row_fingerprint"],
+            }, ensure_ascii=False, sort_keys=True),
+            is_current_owner=True,
+        )
+        project.project_no = ltr_number
+        self.session.add(record)
+        self.session.commit()
+        return {"ltr_id": record.ltr_id, "project_id": project_id, "ltr_number": ltr_number}
+
     def create_planning_project(self, member, *, preserve_source_identity=True):
         row = self.session.get(ProjectLibraryMemberModel, member["member_id"], populate_existing=True)
         if row is None:

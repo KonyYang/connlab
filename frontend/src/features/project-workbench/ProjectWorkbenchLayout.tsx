@@ -618,7 +618,7 @@ export function ProjectWorkbenchLayout({
         ) : (
           <>
             <NoMatrixWorkspaceEmptyState
-              showPlaceholderSteps={!project.library_member_id}
+              showPlaceholderSteps
               ltrInformation={
                 <ProjectBasicInformationSummaryCard
                   projectId={project.project_id}

@@ -638,6 +638,8 @@ def test_portable_preflight_blocks_missing_history_without_repairing_source(tmp_
         plan = lab["client"].post("/api/project-library/intake-plan", json={"sources": [source]}).json()
         batch = lab["client"].post("/api/project-library/batches", json={**{k:plan[k] for k in ("plan_id","fingerprint")}, "selected":[source]}).json()
         member_id = batch["items"][0]["member_id"]
+        snapshot_path = Path(source) / ".connlab/portable/snapshot.json"
+        initial_snapshot = snapshot_path.read_bytes()
         with lab["factory"]() as session:
             if gap == "non_fk_report_base":
                 session.execute(text("UPDATE report_draft_revisions SET base_report_revision_id='missing-history' WHERE report_revision_id='qa-report-2'"))
@@ -652,7 +654,7 @@ def test_portable_preflight_blocks_missing_history_without_repairing_source(tmp_
         status = lab["client"].get(f"/api/project-library/members/{member_id}/portable").json()
         assert status["status"] == "unavailable", status
         assert status["blockers"], status
-        assert not (Path(source) / ".connlab/portable/snapshot.json").exists()
+        assert snapshot_path.read_bytes() == initial_snapshot
         with lab["factory"]() as session:
             if gap == "non_fk_report_base":
                 assert session.execute(text("SELECT base_report_revision_id FROM report_draft_revisions WHERE report_revision_id='qa-report-2'")).scalar_one() == "missing-history"
@@ -1378,7 +1380,7 @@ def test_changed_registered_workbook_has_local_review_warning_without_rewriting_
         listed=client.get("/api/project-library/members").json()
         assert listed["items"][0]["snapshot_status"]=="not_checked" and reads==[]
         current=client.get(f"/api/project-library/members/{member_id}/portable").json()
-        assert current["status"]==("stale" if prepared_first else "missing"),current
+        assert current["status"]=="stale",current
         assert not current["blockers"],current
         assert any(path.relative_to(root).as_posix() in warning and "changed" in warning.lower() for warning in current["warnings"]),current
         assert reads.count(str(path))==1,reads

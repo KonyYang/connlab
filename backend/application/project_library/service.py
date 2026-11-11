@@ -11,10 +11,13 @@ def now():
 
 
 class ProjectLibraryService:
-    def __init__(self, store, settings, *, files, portability=None, opener=None, destination_writer=None):
+    def __init__(self, store, settings, *, files, portability=None, opener=None, destination_writer=None,
+                 existing_ltr=None, automatic_snapshot=None):
         self.store, self.settings, self.files = store, settings, files
         self.portability, self.opener = portability, opener
         self.destination_writer = destination_writer
+        self.existing_ltr = existing_ltr
+        self.automatic_snapshot = automatic_snapshot
 
     def runtime(self):
         return self.files.runtime()
@@ -133,6 +136,23 @@ class ProjectLibraryService:
                     source = self.files.inspect_source(value, ltr_number=assignment["ltr_number"])
                 else:
                     source = self.files.inspect_source(value)
+                if (self.existing_ltr and source.get("ltr_number") and not source.get("has_portable")
+                        and not (target_id or new_title) and not self.store.project_exists(source.get("project_id"))):
+                    proof = self.existing_ltr.review(source["ltr_number"])
+                    source["ltr_adoption"] = proof
+                    source["authority_status"] = "found"
+                    source["authority_message"] = (
+                        f"{proof['ltr_number']} was found in the authoritative LTR workbook. "
+                        "Confirm to copy the files and adopt this number locally; the workbook will not be changed."
+                    )
+                    if source.get("source_state") == "incomplete" and source.get("project_id"):
+                        source.update(
+                            original_project_id=source.get("project_id"),
+                            project_id=None,
+                            source_state="adopt_existing",
+                            adopt_existing=True,
+                        )
+                        source["reception_layout"] = source["files_only_layout"]
                 if assignment.get("files_only"):
                     if source.get("source_state") != "incomplete":
                         raise ProjectLibraryConflict("Only a ConnLab folder missing its snapshot can use files-only import. Check this source again.")
@@ -249,6 +269,8 @@ class ProjectLibraryService:
                 ):
                     status, separate = "conflict", True
                     warnings.append("Another record shares this LTR. Review the source; no records will be merged.")
+                if source.get("authority_message") and status == "ready":
+                    warnings.append(source["authority_message"])
                 if source.get("has_portable") and not reference_existing:
                     status, separate = "conflict", False
                     warnings.append("This project carries saved test data. Use Inspect and Restore Portable Project to preserve it; plain intake cannot create an empty replacement.")
@@ -298,7 +320,7 @@ class ProjectLibraryService:
                 row["status"], row["can_keep_separate"] = "conflict", False
                 row["warnings"].append(problem)
         plan = self.files.save_plan("intake", {"items": rows})
-        keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title", "source_state", "differences")
+        keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title", "source_state", "differences", "authority_status", "authority_message")
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
                 "projects_root": str(self.settings.projects_dir),
                 "items": [{**{key: row.get(key) for key in keys},
@@ -408,6 +430,11 @@ class ProjectLibraryService:
             raise ProjectLibraryConflict("Inspect and restore this project's carried test data instead of using plain intake.")
         if not self.files.source_unchanged(source):
             raise ProjectLibraryConflict("The source changed after review. Create a new intake review.")
+        if source.get("ltr_adoption"):
+            if self.existing_ltr is None:
+                raise ProjectLibraryConflict("LTR authority verification is unavailable. Check the project again.")
+            # Revalidate before any copy so stale authority cannot create project files.
+            self.existing_ltr.verify(source["ltr_adoption"])
         existing = source.get("target_member_id")
         if existing:
             member = self.store.member(existing)
@@ -459,15 +486,19 @@ class ProjectLibraryService:
                 self.files.locate_context(member, member["folder_path"], self.store.workspace(project_id))
                 self.store.link_existing_project(member, project_id, self.files.business_path(member))
                 member = self.store.member(member["member_id"])
-            if not member["project_id"] and not item["keep_separate"] and (source.get("files_only") or not self.store.project_exists(member.get("source_project_id"))):
+            if not member["project_id"] and not item["keep_separate"] and (source.get("files_only") or source.get("adopt_existing") or not self.store.project_exists(member.get("source_project_id"))):
                 # The final intake confirmation also establishes the lifecycle container.
                 # A retained conflict copy must still follow its reviewed takeover rules.
-                self.store.create_planning_project(member, preserve_source_identity=not source.get("files_only"))
+                self.store.create_planning_project(member, preserve_source_identity=not (source.get("files_only") or source.get("adopt_existing")))
                 member = self.store.member(member["member_id"])
+            if source.get("ltr_adoption") and member["project_id"]:
+                self.existing_ltr.adopt(member["project_id"], source["ltr_adoption"])
             if source.get("reception_layout") and member["project_id"] and member["ltr_number"] and not item["keep_separate"]:
                 workspace = self.store.bind_imported_workspace(member, self.files.business_path(member), self.settings.templates_dir)
                 self.files.publish_workspace_metadata(member["folder_path"], workspace)
             self.files.write_marker(member)
+            if self.automatic_snapshot and member["project_id"]:
+                self.automatic_snapshot.refresh(member["project_id"], locked=True)
         item.update(status="added", message="Received and verified. Original source files remain unchanged.", member_id=member["member_id"])
 
     @staticmethod

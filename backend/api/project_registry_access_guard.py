@@ -1,6 +1,7 @@
 """Protect business writes from stale tabs and serialize them with registry moves."""
 
 from contextlib import ExitStack, contextmanager
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.routing import APIRoute
@@ -17,6 +18,10 @@ from backend.infrastructure.storage.models import (
 from backend.shared.config import Settings
 from backend.application.project_file_generation_guard import require_project_file_generation_clear
 from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal
+from backend.application.project_library.automatic_snapshot import AutomaticPortableSnapshotService
+from backend.infrastructure.project_library.files import LibraryFiles
+from backend.infrastructure.project_library.portability import ProjectPortability
+from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
 
 
 _BOUND_PARAMETERS = {"project_id", "case_id", "package_id", "asset_id", "application_form_id", "issue_id"}
@@ -28,6 +33,7 @@ _READ_ONLY_FOLDER_OPENS = {
     "/api/projects/{project_id}/folder/open-local",
     "/api/projects/{project_id}/folder/open-public",
 }
+logger = logging.getLogger(__name__)
 
 
 def protect_project_mutations(router: APIRouter) -> APIRouter:
@@ -101,7 +107,7 @@ async def require_registry_write_access(
                 })
             if project is not None and not generation_owns_lock and not readonly_folder_open:
                 revisions[project_id] = project.registry_revision
-        with _commit_project_writes(session, revisions):
+        with _commit_project_writes(session, revisions, settings):
             yield
 
 
@@ -110,7 +116,7 @@ def _has_folder_write_slot(route: APIRoute) -> bool:
 
 
 @contextmanager
-def _commit_project_writes(session: Session, revisions: dict[str, int]):
+def _commit_project_writes(session: Session, revisions: dict[str, int], settings: Settings | None = None):
     """Invalidate confirmations after persisted edits, including indirect writes.
 
     Repositories often flush before returning, so inspecting dirty rows only at
@@ -141,6 +147,21 @@ def _commit_project_writes(session: Session, revisions: dict[str, int]):
                     project.registry_revision += 1
         # get_session tears down later. Commit before releasing the project lock.
         session.commit()
+        if changed and settings is not None:
+            try:
+                store = ProjectLibraryRepository(session)
+                files = LibraryFiles(settings, destination_configured=True)
+                snapshots = AutomaticPortableSnapshotService(
+                    store,
+                    ProjectPortability(store, files, settings),
+                )
+                for project_id in sorted(revisions):
+                    snapshots.refresh(project_id, project_locked=True)
+            except Exception as exc:
+                logger.warning(
+                    "Automatic portable snapshot setup failed after the business commit: %s",
+                    exc,
+                )
     except BaseException:
         session.rollback()
         raise

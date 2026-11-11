@@ -11,6 +11,13 @@ from backend.api.routes_project_library import router, get_project_library_servi
 from backend.application.project_library.service import ProjectLibraryService
 from backend.infrastructure.project_library.files import LibraryFiles
 from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
+from backend.application.project_library.existing_ltr_adoption import (
+    ExistingLtrAdoptionService,
+    ExistingLtrAuthorityRow,
+)
+from backend.application.project_library.automatic_snapshot import AutomaticPortableSnapshotService
+from backend.infrastructure.project_library.portability import ProjectPortability
+from backend.infrastructure.storage.models import LtrRecordModel, ProjectModel
 
 
 @pytest.fixture
@@ -29,6 +36,105 @@ def library(tmp_path):
     app.dependency_overrides[get_project_library_service] = service
     yield TestClient(app), settings, opened
     engine.dispose()
+
+
+@pytest.fixture
+def authority_library(tmp_path):
+    root = tmp_path / "library"
+    settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root)
+    settings.ensure_directories()
+    engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
+    init_db(engine)
+
+    class Authority:
+        row = ExistingLtrAuthorityRow(
+            ltr_number="DL-2026-11-013", sheet_name="2026", row_number=27,
+            values=("Nov", 13, 13, "DL-2026-11-013", None, "Imported connector"),
+        )
+
+        def find(self, ltr_number):
+            return self.row if self.row and self.row.ltr_number == ltr_number else None
+
+    authority = Authority()
+    app = FastAPI()
+    app.include_router(router)
+
+    def service():
+        with Session(engine) as session:
+            store = ProjectLibraryRepository(session)
+            files = LibraryFiles(settings)
+            portability = ProjectPortability(store, files, settings)
+            yield ProjectLibraryService(
+                store, settings, files=files, portability=portability,
+                existing_ltr=ExistingLtrAdoptionService(store, authority),
+                automatic_snapshot=AutomaticPortableSnapshotService(store, portability),
+            )
+
+    app.dependency_overrides[get_project_library_service] = service
+    yield TestClient(app), settings, engine, authority
+    engine.dispose()
+
+
+def test_existing_ltr_is_revalidated_adopted_and_snapshotted_without_reusing_source_identity(authority_library, tmp_path):
+    import json
+
+    client, settings, engine, authority = authority_library
+    source = tmp_path / "DL-2026-11-013"
+    (source / ".connlab").mkdir(parents=True)
+    (source / ".connlab" / "manifest.json").write_text(json.dumps({
+        "schema_version": 1, "project_id": "other-computer-project", "dl_number": "DL-2026-11-013",
+    }), encoding="utf-8")
+    (source / "result.txt").write_text("source evidence", encoding="utf-8")
+    original = {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()}
+
+    plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    item = plan["items"][0]
+    assert item["status"] == "ready", item
+    assert item["source_state"] == "adopt_existing"
+    assert item["authority_status"] == "found"
+    assert not list(settings.projects_dir.iterdir())
+
+    authority.row = ExistingLtrAuthorityRow(
+        ltr_number="DL-2026-11-013", sheet_name="2026", row_number=27,
+        values=("Nov", 13, 13, "DL-2026-11-013", None, "Changed after review"),
+    )
+    stale = client.post("/api/project-library/batches", json={
+        "plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"], "selected": [str(source)],
+    }).json()
+    assert stale["counts"]["added"] == 0
+    assert not list(settings.projects_dir.iterdir())
+
+    fresh = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    added = client.post("/api/project-library/batches", json={
+        "plan_id": fresh["plan_id"], "fingerprint": fresh["fingerprint"], "selected": [str(source)],
+    }).json()
+    assert added["counts"]["added"] == 1, added
+    member = client.get(f"/api/project-library/members/{added['items'][0]['member_id']}").json()
+    assert member["project_id"] != "other-computer-project"
+    assert member["snapshot_status"] == "current"
+    assert Path(member["folder_path"], ".connlab", "portable", "snapshot.json").is_file()
+    with Session(engine) as session:
+        record = session.query(LtrRecordModel).one()
+        assert record.project_id == member["project_id"]
+        assert record.ltr_number == "DL-2026-11-013"
+        assert "adopt_existing_authority" in record.notes
+        assert session.get(ProjectModel, "other-computer-project") is None
+    assert {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()} == original
+
+
+def test_existing_ltr_local_owner_conflict_is_blocked_before_copy(authority_library, tmp_path):
+    client, settings, engine, _ = authority_library
+    source = tmp_path / "DL-2026-11-013 Other computer"
+    source.mkdir()
+    (source / "evidence.txt").write_text("unchanged", encoding="utf-8")
+    with Session(engine) as session:
+        session.add(ProjectModel(project_id="local-owner", project_no="DL-2026-11-013", product_name="Local", requestor="Lab", status="draft"))
+        session.add(LtrRecordModel(ltr_id="local-ltr", project_id="local-owner", ltr_number="DL-2026-11-013", status="registered", is_current_owner=True))
+        session.commit()
+    plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    assert plan["items"][0]["status"] == "unavailable"
+    assert "already belongs" in " ".join(plan["items"][0]["warnings"])
+    assert not list(settings.projects_dir.iterdir())
 
 
 def test_single_project_check_keeps_ltr_root_whole_and_does_not_expand_parent(library, tmp_path):

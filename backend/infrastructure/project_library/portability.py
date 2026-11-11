@@ -194,6 +194,14 @@ class ProjectPortability:
                 self.store.update_member(member["member_id"], {"snapshot_fingerprint": signature})
             return self.status(self.store.member(member["member_id"]))
 
+    def prepare_latest(self, member, *, locked=False, project_locked=False, persist_member=False):
+        """Refresh the latest safe snapshot without a separate user preview token."""
+        library_context = nullcontext() if locked else self.files.lock()
+        project_context = nullcontext() if locked or project_locked else self.files.project_lock(member.get("project_id"))
+        with library_context, project_context:
+            current, _ = self._capture(member)
+            return self.prepare(member, fingerprint(current), locked=True, persist_member=persist_member)
+
     def _read_snapshot(self, folder):
         root = checked_path(folder)
         if self.files.describe_source(root).get("source_state") == "upgrade_required":
