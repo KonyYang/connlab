@@ -13,6 +13,11 @@ from backend.infrastructure.storage.database import init_db, create_session_fact
 from backend.shared.config import Settings
 from backend.domain import LtrRecord, LtrStatus
 from backend.infrastructure.storage.repositories import LtrRecordRepository
+from backend.application.project_library.existing_ltr_adoption import (
+    ExistingLtrAdoptionService,
+    ExistingLtrAuthorityRow,
+)
+from backend.infrastructure.project_library import portability
 
 
 @pytest.fixture
@@ -25,7 +30,21 @@ def storage():
 
 
 @pytest.fixture
-def client(tmp_path, storage):
+def client(tmp_path, storage, monkeypatch):
+    class IsolatedLtrAuthority:
+        def find(self, ltr_number):
+            return ExistingLtrAuthorityRow(
+                ltr_number=ltr_number,
+                sheet_name="Isolated LTR Authority",
+                row_number=1,
+                values=(ltr_number, "fixture-only"),
+            )
+
+    monkeypatch.setattr(
+        portability,
+        "build_existing_ltr_adoption_service",
+        lambda store, settings: ExistingLtrAdoptionService(store, IsolatedLtrAuthority()),
+    )
     def session_override():
         with storage() as session:
             try:
@@ -71,7 +90,7 @@ def test_imported_project_recycle_retains_historical_identifier_files_and_identi
     assert client.get(f"/api/projects/{project_id}").json()["library_member_id"] == member["member_id"]
     row = client.get("/api/projects/registry").json()[0]
     assert row["display_project_id"] == "DL-2026-01-002"
-    assert row["has_registered_ltr"] is False
+    assert row["has_registered_ltr"] is True
     removed = client.post(f"/api/project-registry/{project_id}/trash", json={"token": preview(client, project_id, "trash")["token"], "reason": "Imported by mistake"})
     assert removed.status_code == 200, removed.text
     retained = client.get("/api/project-registry/entries?location=trash").json()[0]
@@ -84,7 +103,10 @@ def test_imported_project_recycle_retains_historical_identifier_files_and_identi
     assert len(client.get("/api/projects/registry").json()) == 1
     assert (Path(member["folder_path"]) / source.name / "evidence.txt").read_text(encoding="utf-8") == "original evidence"
     assert (source / "evidence.txt").read_text(encoding="utf-8") == "original evidence"
-    assert client.get(f"/api/projects/{project_id}/ltr").json() == []
+    ltr_records = client.get(f"/api/projects/{project_id}/ltr").json()
+    assert [(record["ltr_number"], record["status"]) for record in ltr_records] == [
+        ("DL-2026-01-002", "registered")
+    ]
 
 
 def test_unnumbered_import_is_a_project_with_access_to_original_files(client, tmp_path):
