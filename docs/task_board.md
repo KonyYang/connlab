@@ -560,15 +560,15 @@
         ],
         "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
         "started_at": "2026-11-11T00:16:52.501444Z",
-        "updated_at": "2026-11-11T05:11:25.229871Z",
+        "updated_at": "2026-11-11T10:26:42.559338Z",
         "checkpoint": {
-          "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
-          "schema": "connlab.sol-task-checkpoint",
-          "requires_user": true,
           "version": 1,
-          "status": "blocked",
-          "stage": "app-test-scope",
-          "summary": "Blocked after three consecutive resumed goal turns because frontend/src/App.test.tsx is outside the corrected high-risk manifest. Product is complete at a39596b1; exact-head QA has Python integration 1147 passed, unit 3524 passed, project-library/ProjectList 110 passed and build passed. App.test deterministically fails 12 cases only because ten button queries still use Import Projects instead of Add Existing Project. Explicit User approval is required to re-add that exact test path, synchronize selectors, rerun final frontend QA, and integrate locally."
+          "schema": "connlab.sol-task-checkpoint",
+          "stage": "app-test-approved",
+          "status": "running",
+          "requires_user": false,
+          "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
+          "summary": "User explicitly approved adding frontend/src/App.test.tsx. Resume by changing only the ten Projects button queries from Import Projects to Add Existing Project, preserving legacy import-page headings and Back to Import Projects, then amend exact committed scope, rerun final frontend QA, and integrate locally."
         },
         "report": null
       }
