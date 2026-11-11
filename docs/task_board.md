@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_DELETE_PROJECT_DIALOG_COMPACT_20261112",
-    "tier": "micro",
-    "subject": "3a7ac9a1a43fb8837179cb3dc91b96e94bc78960",
-    "summary": "Compact Delete project confirmation using established dialog styling",
+    "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
+    "tier": "high_risk",
+    "subject": "edbbf91472355cf4ee19f57e1a483793a56bdc6b",
+    "summary": "Single-project existing-project adoption with authoritative LTR reuse, starter Matrix, stable identity, and automatic portable snapshots",
     "disposition": "completed",
-    "decision_ref": "User explicitly confirmed closing the completed deletion confirmation dialog task locally only. Preserve implementation commits and acceptance evidence. Do not push or publish; --publish-close is intentionally omitted. Leave the separate existing-project-admission task unchanged. No business file or database operations.",
-    "closed_at": "2026-11-11T22:25:15.103411Z"
+    "decision_ref": "User conditionally authorized local Close of Add Existing Project once completion was verified. Verified ready_for_close, successful validation/review records, and implementation/integration retained in current master. Close locally only, preserve code and acceptance evidence. No push or publication; --publish-close intentionally omitted. No business files or databases are modified.",
+    "closed_at": "2026-11-11T23:27:15.967530Z"
   },
   "retained_history": [
     {
@@ -516,169 +516,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly confirmed final Close after accepted local integration. Close this task locally only; retain all product commits and acceptance evidence. The explicit no-push/no-publication restriction persists, and --publish-close is intentionally omitted. No real business files, public drive, database, application startup or release operation.",
       "closed_at": "2026-11-10T11:34:39.845485Z"
+    },
+    {
+      "task_id": "TASK_DELETE_PROJECT_DIALOG_COMPACT_20261112",
+      "tier": "micro",
+      "subject": "3a7ac9a1a43fb8837179cb3dc91b96e94bc78960",
+      "summary": "Compact Delete project confirmation using established dialog styling",
+      "disposition": "completed",
+      "decision_ref": "User explicitly confirmed closing the completed deletion confirmation dialog task locally only. Preserve implementation commits and acceptance evidence. Do not push or publish; --publish-close is intentionally omitted. Leave the separate existing-project-admission task unchanged. No business file or database operations.",
+      "closed_at": "2026-11-11T22:25:15.103411Z"
     }
   ],
-  "tasks": {
-    "TASK_EXISTING_PROJECT_ADMISSION_20261111": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
-      "branch": "codex/existing-project-admission-20261111",
-      "resources": [
-        "ltr-workbook-authority",
-        "portable-project-snapshots",
-        "project-library-schema"
-      ],
-      "integrated_head": "26566795b87ccc41e6add09aa6ad6910a8ab45b5",
-      "task": {
-        "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
-        "summary": "Single-project existing-project adoption with authoritative LTR reuse, starter Matrix, stable identity, and automatic portable snapshots",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Implement the confirmed single-project Add Existing Project flow. Read the configured authoritative LTR workbook without writing it; adopt an existing full LTR only after preview and fingerprint revalidation; block local owner conflicts before copy; give missing-Matrix takeovers the same unconfirmed starter as local new projects; refresh portable snapshots after successful lifecycle writes and after initial adoption; keep project_id stable across title/path changes; simplify the UI to one confirmation. Do not implement batch UI, owner overwrite, workbook writes, automatic Matrix confirmation, or fabrication of missing historical records. Use only isolated database/workbook/project copies; do not alter real business data or source folders; do not push or publish.",
-        "scope_paths": [
-          "backend/api/project_library_schemas.py",
-          "backend/api/project_registry_access_guard.py",
-          "backend/api/routes_project_library.py",
-          "backend/application/project_library/automatic_snapshot.py",
-          "backend/application/project_library/existing_ltr_adoption.py",
-          "backend/application/project_library/service.py",
-          "backend/infrastructure/project_library/portability.py",
-          "backend/infrastructure/storage/repositories/project_library.py",
-          "frontend/src/App.test.tsx",
-          "frontend/src/api/projectLibrary.ts",
-          "frontend/src/features/project-library/ProjectImportReviewList.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-          "frontend/src/pages/ProjectListPage.test.tsx",
-          "frontend/src/pages/ProjectListPage.tsx",
-          "tests/integration/test_project_import_destination_api.py",
-          "tests/integration/test_project_library_api.py",
-          "tests/integration/test_project_library_portability.py",
-          "tests/integration/test_project_lifecycle_auto_snapshot.py",
-          "tests/integration/test_project_registry_management_api.py",
-          "tests/unit/test_existing_ltr_adoption_service.py",
-          "tests/unit/test_project_automatic_snapshot_service.py"
-        ],
-        "risk_reasons": [
-          "Adopts authoritative LTR identity across workbook and local database boundaries",
-          "Writes and restores project portability snapshots containing cross-computer project data",
-          "Changes project import conflict handling and initial lifecycle identity",
-          "Runs after successful lifecycle commits and must not corrupt or falsely roll back business writes"
-        ],
-        "activation_head": "1613af95a00292c2e19f7382a3a1959db1edd030",
-        "started_at": "2026-11-11T00:16:52.501444Z",
-        "updated_at": "2026-11-11T10:38:19.211032Z",
-        "checkpoint": {
-          "version": 1,
-          "schema": "connlab.sol-task-checkpoint",
-          "stage": "app-test-approved",
-          "status": "running",
-          "requires_user": false,
-          "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
-          "summary": "User explicitly approved adding frontend/src/App.test.tsx. Resume by changing only the ten Projects button queries from Import Projects to Add Existing Project, preserving legacy import-page headings and Back to Import Projects, then amend exact committed scope, rerun final frontend QA, and integrate locally."
-        },
-        "report": {
-          "changed_paths": [
-            "backend/api/project_library_schemas.py",
-            "backend/api/project_registry_access_guard.py",
-            "backend/api/routes_project_library.py",
-            "backend/application/project_library/automatic_snapshot.py",
-            "backend/application/project_library/existing_ltr_adoption.py",
-            "backend/application/project_library/service.py",
-            "backend/infrastructure/project_library/portability.py",
-            "backend/infrastructure/storage/repositories/project_library.py",
-            "frontend/src/api/projectLibrary.ts",
-            "frontend/src/App.test.tsx",
-            "frontend/src/features/project-library/ProjectImportReviewList.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "frontend/src/pages/ProjectListPage.tsx",
-            "tests/integration/test_project_import_destination_api.py",
-            "tests/integration/test_project_library_api.py",
-            "tests/integration/test_project_library_portability.py",
-            "tests/integration/test_project_lifecycle_auto_snapshot.py",
-            "tests/integration/test_project_registry_management_api.py",
-            "tests/unit/test_existing_ltr_adoption_service.py",
-            "tests/unit/test_project_automatic_snapshot_service.py"
-          ],
-          "validation": [
-            {
-              "name": "Python integration matrix",
-              "status": "passed",
-              "summary": "1147 passed, 2 skipped, 29 Office tests deselected; repaired fixtures included."
-            },
-            {
-              "name": "Python unit matrix",
-              "status": "passed",
-              "summary": "3524 passed, 7 skipped."
-            },
-            {
-              "name": "Frontend full matrix",
-              "status": "passed",
-              "summary": "1322 passed, 1 skipped, 0 failed."
-            },
-            {
-              "name": "Frontend focused existing-project workflow",
-              "status": "passed",
-              "summary": "130 passed across App, ProjectList and Project Library suites."
-            },
-            {
-              "name": "TypeScript and Vite build",
-              "status": "passed",
-              "summary": "tsc -b and Vite build passed for 248 modules."
-            },
-            {
-              "name": "Isolation and integrity",
-              "status": "passed",
-              "summary": "Only isolated databases, read-only LTR authority fixtures and temporary project copies used; real business data and source directories untouched."
-            }
-          ],
-          "task_id": "TASK_EXISTING_PROJECT_ADMISSION_20261111",
-          "subject": "edbbf91472355cf4ee19f57e1a483793a56bdc6b",
-          "scope_ok": true,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "edbbf91472355cf4ee19f57e1a483793a56bdc6b",
-            "primary_before": "39fd65dc5dc2d755ee2731ffe881116960b9a75d",
-            "integrated_head": "26566795b87ccc41e6add09aa6ad6910a8ab45b5",
-            "recovered": false
-          },
-          "version": 1,
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "summary": "Independent Standards and Spec review passed with zero remaining findings."
-            },
-            "integrator": {
-              "status": "passed",
-              "summary": "Independent integration audit passed: 24 exact scoped paths, clean branch, no primary product drift or merge conflict."
-            },
-            "developer": {
-              "status": "passed",
-              "summary": "TDD implementation committed in a clean named task branch with all review findings resolved."
-            },
-            "planner": {
-              "status": "passed",
-              "summary": "Independent planner established minimal single-project architecture, exact seams and acceptance criteria."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Independent exact-head Python, frontend, build and focused safety validation passed."
-            }
-          },
-          "schema": "connlab.sol-task-report",
-          "summary": "Unified single-project Existing Project adoption is complete: read-only authoritative LTR adoption with confirmation and revalidation, pre-copy conflict safety, new local identity for no-snapshot sources, unconfirmed starter Matrix, lifecycle portable snapshots, stable identity across title/path changes, and consolidated Add Existing Project entry."
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
