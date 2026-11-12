@@ -551,19 +551,18 @@
         "route": "full_chain",
         "scope": "Repair unconditional unique-index recognition and serialize in-process cached initialization; synthetic regression tests only; read-only Add Existing Project assessment. No real business data mutations.",
         "scope_paths": [
-          "backend/api/dependencies.py",
-          "backend/infrastructure/storage/database_general_migrations.py",
-          "tests/integration/test_ltr_duplicate_resolution_migration.py",
-          "tests/integration/test_api_default_dependencies.py",
-          "tests/unit/test_database.py",
-          "docs/database_initialization_and_project_import_review.md"
+          "docs/database_initialization_and_project_import_review.md",
+          "frontend/src/features/project-library/ProjectImportDecision.tsx",
+          "frontend/src/features/project-library/ProjectImportReviewList.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx"
         ],
         "risk_reasons": [
           "database/schema migration"
         ],
         "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
         "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-12T05:01:25.311351Z",
+        "updated_at": "2026-11-12T05:16:26.364331Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
