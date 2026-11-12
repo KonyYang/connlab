@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { ProjectLibraryImport } from "./ProjectLibraryImport";
@@ -144,5 +144,105 @@ it("restores trusted saved data and opens the project while retaining non-blocki
   await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
   await waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("saved-project"));
   expect(api.restorePortableProject).toHaveBeenCalledExactlyOnceWith({ plan_id: "saved-plan", fingerprint: "saved-fingerprint" });
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+});
+
+
+it("shows the blocking LTR reason before details and offers recovery without importing", async () => {
+  const user = userEvent.setup(), settings = vi.fn();
+  const reason = `${candidate.ltr_number} was not found in the configured LTR workbook.`;
+  vi.mocked(api.planLibraryIntake).mockResolvedValue({ plan_id: "blocked", fingerprint: "blocked", warnings: [],
+    items: [{ ...item, status: "unavailable", warnings: [reason, reason] }] });
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={vi.fn()} onOpenSettings={settings} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
+  expect(await screen.findByText("Not imported")).toBeTruthy();
+  expect(screen.getAllByText(reason)).toHaveLength(1);
+  expect(screen.getByText(reason).closest("details")).toBeNull();
+  expect(screen.getByText("Planned save location")).toBeTruthy();
+  expect(screen.queryByText("Save location", { exact: true })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Confirm Import" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Open Settings" }));
+  expect(settings).toHaveBeenCalledOnce();
+  await user.click(screen.getByRole("button", { name: "Check and Continue" }));
+  expect(await screen.findByText("Not imported")).toBeTruthy();
+  expect(api.planLibraryIntake).toHaveBeenCalledTimes(2);
+  expect(api.pickLibraryFolder).toHaveBeenCalledOnce();
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  expect(api.restorePortableProject).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Change Folder" })).toBeTruthy();
+  let finishPicker!: (value: string | null) => void;
+  vi.mocked(api.pickLibraryFolder).mockImplementationOnce(() => new Promise(resolve => { finishPicker = resolve; }));
+  await user.click(screen.getByRole("button", { name: "Change Folder" }));
+  expect(screen.getByRole("button", { name: "Open Settings" })).toHaveProperty("disabled", true);
+  expect(screen.getByRole("button", { name: "Check and Continue" })).toHaveProperty("disabled", true);
+  await act(async () => finishPicker(null));
+  expect(screen.getByRole("button", { name: "Check and Continue" })).toHaveProperty("disabled", false);
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+});
+
+it("rechecks a blocked project and still requires confirmation after LTR authority succeeds", async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.planLibraryIntake).mockResolvedValueOnce({ plan_id: "blocked", fingerprint: "blocked", warnings: [],
+    items: [{ ...item, status: "unavailable", warnings: ["LTR verification is unavailable."] }] });
+  let finishCheck!: (value: api.LibraryIntakePlan) => void;
+  vi.mocked(api.planLibraryIntake).mockImplementationOnce(() => new Promise(resolve => { finishCheck = resolve; }));
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onOpenProject={vi.fn()} onOpenSettings={vi.fn()} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
+  await user.click(await screen.findByRole("button", { name: "Check and Continue" }));
+  await waitFor(() => expect(api.planLibraryIntake).toHaveBeenCalledTimes(2));
+  expect(screen.getByRole("button", { name: "Choose Project Folder" })).toHaveProperty("disabled", true);
+  expect(screen.getByRole("button", { name: "Back to Projects" })).toHaveProperty("disabled", true);
+  expect(screen.queryByRole("button", { name: "Check and Continue" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  await act(async () => finishCheck({ plan_id: "authority-plan", fingerprint: "authority-verified", warnings: [],
+    items: [{ ...item, authority_status: "found" }] }));
+  expect(await screen.findByRole("button", { name: "Confirm Import" })).toBeTruthy();
+  expect(screen.queryByText("Not imported")).toBeNull();
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Confirm Import" }));
+  await waitFor(() => expect(api.startLibraryBatch).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    plan_id: "authority-plan", fingerprint: "authority-verified", selected: [path],
+  })));
+});
+
+it("provides a useful unavailable fallback when the check returns no reason", async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.planLibraryIntake).mockResolvedValue({ plan_id: "blocked", fingerprint: "blocked", warnings: [],
+    items: [{ ...item, ltr_number: null, status: "unavailable", warnings: [] }] });
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
+  expect(await screen.findByText("Not imported")).toBeTruthy();
+  expect(screen.getByRole("alert").textContent).toContain("The project check did not complete.");
+  expect(screen.getByText("Resolve the problem above, then check this project again or choose a different folder.")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Check and Continue" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+});
+
+
+it("labels an already imported project's existing location without presenting a planned import", async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.planLibraryIntake).mockResolvedValue({ plan_id: "existing", fingerprint: "existing", warnings: [],
+    items: [{ ...item, status: "already_added", existing_member_id: "member" }] });
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
+  expect(await screen.findByText("Existing location")).toBeTruthy();
+  expect(screen.queryByText("Planned save location")).toBeNull();
+  expect(screen.queryByText("Not imported")).toBeNull();
+  expect(screen.getByRole("button", { name: "Open Existing Connector" })).toBeTruthy();
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+});
+
+it.each(["incomplete", "upgrade_required"])("keeps %s recovery guidance beside visible unavailable reasons", async sourceState => {
+  const user = userEvent.setup(), reason = "The selected project data cannot be used yet.";
+  vi.mocked(api.planLibraryIntake).mockResolvedValue({ plan_id: "blocked", fingerprint: "blocked", warnings: [],
+    items: [{ ...item, source_state: sourceState, status: "unavailable", warnings: [reason] }] });
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folder", exact: true }));
+  expect(await screen.findByText("Not imported")).toBeTruthy();
+  expect(screen.getByText(reason).closest("details")).toBeNull();
+  if (sourceState === "incomplete") expect(screen.getByRole("button", { name: "Import Files Only" })).toBeTruthy();
+  else expect(screen.getByText("Update ConnLab before importing this project.")).toBeTruthy();
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
 });

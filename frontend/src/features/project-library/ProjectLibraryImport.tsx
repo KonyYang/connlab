@@ -348,6 +348,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     </section>}
     {(plan || snapshots.length > 0) && !displayBatch && !automaticIntakeKey && !automaticExistingMemberId && <section className="library-panel">
       <ProjectImportReviewList plan={plan} snapshots={snapshots} selected={selected} separate={separate} disabled={locked}
+        onOpenSettings={onOpenSettings} onRetry={() => void review()}
         onToggle={(path, checked) => setSelected(values => checked ? [...new Set([...values, path])] : values.filter(value => value !== path))}
         onKeepSeparate={(path, keep) => {
           setSeparate(values => keep ? [...new Set([...values, path])] : values.filter(value => value !== path));

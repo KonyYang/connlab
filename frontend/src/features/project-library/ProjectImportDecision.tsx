@@ -8,9 +8,11 @@ type Props = {
   onKeep: (keep: boolean) => void;
   onChange: () => void;
   onFilesOnly?: () => void;
+  onOpenSettings?: () => void;
+  onRetry?: () => void;
 };
 
-export function ProjectImportDecision({ item, disabled, keep, skipped, onKeep, onChange, onFilesOnly }: Props) {
+export function ProjectImportDecision({ item, disabled, keep, skipped, onKeep, onChange, onFilesOnly, onOpenSettings, onRetry }: Props) {
   if (item.source_state === "upgrade_required") return <p role="alert">Update ConnLab before importing this project.</p>;
   if (item.source_state === "incomplete" && item.status !== "already_added") return <div>
     <p>This ConnLab project has no data snapshot. Export it from the original computer to restore its data.</p>
@@ -24,6 +26,14 @@ export function ProjectImportDecision({ item, disabled, keep, skipped, onKeep, o
       <button type="button" disabled={disabled} onClick={() => onKeep(false)}>Skip</button>
     </div>}
   </div>;
-  if (item.status === "unavailable") return <p role="alert">This project could not be checked. See Details, then choose it again.</p>;
+  if (item.status === "unavailable") return <div>
+    <p>{item.ltr_number
+      ? "Check the LTR number and the configured workbook in Settings. After resolving the problem, check this project again."
+      : "Resolve the problem above, then check this project again or choose a different folder."}</p>
+    <div className="library-actions">
+      {onOpenSettings && <button type="button" disabled={disabled} onClick={onOpenSettings}>Open Settings</button>}
+      {onRetry && <button type="button" disabled={disabled} onClick={onRetry}>Check and Continue</button>}
+    </div>
+  </div>;
   return null;
 }

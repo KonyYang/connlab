@@ -17,6 +17,8 @@ type Props = {
   onSelectReady: () => void;
   onClear: () => void;
   onFilesOnly?: (path: string) => void;
+  onOpenSettings?: () => void;
+  onRetry?: () => void;
 };
 const labels = { ready: "Ready", conflict: "Choose an action", already_added: "Already exists", unavailable: "Cannot import" };
 const pageSize = 20;
@@ -28,7 +30,7 @@ function importPurpose(item: LibraryIntakeItem | PortableRestorePlan) {
   if (item.target_member_id) return "Add these files to the existing project. Existing test data stays unchanged.";
   return "Import existing files. Project information can be completed later.";
 }
-export function ProjectImportReviewList({ plan, snapshots, selected, separate, disabled, onToggle, onKeepSeparate, onResolveSnapshot, onOpenMember, onSelectReady, onClear, onFilesOnly }: Props) {
+export function ProjectImportReviewList({ plan, snapshots, selected, separate, disabled, onToggle, onKeepSeparate, onResolveSnapshot, onOpenMember, onSelectReady, onClear, onFilesOnly, onOpenSettings, onRetry }: Props) {
   const [filter, setFilter] = useState("all"), [page, setPage] = useState(1);
   const [skipped, setSkipped] = useState<string[]>([]);
   const rows = [
@@ -51,14 +53,20 @@ export function ProjectImportReviewList({ plan, snapshots, selected, separate, d
       {snapshot ? isSkipped ? <p>Import cancelled. <button type="button" disabled={disabled} onClick={() => setSkipped(values => values.filter(key => key !== decisionKey))}>Review Again</button></p>
         : <ProjectImportSnapshotDetails plan={snapshot} disabled={disabled} onResolve={onResolveSnapshot} onSkip={() => skip(item)} />
         : <>
+          {item.status === "unavailable" && <div role="alert">
+            <strong>Not imported</strong>
+            {[...new Set(item.warnings.filter(note => note.trim()))].map(note => <p key={note}>{note}</p>)}
+            {!item.warnings.some(note => note.trim()) && <p>The project check did not complete.</p>}
+          </div>}
           <ProjectImportDecision item={item} disabled={disabled} keep={separate.includes(item.source_path)} skipped={isSkipped}
             onKeep={keep => { if (keep) setSkipped(values => values.filter(key => key !== decisionKey)); else skip(item); onKeepSeparate(item.source_path, keep); }}
             onChange={() => { setSkipped(values => values.filter(key => key !== decisionKey)); onKeepSeparate(item.source_path, false); }}
-            onFilesOnly={onFilesOnly ? () => onFilesOnly(item.source_path) : undefined} />
+            onFilesOnly={onFilesOnly ? () => onFilesOnly(item.source_path) : undefined}
+            onOpenSettings={onOpenSettings} onRetry={onRetry} />
           <details><summary>{item.status === "conflict" && item.can_keep_separate ? "View Differences" : "Details"}</summary>
             {item.differences?.map(note => <p key={note}>{note}</p>)}
-            {item.warnings.map((note, index) => <p key={index}>{note}</p>)}
-            <dl><dt>Source</dt><dd>{item.source_path}</dd><dt>Save location</dt><dd>{item.target_path}</dd></dl>
+            {item.status !== "unavailable" && item.warnings.map((note, index) => <p key={index}>{note}</p>)}
+            <dl><dt>Source</dt><dd>{item.source_path}</dd><dt>{already ? "Existing location" : "Planned save location"}</dt><dd>{item.target_path}</dd></dl>
           </details>
         </>}
       {already && item.existing_member_id && <button type="button" className="primary-action" disabled={disabled} aria-label={`Open Existing ${item.title}`} onClick={() => onOpenMember(item.existing_member_id!)}>Open Project</button>}
