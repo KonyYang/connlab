@@ -539,11 +539,11 @@
   "tasks": {
     "TASK_DATABASE_INIT_RACE_20261112": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\database-init-race-20261112",
       "branch": "codex/database-init-race-20261112",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "c9d6f6dcbc470f6c734d3f76a02f079756295e3e",
       "task": {
         "task_id": "TASK_DATABASE_INIT_RACE_20261112",
         "summary": "Fix repeated SQLite migration and concurrent cold database initialization; assess existing-project admission UX",
@@ -563,9 +563,73 @@
         ],
         "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
         "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-12T00:04:36.003976Z",
+        "updated_at": "2026-11-12T00:15:53.507080Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_DATABASE_INIT_RACE_20261112",
+          "subject": "038d98fbea1ba447a1fd7d58ec4b4c4e91e4158e",
+          "summary": "Fixed partial-index migration detection and single-process cold initialization race; isolated regression and API/library QA passed; documented existing-project admission assessment.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/infrastructure/storage/database_general_migrations.py",
+            "tests/integration/test_ltr_duplicate_resolution_migration.py",
+            "tests/integration/test_api_default_dependencies.py",
+            "tests/unit/test_database.py",
+            "docs/database_initialization_and_project_import_review.md"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "Developer TDD: observed lost preserved index, concurrent initialization, missing disposal RED; final 5 affected tests GREEN."
+            },
+            {
+              "status": "passed",
+              "summary": "Independent QA final selected 8-file backend matrix: 173 passed, 1 Starlette/httpx deprecation warning, 309.70s. Synthetic SQLite/config/temp paths only; no live service requests."
+            },
+            {
+              "status": "passed",
+              "summary": "Independent Reviewer: Standards 0 actionable findings, Spec 0. git diff --check clean."
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "context": "/root/planner",
+              "summary": "Independent bounded migration/init plan and UI assessment."
+            },
+            "developer": {
+              "status": "passed",
+              "context": "/root/developer",
+              "summary": "Independent TDD implementation and targeted feedback."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "/root/reviewer",
+              "summary": "Independent final six-file Standards and Spec review."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "/root/qa",
+              "summary": "Single complete risk-proportionate 8-file isolated matrix on exact final commit."
+            },
+            "integrator": {
+              "status": "passed",
+              "context": "/root",
+              "summary": "Verified six allowed paths, clean committed task tree, primary only board changed since base, reviewer and QA bound to subject. Ordinary local writer integration requested."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "038d98fbea1ba447a1fd7d58ec4b4c4e91e4158e",
+            "primary_before": "c53109af41e5bd52d0a3998202a6d15109374102",
+            "integrated_head": "c9d6f6dcbc470f6c734d3f76a02f079756295e3e",
+            "recovered": false
+          }
+        }
       }
     }
   }
