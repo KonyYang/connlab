@@ -536,7 +536,39 @@
       "closed_at": "2026-11-11T23:27:15.967530Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_DATABASE_INIT_RACE_20261112": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\database-init-race-20261112",
+      "branch": "codex/database-init-race-20261112",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_DATABASE_INIT_RACE_20261112",
+        "summary": "Fix repeated SQLite migration and concurrent cold database initialization; assess existing-project admission UX",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Repair unconditional unique-index recognition and serialize in-process cached initialization; synthetic regression tests only; read-only Add Existing Project assessment. No real business data mutations.",
+        "scope_paths": [
+          "backend/api/dependencies.py",
+          "backend/infrastructure/storage/database_general_migrations.py",
+          "tests/integration/test_ltr_duplicate_resolution_migration.py",
+          "tests/integration/test_api_default_dependencies.py",
+          "tests/unit/test_database.py",
+          "docs/database_initialization_and_project_import_review.md"
+        ],
+        "risk_reasons": [
+          "database/schema migration"
+        ],
+        "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
+        "started_at": "2026-11-12T00:04:36.003976Z",
+        "updated_at": "2026-11-12T00:04:36.003976Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
