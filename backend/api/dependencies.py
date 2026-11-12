@@ -6,6 +6,7 @@ from collections.abc import Generator
 from datetime import date, datetime, timezone
 from functools import lru_cache
 from pathlib import Path
+from threading import RLock
 
 from fastapi import Depends
 from sqlalchemy.engine import Engine
@@ -437,12 +438,35 @@ from backend.domain import (
 from backend.shared.config import OfficialWorkspaceSettings, Settings
 
 
+_engine_initialization_lock = RLock()
+
+
 @lru_cache(maxsize=1)
-def get_engine() -> Engine:
-    """Return the application database engine."""
+def _get_initialized_engine() -> Engine:
     engine = create_database_engine()
-    init_db(engine)
+    try:
+        init_db(engine)
+    except BaseException:
+        engine.dispose()
+        raise
     return engine
+
+
+def get_engine() -> Engine:
+    """Return the engine after one completed initialization in this process."""
+    # Lock before cache lookup: lru_cache alone permits concurrent cold calls.
+    with _engine_initialization_lock:
+        return _get_initialized_engine()
+
+
+def _clear_engine_cache() -> None:
+    with _engine_initialization_lock:
+        _get_initialized_engine.cache_clear()
+
+
+# Keep the cache inspection/reset interface used by isolated dependency tests.
+get_engine.cache_info = _get_initialized_engine.cache_info
+get_engine.cache_clear = _clear_engine_cache
 
 
 @lru_cache(maxsize=1)

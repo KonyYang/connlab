@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, Event, Lock
+
+import pytest
+from sqlalchemy import create_engine, event
 
 from fastapi.testclient import TestClient
 
@@ -93,3 +98,92 @@ class _ResourceStore:
             path=path,
             active=True,
         )
+
+
+def test_concurrent_cold_engine_requests_share_one_completed_initialization(tmp_path, monkeypatch):
+    _clear_dependency_caches()
+    engines = []
+    calls = []
+    calls_lock = Lock()
+    first_entered, second_entered, release = Event(), Event(), Event()
+    start = Barrier(5)
+    real_init = dependencies.init_db
+
+    def create_isolated_engine():
+        engine = create_engine(f"sqlite:///{(tmp_path / 'concurrent.sqlite3').as_posix()}")
+        engines.append(engine)
+        return engine
+
+    def blocked_init(engine):
+        with calls_lock:
+            calls.append(engine)
+            (first_entered if len(calls) == 1 else second_entered).set()
+        assert release.wait(5), 'initialization was never released'
+        real_init(engine)
+
+    def request_engine():
+        start.wait(timeout=5)
+        return dependencies.get_engine()
+
+    monkeypatch.setattr(dependencies, 'create_database_engine', create_isolated_engine)
+    monkeypatch.setattr(dependencies, 'init_db', blocked_init)
+    try:
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            futures = [pool.submit(request_engine) for _ in range(5)]
+            try:
+                assert first_entered.wait(5)
+                assert not second_entered.wait(0.5), 'concurrent initialization entered twice'
+                assert all(not future.done() for future in futures)
+            finally:
+                release.set()
+            results = [future.result(timeout=10) for future in futures]
+        assert len(calls) == 1
+        assert all(engine is results[0] for engine in results)
+        with results[0].connect() as connection:
+            assert connection.exec_driver_sql('SELECT count(*) FROM projects').scalar_one() == 0
+        assert dependencies.get_engine.cache_info().currsize == 1
+        dependencies.get_engine.cache_clear()
+        assert dependencies.get_engine.cache_info().currsize == 0
+        assert dependencies.get_engine() is not results[0]
+        assert len(calls) == 2
+    finally:
+        release.set()
+        _clear_dependency_caches()
+        for engine in engines:
+            engine.dispose()
+
+
+def test_failed_engine_initialization_disposes_and_can_retry(tmp_path, monkeypatch):
+    _clear_dependency_caches()
+    engines, disposed = [], []
+    real_init = dependencies.init_db
+
+    def create_isolated_engine():
+        engine = create_engine(f"sqlite:///{(tmp_path / 'retry.sqlite3').as_posix()}")
+        event.listen(engine, 'engine_disposed', lambda engine: disposed.append(engine))
+        engines.append(engine)
+        return engine
+
+    def fail_once(engine):
+        if len(engines) == 1:
+            with engine.connect() as connection:
+                connection.exec_driver_sql('SELECT 1')
+            raise RuntimeError('synthetic initialization failure')
+        real_init(engine)
+
+    monkeypatch.setattr(dependencies, 'create_database_engine', create_isolated_engine)
+    monkeypatch.setattr(dependencies, 'init_db', fail_once)
+    try:
+        with pytest.raises(RuntimeError, match='synthetic initialization failure'):
+            dependencies.get_engine()
+        assert disposed == [engines[0]]
+        assert dependencies.get_engine.cache_info().currsize == 0
+        engine = dependencies.get_engine()
+        assert engine is engines[1]
+        with engine.connect() as connection:
+            assert connection.exec_driver_sql('SELECT count(*) FROM projects').scalar_one() == 0
+        assert dependencies.get_engine() is engine
+    finally:
+        _clear_dependency_caches()
+        for engine in engines:
+            engine.dispose()
