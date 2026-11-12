@@ -81,9 +81,9 @@ def _migrate_project_no_optional(engine: Engine) -> None:
             connection.exec_driver_sql("PRAGMA foreign_keys=ON")
 
 def _has_single_column_unique_index(connection: Any, table: str, column: str) -> bool:
-    """Return whether a table has a unique index only on one named column."""
+    """Return whether all rows have a unique index on one named column."""
     for index in connection.exec_driver_sql(f"PRAGMA index_list({table})").all():
-        if not bool(index[2]):
+        if not bool(index[2]) or bool(index[4]):
             continue
         indexed_columns = [
             row[2]

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import create_engine
 
-from backend.infrastructure.storage.database import init_db
+from backend.infrastructure.storage.database import Base, init_db
 
 
 def test_ltr_duplicate_resolution_migration_replaces_global_ltr_unique(
@@ -104,3 +104,28 @@ def test_ltr_duplicate_resolution_migration_replaces_global_ltr_unique(
                 ) VALUES ('L2', 'P2', 'DL-2026-05-001', 'registered', 1, 1)
                 """
             )
+
+
+def test_repeated_initialization_preserves_ltr_schema_and_records(tmp_path: Path) -> None:
+    engine = create_engine(f"sqlite:///{(tmp_path / 'repeat.sqlite3').as_posix()}")
+    try:
+        init_db(engine)
+        with engine.begin() as connection:
+            connection.exec_driver_sql("CREATE INDEX preserved_ltr_notes ON ltr_records(notes)")
+            connection.execute(Base.metadata.tables['projects'].insert().values(
+                project_id='P1', product_name='Connector', requestor='Alice', status='ltr_registered'
+            ))
+            connection.exec_driver_sql(
+                "INSERT INTO ltr_records (ltr_id, project_id, ltr_number, status, is_current_owner, owner_version, notes) "
+                "VALUES ('L1', 'P1', 'DL-2026-05-001', 'registered', 1, 1, 'Retain me')"
+            )
+        init_db(engine)
+        with engine.connect() as connection:
+            assert 'preserved_ltr_notes' in {
+                row[1] for row in connection.exec_driver_sql('PRAGMA index_list(ltr_records)')
+            }
+            assert connection.exec_driver_sql(
+                "SELECT ltr_id, notes, is_current_owner FROM ltr_records"
+            ).all() == [('L1', 'Retain me', 1)]
+    finally:
+        engine.dispose()

@@ -2,7 +2,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from sqlalchemy import inspect, text
+from sqlalchemy import create_engine, inspect, text
 
 from backend.infrastructure.storage.database import (
     Base,
@@ -357,3 +357,30 @@ def _column_names(engine, table_name: str) -> set[str]:
     with engine.connect() as connection:
         rows = connection.execute(text(f"pragma table_info({table_name})")).all()
     return {str(row[1]) for row in rows}
+
+
+def test_init_db_relaxes_legacy_global_project_number_uniqueness(tmp_path: Path) -> None:
+    engine = create_engine(f"sqlite:///{(tmp_path / 'legacy-project.sqlite3').as_posix()}")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE projects (project_id VARCHAR(64) PRIMARY KEY, "
+                "project_no VARCHAR(128) UNIQUE, product_name VARCHAR(255) NOT NULL, "
+                "requestor VARCHAR(255) NOT NULL, status VARCHAR(64) NOT NULL, "
+                "business_unit VARCHAR(255), created_on DATE)"
+            )
+            connection.exec_driver_sql(
+                "INSERT INTO projects (project_id, project_no, product_name, requestor, status) "
+                "VALUES ('P1', 'old-number', 'Connector', 'Alice', 'draft')"
+            )
+        init_db(engine)
+        with engine.begin() as connection:
+            connection.execute(Base.metadata.tables['projects'].insert().values(
+                project_id='P2', project_no='old-number', product_name='Other',
+                requestor='Bob', status='draft'
+            ))
+            assert connection.exec_driver_sql(
+                "SELECT project_id, project_no FROM projects ORDER BY project_id"
+            ).all() == [('P1', 'old-number'), ('P2', 'old-number')]
+    finally:
+        engine.dispose()
