@@ -599,3 +599,33 @@ def test_relocated_receipt_keeps_history_and_skips_preserved_conflict(receipt, t
     assert (moved/'a.txt').read_bytes() == b'original'
     assert (moved/archive).read_bytes() == b'incoming update'
     assert len(list((moved/'补充资料').iterdir())) == 1
+
+
+def test_unnumbered_materials_allow_explicit_supplement_without_automatic_matching(receipt, tmp_path):
+    service, store, files, catalog, session = receipt
+    source = tmp_path/'original'
+    source.mkdir()
+    (source/'a.txt').write_bytes(b'a')
+    first = service.preview(str(source))
+    received = service.confirm(first['plan_id'], first['fingerprint'])
+    incoming = tmp_path/'supplement'
+    incoming.mkdir()
+    (incoming/'b.txt').write_bytes(b'b')
+    separate = service.preview(str(incoming))
+    assert not separate['supplement']
+    assert separate['candidates'] == []
+    plan = service.preview(str(incoming), target_key=received['target_key'])
+    assert plan['supplement']
+    assert plan['target_path'] == first['target_path']
+    result = service.confirm(plan['plan_id'], plan['fingerprint'])
+    assert result['status'] == 'completed'
+    assert len(store.catalog()) == 1
+    assert (Path(first['target_path'])/'a.txt').read_bytes() == b'a'
+    assert (Path(first['target_path'])/'b.txt').read_bytes() == b'b'
+    stale = service.preview(str(incoming), target_key=received['target_key'])
+    entry = service.detail(received['receipt_id'])
+    service.edit(received['receipt_id'], entry['revision'], 'Changed description', '')
+    with pytest.raises(ValueError, match='selected entry changed'):
+        service.confirm(stale['plan_id'], stale['fingerprint'])
+    with pytest.raises(ValueError, match='selected same-number entry changed'):
+        service.preview(str(incoming), 'DIFFERENT-NUMBER', target_key=received['target_key'])

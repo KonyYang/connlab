@@ -33,11 +33,14 @@ class MaterialReceiptService:
                for path in protected):
             raise ProjectLibraryConflict("Choose a receive location separate from folders owned by existing entries or original sources.")
 
-    def _candidates(self, number):
+    def _candidates(self, number, target_key=""):
         self.store.refresh()
         candidates = []
         for entry in self.catalog.catalog():
-            if not number or (entry.get("number") or "").casefold() != number.casefold():
+            entry_number = entry.get("number") or ""
+            same_number = bool(number and entry_number.casefold() == number.casefold())
+            explicitly_unnumbered = not number and not entry_number and entry["key"] == target_key
+            if not same_number and not explicitly_unnumbered:
                 continue
             associated = bool(entry["folder_path"].strip())
             available = associated and self.files.available(entry["folder_path"])
@@ -62,7 +65,7 @@ class MaterialReceiptService:
             raise ValueError("Enter a product name or description.")
         with self.files.lock():
             binding = self.files.binding(self.store.settings())
-            candidates = self._candidates(number)
+            candidates = self._candidates(number, target_key)
             if candidates and not target_key:
                 return {"status": "choose_target", "candidates": candidates, "number": number}
             candidate = next((row for row in candidates if row["key"] == target_key), None)
@@ -112,7 +115,7 @@ class MaterialReceiptService:
                     raise ProjectLibraryConflict("The received entry changed. Preview again before receiving more files.")
             self._check_receive_ownership(plan["binding"]["root_path"], plan["target_path"], receipt_id)
         if candidate:
-            current = next((row for row in self._candidates(plan["number"]) if row["key"] == candidate["key"]), None)
+            current = next((row for row in self._candidates(plan["number"], candidate["key"]) if row["key"] == candidate["key"]), None)
             if current != candidate:
                 raise ProjectLibraryConflict("The selected entry changed or is unavailable. Preview again.")
 
