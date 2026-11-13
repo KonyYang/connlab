@@ -1,0 +1,14 @@
+.reference-library { display: grid; gap: 14px; min-width: 0; }
+.reference-search, .reference-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.reference-search input { flex: 1 1 300px; min-width: 0; }
+.reference-filters label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.reference-library button, .reference-library input, .reference-library select { font: inherit; padding: 7px 10px; border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px; background: var(--color-surface, #fff); color: inherit; }
+.reference-library button { cursor: pointer; }
+.reference-library button:disabled { opacity: .55; cursor: default; }
+.reference-library button[aria-pressed="true"] { background: var(--color-surface-muted, #e8eef6); font-weight: 700; }
+.reference-results { overflow-x: auto; min-width: 0; }
+.reference-results table { width: 100%; border-collapse: collapse; }
+.reference-results td, .reference-results th { padding: 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-border, #cbd5e1); overflow-wrap: anywhere; }
+.reference-results td span, .reference-results td strong { display: block; margin-bottom: 4px; }
+.reference-results td button { margin: 0 5px 5px 0; }
+@media (max-width: 760px) { .reference-results table { min-width: 650px; } }

@@ -2,6 +2,7 @@
 from pathlib import Path
 from dataclasses import replace
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from backend.api.dependencies import get_session, get_settings
 from backend.api.project_library_schemas import (
     RestoreFolderRequest, RestoreConfirmRequest, RuntimeResponse, MembersResponse, MemberResponse, RootsRequest, ScanResponse,
@@ -20,6 +21,35 @@ from backend.domain import ExternalResourceType
 from backend.application.project_library.automatic_snapshot import AutomaticPortableSnapshotService
 
 router = APIRouter(prefix="/api/project-library", tags=["project-library"])
+
+
+def get_library_search_service(session=Depends(get_session)):
+    from backend.api.dependencies import get_project_registry_summary_service
+    from backend.application.project_library.search import LibrarySearchService
+    from backend.infrastructure.storage.repositories.library_search import LibrarySearchRepository
+    from backend.infrastructure.project_library.search_files import SearchFiles, open_document
+    return LibrarySearchService(
+        LibrarySearchRepository(session, get_project_registry_summary_service(session)),
+        SearchFiles(), open_document)
+
+
+@router.get("/search")
+def search_library(q: str = Query("", max_length=512), source: str = Query("all", pattern="^(all|connlab|received|linked)$"),
+                   kind: str = Query("all", pattern="^(all|application|plan|record|report|photo|other)$"),
+                   project: str = Query("", max_length=256), offset: int = Query(0, ge=0),
+                   service=Depends(get_library_search_service)):
+    return checked(lambda: service.search(q, source, kind, project, offset))
+
+
+class LibraryOpenRequest(BaseModel):
+    key: str = Field(max_length=256)
+    relative_path: str = Field(default="", max_length=4096)
+    containing: bool = False
+
+
+@router.post("/open-file")
+def open_library_file(request: LibraryOpenRequest, service=Depends(get_library_search_service)):
+    return checked(lambda: service.open(request.key, request.relative_path, request.containing))
 
 
 def get_project_library_service(session=Depends(get_session), settings=Depends(get_settings)):

@@ -29,7 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Reports", route: "reports", hint: null, icon: "reports", disabled: true },
   { label: "Folders", route: "folders", hint: null, icon: "folder", disabled: true },
   { label: "Tools", route: "tools", hint: null, icon: "tools" },
-  { label: "Reference Library", route: "reference", hint: null, icon: "library", disabled: true },
+  { label: "Reference Library", route: "reference", hint: null, icon: "library" },
   { label: "Settings", route: "settings", hint: null, icon: "settings" }
 ];
 

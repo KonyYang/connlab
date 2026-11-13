@@ -1,0 +1,60 @@
+"""Bounded metadata-only traversal and workstation file access."""
+import os
+from pathlib import Path
+from backend.infrastructure.project_library.files import checked_path
+
+
+class SearchFiles:
+    def available(self, root):
+        try:
+            return checked_path(root).is_dir()
+        except (OSError, ValueError):
+            return False
+
+    def scan(self, root, limit=20000):
+        root = checked_path(root)
+        files, warnings = [], []
+        pending = [(root, 0)]
+        visited = 0
+        while pending:
+            folder, depth = pending.pop()
+            try:
+                with os.scandir(folder) as entries:
+                    for entry in entries:
+                        visited += 1
+                        if visited > limit:
+                            return files, [*warnings, "Search is incomplete: folder scan limit reached."]
+                        try:
+                            path = checked_path(entry.path)
+                            if not path.is_relative_to(root):
+                                raise ValueError("Outside project folder")
+                            if path.is_dir():
+                                if depth < 40:
+                                    pending.append((path, depth + 1))
+                                else:
+                                    warnings.append("Search is incomplete: directory depth limit reached.")
+                            elif path.is_file():
+                                files.append({"name": path.name, "relative_path": path.relative_to(root).as_posix()})
+                        except (OSError, ValueError):
+                            warnings.append(f"Search is incomplete: {entry.name} is unavailable or redirected.")
+            except OSError:
+                warnings.append("Search is incomplete: a directory cannot be read.")
+        return files, warnings
+
+    def resolve(self, root, relative):
+        # Reject Windows drive, ADS, UNC and traversal syntax on every platform.
+        parts = relative.replace("\\", "/").split("/")
+        if relative and (":" in relative or relative.startswith(("/", "\\")) or ".." in parts):
+            raise ValueError("Choose a file inside the project folder.")
+        base = checked_path(root)
+        path = checked_path(base.joinpath(*parts))
+        if not path.is_relative_to(base):
+            raise ValueError("Choose a file inside the project folder.")
+        return path
+
+
+def open_document(path):
+    launcher = getattr(os, "startfile", None)
+    if launcher is None:
+        raise ValueError("Opening files requires the local Windows workstation.")
+    launcher(str(path))
