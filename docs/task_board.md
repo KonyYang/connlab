@@ -539,7 +539,7 @@
   "tasks": {
     "TASK_DATABASE_INIT_RACE_20261112": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\database-init-race-20261112",
       "branch": "codex/database-init-race-20261112",
       "resources": [],
@@ -562,84 +562,17 @@
         ],
         "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
         "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-12T05:16:48.941785Z",
+        "updated_at": "2026-11-13T16:39:36.497207Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_DATABASE_INIT_RACE_20261112",
           "stage": "revision",
           "status": "running",
-          "summary": "User requested continuing Add Existing Project feedback repair: visible LTR reasons, not imported status, planned destination and valid next actions; preserve rules and real data.",
+          "summary": "User explicitly authorized continuing existing-project UX into stage-one project library search and file access; preserve business data.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_DATABASE_INIT_RACE_20261112",
-          "subject": "501a9a8ba5e5315940bd59137676d1eb18651f5d",
-          "summary": "Direct blocked-import reasons and Not imported state, planned versus existing destination labels, Settings/recheck recovery; existing authority confirmation and business rules preserved.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/database_initialization_and_project_import_review.md",
-            "frontend/src/features/project-library/ProjectImportDecision.tsx",
-            "frontend/src/features/project-library/ProjectImportReviewList.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "Developer RED 3 new tests failed/8 existing passed; final targeted SingleImport 14 passed, including real onOpenProject recovery path."
-            },
-            {
-              "status": "passed",
-              "summary": "Independent QA: 116 tests across 7 files; sequential TypeScript/Vite production build passed on final bytes."
-            },
-            {
-              "status": "passed",
-              "summary": "Playwright CLI actual App 595x803: blocked reason visible, planned path, Settings route, repeated blocked retry, found waits Confirm; 0 batch POST before Confirm across 4 plan checks, exactly 1 mocked POST afterward; 0 console errors/warnings, no overflow. All API mocked with no-proxy server. Screenshot retained in task tmp/ui-import-evidence."
-            },
-            {
-              "status": "passed",
-              "summary": "Independent reviewer Standards0/Spec0 after fixing test coverage gap. git diff --check clean. No backend changes or real business operations."
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "context": "/root/planner",
-              "summary": "Independent frontend-only plan reusing warnings and existing handlers."
-            },
-            "developer": {
-              "status": "passed",
-              "context": "/root/developer",
-              "summary": "Implemented TDD slice and test-only review correction."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "/root/reviewer",
-              "summary": "Independent final five-file review; no remaining findings."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "/root/qa",
-              "summary": "Single final feature matrix/build and isolated browser smoke."
-            },
-            "integrator": {
-              "status": "passed",
-              "context": "/root",
-              "summary": "Verified exact subject, approved current revision paths, clean worktree, retained owned evidence, unchanged reviewed product bytes; visually accepted screenshot."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "501a9a8ba5e5315940bd59137676d1eb18651f5d",
-            "primary_before": "689ac18aee06f7bbbb9251fafbcd11fbb413ac75",
-            "integrated_head": "63df66fc9cc011dec73d82b09b4c2221b96bab5f",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
