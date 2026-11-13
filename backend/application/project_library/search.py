@@ -24,7 +24,7 @@ class LibrarySearchService:
             if project and entry["key"] != project or source != "all" and entry["source"] != source:
                 continue
             entry = {**entry, "available": self.files.available(entry["folder_path"])}
-            metadata = " ".join(str(entry.get(k) or "") for k in ("number", "title", "test_item")).casefold()
+            metadata = " ".join(str(entry.get(k) or "") for k in ("number", "title", "test_item", "description")).casefold()
             if all(token in metadata for token in tokens):
                 projects.append(entry)
             if not entry["available"]:

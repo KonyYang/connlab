@@ -6,6 +6,7 @@ import uuid
 
 from fastapi import FastAPI, Request
 from backend.api.routes_project_library import router as project_library_router
+from backend.api.routes_material_receipts import router as material_receipts_router
 from backend.api.routes_tools_legacy_projects import router as tools_legacy_projects_router
 from backend.api.routes_legacy_projects import router as legacy_projects_router
 from backend.api.project_registry_access_guard import protect_project_mutations
@@ -268,6 +269,7 @@ _include_project_router(report_authoring_router)
 _include_project_router(tools_router)
 _include_project_router(tools_matrix_router)
 app.include_router(project_library_router)
+app.include_router(material_receipts_router)
 app.include_router(tools_legacy_projects_router)
 app.include_router(legacy_projects_router)
 _include_project_router(tools_temperature_router)

@@ -1,0 +1,82 @@
+# Reference Library materials receipt
+
+## Authority and boundaries
+
+Ordinary Reference Library receipt is explicit file receipt. It does not register a business Project,
+claim an LTR, parse a snapshot/database, restore Matrix or lifecycle state, bind a workspace, or create
+portable data. Legacy import/recovery routes remain compatibility code; ordinary library navigation
+must not call their member or portable APIs.
+
+The receive save root lives in `material_receipt_settings`, independently of the native project output
+root. New received-only identities live in `material_receipt_entries`; durable progress lives in
+`material_receipt_batches`. These additive tables are registered by the existing database bootstrap.
+Metadata is central; the received source's `.connlab` files are never rewritten by receipt management.
+
+`MaterialReceiptService` owns preview/confirmation/retry/metadata decisions. `MaterialReceiptFiles`
+owns paths, hashing, locks and exclusive publication; `MaterialReceiptRepository` owns persistence.
+The HTTP boundary is `/api/material-receipts`. The existing unified search catalog includes `receipt:`
+entries without opening any Office file or invoking the old import service.
+
+## Receive contract
+
+1. Choose one folder and review its number, product description, test keywords and materials state.
+   Historical numbering is preserved as entered (outer whitespace trimmed); case-insensitive equality
+   only supplies same-number candidates. Folder names and relative paths are retained.
+2. A same-number candidate never implies automatic ownership. Choose a managed native/received target
+   to supplement, or an independent entry with a distinguishing description. Linked originals are
+   visible candidates but cannot be write targets. Missing locations remain visible and unavailable.
+3. Preview hashes source and target contents and binds the configured root revision/physical identity,
+   target identity and current catalog metadata. Changes require a new preview before confirmation.
+4. Only explicit confirmation starts receipt. Every original file, including old databases/snapshots,
+   is copied byte-for-byte; empty directories are included. Ordinary materials default to Completed;
+   a folder containing `.connlab` requires an explicit materials-state choice, without reading its
+   internal state. This label is independent of all native Project lifecycle state.
+5. Corresponding files with equal hashes are skipped. Different content is retained beneath
+   `补充资料/<date-time>-<source>-<batch>/original-relative-path`; existing files never change.
+   Incoming `.connlab` control data supplementing a native project always goes to that archive,
+   even when its live counterpart is absent. Prior receipt records recognize already-preserved
+   incoming content only for the same target and original relative path, and verify actual bytes.
+
+## Concurrency, interruption and retry
+
+Receipt uses the existing library lock and, for native targets, the existing project-generation lock
+and pending-generation guard. Each file is staged next to its final target and hash checked before
+atomic, no-replace publication (Windows rename; hard-link publication elsewhere). A racing target
+file causes a per-file failure, never replacement. Temporary files are operation-owned and removed.
+
+A durable batch is saved before destination creation and after each item. Successful independent items
+continue when another item fails. Results distinguish copied, skipped, supplemented, failed and
+retained-changed items, with separate file/directory counts. Lost-response confirmation returns the same
+completed result. Incomplete batches resume by their own receipt identity; legacy batch endpoints cannot
+read or run them. Source changes require a fresh preview. Previously copied items edited or deleted
+before retry are retained as-is and reported as changed; retry does not recreate or overwrite them.
+
+If a process stops between creating a new empty target root and recording its physical identity, retry
+fails closed instead of claiming an unverified occupied directory. The original source and existing
+files remain intact; inspect the incomplete result and preview a distinct location. Multi-instance
+writers must share the same central data directory for the library/project lock scope.
+
+## Metadata and reconnect
+
+Received-only product descriptions, keywords and materials state are revision-checked metadata edits;
+files and folder names are not changed. Native metadata remains in its Project business authority.
+Received entries remain searchable when their root is unavailable. Explicit location preview and
+confirmation reconnect a moved managed copy without copying files, parsing markers or changing a native
+workspace. Original sources and all known native/member/linked/other-receipt roots (including retained
+ones) are protected against aliasing. Unknown moved copies require the user's explicit folder choice.
+
+## Verification and residual risks
+
+Use isolated SQLite and folders. Required regression seams cover explicit preview/confirm, byte
+preservation, no Project creation, native supplementation, repeated conflict skipping, historical
+numbers, old-ConnLab materials-state confirmation, source/target/root changes, concurrent confirmation,
+partial failures and fresh-session retry, edited/deleted copied files, directory failures, exclusive
+publication races, missing-root search, metadata edit, reconnect ownership, separate batch namespaces
+and cold additive-schema registration. UI acceptance must verify that folder selection never receives
+files automatically and ordinary library details make no portable/recovery calls.
+
+Very large sources are bounded by the existing inventory limits. Hashing reads all bytes and may be
+slow on unavailable/network/removable storage; errors block or mark incomplete rather than declaring
+success. No automatic synchronization, backup, Office parsing, restoration or cleanup of user files is
+part of this feature. Layout and old compatibility behavior require separate review/QA on the final
+integrated state.
