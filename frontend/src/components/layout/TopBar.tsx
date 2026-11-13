@@ -8,6 +8,7 @@ type TopBarProps = {
 };
 
 const ROUTE_TITLES: Record<string, { title: string }> = {
+  reference: { title: "Project Library" },
   projects: {
     title: "Projects"
   },
