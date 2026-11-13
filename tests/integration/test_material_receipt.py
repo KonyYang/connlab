@@ -493,3 +493,109 @@ def test_business_bound_member_cannot_reconnect_through_plain_materials_route(re
     session.commit()
     with pytest.raises(ValueError, match='business project'):
         service.catalog_location_preview('member:m1', str(tmp_path))
+
+
+def test_same_number_candidates_distinguish_unassociated_from_missing_locations(receipt, tmp_path):
+    service, store, files, catalog, session = receipt
+    source = tmp_path/'incoming'
+    source.mkdir()
+    catalog.extra.extend([
+        dict(key='project:new', project_id='new', member_id=None, number='same-number',
+             title='Planning', test_item='', source='connlab', folder_path=''),
+        dict(key='project:lost', project_id='lost', member_id=None, number='same-number',
+             title='Registered missing', test_item='', source='connlab', folder_path=str(tmp_path/'missing')),
+    ])
+    choices = service.preview(str(source), 'same-number')['candidates']
+    assert choices[0]['location_state'] == 'unassociated'
+    assert 'not linked' in choices[0]['reason']
+    assert choices[1]['location_state'] == 'unavailable'
+    assert 'unavailable' in choices[1]['reason']
+    assert not any(row['can_supplement'] for row in choices)
+    assert not list(source.iterdir())
+
+
+@pytest.mark.parametrize('kind', ['connlab', 'linked', 'received'])
+def test_receive_root_cannot_be_inside_an_owned_material_folder(receipt, tmp_path, kind):
+    service, store, files, catalog, session = receipt
+    owned = tmp_path/'owned'
+    nested = owned/'nested'
+    nested.mkdir(parents=True)
+    (owned/'manual.txt').write_bytes(b'original')
+    catalog.extra.append(dict(key='owned:1', project_id=None, member_id=None, number='OLD',
+        title='Existing', test_item='', source=kind, folder_path=str(owned)))
+    for root in (owned, nested):
+        with pytest.raises(ValueError, match='owned'):
+            service.configure_root(str(root))
+    assert service.runtime()['root_path'] == str(tmp_path/'received')
+    assert (owned/'manual.txt').read_bytes() == b'original'
+
+
+def test_new_receipt_rechecks_newly_registered_target_ownership(receipt, tmp_path):
+    service, store, files, catalog, session = receipt
+    source = tmp_path/'incoming'
+    source.mkdir()
+    (source/'a.txt').write_bytes(b'a')
+    plan = service.preview(str(source))
+    catalog.extra.append(dict(key='project:p1', project_id='p1', member_id=None, number='OTHER',
+        title='Reserved business folder', test_item='', source='connlab', folder_path=plan['target_path']))
+    with pytest.raises(ValueError, match='owned'):
+        service.confirm(plan['plan_id'], plan['fingerprint'])
+    assert not Path(plan['target_path']).exists()
+    assert store.catalog() == []
+    with pytest.raises(ValueError, match='owned'):
+        service.preview(str(source))
+
+
+def test_incomplete_receipt_retry_rejects_changed_registration(receipt, tmp_path, monkeypatch):
+    service, store, files, catalog, session = receipt
+    source = tmp_path/'incoming'
+    source.mkdir()
+    (source/'a.txt').write_bytes(b'a')
+    (source/'b.txt').write_bytes(b'b')
+    plan = service.preview(str(source))
+    publish = files.publish
+    def fail_one(source, target, entry, identity):
+        if entry['relative_path'] == 'b.txt':
+            raise OSError('Synthetic locked file')
+        return publish(source, target, entry, identity)
+    monkeypatch.setattr(files, 'publish', fail_one)
+    partial = service.confirm(plan['plan_id'], plan['fingerprint'])
+    assert partial['status'] == 'incomplete'
+    moved = tmp_path/'moved-copy'
+    moved.mkdir()
+    (moved/'a.txt').write_bytes(b'a')
+    location = service.locate_preview(partial['receipt_id'], str(moved))
+    service.locate(partial['receipt_id'], location['plan_id'], location['fingerprint'])
+    monkeypatch.setattr(files, 'publish', publish)
+    with pytest.raises(ValueError, match='entry changed'):
+        service.retry(partial['batch_id'])
+    assert not (Path(plan['target_path'])/'b.txt').exists()
+    assert not (moved/'b.txt').exists()
+    assert store.entry(partial['receipt_id'])['folder_path'] == str(moved)
+
+
+def test_relocated_receipt_keeps_history_and_skips_preserved_conflict(receipt, tmp_path):
+    service, store, files, catalog, session = receipt
+    source = tmp_path/'incoming'
+    source.mkdir()
+    (source/'a.txt').write_bytes(b'original')
+    first = service.preview(str(source), 'OLD-1')
+    received = service.confirm(first['plan_id'], first['fingerprint'])
+    key = received['target_key']
+    (source/'a.txt').write_bytes(b'incoming update')
+    second = service.preview(str(source), 'OLD-1', target_key=key)
+    supplemented = service.confirm(second['plan_id'], second['fingerprint'])
+    archive = next(row['target_relative'] for row in supplemented['items'] if row['relative_path'] == 'a.txt')
+    moved = tmp_path/'moved-copy'
+    Path(first['target_path']).rename(moved)
+    location = service.locate_preview(received['receipt_id'], str(moved))
+    detail = service.locate(received['receipt_id'], location['plan_id'], location['fingerprint'])
+    assert len(detail['history']) == 2
+    repeat = service.preview(str(source), 'OLD-1', target_key=key)
+    assert repeat['items'][0]['action'] == 'skip'
+    assert repeat['items'][0]['target_relative'] == archive
+    result = service.confirm(repeat['plan_id'], repeat['fingerprint'])
+    assert result['counts']['skipped'] == 1
+    assert (moved/'a.txt').read_bytes() == b'original'
+    assert (moved/archive).read_bytes() == b'incoming update'
+    assert len(list((moved/'补充资料').iterdir())) == 1

@@ -20,13 +20,25 @@ class LibrarySearchService:
     def search(self, query="", source="all", kind="all", project="", offset=0, limit=100):
         tokens = query.casefold().split()
         projects, matches, warnings = [], [], []
-        for entry in self.store.catalog():
-            if project and entry["key"] != project or source != "all" and entry["source"] != source:
+        catalog = self.store.catalog()
+        selected_key = project
+        if project.startswith("member:") and not any(entry["key"] == project for entry in catalog):
+            selected_key = next((entry["key"] for entry in catalog
+                                 if entry.get("member_id") == project.removeprefix("member:")), project)
+        for entry in catalog:
+            if selected_key and entry["key"] != selected_key or source != "all" and entry["source"] != source:
                 continue
-            entry = {**entry, "available": self.files.available(entry["folder_path"])}
+            associated = bool(entry["folder_path"].strip())
+            available = associated and self.files.available(entry["folder_path"])
+            location_state = "unassociated" if not associated else "available" if available else "unavailable"
+            entry = {**entry, "available": available, "location_state": location_state}
+            if location_state == "unassociated" and entry.get("project_id") and not tokens and not project:
+                continue
             metadata = " ".join(str(entry.get(k) or "") for k in ("number", "title", "test_item", "description")).casefold()
             if all(token in metadata for token in tokens):
                 projects.append(entry)
+            if location_state == "unassociated":
+                continue
             if not entry["available"]:
                 warnings.append(f"{entry['number'] or entry['title']}: material location unavailable. Locate the folder before opening files.")
                 continue
@@ -50,6 +62,8 @@ class LibrarySearchService:
         entry = next((entry for entry in self.store.catalog() if entry["key"] == key), None)
         if entry is None:
             raise LookupError("Project library entry not found.")
+        if not entry["folder_path"].strip():
+            raise ValueError("A material folder is not linked to this project yet. Use its workspace to associate one.")
         path = self.files.resolve(entry["folder_path"], relative)
         if containing and relative:
             path = path.parent

@@ -16,16 +16,40 @@ class MaterialReceiptService:
 
     def configure_root(self, path):
         with self.files.lock():
-            self.store.configure(str(self.files.root(path)))
+            root = str(self.files.root(path))
+            self._check_receive_ownership(root)
+            self.store.configure(root)
         return self.runtime()
+
+    def _check_receive_ownership(self, root, target=None, excluding_receipt=None):
+        self.store.refresh()
+        protected = [*self.store.protected_roots(excluding_receipt),
+                     *[row["folder_path"] for row in self.catalog.catalog()
+                       if row["folder_path"] and (excluding_receipt is None
+                                                  or row.get("receipt_id") != excluding_receipt)]]
+        # A top-level receive container may hold separate entries. It cannot itself
+        # be inside an entry; each new destination must also be disjoint from them.
+        if any(self.files.contains(path, root) or target and self.files.overlaps(target, path)
+               for path in protected):
+            raise ProjectLibraryConflict("Choose a receive location separate from folders owned by existing entries or original sources.")
 
     def _candidates(self, number):
         self.store.refresh()
-        return [{**entry, "available": self.files.available(entry["folder_path"]),
-                 "can_supplement": entry["source"] != "linked" and self.files.available(entry["folder_path"]),
-                 "reason": "Receive a managed copy first; linked original folders are read-only here." if entry["source"] == "linked" else ""}
-                for entry in self.catalog.catalog()
-                if number and (entry.get("number") or "").casefold() == number.casefold()]
+        candidates = []
+        for entry in self.catalog.catalog():
+            if not number or (entry.get("number") or "").casefold() != number.casefold():
+                continue
+            associated = bool(entry["folder_path"].strip())
+            available = associated and self.files.available(entry["folder_path"])
+            state = "unassociated" if not associated else "available" if available else "unavailable"
+            reason = ("A material folder is not linked to this project yet." if not associated
+                      else "The registered material location is unavailable. Locate it before supplementing."
+                      if not available else "")
+            if entry["source"] == "linked":
+                reason = "Receive a managed copy first; linked original folders are read-only here."
+            candidates.append({**entry, "available": available, "location_state": state,
+                "can_supplement": entry["source"] != "linked" and available, "reason": reason})
+        return candidates
 
     def preview(self, source, number="", product_name="", test_keywords="", target_key="", separate_description="", material_state=None):
         number = number.strip()
@@ -51,7 +75,9 @@ class MaterialReceiptService:
             batch_id, receipt_id = uuid4().hex, uuid4().hex
             target = candidate["folder_path"] if candidate else self.files.proposed_target(
                 binding["root_path"], number, source, separate_description)
-            prior = [entry for batch in self.store.batches_for_target(target)
+            if not candidate:
+                self._check_receive_ownership(binding["root_path"], target)
+            prior = [entry for batch in self.store.batches_for_target(target, (candidate or {}).get("key"))
                      for entry in batch["items"] if entry.get("status") in {"copied", "supplemented", "skipped"}]
             source_state, target_state, entries = self.files.preview(source, target, batch_id,
                 native=bool(candidate and candidate.get("project_id")), prior=prior)
@@ -72,10 +98,19 @@ class MaterialReceiptService:
                 "supplement": bool(candidate), "material_state": (candidate or {}).get("material_state") or payload["material_state"],
                 "items": entries, "candidates": candidates}
 
-    def _check_binding(self, plan):
+    def _check_binding(self, plan, batch):
         if self.files.binding(self.store.settings()) != plan["binding"]:
             raise ProjectLibraryConflict("The receive save location changed. Preview again.")
         candidate = plan["candidate"]
+        if not candidate:
+            receipt_id = (batch or {}).get("receipt_id")
+            if receipt_id:
+                current = self.store.entry(receipt_id)
+                expected = batch.get("receipt_binding")
+                if (expected is not None and current != expected or expected is None and
+                        (current["folder_path"] != plan["target_path"] or current["revision"] != 1)):
+                    raise ProjectLibraryConflict("The received entry changed. Preview again before receiving more files.")
+            self._check_receive_ownership(plan["binding"]["root_path"], plan["target_path"], receipt_id)
         if candidate:
             current = next((row for row in self._candidates(plan["number"]) if row["key"] == candidate["key"]), None)
             if current != candidate:
@@ -91,7 +126,7 @@ class MaterialReceiptService:
         batch = self.store.batch(plan["batch_id"])
         if batch and batch["status"] == "completed":
             return batch
-        self._check_binding(plan)
+        self._check_binding(plan, batch)
         if self.files.snapshot(plan["source_path"]) != plan["source_state"]:
             raise ProjectLibraryConflict("The source folder changed after preview. Preview again.")
         if batch is None:
@@ -116,12 +151,13 @@ class MaterialReceiptService:
             self.store.save_batch(batch)
         self.files.check_root(batch["target_path"], batch["root_identity"])
         if not plan["candidate"]:
-            self.store.add_entry({"receipt_id": plan["receipt_id"], "number": plan["number"],
+            entry_binding = self.store.add_entry({"receipt_id": plan["receipt_id"], "number": plan["number"],
                 "product_name": plan["product_name"], "test_keywords": plan["test_keywords"],
                 "folder_path": plan["target_path"], "source_path": plan["source_path"],
                 "batch_id": batch["batch_id"], "created_at": plan["created_at"], "revision": 1,
                 "description": plan["separate_description"], "material_state": plan["material_state"]})
             batch["receipt_id"] = plan["receipt_id"]
+            batch["receipt_binding"] = entry_binding
             self.store.save_batch(batch)
         for entry in batch["items"]:
             if entry["status"] in {"copied", "supplemented", "skipped", "retained_changed"}:
@@ -163,7 +199,7 @@ class MaterialReceiptService:
 
     def detail(self, receipt_id):
         entry = self.store.entry(receipt_id)
-        history = self.store.batches_for_target(entry["folder_path"])
+        history = self.store.batches_for_target(entry["folder_path"], f"receipt:{receipt_id}")
         return {**entry, "available": self.files.available(entry["folder_path"]),
                 "batch": self.batch(entry["batch_id"]),
                 "history": [{key: batch.get(key) for key in ("batch_id", "status", "source_path", "created_at", "counts", "directory_counts")}

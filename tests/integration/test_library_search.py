@@ -137,3 +137,69 @@ def test_api_unifies_existing_identities_without_copying_or_writing(tmp_path):
     assert (root / "report.docx").read_bytes() == b"human edits"
     assert list(root.iterdir()) == [root / "report.docx"]
     engine.dispose()
+
+
+def test_unassociated_projects_are_quiet_by_default_but_explicitly_searchable(tmp_path):
+    root = tmp_path/'native'
+    root.mkdir()
+    (root/'manual.docx').write_bytes(b'untouched')
+    rows = [
+        dict(key='project:temporary', project_id='temporary', member_id=None, number='TMP-1',
+             title='Planning connector', test_item='temperature', source='connlab', folder_path=''),
+        dict(key='project:missing', project_id='missing', member_id=None, number='DL-2020-01-001',
+             title='Missing connector', test_item='temperature', source='connlab', folder_path=str(tmp_path/'missing')),
+        dict(key='project:available', project_id='available', member_id=None, number='DL-2020-01-002',
+             title='Available connector', test_item='temperature', source='connlab', folder_path=str(root)),
+    ]
+    class Entries:
+        def catalog(self):
+            return rows
+    service = LibrarySearchService(Entries(), SearchFiles(), lambda path: None)
+    default = service.search()
+    assert {row['key'] for row in default['projects']} == {'project:missing', 'project:available'}
+    assert len(default['warnings']) == 1
+    assert 'TMP-1' not in default['warnings'][0]
+    assert {row['key']: row['location_state'] for row in default['projects']} == {
+        'project:missing': 'unavailable', 'project:available': 'available'}
+    found = service.search('TMP-1')['projects']
+    assert len(found) == 1 and found[0]['location_state'] == 'unassociated' and not found[0]['available']
+    assert service.search('Planning connector')['projects'][0]['location_state'] == 'unassociated'
+    assert service.search(project='project:temporary')['projects'][0]['location_state'] == 'unassociated'
+    with pytest.raises(ValueError, match='not linked'):
+        service.open('project:temporary')
+    assert (root/'manual.docx').read_bytes() == b'untouched'
+    assert list(root.iterdir()) == [root/'manual.docx']
+
+
+def test_bound_member_navigation_resolves_canonical_project_catalog_key(tmp_path):
+    root = tmp_path/'material'
+    root.mkdir()
+    (root/'report.docx').write_bytes(b'untouched report')
+    class Entries:
+        def catalog(self):
+            return [dict(key='project:p1', project_id='p1', member_id='m1', number='DL-2020-01-001',
+                         title='Product', test_item='', source='received', folder_path=str(root))]
+    service = LibrarySearchService(Entries(), SearchFiles(), lambda path: None)
+    result = service.search(project='member:m1')
+    assert [entry['key'] for entry in result['projects']] == ['project:p1']
+    assert [row['key'] for row in result['files']] == ['project:p1']
+    assert result['files'][0]['name'] == 'report.docx'
+    assert (root/'report.docx').read_bytes() == b'untouched report'
+
+
+def test_member_navigation_keeps_distinct_member_material_location(tmp_path):
+    root = tmp_path/'material'
+    root.mkdir()
+    (root/'record.xlsx').write_bytes(b'original record')
+    class Entries:
+        def catalog(self):
+            return [dict(key='project:p1', project_id='p1', member_id='m1', number='DL-2020-01-001',
+                         title='Product', test_item='', source='connlab', folder_path=str(tmp_path/'work')),
+                    dict(key='member:m1', project_id='p1', member_id='m1', number='DL-2020-01-001',
+                         title='Original materials', test_item='', source='received', folder_path=str(root))]
+    service = LibrarySearchService(Entries(), SearchFiles(), lambda path: None)
+    result = service.search(project='member:m1')
+    assert [entry['key'] for entry in result['projects']] == ['member:m1']
+    assert [row['name'] for row in result['files']] == ['record.xlsx']
+    assert result['warnings'] == []
+    assert (root/'record.xlsx').read_bytes() == b'original record'

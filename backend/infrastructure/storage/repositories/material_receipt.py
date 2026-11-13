@@ -60,9 +60,10 @@ class MaterialReceiptRepository:
         row = self.session.get(MaterialReceiptBatchModel, batch_id, populate_existing=True)
         return json.loads(row.payload_json) if row else None
 
-    def batches_for_target(self, target):
+    def batches_for_target(self, target, target_key=None):
         rows = [json.loads(row.payload_json) for row in self.session.scalars(select(MaterialReceiptBatchModel))]
-        return [row for row in rows if row.get("target_path") == target]
+        return [row for row in rows if (row.get("target_key") == target_key if target_key
+                                      else row.get("target_path") == target)]
 
     def protected_roots(self, excluding_receipt=None, excluding_member=None):
         from backend.infrastructure.storage.models import ProjectFolderRecordModel, ProjectOfficialWorkspaceRecordModel

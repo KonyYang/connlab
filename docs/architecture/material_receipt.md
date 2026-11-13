@@ -11,6 +11,10 @@ The receive save root lives in `material_receipt_settings`, independently of the
 root. New received-only identities live in `material_receipt_entries`; durable progress lives in
 `material_receipt_batches`. These additive tables are registered by the existing database bootstrap.
 Metadata is central; the received source's `.connlab` files are never rewritten by receipt management.
+Search distinguishes `unassociated` (no registered folder), `unavailable` (registered location cannot be
+read) and `available`. Unassociated native/planning projects stay out of the default library listing;
+an explicit number/name search or project selection can reveal them without a missing-location warning.
+The same distinction appears in same-number receipt candidates, which cannot supplement an unlinked root.
 
 `MaterialReceiptService` owns preview/confirmation/retry/metadata decisions. `MaterialReceiptFiles`
 owns paths, hashing, locks and exclusive publication; `MaterialReceiptRepository` owns persistence.
@@ -80,3 +84,13 @@ slow on unavailable/network/removable storage; errors block or mark incomplete r
 success. No automatic synchronization, backup, Office parsing, restoration or cleanup of user files is
 part of this feature. Layout and old compatibility behavior require separate review/QA on the final
 integrated state.
+
+
+Receipt ownership and relocation guards: the receive container may contain separate registered
+entries, but cannot be an existing entry or lie inside one. Every new receipt destination must
+be disjoint from registered native, linked, member, and received roots and their known original
+sources; preview and confirmation recheck current ownership. Incomplete batches bind their
+new received entry registration as well as physical destination identity, so relocation or
+metadata revision requires a fresh preview instead of resuming writes to an old location.
+Journal history and prior-conflict matching use the stable target key; after a managed folder
+move, duplicate skipping still verifies the archived bytes at the current registered location.

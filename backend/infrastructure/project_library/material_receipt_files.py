@@ -72,6 +72,10 @@ class MaterialReceiptFiles:
                 raise ValueError("Source and destination must not include ConnLab internal data.")
         return source, target
 
+    def contains(self, parent, child):
+        from pathlib import PureWindowsPath
+        return PureWindowsPath(child).is_relative_to(PureWindowsPath(parent))
+
     def overlaps(self, first, second):
         from pathlib import PureWindowsPath
         left, right = PureWindowsPath(first), PureWindowsPath(second)
