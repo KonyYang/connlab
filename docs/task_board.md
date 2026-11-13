@@ -551,18 +551,26 @@
         "route": "full_chain",
         "scope": "Repair unconditional unique-index recognition and serialize in-process cached initialization; synthetic regression tests only; read-only Add Existing Project assessment. No real business data mutations.",
         "scope_paths": [
-          "docs/database_initialization_and_project_import_review.md",
-          "frontend/src/features/project-library/ProjectImportDecision.tsx",
-          "frontend/src/features/project-library/ProjectImportReviewList.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx"
+          "backend/api/routes_project_library.py",
+          "backend/application/project_library/search.py",
+          "backend/infrastructure/project_library/search_files.py",
+          "backend/infrastructure/storage/repositories/library_search.py",
+          "docs/architecture/project_library_search.md",
+          "frontend/src/App.tsx",
+          "frontend/src/api/referenceLibrary.ts",
+          "frontend/src/components/layout/Sidebar.tsx",
+          "frontend/src/components/layout/TopBar.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/reference-library.css",
+          "tests/integration/test_library_search.py"
         ],
         "risk_reasons": [
           "database/schema migration"
         ],
         "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
         "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-13T16:39:36.497207Z",
+        "updated_at": "2026-11-13T16:55:56.876781Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
