@@ -539,7 +539,7 @@
   "tasks": {
     "TASK_DATABASE_INIT_RACE_20261112": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\database-init-race-20261112",
       "branch": "codex/database-init-race-20261112",
       "resources": [],
@@ -570,86 +570,17 @@
         ],
         "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
         "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-13T17:00:06.216736Z",
+        "updated_at": "2026-11-13T23:13:41.627166Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_DATABASE_INIT_RACE_20261112",
           "stage": "revision",
           "status": "running",
-          "summary": "User explicitly authorized continuing existing-project UX into stage-one project library search and file access; preserve business data.",
+          "summary": "User explicitly authorized phase two of approved materials library baseline: confirmed receipt, independent storage, duplicate/conflict handling and editable search metadata; isolated data only.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_DATABASE_INIT_RACE_20261112",
-          "subject": "1a9eca1a6cec33ce77da8ac17932222ac22d4482",
-          "summary": "Stage 1 project materials library: enabled entry, unified metadata and filename search, read-only file access and missing-location feedback.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/routes_project_library.py",
-            "backend/application/project_library/search.py",
-            "backend/infrastructure/project_library/search_files.py",
-            "backend/infrastructure/storage/repositories/library_search.py",
-            "docs/architecture/project_library_search.md",
-            "frontend/src/App.tsx",
-            "frontend/src/api/referenceLibrary.ts",
-            "frontend/src/components/layout/Sidebar.tsx",
-            "frontend/src/components/layout/TopBar.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx",
-            "frontend/src/pages/reference-library.css",
-            "tests/integration/test_library_search.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "command": "isolated backend affected suites",
-              "result": "171 passed, 1 skipped (Windows symlink creation unavailable), 1 deprecation warning"
-            },
-            {
-              "status": "passed",
-              "command": "affected frontend tests and sequential production build",
-              "result": "148 passed across 10 files; build passed"
-            },
-            {
-              "status": "passed",
-              "command": "isolated mocked API browser at 595x803",
-              "result": "search, missing location, open error, retry, type filter; no real API/files accessed"
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "context": "independent planner"
-            },
-            "developer": {
-              "status": "passed",
-              "context": "root implementation; red-green public service/UI seams"
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "independent reviewer; four findings fixed and final safety edit checked"
-            },
-            "qa": {
-              "status": "passed",
-              "context": "independent QA on exact subject"
-            },
-            "integrator": {
-              "status": "passed",
-              "context": "independent preflight: clean roots, exact13paths, compatible product base"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "1a9eca1a6cec33ce77da8ac17932222ac22d4482",
-            "primary_before": "0052c5c5604221c7c904249408a10a5214eca04e",
-            "integrated_head": "3004b1a563cea4a7fcd3974d49968a66b1a6050c",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
