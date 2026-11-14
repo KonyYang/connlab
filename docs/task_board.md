@@ -539,11 +539,11 @@
   "tasks": {
     "TASK_DATABASE_INIT_RACE_20261112": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\database-init-race-20261112",
       "branch": "codex/database-init-race-20261112",
       "resources": [],
-      "integrated_head": "3004b1a563cea4a7fcd3974d49968a66b1a6050c",
+      "integrated_head": "b5f215ffb975db89b7aa5620d264d78d56a72e30",
       "task": {
         "task_id": "TASK_DATABASE_INIT_RACE_20261112",
         "summary": "Fix repeated SQLite migration and concurrent cold database initialization; assess existing-project admission UX",
@@ -592,7 +592,7 @@
         ],
         "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
         "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-14T00:22:00.497861Z",
+        "updated_at": "2026-11-14T00:27:40.160455Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -602,7 +602,98 @@
           "summary": "Phase two resumed after User clarification: new library receipt/management has no old import/portable links, no restoration or business adoption. Historical recovery code retained compatibility only. Implementation and tests remain isolated.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_DATABASE_INIT_RACE_20261112",
+          "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
+          "summary": "Ordinary project materials library: explicit managed receipt, independent storage, protected duplicates/conflicts, editable search metadata, responsive folder workspace and confirmed selected-file copy. Historical recovery isolated as compatibility code only.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/main.py",
+            "backend/api/routes_material_receipts.py",
+            "backend/api/routes_project_library.py",
+            "backend/application/project_library/material_copy.py",
+            "backend/application/project_library/material_receipt.py",
+            "backend/application/project_library/search.py",
+            "backend/infrastructure/project_library/material_copy_files.py",
+            "backend/infrastructure/project_library/material_receipt_files.py",
+            "backend/infrastructure/project_library/ownership.py",
+            "backend/infrastructure/project_library/search_files.py",
+            "backend/infrastructure/storage/models_project_library.py",
+            "backend/infrastructure/storage/repositories/library_search.py",
+            "backend/infrastructure/storage/repositories/material_receipt.py",
+            "docs/architecture/material_receipt.md",
+            "docs/architecture/project_library_search.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/api/materialReceipts.ts",
+            "frontend/src/api/referenceLibrary.ts",
+            "frontend/src/features/material-receipts/CopyMaterials.test.tsx",
+            "frontend/src/features/material-receipts/CopyMaterials.tsx",
+            "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
+            "frontend/src/features/material-receipts/MaterialDetails.tsx",
+            "frontend/src/features/material-receipts/MaterialFiles.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
+            "frontend/src/features/material-receipts/materials.css",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx",
+            "frontend/src/pages/reference-library.css",
+            "frontend/src/styles.css",
+            "tests/integration/test_library_search.py",
+            "tests/integration/test_material_receipt.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "command": "isolated affected backend matrix plus bounded compatibility revalidation",
+              "result": "Final logical union 136 passed, 3 skipped (Windows symlink creation unavailable); all 10 initial compatibility failures resolved; replacement API51 + new regression1 =52 passed."
+            },
+            {
+              "status": "passed",
+              "command": "affected frontend tests, TypeScript and sequential Vite build",
+              "result": "155 tests across13files passed; build passed; final backend-only delta leaves frontend bytes unchanged."
+            },
+            {
+              "status": "passed",
+              "command": "mocked-API production browser at1440x900 and595x803",
+              "result": "Directory browsing, navigation order/fold, explicit receipt/copy, same-number choice, conflict paths/counts, metadata and history, missing/unassociated states passed;27 mocked requests; old import/restore/portable/takeover calls0; console errors0; owned server/browser shut down."
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "context": "independent product-boundary and filesystem receipt planning"
+            },
+            "developer": {
+              "status": "passed",
+              "context": "independent backend developer plus root frontend developer in separate scoped worktrees; isolated public-seam red/green tests"
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "independent cumulative review and final compatibility exclusion delta PASS"
+            },
+            "qa": {
+              "status": "passed",
+              "context": "independent final exact-subject matrix and isolated browser; no business-data operations"
+            },
+            "integrator": {
+              "status": "passed",
+              "context": "independent preflight verifies clean roots, exact35paths, compatible code base and no task board diff"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
+            "primary_before": "c02474cbcfa18036eb6f15488e8f75376e767eb7",
+            "integrated_head": "b5f215ffb975db89b7aa5620d264d78d56a72e30",
+            "recovered": false
+          }
+        }
       }
     }
   }
