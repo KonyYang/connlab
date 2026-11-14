@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -7,6 +7,10 @@ import { listLegacyProjects, getLegacyProject } from "./api/legacyProjects";
 import { getProject, listProjectRegistryRows } from "./api/client";
 vi.mock("./api/client", async () => ({ ...await vi.importActual<typeof import("./api/client")>("./api/client"), getProject: vi.fn(), listProjectRegistryRows: vi.fn(), getProjectLifecycle: vi.fn().mockRejectedValue(new Error("Lifecycle unavailable")) }));
 import * as libraryApi from "./api/projectLibrary";
+import * as receipts from "./api/materialReceipts";
+import * as referenceApi from "./api/referenceLibrary";
+vi.mock("./api/materialReceipts", () => ({ getReceiptRuntime: vi.fn(), pickReceiptFolder: vi.fn(), previewReceipt: vi.fn(), confirmReceipt: vi.fn(), getReceiptBatch: vi.fn() }));
+vi.mock("./api/referenceLibrary", () => ({ searchReferenceLibrary: vi.fn(), openReferenceFile: vi.fn() }));
 
 vi.mock("./api/projectLibrary", async () => ({
   ...await vi.importActual<typeof import("./api/projectLibrary")>("./api/projectLibrary"),
@@ -18,6 +22,9 @@ vi.mock("./pages/ProjectMatrixEditorPage", () => ({ ProjectMatrixEditorPage: ({ 
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(receipts.getReceiptRuntime).mockResolvedValue({ root_path: "D:/received", revision: 1, configured: true, available: true });
+  vi.mocked(receipts.pickReceiptFolder).mockResolvedValue("C:/old/Connector");
+  vi.mocked(referenceApi.searchReferenceLibrary).mockResolvedValue({ projects: [], files: [], warnings: [], total: 0 });
   sessionStorage.clear(); localStorage.clear();
   vi.mocked(getProject).mockImplementation(async projectId => ({
     project_id: projectId, product_name: "Connector", requestor: "Lab",
@@ -30,120 +37,27 @@ beforeEach(() => {
   vi.mocked(listLegacyProjects).mockResolvedValue([]);
 });
 
-it("opens the native project-folder picker directly from Projects and stays there when cancelled", async () => {
-  let cancelPicker: (value: string | null) => void = () => undefined;
-  vi.mocked(libraryApi.pickLibraryFolder).mockReturnValue(
-    new Promise(resolve => { cancelPicker = resolve; })
-  );
+it("routes ordinary receipt to the library without old adoption or recovery calls", async () => {
   window.history.replaceState({}, "", "/projects");
-  const user = userEvent.setup();
-  render(<App />);
-
-  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
-
-  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce());
-  expect(window.location.pathname).toBe("/projects");
-  expect(screen.getByTestId("active-area").textContent).toBe("projects");
-  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
-  expect(screen.queryByText("Choose a project folder in the system window…")).toBeNull();
-  expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
-  cancelPicker(null);
-  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull());
+  const user = userEvent.setup(); render(<App />);
+  await user.click(await screen.findByRole("button", { name: "Receive materials" }));
+  expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
+  expect(window.location.pathname).toBe("/reference");
+  await user.click(screen.getByRole("button", { name: "Choose source folder" }));
+  expect(receipts.pickReceiptFolder).toHaveBeenCalledOnce();
+  expect(receipts.confirmReceipt).not.toHaveBeenCalled();
+  expect(libraryApi.startLibraryBatch).not.toHaveBeenCalled();
+  expect(libraryApi.inspectPortableProject).not.toHaveBeenCalled();
+  expect(libraryApi.getPortableInfo).not.toHaveBeenCalled();
 });
 
-it("receives one safe selected project in the background and opens its workspace", async () => {
-  const source = "D:/old/DL-2026-09-032 Connector";
-  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
-  vi.mocked(libraryApi.scanLibrarySources).mockResolvedValue({
-    items: [{ source_path: source, title: "Connector", ltr_number: "DL-2026-09-032", kind: "project", warnings: [], child_folders: [] }],
-    warnings: [], truncated: false,
-  });
-  vi.mocked(libraryApi.planLibraryIntake).mockResolvedValue({
-    plan_id: "plan", fingerprint: "verified", warnings: [],
-    items: [{ source_path: source, target_path: "D:/test-library/projects/DL-2026-09-032", title: "Connector", ltr_number: "DL-2026-09-032", status: "ready", warnings: [], can_keep_separate: false }],
-  });
-  vi.mocked(libraryApi.startLibraryBatch).mockResolvedValue({
-    batch_id: "batch", status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 },
-    items: [{ source_path: source, status: "added", message: "Added", member_id: "member" }],
-  });
-  vi.mocked(libraryApi.getLibraryMember).mockResolvedValue({
-    member_id: "member", project_id: "verified-project", ltr_number: "DL-2026-09-032", title: "Connector",
-    folder_path: "D:/test-library/projects/DL-2026-09-032", revision: 1, batch_id: "batch",
-    snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: true,
-  });
-  window.history.replaceState({}, "", "/projects");
-  const user = userEvent.setup();
-  render(<App />);
-
-  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
-
-  await waitFor(() => expect(window.location.pathname).toBe("/projects/verified-project"));
-  expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
-  expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
-});
-
-it("keeps routine checking silent before presenting a required decision", async () => {
-  const source = "D:/old/Connector";
-  let finishScan: (value: libraryApi.LibraryScan) => void = () => undefined;
-  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
-  vi.mocked(libraryApi.scanLibrarySources).mockReturnValue(
-    new Promise(resolve => { finishScan = resolve; })
-  );
-  window.history.replaceState({}, "", "/projects");
-  const user = userEvent.setup();
-  render(<App />);
-
-  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
-  await waitFor(() => expect(libraryApi.scanLibrarySources).toHaveBeenCalledOnce());
-  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
-  expect(screen.queryByText("Checking selected folders…")).toBeNull();
-
-  finishScan({
-    items: [{ source_path: source, title: "Connector", ltr_number: null, kind: "project", warnings: [], child_folders: [] }],
-    warnings: [], truncated: false, selection_issue: "needs_ltr",
-  });
-  expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
-});
-
-it("stays on Projects and opens a focused decision dialog only when information is missing", async () => {
-  const source = "D:/old/Connector";
-  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
-  vi.mocked(libraryApi.scanLibrarySources).mockResolvedValue({
-    items: [{ source_path: source, title: "Connector", ltr_number: null, kind: "project", warnings: [], child_folders: [] }],
-    warnings: [], truncated: false, selection_issue: "needs_ltr",
-  });
-  window.history.replaceState({}, "", "/projects");
-  const user = userEvent.setup();
-  render(<App />);
-
-  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
-
-  expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
-  expect(await screen.findByRole("textbox", { name: "LTR number" })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Choose Project Folder" })).toBeNull();
-  expect(window.location.pathname).toBe("/projects");
-});
-
-it("does not reopen the folder picker after leaving Projects from an import decision", async () => {
-  const source = "D:/old/Connector";
-  vi.mocked(libraryApi.pickLibraryFolder).mockResolvedValue(source);
-  vi.mocked(libraryApi.scanLibrarySources).mockResolvedValue({
-    items: [{ source_path: source, title: "Connector", ltr_number: null, kind: "project", warnings: [], child_folders: [] }],
-    warnings: [], truncated: false, selection_issue: "needs_ltr",
-  });
-  window.history.replaceState({}, "", "/projects");
-  const user = userEvent.setup();
-  render(<App />);
-
-  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
-  expect(await screen.findByRole("dialog", { name: "Import project" })).toBeTruthy();
-  await user.click(screen.getByRole("button", { name: "Settings" }));
-  expect(window.location.pathname).toBe("/settings");
-  await user.click(screen.getByRole("button", { name: "Projects" }));
-
-  expect(await screen.findByRole("button", { name: "Add Existing Project" })).toBeTruthy();
-  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
-  expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce();
+it("closing receipt retains the ordinary library without opening the source picker automatically", async () => {
+  window.history.replaceState({}, "", "/reference?receive=1");
+  const user = userEvent.setup(); render(<App />);
+  await user.click(await screen.findByRole("button", { name: "Close", exact: true }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(receipts.pickReceiptFolder).not.toHaveBeenCalled();
+  expect(window.location.search).toBe("");
 });
 
 it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project-library"])("opens project receiving from %s and returns to all Projects", async (path) => {
@@ -155,10 +69,10 @@ it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project
   expect(screen.getByTestId("active-area").textContent).toBe("projects");
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe("/projects");
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Add Existing Project" }));
-  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
-  expect(window.location.pathname).toBe("/projects");
-  expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
+  await userEvent.setup().click(await screen.findByRole("button", { name: "Receive materials" }));
+  expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
+  expect(window.location.pathname).toBe("/reference");
+  expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();
 });
 
 it("shows an imported project in the normal workbench without a special file action", async () => {
@@ -181,9 +95,11 @@ it.each(["", "batch-1"])("preserves browsing context but returns from import to 
   render(<App />);
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
-  await user.click(await screen.findByRole("button", { name: "Add Existing Project" }));
-  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
-  expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
+  await user.click(await screen.findByRole("button", { name: "Receive materials" }));
+  expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
+  expect(window.location.pathname).toBe("/reference");
+  await user.click(screen.getByRole("button", { name: "Close", exact: true }));
+  await user.click(within(screen.getByRole("navigation", { name: "Test sidebar" })).getByRole("button", { name: "Projects" }));
   await user.click(await screen.findByRole("button", { name: /Open Workbench.*DL-2026-09-032/ }));
   expect(window.location.pathname).toBe("/projects/project-1");
   expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
@@ -204,15 +120,16 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   render(<App />);
   await user.selectOptions(await screen.findByLabelText("Project view"), "all");
   await user.click(await screen.findByRole("button", { name: "Open Manual legacy" }));
-  expect(window.location.pathname).toBe("/legacy-projects/historical");
-  await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
+  expect(window.location.pathname).toBe("/reference");
+  expect(new URLSearchParams(window.location.search).get("entry")).toBe("linked:historical");
+  await user.click(within(screen.getByRole("navigation", { name: "Test sidebar" })).getByRole("button", { name: "Projects" }));
   expect(await screen.findByRole("button", { name: "Open Manual legacy" })).toBeTruthy();
   expect(window.location.pathname).toBe("/projects");
   expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
-  await user.click(screen.getByRole("button", { name: "Add Existing Project" }));
-  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalled());
-  expect(window.location.pathname).toBe("/projects");
-  expect(screen.queryByRole("heading", { name: "Import Projects" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Receive materials" }));
+  expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
+  expect(window.location.pathname).toBe("/reference");
+  expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();
 });
 
 it("keeps the old direct folder-linking URL accessible without exposing it in the common import flow", async () => {
@@ -260,7 +177,7 @@ it("passes the open project to the sidebar across page changes and clears it on 
   expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
   await user.click(screen.getByRole("button", { name: "Settings" }));
   expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
-  await user.click(screen.getByRole("button", { name: "Projects" }));
+  await user.click(within(screen.getByRole("navigation", { name: "Test sidebar" })).getByRole("button", { name: "Projects" }));
   await user.click(await screen.findByRole("button", { name: "Close project" }));
   expect(screen.getByTestId("sidebar-project").textContent).toBe("none");
 });
@@ -333,7 +250,7 @@ describe("Basic Information route entry behavior", () => {
 
     await user.click(screen.getByRole("button", { name: "Settings" }));
     expect(await screen.findByLabelText("Settings page")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Projects" }));
+    await user.click(within(screen.getByRole("navigation", { name: "Test sidebar" })).getByRole("button", { name: "Projects" }));
 
     expect((await screen.findByTestId("basic-information-entry-mode")).textContent).toBe(
       "P1:authoritative"
@@ -382,13 +299,12 @@ describe("Basic Information route entry behavior", () => {
 });
 
 
-it("keeps the page clear while the system folder picker is pending", async () => {
-  vi.mocked(libraryApi.pickLibraryFolder).mockReturnValue(new Promise(() => {}));
-  window.history.replaceState({}, "", "/projects");
-  render(<App />);
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Add Existing Project" }));
-  await waitFor(() => expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce());
-  expect(screen.queryByRole("dialog", { name: "Import project" })).toBeNull();
-  expect(screen.queryByText("Choose a project folder in the system window…")).toBeNull();
-  expect(libraryApi.pickLibraryFolder).toHaveBeenCalledOnce();
+it("keeps receipt explicit while the source picker is pending", async () => {
+  vi.mocked(receipts.pickReceiptFolder).mockReturnValue(new Promise(() => {}));
+  window.history.replaceState({}, "", "/reference?receive=1");
+  const user = userEvent.setup(); render(<App />);
+  await user.click(await screen.findByRole("button", { name: "Choose source folder" }));
+  expect(screen.getByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
+  expect(receipts.confirmReceipt).not.toHaveBeenCalled();
+  expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();
 });

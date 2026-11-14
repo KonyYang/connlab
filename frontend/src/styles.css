@@ -879,3 +879,13 @@ input {
     width: min(100% - 20px, 1240px);
   }
 }
+
+/* Preserve sidebar geometry and folding; refine existing navigation affordances. */
+.sidebar .nav-icon .ui-icon { stroke-width: 1.7; }
+.sidebar .nav-item { transition: background-color 120ms ease, color 120ms ease; }
+.sidebar .nav-item-active { background: #eaf2ff; color: #1f66d1; box-shadow: inset 3px 0 0 #1f66d1; }
+.sidebar .nav-item-active .nav-icon { color: #1f66d1; }
+.sidebar .nav-item:hover:not(:disabled) { background-color: #f0f5fc; }
+@media(prefers-reduced-motion: reduce) { .sidebar .nav-item { transition: none; } }
+
+.sidebar .sidebar-nav { gap: 6px; }

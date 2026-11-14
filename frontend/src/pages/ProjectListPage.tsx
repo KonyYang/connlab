@@ -257,7 +257,7 @@ function BusinessProjectListPage({
         </label>}
       </div>
       <nav className="project-registry-areas" aria-label="Project management areas">
-        {area === "active" && onImport && <button className="primary-action" type="button" disabled={management.busy} title="Choose one existing project folder. ConnLab checks and receives it; original files stay in place." onClick={onImport}>Add Existing Project</button>}
+        {area === "active" && onImport && <button className="primary-action" type="button" disabled={management.busy} title="Open the project library to review and receive existing materials." onClick={onImport}>Receive materials</button>}
         {area !== "active" && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={() => setArea("active")}>Back to Projects</button>}
         <button className="registry-area-button ui-secondary-action" type="button" aria-pressed={area === "recycle"} disabled={management.busy} onClick={() => setArea("recycle")}>Recycle</button>
       </nav>
@@ -312,7 +312,7 @@ function BusinessProjectListPage({
         {!loading && !error && catalogRows.length === 0 && (
           <EmptyState
             title="No projects yet"
-            message="Use Add Existing Project to add an existing folder, or New Project to start a new request."
+            message="Use New Project to start a request, or Receive materials to manage existing files in the project library."
           />
         )}
         {!loading && !error && catalogRows.length > 0 && viewRows.length === 0 && (

@@ -1,0 +1,22 @@
+.materials-overlay { position: fixed; inset: 0; z-index: 140; display: flex; align-items: flex-start; justify-content: center; padding: 20px; overflow: auto; background: #17203366; }
+.materials-dialog { width: min(880px, 100%); margin: auto 0; padding: 20px; border: 1px solid var(--color-border, #cbd5e1); border-radius: 10px; background: var(--color-surface, #fbfdff); color: var(--color-ink, #172033); display: grid; gap: 14px; min-width: 0; }
+.materials-dialog header, .materials-inline, .materials-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.materials-dialog header { justify-content: space-between; }
+.materials-dialog h2, .materials-dialog h3, .materials-dialog p { margin: 0; }
+.materials-dialog fieldset, .materials-review { display: grid; gap: 12px; min-width: 0; padding: 14px; border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px; }
+.materials-dialog label { display: grid; gap: 5px; min-width: 0; }
+.materials-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.materials-dialog input, .materials-dialog select, .materials-dialog button { font: inherit; padding: 7px 10px; color: inherit; border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px; background: var(--color-surface, white); min-width: 0; }
+.materials-dialog input { width: 100%; box-sizing: border-box; }
+.materials-inline input { flex: 1 1 240px; }
+.materials-dialog button { cursor: pointer; }
+.materials-dialog button:disabled { opacity: .55; cursor: default; }
+.materials-dialog .materials-radio, .materials-dialog .materials-candidate { display: flex; align-items: flex-start; gap: 8px; }
+.materials-radio input, .materials-candidate input { width: auto; flex: 0 0 auto; margin-top: 5px; }
+.materials-candidate span { display: grid; gap: 4px; min-width: 0; }
+.materials-path, .materials-help, .materials-items { overflow-wrap: anywhere; }
+.materials-help { font-size: .875rem; color: var(--color-ink-muted, #647084); }
+.materials-items { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 10px; }
+.materials-items li > span { display: block; margin-top: 3px; }
+.materials-dialog [role=alert] { border-left: 3px solid #c2413a; padding: 8px 10px; color: #9b291c; }
+@media(max-width: 600px) { .materials-overlay { padding: 10px; } .materials-dialog { padding: 14px; } .materials-fields { grid-template-columns: 1fr; } }
