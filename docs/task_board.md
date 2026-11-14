@@ -539,11 +539,11 @@
   "tasks": {
     "TASK_DATABASE_INIT_RACE_20261112": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\database-init-race-20261112",
       "branch": "codex/database-init-race-20261112",
       "resources": [],
-      "integrated_head": "b5f215ffb975db89b7aa5620d264d78d56a72e30",
+      "integrated_head": "0fb5951ba10fbef831b879498202a150e442b575",
       "task": {
         "task_id": "TASK_DATABASE_INIT_RACE_20261112",
         "summary": "Fix repeated SQLite migration and concurrent cold database initialization; assess existing-project admission UX",
@@ -592,7 +592,7 @@
         ],
         "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
         "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-14T04:28:07.189148Z",
+        "updated_at": "2026-11-14T04:41:31.023479Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -602,7 +602,62 @@
           "summary": "User requested an additional real frontend/backend connected end-to-end smoke test with isolated SQLite/files only; mock API coverage is insufficient. Continue same task validation and fix any in-scope defects found.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_DATABASE_INIT_RACE_20261112",
+          "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
+          "summary": "Additional real frontend/backend E2E smoke passed on unchanged implementation: isolated SQLite/files, actual HTTP APIs, no mocks or production changes.",
+          "scope_ok": true,
+          "changed_paths": [],
+          "validation": [
+            {
+              "status": "passed",
+              "command": "actual frontend5197 transparent proxy to actual FastAPI8817 with isolated CONNLAB configuration",
+              "result": "42 real API requests all200; no mocks, dependency overrides or response replacements; receive confirmation, duplicate skip, conflict archive, external edit refresh, missing location/reconnect, selected copy and history passed."
+            },
+            {
+              "status": "passed",
+              "command": "real filesystem hashes and isolated database business snapshots",
+              "result": "65 business tables unchanged; sources retained at each intentional fixture edit boundary; original target file retained; exactly one selected-file archive added; managed manual modifications retained."
+            },
+            {
+              "status": "passed",
+              "command": "browser and test-process audit",
+              "result": "Console0errors0warnings; old restore/import/native-open/picker calls0; owned backend/browser/proxy stopped; ports8817/5197 closed; primary clean and no product diff."
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "context": "Unchanged implementation plan retained; root separately audited isolated resolved settings and transparent proxy before test."
+            },
+            "developer": {
+              "status": "passed",
+              "context": "No production patch in this validation turn; prior Developer evidence on same48a5f3bf source remains valid."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Prior independent code reviews remain valid on unchanged source; root inspected actual harness path guards, real proxy and final file invariants."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Independent QA executed real connected browser smoke with actual main app and isolated database/files, plus cleanup."
+            },
+            "integrator": {
+              "status": "passed",
+              "context": "Root verified code identical to validated subject, clean primary,42actual200responses and both test ports closed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
+            "primary_before": "0fb5951ba10fbef831b879498202a150e442b575",
+            "integrated_head": "0fb5951ba10fbef831b879498202a150e442b575",
+            "recovered": false
+          }
+        }
       }
     }
   }
