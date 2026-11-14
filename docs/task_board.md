@@ -545,7 +545,44 @@
       "closed_at": "2026-11-11T23:46:50.999417Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LIBRARY_REPORT_SHORTCUTS_20261114": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-report-shortcuts-20261114",
+      "branch": "codex/library-report-shortcuts-20261114",
+      "resources": [
+        "frontend-library",
+        "library-copy-context",
+        "library-metadata-schema"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_REPORT_SHORTCUTS_20261114",
+        "summary": "Common internal/customer report shortcuts and explicit Workbench-bound copy context",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Implement approved library lookup-only common report markers and require explicit live Workbench context for selected file copying. Metadata-only marker actions, no content approval/hash review/file rename or move. Isolated regressions and real frontend/backend E2E only; no business data, push or publication.",
+        "scope_paths": [
+          "backend/api",
+          "backend/application",
+          "backend/domain",
+          "backend/infrastructure",
+          "frontend/src",
+          "tests",
+          "docs/architecture"
+        ],
+        "risk_reasons": [
+          "Additive library metadata schema and cross-request copy-target context invalidation guarding filesystem publication"
+        ],
+        "activation_head": "8c543508955c4c03d0c1c09567a655b76411d083",
+        "started_at": "2026-11-14T10:46:17.561666Z",
+        "updated_at": "2026-11-14T10:46:17.561666Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
