@@ -888,3 +888,29 @@ def test_catalog_history_exposes_durable_native_copy_and_receipt_results(copy_ma
     with pytest.raises(LookupError):
         service.catalog_history('project:missing')
     assert (tmp_path/'moved-current'/'report.docx').read_bytes() == b'incoming'
+
+
+def test_receipt_global_records_do_not_enter_legacy_project_portable_contract(receipt, tmp_path):
+    from sqlalchemy import text
+    from backend.infrastructure.project_library.ownership import capture, typed_record
+    service, store, files, catalog, session = receipt
+    source = tmp_path/'original'
+    source.mkdir()
+    (source/'record.txt').write_bytes(b'original material')
+    preview = service.preview(str(source), 'HISTORICAL')
+    received = service.confirm(preview['plan_id'], preview['fingerprint'])
+    session.add(ProjectModel(project_id='business-project', product_name='Native product', requestor='Lab', status='draft'))
+    session.commit()
+    before = (store.settings(), store.entry(received['receipt_id']), store.batch(received['batch_id']))
+    project_rows = capture(session, 'business-project')
+    assert [row['project_id'] for row in project_rows['projects']] == ['business-project']
+    for family in ('material_receipt_settings', 'material_receipt_entries', 'material_receipt_batches'):
+        assert family not in project_rows
+        with pytest.raises(ValueError, match='unsupported record family'):
+            typed_record(family, {})
+    assert (store.settings(), store.entry(received['receipt_id']), store.batch(received['batch_id'])) == before
+    assert (source/'record.txt').read_bytes() == b'original material'
+    session.execute(text('CREATE TABLE unknown_future_records (id TEXT PRIMARY KEY)'))
+    session.commit()
+    with pytest.raises(ValueError, match='not covered by the portable contract'):
+        capture(session, 'business-project')

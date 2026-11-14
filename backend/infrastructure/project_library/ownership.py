@@ -55,7 +55,9 @@ LINEAGE_TABLES = ("intake_packages", "intake_assets", "intake_cases", "intake_dr
 TABLES = frozenset((*DIRECT_TABLES, *PARENTS, *LINEAGE_TABLES))
 EXCLUDED_TABLES = frozenset({"external_resources", "lookup_options", "legacy_project_records", "existing_project_locations",
                             "ltr_duplicate_resolution_tokens", "frozen_field_revision_requests",
-                            "project_library_members", "project_library_batches"})
+                            "project_library_members", "project_library_batches",
+                            # Workstation-wide receipt identities, settings and journals are not project state.
+                            "material_receipt_settings", "material_receipt_entries", "material_receipt_batches"})
 
 PATH_COLUMNS = {
     "project_folder_records": ("folder_path",),
