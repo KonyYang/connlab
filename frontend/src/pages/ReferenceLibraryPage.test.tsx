@@ -3,13 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { ReferenceLibraryPage } from "./ReferenceLibraryPage";
 import * as api from "../api/referenceLibrary";
+import {getReportShortcuts} from "../api/reportShortcuts";
 import { getLegacyProject } from "../api/legacyProjects";
 vi.mock("../api/referenceLibrary", () => ({ searchReferenceLibrary: vi.fn(), openReferenceFile: vi.fn(), browseReferenceFiles: vi.fn() }));
+vi.mock("../api/reportShortcuts",()=>({getReportShortcuts:vi.fn(async()=>({key:"project:p1",items:[]}))}));
 vi.mock("../api/legacyProjects", () => ({ getLegacyProject: vi.fn(), changeLegacyProjectLocation: vi.fn() }));
 const project = { key: "project:p1", project_id: "p1", member_id: null, number: "DL-2026-08-079", title: "PwrBlade", test_item: "温升", source: "connlab", available: true, folder_path: "D:/isolated" };
 const file = { name: "温升记录.xlsx", relative_path: "Records/温升记录.xlsx", is_directory: false, modified_at: "2026-11-14T01:00:00Z", extension: ".xlsx" };
 beforeEach(() => {
  window.history.replaceState(null,"","/reference"); sessionStorage.clear(); vi.resetAllMocks();
+ vi.mocked(getReportShortcuts).mockResolvedValue({key:"project:p1",items:[]});
  vi.mocked(getLegacyProject).mockResolvedValue({ record_id: "old", revision: 1, folder_path: "D:/isolated", name: "PwrBlade", number: "DL-2026-08-079", number_evidence: [], notes: [], imported_at: "", updated_at: "" });
  vi.mocked(api.searchReferenceLibrary).mockResolvedValue({ projects: [project], files: [], total: 0, warnings: [] });
  vi.mocked(api.browseReferenceFiles).mockResolvedValue({ key:project.key, root:project.folder_path, current_directory:"",location_state:"available",items:[file],warnings:[] });
@@ -53,4 +56,16 @@ it("distinguishes unassociated materials from a lost location", async () => {
  await screen.findByRole("button",{name:/DL-2026-08-079.*No materials linked yet/});
  expect(screen.queryByText("Original material location is unavailable. The entry is retained.")).toBeNull();
  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+
+it("keeps an exact member entry when a project with the same member id has another root",async()=>{
+ window.history.replaceState(null,"","/reference?entry=member:m1");
+ const native={...project,member_id:"m1"};
+ const member={...project,key:"member:m1",member_id:"m1",title:"Received originals",source:"received",folder_path:"D:/separate-copy"};
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[native,member],files:[],total:0,warnings:[]});
+ render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ expect(await screen.findByText("D:/separate-copy")).toBeTruthy();
+ await waitFor(()=>expect(api.browseReferenceFiles).toHaveBeenCalledWith("member:m1","",expect.any(AbortSignal)));
+ expect(getReportShortcuts).toHaveBeenCalledWith("member:m1",expect.any(AbortSignal));
 });

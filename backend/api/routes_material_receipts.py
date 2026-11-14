@@ -45,6 +45,25 @@ class ConfirmRequest(BaseModel):
     fingerprint: str = Field(pattern="^[a-f0-9]{64}$")
 
 
+class CopyContextRequest(BaseModel):
+    session_id: str = Field(pattern="^[a-f0-9]{32}$")
+    token: str = Field(pattern="^[a-f0-9]{32}$")
+
+
+class CopyConfirmRequest(ConfirmRequest):
+    context: CopyContextRequest
+
+
+class RetryRequest(BaseModel):
+    context: CopyContextRequest | None = None
+
+
+class ContextUpdateRequest(BaseModel):
+    session_id: str = Field(pattern="^[a-f0-9]{32}$")
+    intent: int = Field(ge=1, le=9007199254740991)
+    project_id: str | None = Field(default=None, min_length=1, max_length=128)
+
+
 class MetadataRequest(BaseModel):
     revision: int = Field(ge=1)
     product_name: str = Field(min_length=1, max_length=2048)
@@ -78,8 +97,8 @@ def batch(batch_id: str, service=Depends(get_material_receipt_service)):
 
 
 @router.post("/batches/{batch_id}/retry")
-def retry(batch_id: str, service=Depends(get_material_receipt_service)):
-    return checked(lambda: service.retry(batch_id))
+def retry(batch_id: str, request: RetryRequest | None = None, service=Depends(get_material_receipt_service)):
+    return checked(lambda: service.retry(batch_id, request.context.model_dump() if request and request.context else None))
 
 
 @router.get("/entries/{receipt_id}")
@@ -121,9 +140,10 @@ def catalog_location(request: CatalogLocationRequest, service=Depends(get_materi
 
 
 class CopyPreviewRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    context: CopyContextRequest
     source_key: str = Field(min_length=1, max_length=256)
     relative_path: str = Field(min_length=1, max_length=4096)
-    target_key: str = Field(min_length=1, max_length=256)
     target_relative_directory: str = Field(default="Reference materials", max_length=4096)
 
 
@@ -133,11 +153,21 @@ def copy_preview(request: CopyPreviewRequest, service=Depends(get_material_recei
 
 
 @router.post("/copy-confirm")
-def copy_confirm(request: ConfirmRequest, service=Depends(get_material_receipt_service)):
-    return checked(lambda: service.copy_confirm(request.plan_id, request.fingerprint))
+def copy_confirm(request: CopyConfirmRequest, service=Depends(get_material_receipt_service)):
+    return checked(lambda: service.copy_confirm(request.plan_id, request.fingerprint, request.context.model_dump()))
 
 
 @router.get("/catalog-history")
 def catalog_history(key: str = Query(..., min_length=1, max_length=256),
                     service=Depends(get_material_receipt_service)):
     return checked(lambda: service.catalog_history(key))
+
+
+@router.post("/copy-context/session")
+def create_copy_context(service=Depends(get_material_receipt_service)):
+    return service.create_copy_context()
+
+
+@router.post("/copy-context")
+def update_copy_context(request: ContextUpdateRequest, service=Depends(get_material_receipt_service)):
+    return checked(lambda: service.update_copy_context(request.session_id, request.intent, request.project_id))

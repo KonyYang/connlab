@@ -31,3 +31,19 @@ it("opens a native project's durable batch and retries explicitly without old re
  expect(api.getReceiptDetail).not.toHaveBeenCalled();
  expect(await screen.findByText("Materials received and verified.")).toBeTruthy();
 });
+
+
+it("keeps old copy outcomes readable but enables retry only in their live context",async()=>{
+ const user=userEvent.setup();const native={...project,key:"project:p1",receipt_id:undefined,project_id:"p1",source:"connlab"};
+ const batch={...detail.batch,batch_id:"copy",operation:"copy_file",copy_context:{session_id:"browser",intent:7},status:"incomplete",target_key:native.key};
+ vi.mocked(api.getCatalogReceiptHistory).mockResolvedValue({items:[{batch_id:"copy",status:"incomplete",source_path:"D:/old",created_at:"2026-11-14",counts:{failed:1},directory_counts:{}}]});
+ vi.mocked(api.getReceiptBatch).mockResolvedValue(batch);vi.mocked(api.retryReceipt).mockResolvedValue({...batch,status:"completed"});
+ const props={project:native,onClose:vi.fn(),onBrowse:vi.fn(),onProject:vi.fn(),onChanged:vi.fn()};
+ const view=render(<MaterialDetails {...props}/>);
+ await user.click(screen.getByText("Receipt history and source"));await user.click(await screen.findByRole("button",{name:"View receipt copy"}));
+ expect(screen.getByRole("button",{name:"Retry receipt"}).hasAttribute("disabled")).toBe(true);
+ expect(api.retryReceipt).not.toHaveBeenCalled();
+ view.rerender(<MaterialDetails {...props} copyContext={{session_id:"browser",token:"live",intent:7,target:native}}/>);
+ await user.click(screen.getByRole("button",{name:"Retry receipt"}));
+ expect(api.retryReceipt).toHaveBeenCalledWith("copy",{session_id:"browser",token:"live"});
+});

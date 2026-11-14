@@ -3,12 +3,12 @@ import { createPortal } from "react-dom";
 import type { ReferenceProject } from "../../api/referenceLibrary";
 import { openReferenceFile } from "../../api/referenceLibrary";
 import * as api from "../../api/materialReceipts";
-import type { ReceiptBatch, ReceiptDetail, ReceiptHistory, ReceiptLocationPlan } from "../../api/materialReceipts";
+import type { ReceiptBatch, ReceiptDetail, ReceiptHistory, ReceiptLocationPlan, WorkbenchCopyContext } from "../../api/materialReceipts";
 import { changeLegacyProjectLocation, getLegacyProject, type LegacyProjectRecord } from "../../api/legacyProjects";
 import { ReceiptResults } from "./ReceiveMaterials";
 import "./materials.css";
 
-export function MaterialDetails({ project, onClose, onBrowse, onProject, onChanged, onSupplement }: { project: ReferenceProject; onClose: () => void; onBrowse: (key: string) => void; onProject: (id: string) => void; onChanged: () => void; onSupplement?: (project: ReferenceProject) => void }) {
+export function MaterialDetails({ copyContext, project, onClose, onBrowse, onProject, onChanged, onSupplement }: { copyContext?: WorkbenchCopyContext | null; project: ReferenceProject; onClose: () => void; onBrowse: (key: string) => void; onProject: (id: string) => void; onChanged: () => void; onSupplement?: (project: ReferenceProject) => void }) {
  const [catalogHistory, setCatalogHistory] = useState<ReceiptHistory[]>([]);
  const [historyBatch, setHistoryBatch] = useState<ReceiptBatch | null>(null);
  const [detail, setDetail] = useState<ReceiptDetail | null>(null);
@@ -24,6 +24,8 @@ export function MaterialDetails({ project, onClose, onBrowse, onProject, onChang
  const [legacyPlan, setLegacyPlan] = useState(false);
  const [busy, setBusy] = useState(false);
  const [error, setError] = useState("");
+ const shownBatch=historyBatch ?? detail?.batch;
+ const copyRetryAllowed=shownBatch?.operation !== "copy_file" || Boolean(copyContext && shownBatch.copy_context?.session_id===copyContext.session_id && shownBatch.copy_context.intent===copyContext.intent && shownBatch.target_key===copyContext.target.key);
  const id = project.receipt_id ?? (project.key.startsWith("receipt:") ? project.key.slice(8) : null);
  const [memberPath, setMemberPath] = useState<string | null>(null);
  const memberOnly = project.key.startsWith("member:") && !project.project_id;
@@ -69,7 +71,7 @@ export function MaterialDetails({ project, onClose, onBrowse, onProject, onChang
    {detail && <><p className="materials-path">Original source (traceability only): {detail.source_path}</p><p>Received: {detail.created_at}</p></>}
    <button disabled={busy} onClick={() => void act(reloadDetail)}>Refresh receipt history</button>
    <ul className="materials-items">{(detail?.history ?? catalogHistory).map(row => <li key={row.batch_id}><span>{row.created_at} · {row.status}</span><span>{row.source_path}</span><button disabled={busy} onClick={() => void act(async () => { setHistoryBatch(await api.getReceiptBatch(row.batch_id)); })}>View receipt {row.batch_id.slice(0, 8)}</button></li>)}</ul>
-   {(historyBatch || detail?.batch) && <><ReceiptResults batch={(historyBatch ?? detail?.batch)!} />{(historyBatch ?? detail?.batch)!.status !== "completed" && <button disabled={busy} onClick={() => void act(async () => { const result = await api.retryReceipt((historyBatch ?? detail?.batch)!.batch_id); setHistoryBatch(result); await reloadDetail(); })}>Retry receipt</button>}</>}
+   {(historyBatch || detail?.batch) && <><ReceiptResults batch={(historyBatch ?? detail?.batch)!} />{(historyBatch ?? detail?.batch)!.status !== "completed" && <button disabled={busy || !copyRetryAllowed} onClick={() => void act(async () => { const value=(historyBatch ?? detail?.batch)!; const result = value.operation === "copy_file" && copyContext ? await api.retryReceipt(value.batch_id,{session_id:copyContext.session_id,token:copyContext.token}) : await api.retryReceipt(value.batch_id); setHistoryBatch(result); await reloadDetail(); })}>Retry receipt</button>}{shownBatch?.operation === "copy_file" && shownBatch.status !== "completed" && !copyRetryAllowed && <p>Read-only copy history. Return through the target Workbench to review a new copy.</p>}</>}
   </details>}
  </section></div>, document.body);
 }

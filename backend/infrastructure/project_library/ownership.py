@@ -57,7 +57,8 @@ EXCLUDED_TABLES = frozenset({"external_resources", "lookup_options", "legacy_pro
                             "ltr_duplicate_resolution_tokens", "frozen_field_revision_requests",
                             "project_library_members", "project_library_batches",
                             # Workstation-wide receipt identities, settings and journals are not project state.
-                            "material_receipt_settings", "material_receipt_entries", "material_receipt_batches"})
+                            "material_receipt_settings", "material_receipt_entries", "material_receipt_batches",
+                            "library_report_shortcuts"})
 
 PATH_COLUMNS = {
     "project_folder_records": ("folder_path",),

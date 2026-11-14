@@ -6,17 +6,26 @@ from backend.domain.project_library import ProjectLibraryConflict
 
 
 class MaterialReceiptService:
-    def __init__(self, store, files, catalog):
+    def __init__(self, store, files, catalog, contexts=None):
         self.store, self.files, self.catalog = store, files, catalog
+        from backend.application.project_library.copy_context import copy_contexts
+        self.contexts = contexts if contexts is not None else copy_contexts
 
-    def copy_preview(self, source_key, relative_path, target_key, target_relative_directory="Reference materials"):
-        from backend.application.project_library.material_copy import MaterialCopyService
-        return MaterialCopyService(self.store, self.files, self.catalog).preview(
-            source_key, relative_path, target_key, target_relative_directory)
+    def create_copy_context(self):
+        return self.contexts.create()
 
-    def copy_confirm(self, plan_id, fingerprint):
+    def update_copy_context(self, session_id, intent, project_id):
         from backend.application.project_library.material_copy import MaterialCopyService
-        return MaterialCopyService(self.store, self.files, self.catalog).confirm(plan_id, fingerprint)
+        return MaterialCopyService(self.store, self.files, self.catalog, self.contexts).update_context(session_id, intent, project_id)
+
+    def copy_preview(self, source_key, relative_path, context, target_relative_directory="Reference materials"):
+        from backend.application.project_library.material_copy import MaterialCopyService
+        return MaterialCopyService(self.store, self.files, self.catalog, self.contexts).preview(
+            source_key, relative_path, context, target_relative_directory)
+
+    def copy_confirm(self, plan_id, fingerprint, context):
+        from backend.application.project_library.material_copy import MaterialCopyService
+        return MaterialCopyService(self.store, self.files, self.catalog, self.contexts).confirm(plan_id, fingerprint, context)
 
     def runtime(self):
         config = self.store.settings()
@@ -205,10 +214,10 @@ class MaterialReceiptService:
             raise LookupError("Receipt result not found.")
         return value
 
-    def retry(self, batch_id):
+    def retry(self, batch_id, context=None):
         batch = self.batch(batch_id)
         if batch.get("operation") == "copy_file":
-            return self.copy_confirm(batch["plan_id"], batch["fingerprint"])
+            return self.copy_confirm(batch["plan_id"], batch["fingerprint"], context)
         return self.confirm(batch["plan_id"], batch["fingerprint"])
 
     def catalog_history(self, key):

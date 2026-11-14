@@ -10,6 +10,10 @@ class LibrarySearchRepository:
     def __init__(self, session, summaries):
         self.session, self.summaries = session, summaries
 
+    def copy_target_eligible(self, project_id):
+        row = self.summaries.get_row(project_id)
+        return bool(row and row.registry_state == "active" and row.display_project_id_kind != "temporary")
+
     def catalog(self):
         store = ProjectLibraryRepository(self.session)
         members = store.members()
