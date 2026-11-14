@@ -52,3 +52,10 @@ class MaterialReceiptBatchModel(Base):
     __tablename__ = "material_receipt_batches"
     batch_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ReportShortcutModel(Base):
+    __tablename__ = "library_report_shortcuts"
+    catalog_key: Mapped[str] = mapped_column(String(256), primary_key=True)
+    role: Mapped[str] = mapped_column(String(16), primary_key=True)
+    relative_path: Mapped[str] = mapped_column(Text, nullable=False)

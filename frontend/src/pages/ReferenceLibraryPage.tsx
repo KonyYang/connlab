@@ -1,3 +1,4 @@
+import type { WorkbenchCopyContext } from "../api/materialReceipts";
 import { useEffect, useMemo, useState } from "react";
 import { openReferenceFile, searchReferenceLibrary, type ReferenceProject, type BrowseFile } from "../api/referenceLibrary";
 import { ReceiveMaterials } from "../features/material-receipts/ReceiveMaterials";
@@ -12,7 +13,7 @@ const sources: Record<string,string> = { connlab: "ConnLab project", received: "
 const saved = () => { try { return JSON.parse(sessionStorage.getItem("reference-search") ?? "{}"); } catch { return {}; } };
 const initialEntry = () => new URLSearchParams(window.location.search).get("entry") ?? saved().project ?? "";
 const matchesKey = (row: ReferenceProject, key: string) => row.key === key || Boolean(row.member_id && key === "member:" + row.member_id);
-export function ReferenceLibraryPage({ onOpenProject, currentProjectId }: { onOpenProject: (id:string) => void; currentProjectId?: string | null; onOpenMember?: (id:string) => void; onOpenLinked?: (id:string) => void }) {
+export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenProject: (id:string) => void; copyContext?: WorkbenchCopyContext | null; onOpenMember?: (id:string) => void; onOpenLinked?: (id:string) => void }) {
  const direct = new URLSearchParams(window.location.search).has("entry");
  const [query,setQuery] = useState<string>(() => direct ? "" : saved().query ?? "");
  const [search,setSearch] = useState(query);
@@ -40,7 +41,7 @@ export function ReferenceLibraryPage({ onOpenProject, currentProjectId }: { onOp
    }
    if (!live) return;
    setProjects(rows); setWarnings(result.warnings);
-   setSelectedKey(current=>rows.find(row=>matchesKey(row,current))?.key ?? rows[0]?.key ?? "");
+   setSelectedKey(current=>rows.find(row=>row.key===current)?.key ?? rows.find(row=>matchesKey(row,current))?.key ?? rows[0]?.key ?? "");
   }).catch(cause=>{if(live)setError((cause as Error).message);}).finally(()=>{if(live)setBusy(false);});
   return()=>{live=false;controller.abort();};
  },[search,source,kind,reload]);
@@ -73,11 +74,11 @@ export function ReferenceLibraryPage({ onOpenProject, currentProjectId }: { onOp
    </aside>
    <section className="library-files" aria-label="Selected project materials">{selected ? <>
     <header className="library-project-heading"><h2>{selected.number || "Project materials"}</h2><p>{selected.title}</p><div className="library-location"><strong>Managed location</strong><span className="library-location-path"><UiIcon name="folder"/>{selected.folder_path || "No materials linked yet"}</span><button disabled={!selected.available} onClick={()=>void openFolder()}><UiIcon name="folder"/>Open folder</button></div><button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button></header>
-    <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>
+    <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onLocate={()=>setDetails(selected)} onCopy={file=>setCopy({project:selected,file})}/>
    </> : <div className="library-empty"><UiIcon name="folder"/><p>Select a project to view its materials.</p></div>}</section>
   </div>
   {receiving && <ReceiveMaterials initialTarget={receiveTarget} onClose={closeReceipt} onReceived={received}/>}
-  {details && <MaterialDetails project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)} onSupplement={row=>{setDetails(null);setReceiveTarget(row);setReceiving(true);}}/>}
-  {copy && <CopyMaterials source={copy.project} file={copy.file} currentProjectId={currentProjectId} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetHistory={row=>{setCopy(null);setDetails(row);setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
+  {details && <MaterialDetails copyContext={copyContext} project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)} onSupplement={row=>{setDetails(null);setReceiveTarget(row);setReceiving(true);}}/>}
+  {copy && <CopyMaterials source={copy.project} file={copy.file} context={copyContext} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetHistory={row=>{setCopy(null);setDetails(row);setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
  </section>;
 }

@@ -9,7 +9,8 @@ vi.mock("./api/client", async () => ({ ...await vi.importActual<typeof import(".
 import * as libraryApi from "./api/projectLibrary";
 import * as receipts from "./api/materialReceipts";
 import * as referenceApi from "./api/referenceLibrary";
-vi.mock("./api/materialReceipts", () => ({ getReceiptRuntime: vi.fn(), pickReceiptFolder: vi.fn(), previewReceipt: vi.fn(), confirmReceipt: vi.fn(), getReceiptBatch: vi.fn() }));
+vi.mock("./api/materialReceipts", () => ({ getReceiptRuntime: vi.fn(), pickReceiptFolder: vi.fn(), previewReceipt: vi.fn(), confirmReceipt: vi.fn(), getReceiptBatch: vi.fn(), createCopyContextSession: vi.fn(async()=>({session_id:"test-browser"})), updateCopyContext: vi.fn(async(session_id,intent)=>({session_id,intent,token:null,target:null})) }));
+vi.mock("./api/reportShortcuts",()=>({getReportShortcuts:vi.fn(async()=>({key:"project:p1",items:[]}))}));
 vi.mock("./api/referenceLibrary", () => ({ searchReferenceLibrary: vi.fn(), openReferenceFile: vi.fn() }));
 
 vi.mock("./api/projectLibrary", async () => ({
@@ -150,6 +151,7 @@ vi.mock("./components/layout/AppShell", () => ({
       <output data-testid="sidebar-project">{projectId ?? "none"}</output>
       <nav aria-label="Test sidebar">
         <button type="button" onClick={() => onNavigate("/settings")}>Settings</button>
+        <button type="button" onClick={() => onNavigate("/reference")}>Library</button>
         <button type="button" onClick={() => onNavigate("/projects")}>Projects</button>
       </nav>
       {children}
@@ -307,4 +309,22 @@ it("keeps receipt explicit while the source picker is pending", async () => {
   expect(screen.getByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
   expect(receipts.confirmReceipt).not.toHaveBeenCalled();
   expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();
+});
+
+
+it("keeps copy intent separate from sidebar last-project navigation memory",async()=>{
+ const user=userEvent.setup();window.history.replaceState({},"","/projects/P1");
+ render(<App/>);
+ await screen.findByRole("region",{name:"Project Workbench"});
+ await waitFor(()=>expect(receipts.updateCopyContext).toHaveBeenLastCalledWith("test-browser",1,"P1"));
+ const count=vi.mocked(receipts.updateCopyContext).mock.calls.length;
+ await user.click(screen.getByRole("button",{name:"Library",exact:true}));
+ await screen.findByRole("region",{name:"Project materials library"});
+ expect(receipts.updateCopyContext).toHaveBeenCalledTimes(count);
+ await user.click(screen.getByRole("button",{name:"Settings",exact:true}));
+ await waitFor(()=>expect(receipts.updateCopyContext).toHaveBeenLastCalledWith("test-browser",2,null));
+ expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
+ await user.click(screen.getByRole("button",{name:"Library",exact:true}));
+ await waitFor(()=>expect(receipts.updateCopyContext).toHaveBeenLastCalledWith("test-browser",3,null));
+ expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
 });

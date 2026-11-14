@@ -16,6 +16,9 @@ class Catalog:
         self.store = store
         self.extra = []
 
+    def copy_target_eligible(self, project_id):
+        return any(row.get('project_id') == project_id and row['source'] != 'linked' for row in self.extra)
+
     def catalog(self):
         return self.extra + self.store.catalog()
 
@@ -375,7 +378,7 @@ from sqlalchemy import create_engine, inspect
 from backend.infrastructure.storage.database import init_db
 engine = create_engine('sqlite:///'+sys.argv[1])
 init_db(engine)
-assert {'material_receipt_entries','material_receipt_settings','material_receipt_batches'}.issubset(inspect(engine).get_table_names())
+assert {'material_receipt_entries','material_receipt_settings','material_receipt_batches','library_report_shortcuts'}.issubset(inspect(engine).get_table_names())
 engine.dispose()
 """
     result = subprocess.run([sys.executable, '-c', script, str(tmp_path/'cold.sqlite3')], capture_output=True, text=True)
@@ -644,11 +647,12 @@ def test_selected_file_copy_requires_confirmation_and_only_copies_that_file(rece
              test_item='', source='linked', folder_path=str(source)),
         dict(key='project:p1', project_id='p1', member_id=None, number='CURRENT', title='Current',
              test_item='', source='connlab', folder_path=str(target))])
-    plan = service.copy_preview('linked:old', 'Reports/chosen.docx', 'project:p1', 'Reference materials/Reports')
+    context = activate_test_context(service)
+    plan = service.copy_preview('linked:old', 'Reports/chosen.docx', context, 'Reference materials/Reports')
     assert plan['status'] == 'ready'
     assert list(target.iterdir()) == []
     assert len(plan['items']) == 1
-    result = service.copy_confirm(plan['plan_id'], plan['fingerprint'])
+    result = service.copy_confirm(plan['plan_id'], plan['fingerprint'], context)
     assert result['status'] == 'completed'
     assert result['counts']['copied'] == 1
     assert (target/'Reference materials'/'Reports'/'chosen.docx').read_bytes() == b'chosen report'
@@ -657,7 +661,7 @@ def test_selected_file_copy_requires_confirmation_and_only_copies_that_file(rece
     assert (source/'Reports'/'other.docx').read_bytes() == b'other report'
     assert store.catalog() == []
     assert session.scalar(select(func.count()).select_from(ProjectModel)) == 0
-    assert service.copy_confirm(plan['plan_id'], plan['fingerprint']) == result
+    assert service.copy_confirm(plan['plan_id'], plan['fingerprint'], context) == result
 
 
 @pytest.fixture
@@ -672,35 +676,35 @@ def copy_materials(receipt, tmp_path):
              test_item='', source='linked', folder_path=str(source)),
         dict(key='project:p1', project_id='p1', member_id='m1', number='CURRENT', title='Current',
              test_item='', source='received', folder_path=str(target))])
-    return service, store, files, catalog, session, source, target
+    return service, store, files, catalog, session, source, target, activate_test_context(service)
 
 
 def test_selected_copy_archives_conflicts_and_repeat_skips_actual_preserved_file(copy_materials):
-    service, store, files, catalog, session, source, target = copy_materials
+    service, store, files, catalog, session, source, target, context = copy_materials
     (target/'Reference materials').mkdir()
     original = target/'Reference materials'/'report.docx'
     original.write_bytes(b'manual target')
-    plan = service.copy_preview('linked:old', 'report.docx', 'project:p1')
+    plan = service.copy_preview('linked:old', 'report.docx', context)
     assert plan['items'][0]['action'] == 'supplement'
-    result = service.copy_confirm(plan['plan_id'], plan['fingerprint'])
+    result = service.copy_confirm(plan['plan_id'], plan['fingerprint'], context)
     archived = target/result['items'][0]['target_relative']
     assert archived.read_bytes() == b'incoming'
     assert original.read_bytes() == b'manual target'
-    repeat = service.copy_preview('linked:old', 'report.docx', 'project:p1')
+    repeat = service.copy_preview('linked:old', 'report.docx', context)
     assert repeat['items'][0]['action'] == 'skip'
-    assert service.copy_confirm(repeat['plan_id'], repeat['fingerprint'])['counts']['skipped'] == 1
+    assert service.copy_confirm(repeat['plan_id'], repeat['fingerprint'], context)['counts']['skipped'] == 1
     archived.write_bytes(b'human archive edit')
-    new_plan = service.copy_preview('linked:old', 'report.docx', 'project:p1')
+    new_plan = service.copy_preview('linked:old', 'report.docx', context)
     assert new_plan['items'][0]['action'] == 'supplement'
-    service.copy_confirm(new_plan['plan_id'], new_plan['fingerprint'])
+    service.copy_confirm(new_plan['plan_id'], new_plan['fingerprint'], context)
     assert archived.read_bytes() == b'human archive edit'
     assert original.read_bytes() == b'manual target'
 
 
 @pytest.mark.parametrize('change', ['source_bytes', 'source_registration', 'target_bytes', 'target_registration', 'target_identity'])
 def test_selected_copy_rejects_stale_confirmation(copy_materials, tmp_path, change):
-    service, store, files, catalog, session, source, target = copy_materials
-    plan = service.copy_preview('linked:old', 'report.docx', 'project:p1')
+    service, store, files, catalog, session, source, target, context = copy_materials
+    plan = service.copy_preview('linked:old', 'report.docx', context)
     if change == 'source_bytes':
         (source/'report.docx').write_bytes(b'changed')
     elif change == 'source_registration':
@@ -713,43 +717,43 @@ def test_selected_copy_rejects_stale_confirmation(copy_materials, tmp_path, chan
     else:
         (target/'manual.txt').write_bytes(b'changed target')
     with pytest.raises(ValueError, match='changed'):
-        service.copy_confirm(plan['plan_id'], plan['fingerprint'])
+        service.copy_confirm(plan['plan_id'], plan['fingerprint'], context)
     assert not (target/'Reference materials').exists()
 
 
 def test_selected_copy_rejects_unsafe_paths_and_nonbusiness_targets(copy_materials):
-    service, store, files, catalog, session, source, target = copy_materials
+    service, store, files, catalog, session, source, target, context = copy_materials
     for relative in ('../report.docx', '/report.docx', 'report.docx:stream', 'C:/report.docx', ''):
         with pytest.raises(ValueError):
-            service.copy_preview('linked:old', relative, 'project:p1')
+            service.copy_preview('linked:old', relative, context)
     for directory in ('../outside', '/outside', 'C:/outside', 'Reports:stream', 'a/../b', 'CON'):
         with pytest.raises(ValueError):
-            service.copy_preview('linked:old', 'report.docx', 'project:p1', directory)
-    with pytest.raises(ValueError, match='existing ConnLab'):
-        service.copy_preview('linked:old', 'report.docx', 'linked:old')
+            service.copy_preview('linked:old', 'report.docx', context, directory)
+    with pytest.raises(LookupError):
+        service.update_copy_context(service.create_copy_context()['session_id'], 1, 'old')
     assert list(target.iterdir()) == []
 
 
 def test_selected_copy_control_data_is_archived_without_activation(copy_materials):
-    service, store, files, catalog, session, source, target = copy_materials
+    service, store, files, catalog, session, source, target, context = copy_materials
     (source/'.connlab').mkdir()
     (source/'.connlab'/'snapshot.json').write_bytes(b'original unparsed snapshot')
-    plan = service.copy_preview('linked:old', '.connlab/snapshot.json', 'project:p1', '.connlab')
+    plan = service.copy_preview('linked:old', '.connlab/snapshot.json', context, '.connlab')
     assert 'archived' in plan['items'][0]['reason']
-    result = service.copy_confirm(plan['plan_id'], plan['fingerprint'])
+    result = service.copy_confirm(plan['plan_id'], plan['fingerprint'], context)
     assert result['counts']['supplemented'] == 1
     assert not (target/'.connlab').exists()
     assert (target/result['items'][0]['target_relative']).read_bytes() == b'original unparsed snapshot'
 
 
 def test_selected_copy_failure_retry_preserves_manual_collision(copy_materials, monkeypatch):
-    service, store, files, catalog, session, source, target = copy_materials
-    plan = service.copy_preview('linked:old', 'report.docx', 'project:p1')
+    service, store, files, catalog, session, source, target, context = copy_materials
+    plan = service.copy_preview('linked:old', 'report.docx', context)
     publish = files.publish
     def fail(*args):
         raise OSError('Synthetic locked destination')
     monkeypatch.setattr(files, 'publish', fail)
-    result = service.copy_confirm(plan['plan_id'], plan['fingerprint'])
+    result = service.copy_confirm(plan['plan_id'], plan['fingerprint'], context)
     assert result['status'] == 'incomplete' and result['counts']['failed'] == 1
     (target/'Reference materials').mkdir()
     (target/'Reference materials'/'report.docx').write_bytes(b'later manual file')
@@ -759,7 +763,7 @@ def test_selected_copy_failure_retry_preserves_manual_collision(copy_materials, 
         fresh_catalog = Catalog(fresh_store)
         fresh_catalog.extra = catalog.extra
         resumed = MaterialReceiptService(fresh_store, MaterialReceiptFiles(files.settings), fresh_catalog)
-        retried = resumed.retry(result['batch_id'])
+        retried = resumed.retry(result['batch_id'], context)
     assert retried['status'] == 'incomplete' and retried['counts']['failed'] == 1
     assert (target/'Reference materials'/'report.docx').read_bytes() == b'later manual file'
     assert (source/'report.docx').read_bytes() == b'incoming'
@@ -769,20 +773,20 @@ def test_selected_copy_api_uses_durable_batch_namespace_and_explicit_confirmatio
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from backend.api.routes_material_receipts import router, get_material_receipt_service
-    service, store, files, catalog, session, source, target = copy_materials
+    service, store, files, catalog, session, source, target, context = copy_materials
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_material_receipt_service] = lambda: service
     with TestClient(app) as client:
         response = client.post('/api/material-receipts/copy-preview', json={
-            'source_key': 'linked:old', 'relative_path': 'report.docx', 'target_key': 'project:p1'})
+            'source_key': 'linked:old', 'relative_path': 'report.docx', 'context': context})
         assert response.status_code == 200, response.text
         plan = response.json()
         assert list(target.iterdir()) == []
         assert client.post('/api/material-receipts/copy-confirm', json={
-            'plan_id': plan['plan_id'], 'fingerprint': '0'*64}).status_code == 409
+            'plan_id': plan['plan_id'], 'fingerprint': '0'*64, 'context': context}).status_code == 409
         response = client.post('/api/material-receipts/copy-confirm', json={
-            'plan_id': plan['plan_id'], 'fingerprint': plan['fingerprint']})
+            'plan_id': plan['plan_id'], 'fingerprint': plan['fingerprint'], 'context': context})
         assert response.status_code == 200, response.text
         result = response.json()
         assert result['operation'] == 'copy_file' and result['counts']['copied'] == 1
@@ -791,15 +795,16 @@ def test_selected_copy_api_uses_durable_batch_namespace_and_explicit_confirmatio
         assert history.json()['items'][0]['batch_id'] == result['batch_id']
         assert history.json()['items'][0]['counts']['copied'] == 1
         assert client.get('/api/material-receipts/catalog-history', params={'key': 'project:missing'}).status_code == 404
-        assert client.post('/api/material-receipts/batches/'+result['batch_id']+'/retry').json() == result
+        assert client.post('/api/material-receipts/batches/'+result['batch_id']+'/retry').status_code == 409
+        assert client.post('/api/material-receipts/batches/'+result['batch_id']+'/retry', json={'context': context}).json() == result
         assert client.get('/api/material-receipts/batches/'+result['batch_id']).json() == result
 
 
 def test_selected_copy_concurrent_confirm_is_exclusive(copy_materials, monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event
-    service, store, files, catalog, session, source, target = copy_materials
-    plan = service.copy_preview('linked:old', 'report.docx', 'project:p1')
+    service, store, files, catalog, session, source, target, context = copy_materials
+    plan = service.copy_preview('linked:old', 'report.docx', context)
     entered, release = Event(), Event()
     original = MaterialReceiptFiles.publish
     def paused(self, source, target, entry, identity):
@@ -813,7 +818,7 @@ def test_selected_copy_concurrent_confirm_is_exclusive(copy_materials, monkeypat
             fresh_catalog = Catalog(fresh_store)
             fresh_catalog.extra = catalog.extra
             fresh_service = MaterialReceiptService(fresh_store, MaterialReceiptFiles(files.settings), fresh_catalog)
-            return fresh_service.copy_confirm(plan['plan_id'], plan['fingerprint'])
+            return fresh_service.copy_confirm(plan['plan_id'], plan['fingerprint'], context)
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(confirm)
         try:
@@ -829,22 +834,22 @@ def test_selected_copy_concurrent_confirm_is_exclusive(copy_materials, monkeypat
 
 
 def test_selected_copy_rejects_reparse_source_and_destination(copy_materials):
-    service, store, files, catalog, session, source, target = copy_materials
+    service, store, files, catalog, session, source, target, context = copy_materials
     try:
         (source/'redirect.docx').symlink_to(source/'report.docx')
         (target/'redirect').symlink_to(source, target_is_directory=True)
     except OSError:
         pytest.skip('Host does not allow creating test symlinks')
     with pytest.raises(ValueError, match='Redirected'):
-        service.copy_preview('linked:old', 'redirect.docx', 'project:p1')
+        service.copy_preview('linked:old', 'redirect.docx', context)
     with pytest.raises(ValueError, match='Redirected'):
-        service.copy_preview('linked:old', 'report.docx', 'project:p1', 'redirect')
+        service.copy_preview('linked:old', 'report.docx', context, 'redirect')
 
 
 def test_whole_folder_receipt_does_not_skip_file_copied_to_another_relative_directory(copy_materials):
-    service, store, files, catalog, session, source, target = copy_materials
-    copy = service.copy_preview('linked:old', 'report.docx', 'project:p1')
-    service.copy_confirm(copy['plan_id'], copy['fingerprint'])
+    service, store, files, catalog, session, source, target, context = copy_materials
+    copy = service.copy_preview('linked:old', 'report.docx', context)
+    service.copy_confirm(copy['plan_id'], copy['fingerprint'], context)
     assert (target/'Reference materials'/'report.docx').read_bytes() == b'incoming'
     assert not (target/'report.docx').exists()
     whole = service.preview(str(source), 'CURRENT', target_key='project:p1')
@@ -858,10 +863,10 @@ def test_whole_folder_receipt_does_not_skip_file_copied_to_another_relative_dire
 
 
 def test_whole_folder_receipt_reuses_selected_copy_archive_for_same_relative_destination(copy_materials):
-    service, store, files, catalog, session, source, target = copy_materials
+    service, store, files, catalog, session, source, target, context = copy_materials
     (target/'report.docx').write_bytes(b'manual target')
-    copy = service.copy_preview('linked:old', 'report.docx', 'project:p1', '')
-    copied = service.copy_confirm(copy['plan_id'], copy['fingerprint'])
+    copy = service.copy_preview('linked:old', 'report.docx', context, '')
+    copied = service.copy_confirm(copy['plan_id'], copy['fingerprint'], context)
     archived = copied['items'][0]['target_relative']
     whole = service.preview(str(source), 'CURRENT', target_key='project:p1')
     assert whole['items'][0]['action'] == 'skip'
@@ -873,9 +878,9 @@ def test_whole_folder_receipt_reuses_selected_copy_archive_for_same_relative_des
 
 
 def test_catalog_history_exposes_durable_native_copy_and_receipt_results(copy_materials, tmp_path):
-    service, store, files, catalog, session, source, target = copy_materials
-    copy = service.copy_preview('linked:old', 'report.docx', 'project:p1')
-    copied = service.copy_confirm(copy['plan_id'], copy['fingerprint'])
+    service, store, files, catalog, session, source, target, context = copy_materials
+    copy = service.copy_preview('linked:old', 'report.docx', context)
+    copied = service.copy_confirm(copy['plan_id'], copy['fingerprint'], context)
     whole = service.preview(str(source), 'CURRENT', target_key='project:p1')
     received = service.confirm(whole['plan_id'], whole['fingerprint'])
     history = service.catalog_history('project:p1')
@@ -914,3 +919,58 @@ def test_receipt_global_records_do_not_enter_legacy_project_portable_contract(re
     session.commit()
     with pytest.raises(ValueError, match='not covered by the portable contract'):
         capture(session, 'business-project')
+
+
+def activate_test_context(service):
+    session_id = service.create_copy_context()['session_id']
+    active = service.update_copy_context(session_id, 1, 'p1')
+    return {'session_id': session_id, 'token': active['token']}
+
+
+def test_copy_context_is_required_for_preview_confirm_and_generic_retry(copy_materials):
+    service, store, files, catalog, session, source, target, context = copy_materials
+    plan = service.copy_preview('linked:old', 'report.docx', context)
+    service.update_copy_context(context['session_id'], 2, None)
+    with pytest.raises(ValueError, match='Workbench'):
+        service.copy_confirm(plan['plan_id'], plan['fingerprint'], context)
+    assert not (target/'Reference materials').exists()
+    replacement = service.update_copy_context(context['session_id'], 3, 'p1')
+    renewed = {'session_id': context['session_id'], 'token': replacement['token']}
+    with pytest.raises(ValueError, match='context changed'):
+        service.copy_confirm(plan['plan_id'], plan['fingerprint'], renewed)
+    current = service.copy_preview('linked:old', 'report.docx', renewed)
+    result = service.copy_confirm(current['plan_id'], current['fingerprint'], renewed)
+    service.update_copy_context(context['session_id'], 4, None)
+    assert service.batch(result['batch_id']) == result
+    with pytest.raises(ValueError, match='Workbench'):
+        service.retry(result['batch_id'], renewed)
+    with pytest.raises(ValueError, match='Workbench'):
+        service.retry(result['batch_id'])
+    with pytest.raises(ValueError, match='Workbench'):
+        service.copy_preview('linked:old', 'report.docx', None)
+
+
+def test_copy_http_never_accepts_target_only_or_stale_context(copy_materials):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from backend.api.routes_material_receipts import router, get_material_receipt_service
+    service, store, files, catalog, session, source, target, context = copy_materials
+    app=FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_material_receipt_service]=lambda:service
+    with TestClient(app) as client:
+        base='/api/material-receipts'
+        legacy={'source_key':'linked:old','relative_path':'report.docx','target_key':'project:p1'}
+        assert client.post(base+'/copy-preview',json=legacy).status_code == 422
+        valid={'source_key':'linked:old','relative_path':'report.docx','context':context}
+        assert client.post(base+'/copy-preview',json={**valid,'target_key':'project:p1'}).status_code == 422
+        plan=client.post(base+'/copy-preview',json=valid).json()
+        confirm={'plan_id':plan['plan_id'],'fingerprint':plan['fingerprint']}
+        assert client.post(base+'/copy-confirm',json=confirm).status_code == 422
+        cleared=client.post(base+'/copy-context',json={'session_id':context['session_id'],'intent':3,'project_id':None})
+        assert cleared.status_code == 200 and cleared.json()['target'] is None
+        stale=client.post(base+'/copy-context',json={'session_id':context['session_id'],'intent':2,'project_id':'p1'})
+        assert stale.status_code == 409
+        assert client.post(base+'/copy-confirm',json={**confirm,'context':context}).status_code == 409
+        assert client.post(base+'/copy-preview',json=valid).status_code == 409
+    assert list(target.iterdir()) == []

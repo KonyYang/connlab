@@ -25,6 +25,25 @@ class MaterialReceiptFiles:
         self.settings = settings
         self.control = LibraryFiles(settings)
 
+    def report_pointer(self, root, relative, require_file=False):
+        from datetime import timezone
+        from backend.infrastructure.project_library.search_files import SearchFiles
+        try:
+            if not root:
+                raise ValueError("No material folder is linked yet.")
+            path = SearchFiles().resolve(root, relative)
+            if not path.is_file():
+                raise ValueError("The selected report file is unavailable. Select it again or locate its folder.")
+            return {"relative_path": path.relative_to(checked_path(root)).as_posix(),
+                    "available": True, "modified_at": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()}
+        except (OSError, ValueError):
+            if require_file:
+                raise
+            return {"relative_path": relative, "available": False, "modified_at": None}
+
+    def root_identity(self, root):
+        return identity(self.root(root))
+
     def selected_file(self, root, relative):
         from backend.infrastructure.project_library.material_copy_files import MaterialCopyFiles
         return MaterialCopyFiles(self).selected(root, relative)
