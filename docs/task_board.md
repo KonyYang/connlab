@@ -559,6 +559,7 @@
           "backend/application/project_library/search.py",
           "backend/infrastructure/project_library/material_copy_files.py",
           "backend/infrastructure/project_library/material_receipt_files.py",
+          "backend/infrastructure/project_library/ownership.py",
           "backend/infrastructure/project_library/search_files.py",
           "backend/infrastructure/storage/models_project_library.py",
           "backend/infrastructure/storage/repositories/library_search.py",
@@ -591,7 +592,7 @@
         ],
         "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
         "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-14T00:04:57.745719Z",
+        "updated_at": "2026-11-14T00:22:00.497861Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
