@@ -1,0 +1,26 @@
+import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, expect, it, vi } from "vitest";
+import { CopyMaterials } from "./CopyMaterials";
+import * as api from "../../api/materialReceipts";
+import { searchReferenceLibrary } from "../../api/referenceLibrary";
+vi.mock("../../api/materialReceipts",()=>({previewMaterialCopy:vi.fn(),confirmMaterialCopy:vi.fn(),retryReceipt:vi.fn()}));
+vi.mock("../../api/referenceLibrary",()=>({searchReferenceLibrary:vi.fn(),openReferenceFile:vi.fn()}));
+const source={key:"receipt:old",project_id:null,member_id:null,number:"Old-1",title:"Old product",test_item:"",source:"received",available:true,folder_path:"D:/old-managed"};
+const target={...source,key:"project:p1",project_id:"p1",number:"New-1",title:"Current product",source:"connlab",folder_path:"D:/current"};
+beforeEach(()=>{vi.resetAllMocks();vi.mocked(searchReferenceLibrary).mockResolvedValue({projects:[target],files:[],total:0,warnings:[]});});
+it("requires target review and explicit confirmation for a selected file",async()=>{
+ const user=userEvent.setup();const copied=vi.fn();
+ const plan={status:"ready" as const,candidates:[],plan_id:"copy-plan",fingerprint:"hash",target_path:"D:/current",items:[{relative_path:"Reports/report.docx",target_relative:"补充资料/batch/report.docx",directory:false,action:"supplement",reason:"Existing report retained."}]};
+ vi.mocked(api.previewMaterialCopy).mockResolvedValue(plan);
+ vi.mocked(api.confirmMaterialCopy).mockResolvedValue({batch_id:"copy1",status:"completed",target_key:"project:p1",target_path:"D:/current",source_path:"D:/old-managed/Reports/report.docx",receipt_id:null,items:[],counts:{supplemented:1},directory_counts:{}});
+ render(<CopyMaterials source={source} file={{name:"report.docx",relative_path:"Reports/report.docx",is_directory:false,modified_at:null,extension:".docx"}} currentProjectId="p1" onClose={vi.fn()} onCopied={copied}/>);
+ await screen.findByText("Project location: D:/current");
+ expect(api.confirmMaterialCopy).not.toHaveBeenCalled();
+ await act(async()=>{await user.click(screen.getByRole("button",{name:"Check destination"}));});
+ expect(api.previewMaterialCopy).toHaveBeenCalledWith({source_key:"receipt:old",relative_path:"Reports/report.docx",target_key:"project:p1",target_relative_directory:"Reference materials"});
+ expect(await screen.findByText("补充资料/batch/report.docx")).toBeTruthy();
+ expect(api.confirmMaterialCopy).not.toHaveBeenCalled();
+ await act(async()=>{await user.click(screen.getByRole("button",{name:"Confirm copy"}));});
+ expect(api.confirmMaterialCopy).toHaveBeenCalledWith(plan);expect(copied).toHaveBeenCalled();
+});

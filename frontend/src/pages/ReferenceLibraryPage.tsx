@@ -1,69 +1,83 @@
-import { useEffect, useRef, useState } from "react";
-import { openReferenceFile, searchReferenceLibrary, type ReferenceResults } from "../api/referenceLibrary";
+import { useEffect, useMemo, useState } from "react";
+import { openReferenceFile, searchReferenceLibrary, type ReferenceProject, type BrowseFile } from "../api/referenceLibrary";
+import { ReceiveMaterials } from "../features/material-receipts/ReceiveMaterials";
+import { MaterialDetails } from "../features/material-receipts/MaterialDetails";
+import { MaterialFiles } from "../features/material-receipts/MaterialFiles";
+import { CopyMaterials } from "../features/material-receipts/CopyMaterials";
+import { UiIcon } from "../components/common/UiIcon";
 import "./reference-library.css";
 
-const kinds: Record<string, string> = { application: "Application", plan: "Test plan", record: "Test record", report: "Report", photo: "Photo", other: "Other" };
-const sources: Record<string, string> = { connlab: "ConnLab project", received: "Received materials", linked: "Linked folder" };
+const kinds: Record<string,string> = { application: "Application", plan: "Test plan", record: "Test record", report: "Report", photo: "Photo", other: "Other" };
+const sources: Record<string,string> = { connlab: "ConnLab project", received: "Received materials", linked: "Linked folder" };
 const saved = () => { try { return JSON.parse(sessionStorage.getItem("reference-search") ?? "{}"); } catch { return {}; } };
-export function ReferenceLibraryPage({ onOpenProject, onOpenMember, onOpenLinked }: { onOpenProject: (id: string) => void; onOpenMember: (id: string) => void; onOpenLinked?: (id: string) => void }) {
-  const [query, setQuery] = useState<string>(() => saved().query ?? "");
-  const [search, setSearch] = useState<string>(() => saved().query ?? "");
-  const [source, setSource] = useState<string>(() => saved().source ?? "all");
-  const [kind, setKind] = useState<string>(() => saved().kind ?? "all");
-  const [view, setView] = useState<string>(() => saved().view ?? "files");
-  const [project, setProject] = useState<string>(() => saved().project ?? "");
-  const [offset, setOffset] = useState(0);
-  const [reload, setReload] = useState(0);
-  const [data, setData] = useState<ReferenceResults | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const epoch = useRef(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    const current = ++epoch.current;
-    setBusy(true); setError(""); setData(null);
-    sessionStorage.setItem("reference-search", JSON.stringify({ query: search, source, kind, view, project }));
-    void searchReferenceLibrary(search, source, kind, project, offset, controller.signal).then(result => {
-      if (current === epoch.current && !controller.signal.aborted) setData(result);
-    }).catch(cause => { if (!controller.signal.aborted) setError((cause as Error).message); })
-      .finally(() => { if (!controller.signal.aborted) setBusy(false); });
-    return () => controller.abort();
-  }, [search, source, kind, project, offset, reload]);
-  async function open(key: string, path = "", containing = false) {
-    const current = epoch.current;
-    setError("");
-    try { await openReferenceFile(key, path, containing); }
-    catch (cause) { if (current === epoch.current) setError((cause as Error).message); }
-  }
-  function selectView(next: string) {
-    setView(next);
-    sessionStorage.setItem("reference-search", JSON.stringify({ query: search, source, kind, view: next, project }));
-  }
-  return <section className="reference-library" aria-label="Project materials library">
-    <form className="reference-search" onSubmit={event => { event.preventDefault(); setSearch(query); setOffset(0); setReload(value => value + 1); }}>
-      <input aria-label="Search project materials" placeholder="Project number, product, test item or filename…" value={query} onChange={event => setQuery(event.target.value)} />
-      <button type="submit" disabled={busy}>Search</button>
-      <button type="button" disabled={busy} onClick={() => setReload(value => value + 1)}>Refresh</button>
-    </form>
-    <div className="reference-filters">
-      <label>Source <select value={source} onChange={event => { setSource(event.target.value); setOffset(0); }}><option value="all">All sources</option>{Object.entries(sources).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-      <label>Material type <select value={kind} onChange={event => { setKind(event.target.value); setOffset(0); }}>{[ ["all", "All types"], ...Object.entries(kinds)].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-      <button type="button" onClick={() => { setQuery(""); setSearch(""); setSource("all"); setKind("all"); setProject(""); setOffset(0); }}>Clear filters</button>
-    </div>
-    {error && <p role="alert">{error} <button onClick={() => setReload(value => value + 1)}>Retry</button></p>}
-    {busy && <p role="status">Searching project materials…</p>}
-    {data?.warnings.length ? <div role="status">{data.warnings.map(note => <p key={note}>{note}</p>)}</div> : null}
-    {project && <div className="reference-filters"><span>Browsing project materials</span><button onClick={() => { setProject(""); setOffset(0); }}>All projects</button></div>}
-    <div className="reference-filters"><button aria-pressed={view === "files"} onClick={() => selectView("files")}>Files</button><button aria-pressed={view === "projects"} onClick={() => selectView("projects")}>Projects</button></div>
-    {data && (view === "projects" || !search && !project && kind === "all") ? <div className="reference-results"><table><thead><tr><th>Project / Product</th><th>Test item</th><th>Source / Location</th><th>Actions</th></tr></thead><tbody>{data.projects.map(row => <tr key={row.key}>
-      <td><span>{row.number || "No number"}</span><strong>{row.title}</strong></td><td>{row.test_item || "Not recorded"}</td><td>{sources[row.source]}{!row.available && <p>Material location unavailable</p>}</td>
-      <td><button onClick={() => { setProject(row.key); setOffset(0); selectView("files"); }}>Browse files</button><button disabled={!row.available} onClick={() => void open(row.key)}>Open folder</button>{row.member_id ? <button onClick={() => onOpenMember(row.member_id!)}>Details / Locate folder</button> : row.project_id ? <button onClick={() => onOpenProject(row.project_id!)}>Project workspace</button> : row.key.startsWith("linked:") ? <button onClick={() => onOpenLinked?.(row.key.slice(7))}>Details / Locate folder</button> : null}</td>
-    </tr>)}</tbody></table>{!data.projects.length && <p>No matching projects. Check filters or refresh.</p>}</div> : data && <>
-      <p>{data.total} matching files</p><div className="reference-results"><table><thead><tr><th>Filename</th><th>Project / Product</th><th>Material type</th><th>Directory</th><th>Actions</th></tr></thead><tbody>{data.files.map(row => <tr key={`${row.key}:${row.relative_path}`}>
-        <td><button onClick={() => void open(row.key, row.relative_path, false)}>{row.name}</button></td><td><button onClick={() => { setProject(row.key); setOffset(0); }}>{row.number || "No number"}</button><span>{row.title}</span></td><td>{kinds[row.kind]}</td><td>{row.directory === "." ? "Project root" : row.directory}</td><td><button onClick={() => void open(row.key, row.relative_path, true)}>Open containing folder</button></td>
-      </tr>)}</tbody></table></div>
-      {!data.files.length && <p>No matching files. Check keywords and filters. Any incomplete locations are listed above.</p>}
-      <div className="reference-filters"><button disabled={offset === 0 || busy} onClick={() => setOffset(value => Math.max(0, value - 100))}>Previous</button><button disabled={offset + 100 >= data.total || busy} onClick={() => setOffset(value => value + 100)}>Next</button></div>
-    </>}
-  </section>;
+const initialEntry = () => new URLSearchParams(window.location.search).get("entry") ?? saved().project ?? "";
+const matchesKey = (row: ReferenceProject, key: string) => row.key === key || Boolean(row.member_id && key === "member:" + row.member_id);
+export function ReferenceLibraryPage({ onOpenProject, currentProjectId }: { onOpenProject: (id:string) => void; currentProjectId?: string | null; onOpenMember?: (id:string) => void; onOpenLinked?: (id:string) => void }) {
+ const direct = new URLSearchParams(window.location.search).has("entry");
+ const [query,setQuery] = useState<string>(() => direct ? "" : saved().query ?? "");
+ const [search,setSearch] = useState(query);
+ const [source,setSource] = useState<string>(() => direct ? "all" : saved().source ?? "all");
+ const [kind,setKind] = useState<string>(() => direct ? "all" : saved().kind ?? "all");
+ const [selectedKey,setSelectedKey] = useState<string>(initialEntry);
+ const [projects,setProjects] = useState<ReferenceProject[]>([]);
+ const [warnings,setWarnings] = useState<string[]>([]);
+ const [browseWarnings,setBrowseWarnings] = useState<string[]>([]);
+ const [error,setError] = useState("");
+ const [busy,setBusy] = useState(false);
+ const [reload,setReload] = useState(0);
+ const [receiving,setReceiving] = useState(() => new URLSearchParams(window.location.search).get("receive") === "1");
+ const [receiveTarget,setReceiveTarget] = useState<ReferenceProject | null>(null);
+ const [details,setDetails] = useState<ReferenceProject | null>(null);
+ const [copy,setCopy] = useState<{project:ReferenceProject;file:BrowseFile} | null>(null);
+ useEffect(() => {
+  let live=true; const controller=new AbortController(); setBusy(true); setError(""); setBrowseWarnings([]);
+  sessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));
+  void searchReferenceLibrary(search,source,kind,"",0,controller.signal).then(async result => {
+   let rows=result.projects;
+   if (!search && source === "all" && kind === "all" && selectedKey && !rows.some(row=>matchesKey(row,selectedKey))) {
+    const extra=await searchReferenceLibrary("","all","all",selectedKey,0,controller.signal);
+    rows=[...rows,...extra.projects.filter(row=>!rows.some(old=>old.key===row.key))];
+   }
+   if (!live) return;
+   setProjects(rows); setWarnings(result.warnings);
+   setSelectedKey(current=>rows.find(row=>matchesKey(row,current))?.key ?? rows[0]?.key ?? "");
+  }).catch(cause=>{if(live)setError((cause as Error).message);}).finally(()=>{if(live)setBusy(false);});
+  return()=>{live=false;controller.abort();};
+ },[search,source,kind,reload]);
+ const selected=projects.find(row=>row.key===selectedKey) ?? null;
+ useEffect(()=>{sessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));},[selectedKey,search,source,kind]);
+ const issues=useMemo(()=>Array.from(new Set([...(error?[error]:[]),...warnings,...browseWarnings])),[error,warnings,browseWarnings]);
+ const lost=projects.filter(row=>!row.available && row.folder_path);
+ function closeReceipt(){setReceiving(false);const url=new URL(window.location.href);url.searchParams.delete("receive");window.history.replaceState(null,"",url);}
+ function received(key:string){closeReceipt();setSelectedKey(key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}
+ async function openFolder(){if(!selected)return;setError("");try{await openReferenceFile(selected.key);}catch(cause){setError((cause as Error).message);}}
+ return <section className="reference-library" aria-label="Project materials library">
+  <form className="library-search" onSubmit={event=>{event.preventDefault();setSearch(query);setReload(value=>value+1);}}>
+   <div className="library-search-input"><UiIcon name="search"/><input aria-label="Search project materials" placeholder="Project number, product, test item or filename…" value={query} onChange={event=>setQuery(event.target.value)}/></div>
+   <button className="library-primary" type="submit" disabled={busy}>Search</button><button className="library-primary" type="button" onClick={()=>{setReceiveTarget(null);setReceiving(true);}}><UiIcon name="new-project"/>Receive materials</button>
+  </form>
+  <div className="library-filters">
+   <label><span className="library-sr-only">Source</span><select value={source} onChange={event=>setSource(event.target.value)}><option value="all">All sources</option>{Object.entries(sources).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+   <label><span className="library-sr-only">Material type</span><select value={kind} onChange={event=>setKind(event.target.value)}><option value="all">All material types</option>{Object.entries(kinds).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+   {(search || source!=="all" || kind!=="all") && <button onClick={()=>{setQuery("");setSearch("");setSource("all");setKind("all");}}>Clear filters</button>}
+   <button className="library-refresh" disabled={busy} onClick={()=>setReload(value=>value+1)}><UiIcon name="refresh"/>Refresh</button>
+  </div>
+  {issues.length>0 && <div className="library-issues" role={error?"alert":"status"}><details><summary>{lost.length ? lost.length+" material location(s) unavailable" : "Materials need attention"}<span>View issues and locate</span></summary><ul>{issues.map(note=><li key={note}>{note}</li>)}</ul>{lost.map(row=><button key={row.key} onClick={()=>{setSelectedKey(row.key);setDetails(row);}}>Locate {row.number || row.title}</button>)}{error && <button onClick={()=>setReload(value=>value+1)}>Retry</button>}</details></div>}
+  <div className="library-workspace">
+   <aside className="library-projects" aria-label="Project materials"><header><strong>Project materials</strong><span>{projects.length}</span></header>{busy && <p role="status">Searching…</p>}
+    <div className="library-project-list">{projects.map(row=><div className={"library-project-card"+(row.key===selectedKey?" is-selected":"")} key={row.key}>
+     <button className="library-project-choice" aria-pressed={row.key===selectedKey} onClick={()=>{setSelectedKey(row.key);setError("");}}><strong>{row.number || "No number"}</strong><span>{row.title || "Not recorded"}</span><small>{sources[row.source]}</small>{!row.available && <em>{row.folder_path?"Original location unavailable":"No materials linked yet"}</em>}</button>
+     {!row.available && row.folder_path && <button className="library-locate-link" onClick={()=>setDetails(row)}>Locate folder</button>}
+    </div>)}</div>
+    {!busy && !projects.length && <p className="library-empty">{search?"No matching project materials.":"No linked materials to show. Search to find unlinked projects, or receive existing files."}</p>}
+   </aside>
+   <section className="library-files" aria-label="Selected project materials">{selected ? <>
+    <header className="library-project-heading"><h2>{selected.number || "Project materials"}</h2><p>{selected.title}</p><div className="library-location"><strong>Managed location</strong><span className="library-location-path"><UiIcon name="folder"/>{selected.folder_path || "No materials linked yet"}</span><button disabled={!selected.available} onClick={()=>void openFolder()}><UiIcon name="folder"/>Open folder</button></div><button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button></header>
+    <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>
+   </> : <div className="library-empty"><UiIcon name="folder"/><p>Select a project to view its materials.</p></div>}</section>
+  </div>
+  {receiving && <ReceiveMaterials initialTarget={receiveTarget} onClose={closeReceipt} onReceived={received}/>}
+  {details && <MaterialDetails project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)} onSupplement={row=>{setDetails(null);setReceiveTarget(row);setReceiving(true);}}/>}
+  {copy && <CopyMaterials source={copy.project} file={copy.file} currentProjectId={currentProjectId} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)}/>}
+ </section>;
 }

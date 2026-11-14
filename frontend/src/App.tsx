@@ -201,7 +201,6 @@ function parseCurrentRoute(): Route {
 
 export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(parseCurrentRoute);
-  const [projectImportOpen, setProjectImportOpen] = useState(false);
   const resumeTemperatureWorkspace = useRef<boolean | null>(route.name === "temperatureRise" ? true : null);
   const navigationGeneration = useRef(0);
   const [intakeSession, setIntakeSession] =
@@ -242,11 +241,6 @@ export default function App(): ReactElement {
     }
   }, [intakeInteractionLockReason, route.name]);
 
-  useEffect(() => {
-    if (route.name !== "projects" && route.name !== "projectLibraryList") {
-      setProjectImportOpen(false);
-    }
-  }, [route.name]);
 
   function handleShellNavigate(path: string): void {
     const generation = ++navigationGeneration.current;
@@ -336,27 +330,17 @@ export default function App(): ReactElement {
     >
       <RouteLoadBoundary key={JSON.stringify(route)}>
       <Suspense fallback={<RouteLoadingFallback />}>
-      {route.name === "reference" && <ReferenceLibraryPage onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}?from=reference`)} onOpenLinked={id => navigate(`/legacy-projects/${encodeURIComponent(id)}?from=reference`)} />}
+      {route.name === "reference" && <ReferenceLibraryPage currentProjectId={openProjectId} onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} />}
       {(route.name === "projects" || route.name === "projectLibraryList") && (
         <>
           <ProjectListPage
             onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}${batchSuffix}`)}
             batchId={importBatchId}
             onViewAll={() => navigate('/projects')}
-            onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}${batchSuffix}`)}
-            onOpenLinked={id => navigate(`/legacy-projects/${encodeURIComponent(id)}${batchSuffix}`)}
-            onImport={() => setProjectImportOpen(true)}
+            onOpenMember={id => navigate(`/reference?entry=${encodeURIComponent(`member:${id}`)}`)}
+            onOpenLinked={id => navigate(`/reference?entry=${encodeURIComponent(`linked:${id}`)}`)}
+            onImport={() => navigate("/reference?receive=1")}
           />
-          {projectImportOpen && <ProjectLibraryImport
-            presentation="dialog"
-            startOnMount
-            onDismiss={() => setProjectImportOpen(false)}
-            onBack={() => setProjectImportOpen(false)}
-            onViewLibrary={() => setProjectImportOpen(false)}
-            onOpenMember={id => { setProjectImportOpen(false); navigate(`/project-library/${encodeURIComponent(id)}`); }}
-            onOpenProject={id => { setProjectImportOpen(false); navigate(`/projects/${encodeURIComponent(id)}`); }}
-            onOpenSettings={() => { setProjectImportOpen(false); navigate("/settings"); }}
-          />}
         </>
       )}
       {route.name === "intake" && (
@@ -420,7 +404,7 @@ export default function App(): ReactElement {
             navigate(`/projects/${encodeURIComponent(route.projectId)}/report-workspace`)
           }
           onOpenSettings={() => navigate("/settings")}
-          onBrowseProjectFiles={memberId => navigate(`/project-library/${encodeURIComponent(memberId)}?project=${encodeURIComponent(route.projectId)}`)}
+          onBrowseProjectFiles={() => navigate(`/reference?entry=${encodeURIComponent(`project:${route.projectId}`)}`)}
         />
       )}
       {route.name === "projectMatrixEditor" && (
