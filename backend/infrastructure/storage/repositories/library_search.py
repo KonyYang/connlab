@@ -37,4 +37,6 @@ class LibrarySearchRepository:
         for row in self.session.scalars(select(LegacyProjectRecordModel)):
             entries.append(dict(key=f"linked:{row.record_id}", project_id=None, member_id=None,
                 title=row.name, number=row.number, test_item="", source="linked", folder_path=row.folder_path))
+        from backend.infrastructure.storage.repositories.material_receipt import MaterialReceiptRepository
+        entries.extend(MaterialReceiptRepository(self.session).catalog())
         return entries

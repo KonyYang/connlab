@@ -23,6 +23,7 @@ def test_search_combines_project_fields_and_deep_filename_and_refreshes(tmp_path
     service = LibrarySearchService(Catalog(tmp_path), SearchFiles(), lambda path: None)
     result = service.search("PwrBlade 温升记录")
     assert [r["relative_path"] for r in result["files"]] == ["Records/Group 1/温升记录.xlsx"]
+    assert [r["key"] for r in result["projects"]] == ["project:p1"]
     assert result["files"][0]["kind"] == "record"
     assert service.search("DL-2026-08-079 温升")["projects"][0]["key"] == "project:p1"
     record.rename(folder / "new.xlsx")
@@ -37,6 +38,8 @@ def test_missing_root_retains_project_and_reports_incomplete_search(tmp_path):
     assert result["projects"][0]["available"] is False
     assert result["warnings"]
     assert result["files"] == []
+    browse = service.browse("project:p1")
+    assert browse["location_state"] == "unavailable" and browse["items"] == []
 
 
 def test_type_filter_without_query_and_scan_limit_are_explicit(tmp_path):
@@ -61,6 +64,8 @@ def test_redirected_files_are_not_scanned_or_opened(tmp_path):
     service = LibrarySearchService(Catalog(root), SearchFiles(), lambda path: None)
     assert service.search("report")["files"] == []
     assert service.search("report")["warnings"]
+    assert service.browse("project:p1")["items"] == []
+    assert service.browse("project:p1")["warnings"]
     with pytest.raises(ValueError):
         service.open("project:p1", "link/report.docx")
 
@@ -129,6 +134,10 @@ def test_api_unifies_existing_identities_without_copying_or_writing(tmp_path):
         assert len(result.json()["projects"]) == 3
         assert len(result.json()["files"]) == 2
         assert result.json()["warnings"]
+        browsing = client.get("/api/project-library/browse", params={"key": "member:m1"})
+        assert browsing.status_code == 200, browsing.text
+        assert browsing.json()["key"] == "project:p1"
+        assert browsing.json()["items"][0]["relative_path"] == "report.docx"
         assert client.post("/api/project-library/open-file", json={"key": "project:p1", "relative_path": "report.docx"}).status_code == 200
         assert opened == [root / "report.docx"]
         assert client.post("/api/project-library/open-file", json={"key": "project:p1", "relative_path": "../outside.docx"}).status_code == 409
@@ -137,3 +146,95 @@ def test_api_unifies_existing_identities_without_copying_or_writing(tmp_path):
     assert (root / "report.docx").read_bytes() == b"human edits"
     assert list(root.iterdir()) == [root / "report.docx"]
     engine.dispose()
+
+
+def test_unassociated_projects_are_quiet_by_default_but_explicitly_searchable(tmp_path):
+    root = tmp_path/'native'
+    root.mkdir()
+    (root/'manual.docx').write_bytes(b'untouched')
+    rows = [
+        dict(key='project:temporary', project_id='temporary', member_id=None, number='TMP-1',
+             title='Planning connector', test_item='temperature', source='connlab', folder_path=''),
+        dict(key='project:missing', project_id='missing', member_id=None, number='DL-2020-01-001',
+             title='Missing connector', test_item='temperature', source='connlab', folder_path=str(tmp_path/'missing')),
+        dict(key='project:available', project_id='available', member_id=None, number='DL-2020-01-002',
+             title='Available connector', test_item='temperature', source='connlab', folder_path=str(root)),
+    ]
+    class Entries:
+        def catalog(self):
+            return rows
+    service = LibrarySearchService(Entries(), SearchFiles(), lambda path: None)
+    default = service.search()
+    assert {row['key'] for row in default['projects']} == {'project:missing', 'project:available'}
+    assert len(default['warnings']) == 1
+    assert 'TMP-1' not in default['warnings'][0]
+    assert {row['key']: row['location_state'] for row in default['projects']} == {
+        'project:missing': 'unavailable', 'project:available': 'available'}
+    found = service.search('TMP-1')['projects']
+    assert len(found) == 1 and found[0]['location_state'] == 'unassociated' and not found[0]['available']
+    assert service.search('Planning connector')['projects'][0]['location_state'] == 'unassociated'
+    assert service.search(project='project:temporary')['projects'][0]['location_state'] == 'unassociated'
+    assert service.browse('project:temporary')['location_state'] == 'unassociated'
+    assert service.browse('project:temporary')['items'] == []
+    assert service.browse('project:temporary')['warnings'] == []
+    with pytest.raises(ValueError, match='not linked'):
+        service.open('project:temporary')
+    assert (root/'manual.docx').read_bytes() == b'untouched'
+    assert list(root.iterdir()) == [root/'manual.docx']
+
+
+def test_bound_member_navigation_resolves_canonical_project_catalog_key(tmp_path):
+    root = tmp_path/'material'
+    root.mkdir()
+    (root/'report.docx').write_bytes(b'untouched report')
+    class Entries:
+        def catalog(self):
+            return [dict(key='project:p1', project_id='p1', member_id='m1', number='DL-2020-01-001',
+                         title='Product', test_item='', source='received', folder_path=str(root))]
+    service = LibrarySearchService(Entries(), SearchFiles(), lambda path: None)
+    result = service.search(project='member:m1')
+    assert [entry['key'] for entry in result['projects']] == ['project:p1']
+    assert [row['key'] for row in result['files']] == ['project:p1']
+    assert result['files'][0]['name'] == 'report.docx'
+    assert (root/'report.docx').read_bytes() == b'untouched report'
+
+
+def test_member_navigation_keeps_distinct_member_material_location(tmp_path):
+    root = tmp_path/'material'
+    root.mkdir()
+    (root/'record.xlsx').write_bytes(b'original record')
+    class Entries:
+        def catalog(self):
+            return [dict(key='project:p1', project_id='p1', member_id='m1', number='DL-2020-01-001',
+                         title='Product', test_item='', source='connlab', folder_path=str(tmp_path/'work')),
+                    dict(key='member:m1', project_id='p1', member_id='m1', number='DL-2020-01-001',
+                         title='Original materials', test_item='', source='received', folder_path=str(root))]
+    service = LibrarySearchService(Entries(), SearchFiles(), lambda path: None)
+    result = service.search(project='member:m1')
+    assert [entry['key'] for entry in result['projects']] == ['member:m1']
+    assert [row['name'] for row in result['files']] == ['record.xlsx']
+    assert result['warnings'] == []
+    assert (root/'record.xlsx').read_bytes() == b'original record'
+
+
+def test_browse_lists_only_current_directory_and_refreshes_real_files(tmp_path):
+    folder = tmp_path/'Reports'
+    folder.mkdir()
+    (folder/'report.docx').write_bytes(b'manual report')
+    (tmp_path/'photo.JPG').write_bytes(b'photo')
+    service = LibrarySearchService(Catalog(tmp_path), SearchFiles(), lambda path: None)
+    result = service.browse('project:p1')
+    assert result['root'] == str(tmp_path)
+    assert result['current_directory'] == ''
+    assert result['location_state'] == 'available'
+    assert [(r['name'], r['is_directory']) for r in result['items']] == [('Reports', True), ('photo.JPG', False)]
+    assert result['items'][1]['extension'] == '.jpg'
+    assert result['items'][1]['modified_at']
+    nested = service.browse('project:p1', 'Reports')
+    assert nested['items'][0]['relative_path'] == 'Reports/report.docx'
+    (folder/'report.docx').rename(folder/'edited.docx')
+    assert service.browse('project:p1', 'Reports')['items'][0]['name'] == 'edited.docx'
+    for unsafe in ('../outside', 'C:/outside', 'Reports:stream', '/Reports'):
+        with pytest.raises(ValueError):
+            service.browse('project:p1', unsafe)
+    assert (folder/'edited.docx').read_bytes() == b'manual report'
