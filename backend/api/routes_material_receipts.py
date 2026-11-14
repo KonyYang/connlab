@@ -1,5 +1,5 @@
 """Receipt-only HTTP boundary; no import/adoption/portable dependencies."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from backend.api.dependencies import get_session, get_settings, get_project_registry_summary_service
 from backend.application.project_library.material_receipt import MaterialReceiptService
@@ -135,3 +135,9 @@ def copy_preview(request: CopyPreviewRequest, service=Depends(get_material_recei
 @router.post("/copy-confirm")
 def copy_confirm(request: ConfirmRequest, service=Depends(get_material_receipt_service)):
     return checked(lambda: service.copy_confirm(request.plan_id, request.fingerprint))
+
+
+@router.get("/catalog-history")
+def catalog_history(key: str = Query(..., min_length=1, max_length=256),
+                    service=Depends(get_material_receipt_service)):
+    return checked(lambda: service.catalog_history(key))

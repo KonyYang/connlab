@@ -211,6 +211,19 @@ class MaterialReceiptService:
             return self.copy_confirm(batch["plan_id"], batch["fingerprint"])
         return self.confirm(batch["plan_id"], batch["fingerprint"])
 
+    def catalog_history(self, key):
+        self.store.refresh()
+        catalog = self.catalog.catalog()
+        entry = next((row for row in catalog if row["key"] == key), None)
+        if entry is None and key.startswith("member:"):
+            entry = next((row for row in catalog if row.get("member_id") == key.removeprefix("member:")), None)
+        if entry is None:
+            raise LookupError("Material entry not found. Refresh the library.")
+        batches = self.store.batches_for_target(entry["folder_path"], entry["key"])
+        return {"items": [{field: batch.get(field) for field in
+                          ("batch_id", "status", "source_path", "created_at", "counts", "directory_counts")}
+                          for batch in sorted(batches, key=lambda row: row["created_at"], reverse=True)]}
+
     def detail(self, receipt_id):
         entry = self.store.entry(receipt_id)
         history = self.store.batches_for_target(entry["folder_path"], f"receipt:{receipt_id}")

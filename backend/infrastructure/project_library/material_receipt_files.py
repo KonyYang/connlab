@@ -132,6 +132,7 @@ class MaterialReceiptFiles:
             destination = f"{supplement}/{relative}" if conflict else relative
             preserved = next((previous for previous in prior
                 if previous["relative_path"] == relative and previous["sha256"] == entry["sha256"]
+                and previous.get("requested_target_relative", relative) == relative
                 and previous["directory"] == entry["directory"]
                 and (actual := existing.get(previous["target_relative"].casefold()))
                 and actual["directory"] == entry["directory"]

@@ -125,3 +125,12 @@ source/target registrations and physical roots, conflict archives/repeat skippin
 isolation, concurrent confirmation, failed-copy retry with manual collision, and HTTP contracts.
 All checks use temporary files/databases; OS symlink cases are skipped where host privileges
 prevent fixture creation. Ordinary copied files remain ordinary files, without automatic sync.
+
+
+`GET /api/material-receipts/catalog-history?key=...` exposes durable copy and receipt batch
+summaries for an existing canonical catalog identity, newest first, even when its directory is
+unavailable. A bound member alias resolves to its canonical project when deduplicated. Full batch
+results and explicit retry remain separate endpoints. This read-only history does not invoke
+portable state or write native metadata. Across selected-copy and whole-folder operations,
+archive reuse additionally requires the same intended destination relative path; a copy under
+`Reference materials` cannot satisfy a later receipt intended for the project's root.

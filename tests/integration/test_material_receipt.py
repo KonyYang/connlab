@@ -786,6 +786,11 @@ def test_selected_copy_api_uses_durable_batch_namespace_and_explicit_confirmatio
         assert response.status_code == 200, response.text
         result = response.json()
         assert result['operation'] == 'copy_file' and result['counts']['copied'] == 1
+        history = client.get('/api/material-receipts/catalog-history', params={'key': 'project:p1'})
+        assert history.status_code == 200, history.text
+        assert history.json()['items'][0]['batch_id'] == result['batch_id']
+        assert history.json()['items'][0]['counts']['copied'] == 1
+        assert client.get('/api/material-receipts/catalog-history', params={'key': 'project:missing'}).status_code == 404
         assert client.post('/api/material-receipts/batches/'+result['batch_id']+'/retry').json() == result
         assert client.get('/api/material-receipts/batches/'+result['batch_id']).json() == result
 
@@ -834,3 +839,52 @@ def test_selected_copy_rejects_reparse_source_and_destination(copy_materials):
         service.copy_preview('linked:old', 'redirect.docx', 'project:p1')
     with pytest.raises(ValueError, match='Redirected'):
         service.copy_preview('linked:old', 'report.docx', 'project:p1', 'redirect')
+
+
+def test_whole_folder_receipt_does_not_skip_file_copied_to_another_relative_directory(copy_materials):
+    service, store, files, catalog, session, source, target = copy_materials
+    copy = service.copy_preview('linked:old', 'report.docx', 'project:p1')
+    service.copy_confirm(copy['plan_id'], copy['fingerprint'])
+    assert (target/'Reference materials'/'report.docx').read_bytes() == b'incoming'
+    assert not (target/'report.docx').exists()
+    whole = service.preview(str(source), 'CURRENT', target_key='project:p1')
+    assert whole['items'][0]['action'] == 'copy'
+    assert whole['items'][0]['target_relative'] == 'report.docx'
+    result = service.confirm(whole['plan_id'], whole['fingerprint'])
+    assert result['counts']['copied'] == 1
+    assert (target/'report.docx').read_bytes() == b'incoming'
+    assert (target/'Reference materials'/'report.docx').read_bytes() == b'incoming'
+    assert (source/'report.docx').read_bytes() == b'incoming'
+
+
+def test_whole_folder_receipt_reuses_selected_copy_archive_for_same_relative_destination(copy_materials):
+    service, store, files, catalog, session, source, target = copy_materials
+    (target/'report.docx').write_bytes(b'manual target')
+    copy = service.copy_preview('linked:old', 'report.docx', 'project:p1', '')
+    copied = service.copy_confirm(copy['plan_id'], copy['fingerprint'])
+    archived = copied['items'][0]['target_relative']
+    whole = service.preview(str(source), 'CURRENT', target_key='project:p1')
+    assert whole['items'][0]['action'] == 'skip'
+    assert whole['items'][0]['target_relative'] == archived
+    result = service.confirm(whole['plan_id'], whole['fingerprint'])
+    assert result['counts']['skipped'] == 1
+    assert (target/'report.docx').read_bytes() == b'manual target'
+    assert (target/archived).read_bytes() == b'incoming'
+
+
+def test_catalog_history_exposes_durable_native_copy_and_receipt_results(copy_materials, tmp_path):
+    service, store, files, catalog, session, source, target = copy_materials
+    copy = service.copy_preview('linked:old', 'report.docx', 'project:p1')
+    copied = service.copy_confirm(copy['plan_id'], copy['fingerprint'])
+    whole = service.preview(str(source), 'CURRENT', target_key='project:p1')
+    received = service.confirm(whole['plan_id'], whole['fingerprint'])
+    history = service.catalog_history('project:p1')
+    assert {row['batch_id'] for row in history['items']} == {copied['batch_id'], received['batch_id']}
+    assert all(row['status'] == 'completed' and row['source_path'] == str(source) for row in history['items'])
+    assert service.catalog_history('member:m1') == history
+    assert service.catalog_history('linked:old')['items'] == []
+    target.rename(tmp_path/'moved-current')
+    assert service.catalog_history('project:p1') == history
+    with pytest.raises(LookupError):
+        service.catalog_history('project:missing')
+    assert (tmp_path/'moved-current'/'report.docx').read_bytes() == b'incoming'
