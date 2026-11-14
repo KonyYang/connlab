@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_DATABASE_INIT_RACE_20261112",
+    "task_id": "TASK_LIBRARY_REPORT_SHORTCUTS_20261114",
     "tier": "high_risk",
-    "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
-    "summary": "Fix repeated SQLite migration and concurrent cold database initialization; assess existing-project admission UX",
+    "subject": "2fdbceb3d48cf8ff34cac28682731f6bae759cca",
+    "summary": "Common internal/customer report shortcuts and explicit Workbench-bound copy context",
     "disposition": "completed",
-    "decision_ref": "User accepted and explicitly closed this materials library task. Preserve all local commits and validation records. NO push or publication; --publish-close deliberately omitted. No cleanup of business data or test evidence/worktrees.",
-    "closed_at": "2026-11-14T05:00:54.099923Z"
+    "decision_ref": "User accepted and explicitly closed common internal/customer report shortcuts and Workbench copy target task. Preserve all local implementation commits, task worktree, isolated databases, test folders and validation evidence, including real Word/Excel UI edits and four explicitly unverified symlink cases. Only verified isolated demo processes on5211/8831 were stopped;17 test material files retain identical SHA256. NO push or publication; --publish-close deliberately omitted. No business-data mutation or cleanup.",
+    "closed_at": "2026-11-14T13:34:48.468379Z"
   },
   "retained_history": [
     {
@@ -543,171 +543,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly confirmed local Close of the completed minimal deletion confirmation task. Preserve implementation and acceptance evidence. No push or publication; --publish-close intentionally omitted. No business files or database operations.",
       "closed_at": "2026-11-11T23:46:50.999417Z"
+    },
+    {
+      "task_id": "TASK_DATABASE_INIT_RACE_20261112",
+      "tier": "high_risk",
+      "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
+      "summary": "Fix repeated SQLite migration and concurrent cold database initialization; assess existing-project admission UX",
+      "disposition": "completed",
+      "decision_ref": "User accepted and explicitly closed this materials library task. Preserve all local commits and validation records. NO push or publication; --publish-close deliberately omitted. No cleanup of business data or test evidence/worktrees.",
+      "closed_at": "2026-11-14T05:00:54.099923Z"
     }
   ],
-  "tasks": {
-    "TASK_LIBRARY_REPORT_SHORTCUTS_20261114": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-report-shortcuts-20261114",
-      "branch": "codex/library-report-shortcuts-20261114",
-      "resources": [
-        "frontend-library",
-        "library-copy-context",
-        "library-metadata-schema"
-      ],
-      "integrated_head": "effa51b0d5fe66f80773c5d01282c25a0d46297c",
-      "task": {
-        "task_id": "TASK_LIBRARY_REPORT_SHORTCUTS_20261114",
-        "summary": "Common internal/customer report shortcuts and explicit Workbench-bound copy context",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Implement approved library lookup-only common report markers and require explicit live Workbench context for selected file copying. Metadata-only marker actions, no content approval/hash review/file rename or move. Isolated regressions and real frontend/backend E2E only; no business data, push or publication.",
-        "scope_paths": [
-          "backend/api/main.py",
-          "backend/api/routes_material_receipts.py",
-          "backend/api/routes_report_shortcuts.py",
-          "backend/application/project_library/catalog_entry.py",
-          "backend/application/project_library/copy_context.py",
-          "backend/application/project_library/material_copy.py",
-          "backend/application/project_library/material_receipt.py",
-          "backend/application/project_library/report_shortcuts.py",
-          "backend/infrastructure/project_library/material_receipt_files.py",
-          "backend/infrastructure/project_library/ownership.py",
-          "backend/infrastructure/storage/models_project_library.py",
-          "backend/infrastructure/storage/repositories/library_search.py",
-          "backend/infrastructure/storage/repositories/report_shortcuts.py",
-          "docs/architecture/report_shortcuts_and_copy_context.md",
-          "frontend/src/App.test.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/api/materialReceipts.ts",
-          "frontend/src/api/reportShortcuts.ts",
-          "frontend/src/features/material-receipts/CopyMaterials.test.tsx",
-          "frontend/src/features/material-receipts/CopyMaterials.tsx",
-          "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
-          "frontend/src/features/material-receipts/MaterialDetails.tsx",
-          "frontend/src/features/material-receipts/MaterialFiles.tsx",
-          "frontend/src/features/material-receipts/ReportShortcuts.test.tsx",
-          "frontend/src/features/material-receipts/ReportShortcuts.tsx",
-          "frontend/src/features/material-receipts/useWorkbenchCopyContext.test.tsx",
-          "frontend/src/features/material-receipts/useWorkbenchCopyContext.ts",
-          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.tsx",
-          "frontend/src/pages/reference-library.css",
-          "tests/integration/test_copy_context.py",
-          "tests/integration/test_material_receipt.py",
-          "tests/integration/test_report_shortcuts.py"
-        ],
-        "risk_reasons": [
-          "Additive library metadata schema and cross-request copy-target context invalidation guarding filesystem publication"
-        ],
-        "activation_head": "8c543508955c4c03d0c1c09567a655b76411d083",
-        "started_at": "2026-11-14T10:46:17.561666Z",
-        "updated_at": "2026-11-14T11:39:04.860110Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_LIBRARY_REPORT_SHORTCUTS_20261114",
-          "subject": "2fdbceb3d48cf8ff34cac28682731f6bae759cca",
-          "summary": "Implement ordinary internal/customer report shortcuts and strict explicit Workbench copy context; independently reviewed and verified with isolated real frontend/backend E2E. No real business data mutation, push or publication.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/main.py",
-            "backend/api/routes_material_receipts.py",
-            "backend/api/routes_report_shortcuts.py",
-            "backend/application/project_library/catalog_entry.py",
-            "backend/application/project_library/copy_context.py",
-            "backend/application/project_library/material_copy.py",
-            "backend/application/project_library/material_receipt.py",
-            "backend/application/project_library/report_shortcuts.py",
-            "backend/infrastructure/project_library/material_receipt_files.py",
-            "backend/infrastructure/project_library/ownership.py",
-            "backend/infrastructure/storage/models_project_library.py",
-            "backend/infrastructure/storage/repositories/library_search.py",
-            "backend/infrastructure/storage/repositories/report_shortcuts.py",
-            "docs/architecture/report_shortcuts_and_copy_context.md",
-            "frontend/src/App.test.tsx",
-            "frontend/src/App.tsx",
-            "frontend/src/api/materialReceipts.ts",
-            "frontend/src/api/reportShortcuts.ts",
-            "frontend/src/features/material-receipts/CopyMaterials.test.tsx",
-            "frontend/src/features/material-receipts/CopyMaterials.tsx",
-            "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
-            "frontend/src/features/material-receipts/MaterialDetails.tsx",
-            "frontend/src/features/material-receipts/MaterialFiles.tsx",
-            "frontend/src/features/material-receipts/ReportShortcuts.test.tsx",
-            "frontend/src/features/material-receipts/ReportShortcuts.tsx",
-            "frontend/src/features/material-receipts/useWorkbenchCopyContext.test.tsx",
-            "frontend/src/features/material-receipts/useWorkbenchCopyContext.ts",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx",
-            "frontend/src/pages/reference-library.css",
-            "tests/integration/test_copy_context.py",
-            "tests/integration/test_material_receipt.py",
-            "tests/integration/test_report_shortcuts.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "command": "Affected backend pytest matrix plus bounded QA environment correction rerun",
-              "result": "148 unique passed, 4 Windows symlink-privilege skips. Initial 3 global-environment conflicts retained in evidence; only those three rerun and passed after clearing QA overrides. Source unchanged."
-            },
-            {
-              "status": "passed",
-              "command": "Affected frontend Vitest 17 files, followed sequentially by TypeScript/Vite production build",
-              "result": "197 tests passed; production build passed on exact reviewed subject."
-            },
-            {
-              "status": "passed",
-              "command": "Actual built frontend5201 -> transparent proxy -> actual FastAPI8821; isolated SQLite and folders",
-              "result": "233 real API requests without mocks. Shortcut set/open/replace/cancel/missing/reselect/relocate and same-path edits passed; clear/switch rejected stale confirms/retries, reload had no inferred target. Sparse Matrix/fee fixture404/409 and intentional stale409 documented, no Office execution claim."
-            },
-            {
-              "status": "passed",
-              "command": "Filesystem hashes, 65 business-table snapshots, wide/narrow screenshots and process audit",
-              "result": "Source hashes and 65 business tables unchanged; A received no writes; B original conflict file retained with exactly one supplementary file and no inherited markers. 1440/595 screenshots inspected. Own QA services/browser/editor stopped. Primary8000/5173 reload services stopped before integration to prevent real-database initialization; not restarted."
-            },
-            {
-              "status": "passed",
-              "command": "Independent exact-diff Standards/Spec review and integration preflight",
-              "result": "Reviewer0 actionable findings on both axes. Independent Integrator verified exact33paths, clean trees, subject/parent, board-only primary delta, matching evidence and all four ports closed."
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "context": "Independent /root/planner planned path-only catalog shortcuts, per-browser monotonic live copy context and isolation acceptance."
-            },
-            "developer": {
-              "status": "passed",
-              "context": "Independent /root/developer sole source writer committed2fdbceb3; focused RED/GREEN regressions, backend29passed2skips, frontend39passed and tsc; clean immutable handoff."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Independent /root/reviewer exact33-file Standards/Spec static review:0findings each; no duplicate complete QA."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Independent /root/qa completed affected matrix, build, actual connected browser233requests, disk/DB invariants, screenshots and shutdown on exactsubject."
-            },
-            "integrator": {
-              "status": "passed",
-              "context": "Independent /root/integrator preflight admitted serial local integration after actual evidence/tree/parents/scope/clean/port checks; sole writer performs actual merge and independent post-check follows."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "2fdbceb3d48cf8ff34cac28682731f6bae759cca",
-            "primary_before": "fe79343cfe6209b660233ef8809aebb606ced5c0",
-            "integrated_head": "effa51b0d5fe66f80773c5d01282c25a0d46297c",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
