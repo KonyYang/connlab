@@ -3,8 +3,9 @@
 Approved baseline: find project material, receive managed copies, and use reference
 files safely. Stage 1 implements only discovery and access through `/reference`.
 
-- Projects remains the execution workspace. Existing intake, recovery and legacy
-  registrations remain available. No registration migration or file relocation.
+- Projects remains the execution workspace. Existing project and legacy registrations remain intact. Historical import/recovery
+  implementations remain compatibility code only; ordinary library navigation does not
+  enter them or call portable-data APIs. No registration migration or file relocation.
 - Read-only catalog combines existing registry summaries, explicit member/project
   associations, workspace/folder records and legacy links. Same numbers do not merge
   identities. Equivalent Windows paths for an explicitly associated member are not
@@ -30,4 +31,11 @@ does not create historical versions or copy reference files to execution project
 Acceptance: search by each supported field and combined terms; browse deep files;
 filter by source/type; open document/containing folder; refresh after rename/delete;
 retain missing locations with navigation to existing location controls; preserve all
-files and project data; retain original Projects and recovery navigation.
+files and project data; retain existing project identities and verify that ordinary navigation has no recovery links.
+
+The current library workspace uses top search/receive controls, a project list and a
+selected-project folder browser. Narrow windows stack these panes. Browser contents
+come from actual directory entries; no file classification moves or renames materials.
+Selected-file copy requires an explicit native project and target directory, a current
+conflict preview, and confirmation. It shares receipt publication protections and
+never updates Matrix, lifecycle, workspace bindings or portable snapshots.
