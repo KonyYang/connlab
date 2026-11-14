@@ -41,6 +41,13 @@ def search_library(q: str = Query("", max_length=512), source: str = Query("all"
     return checked(lambda: service.search(q, source, kind, project, offset))
 
 
+@router.get("/browse")
+def browse_library(key: str = Query(..., min_length=1, max_length=256),
+                   relative_directory: str = Query("", max_length=4096),
+                   service=Depends(get_library_search_service)):
+    return checked(lambda: service.browse(key, relative_directory))
+
+
 class LibraryOpenRequest(BaseModel):
     key: str = Field(max_length=256)
     relative_path: str = Field(default="", max_length=4096)

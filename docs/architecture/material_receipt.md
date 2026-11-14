@@ -94,3 +94,34 @@ new received entry registration as well as physical destination identity, so rel
 metadata revision requires a fresh preview instead of resuming writes to an old location.
 Journal history and prior-conflict matching use the stable target key; after a managed folder
 move, duplicate skipping still verifies the archived bytes at the current registered location.
+
+
+Ordinary directory browsing uses `GET /api/project-library/browse` with a stable catalog key
+and `relative_directory`. It lists only immediate children with type, extension, modified time,
+and root-relative paths; refresh reads current disk state. Missing roots retain their catalog
+identity, while unassociated native projects have no directory to browse. Redirected paths,
+traversal, drives and alternate data streams are rejected. Filename search results include the
+matching project's catalog metadata for the two-pane navigation surface.
+
+Selected-file copying is a separate application service and file-plan adapter. The public
+`/api/material-receipts/copy-preview` input is `source_key`, `relative_path`, `target_key`, and
+`target_relative_directory` (default `Reference materials`); `/copy-confirm` accepts the saved
+plan ID and fingerprint. Roots and target project identity are server-derived. Only an existing
+business project can be the destination, including project-bound imported material entries.
+The copy service uses the same project/library locks, exclusive publication and receipt journal,
+but does not create a received identity, business Project, Matrix, snapshot or restoration state.
+A preview authorizes one file only. Source hash/root identity, target registration/root identity
+and target contents are rechecked at confirmation. Equal content is skipped; conflicts and
+ConnLab control data are archived under a batch supplementary directory without replacing the
+selected destination. Repeated archived files are skipped only after current-byte verification.
+A failed copy retains an explicit result and uses the normal batch retry endpoint; a later manual
+collision is never overwritten. Completed batch replay returns its historical result without
+re-copying files. Selected-file confirmation currently inventories the destination root for stale
+preview and conflict checks, so very large roots incur bounded receipt inventory costs.
+
+Acceptance coverage includes browsing refresh and containment, filename-to-project navigation,
+exact selected-file publication, explicit confirmation, native-only target eligibility, changed
+source/target registrations and physical roots, conflict archives/repeat skipping, control-data
+isolation, concurrent confirmation, failed-copy retry with manual collision, and HTTP contracts.
+All checks use temporary files/databases; OS symlink cases are skipped where host privileges
+prevent fixture creation. Ordinary copied files remain ordinary files, without automatic sync.

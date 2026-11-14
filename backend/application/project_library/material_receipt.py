@@ -9,6 +9,15 @@ class MaterialReceiptService:
     def __init__(self, store, files, catalog):
         self.store, self.files, self.catalog = store, files, catalog
 
+    def copy_preview(self, source_key, relative_path, target_key, target_relative_directory="Reference materials"):
+        from backend.application.project_library.material_copy import MaterialCopyService
+        return MaterialCopyService(self.store, self.files, self.catalog).preview(
+            source_key, relative_path, target_key, target_relative_directory)
+
+    def copy_confirm(self, plan_id, fingerprint):
+        from backend.application.project_library.material_copy import MaterialCopyService
+        return MaterialCopyService(self.store, self.files, self.catalog).confirm(plan_id, fingerprint)
+
     def runtime(self):
         config = self.store.settings()
         return {**config, "configured": bool(config["root_path"]),
@@ -198,6 +207,8 @@ class MaterialReceiptService:
 
     def retry(self, batch_id):
         batch = self.batch(batch_id)
+        if batch.get("operation") == "copy_file":
+            return self.copy_confirm(batch["plan_id"], batch["fingerprint"])
         return self.confirm(batch["plan_id"], batch["fingerprint"])
 
     def detail(self, receipt_id):

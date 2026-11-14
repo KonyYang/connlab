@@ -118,3 +118,20 @@ def catalog_location_preview(request: CatalogLocationPreviewRequest, service=Dep
 @router.post("/catalog-location")
 def catalog_location(request: CatalogLocationRequest, service=Depends(get_material_receipt_service)):
     return checked(lambda: service.catalog_location(request.key, request.plan_id, request.fingerprint))
+
+
+class CopyPreviewRequest(BaseModel):
+    source_key: str = Field(min_length=1, max_length=256)
+    relative_path: str = Field(min_length=1, max_length=4096)
+    target_key: str = Field(min_length=1, max_length=256)
+    target_relative_directory: str = Field(default="Reference materials", max_length=4096)
+
+
+@router.post("/copy-preview")
+def copy_preview(request: CopyPreviewRequest, service=Depends(get_material_receipt_service)):
+    return checked(lambda: service.copy_preview(**request.model_dump()))
+
+
+@router.post("/copy-confirm")
+def copy_confirm(request: ConfirmRequest, service=Depends(get_material_receipt_service)):
+    return checked(lambda: service.copy_confirm(request.plan_id, request.fingerprint))

@@ -25,6 +25,14 @@ class MaterialReceiptFiles:
         self.settings = settings
         self.control = LibraryFiles(settings)
 
+    def selected_file(self, root, relative):
+        from backend.infrastructure.project_library.material_copy_files import MaterialCopyFiles
+        return MaterialCopyFiles(self).selected(root, relative)
+
+    def plan_selected_copy(self, source_root, selected, target_root, directory, batch_id, prior):
+        from backend.infrastructure.project_library.material_copy_files import MaterialCopyFiles
+        return MaterialCopyFiles(self).plan_item(source_root, selected, target_root, directory, batch_id, prior)
+
     def lock(self):
         return self.control.lock()
 

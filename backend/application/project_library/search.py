@@ -51,12 +51,31 @@ class LibrarySearchService:
                 if kind != "all" and kind != category:
                     continue
                 if all(token in metadata + " " + row["name"].casefold() for token in tokens):
+                    if not any(project_row["key"] == entry["key"] for project_row in projects):
+                        projects.append(entry)
                     matches.append({**row, "key": entry["key"], "title": entry["title"],
                                     "number": entry["number"], "kind": category,
                                     "directory": str(PurePosixPath(row["relative_path"]).parent)})
         matches.sort(key=lambda row: (row["name"].casefold() != query.casefold(), row["number"] or "", row["relative_path"]))
         return {"projects": projects, "files": matches[offset:offset + limit], "total": len(matches),
                 "warnings": list(dict.fromkeys(warnings))}
+
+    def browse(self, key, relative_directory=""):
+        catalog = self.store.catalog()
+        entry = next((row for row in catalog if row["key"] == key), None)
+        if entry is None and key.startswith("member:"):
+            entry = next((row for row in catalog if row.get("member_id") == key.removeprefix("member:")), None)
+        if entry is None:
+            raise LookupError("Project library entry not found.")
+        root = entry["folder_path"]
+        state = "unassociated" if not root.strip() else "available" if self.files.available(root) else "unavailable"
+        directory, rows, warnings = "", [], []
+        if state == "available":
+            directory, rows, warnings = self.files.browse(root, relative_directory)
+        elif state == "unavailable":
+            warnings.append("The material location is unavailable. Locate the folder and refresh.")
+        return {"key": entry["key"], "root": root, "current_directory": directory,
+                "location_state": state, "items": rows, "warnings": warnings}
 
     def open(self, key, relative="", containing=False):
         entry = next((entry for entry in self.store.catalog() if entry["key"] == key), None)
