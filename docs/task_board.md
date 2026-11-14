@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_DELETE_CONFIRMATION_MINIMAL_20261112",
-    "tier": "micro",
-    "subject": "73f526ce1b7b1b993e27901ad1e5359f61d26302",
-    "summary": "Reduce deletion confirmation to project number, description and two actions",
+    "task_id": "TASK_DATABASE_INIT_RACE_20261112",
+    "tier": "high_risk",
+    "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
+    "summary": "Fix repeated SQLite migration and concurrent cold database initialization; assess existing-project admission UX",
     "disposition": "completed",
-    "decision_ref": "User explicitly confirmed local Close of the completed minimal deletion confirmation task. Preserve implementation and acceptance evidence. No push or publication; --publish-close intentionally omitted. No business files or database operations.",
-    "closed_at": "2026-11-11T23:46:50.999417Z"
+    "decision_ref": "User accepted and explicitly closed this materials library task. Preserve all local commits and validation records. NO push or publication; --publish-close deliberately omitted. No cleanup of business data or test evidence/worktrees.",
+    "closed_at": "2026-11-14T05:00:54.099923Z"
   },
   "retained_history": [
     {
@@ -534,133 +534,18 @@
       "disposition": "completed",
       "decision_ref": "User conditionally authorized local Close of Add Existing Project once completion was verified. Verified ready_for_close, successful validation/review records, and implementation/integration retained in current master. Close locally only, preserve code and acceptance evidence. No push or publication; --publish-close intentionally omitted. No business files or databases are modified.",
       "closed_at": "2026-11-11T23:27:15.967530Z"
+    },
+    {
+      "task_id": "TASK_DELETE_CONFIRMATION_MINIMAL_20261112",
+      "tier": "micro",
+      "subject": "73f526ce1b7b1b993e27901ad1e5359f61d26302",
+      "summary": "Reduce deletion confirmation to project number, description and two actions",
+      "disposition": "completed",
+      "decision_ref": "User explicitly confirmed local Close of the completed minimal deletion confirmation task. Preserve implementation and acceptance evidence. No push or publication; --publish-close intentionally omitted. No business files or database operations.",
+      "closed_at": "2026-11-11T23:46:50.999417Z"
     }
   ],
-  "tasks": {
-    "TASK_DATABASE_INIT_RACE_20261112": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\database-init-race-20261112",
-      "branch": "codex/database-init-race-20261112",
-      "resources": [],
-      "integrated_head": "0fb5951ba10fbef831b879498202a150e442b575",
-      "task": {
-        "task_id": "TASK_DATABASE_INIT_RACE_20261112",
-        "summary": "Fix repeated SQLite migration and concurrent cold database initialization; assess existing-project admission UX",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Repair unconditional unique-index recognition and serialize in-process cached initialization; synthetic regression tests only; read-only Add Existing Project assessment. No real business data mutations.",
-        "scope_paths": [
-          "backend/api/main.py",
-          "backend/api/routes_material_receipts.py",
-          "backend/api/routes_project_library.py",
-          "backend/application/project_library/material_copy.py",
-          "backend/application/project_library/material_receipt.py",
-          "backend/application/project_library/search.py",
-          "backend/infrastructure/project_library/material_copy_files.py",
-          "backend/infrastructure/project_library/material_receipt_files.py",
-          "backend/infrastructure/project_library/ownership.py",
-          "backend/infrastructure/project_library/search_files.py",
-          "backend/infrastructure/storage/models_project_library.py",
-          "backend/infrastructure/storage/repositories/library_search.py",
-          "backend/infrastructure/storage/repositories/material_receipt.py",
-          "docs/architecture/material_receipt.md",
-          "docs/architecture/project_library_search.md",
-          "frontend/src/App.test.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/api/materialReceipts.ts",
-          "frontend/src/api/referenceLibrary.ts",
-          "frontend/src/features/material-receipts/CopyMaterials.test.tsx",
-          "frontend/src/features/material-receipts/CopyMaterials.tsx",
-          "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
-          "frontend/src/features/material-receipts/MaterialDetails.tsx",
-          "frontend/src/features/material-receipts/MaterialFiles.tsx",
-          "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
-          "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
-          "frontend/src/features/material-receipts/materials.css",
-          "frontend/src/pages/ProjectListPage.test.tsx",
-          "frontend/src/pages/ProjectListPage.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.tsx",
-          "frontend/src/pages/reference-library.css",
-          "frontend/src/styles.css",
-          "tests/integration/test_library_search.py",
-          "tests/integration/test_material_receipt.py"
-        ],
-        "risk_reasons": [
-          "database/schema migration"
-        ],
-        "activation_head": "11ddca3acf42136ed3055f091d1ff516e21c6708",
-        "started_at": "2026-11-12T00:04:36.003976Z",
-        "updated_at": "2026-11-14T04:41:31.023479Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_DATABASE_INIT_RACE_20261112",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User requested an additional real frontend/backend connected end-to-end smoke test with isolated SQLite/files only; mock API coverage is insufficient. Continue same task validation and fix any in-scope defects found.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_DATABASE_INIT_RACE_20261112",
-          "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
-          "summary": "Additional real frontend/backend E2E smoke passed on unchanged implementation: isolated SQLite/files, actual HTTP APIs, no mocks or production changes.",
-          "scope_ok": true,
-          "changed_paths": [],
-          "validation": [
-            {
-              "status": "passed",
-              "command": "actual frontend5197 transparent proxy to actual FastAPI8817 with isolated CONNLAB configuration",
-              "result": "42 real API requests all200; no mocks, dependency overrides or response replacements; receive confirmation, duplicate skip, conflict archive, external edit refresh, missing location/reconnect, selected copy and history passed."
-            },
-            {
-              "status": "passed",
-              "command": "real filesystem hashes and isolated database business snapshots",
-              "result": "65 business tables unchanged; sources retained at each intentional fixture edit boundary; original target file retained; exactly one selected-file archive added; managed manual modifications retained."
-            },
-            {
-              "status": "passed",
-              "command": "browser and test-process audit",
-              "result": "Console0errors0warnings; old restore/import/native-open/picker calls0; owned backend/browser/proxy stopped; ports8817/5197 closed; primary clean and no product diff."
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "context": "Unchanged implementation plan retained; root separately audited isolated resolved settings and transparent proxy before test."
-            },
-            "developer": {
-              "status": "passed",
-              "context": "No production patch in this validation turn; prior Developer evidence on same48a5f3bf source remains valid."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Prior independent code reviews remain valid on unchanged source; root inspected actual harness path guards, real proxy and final file invariants."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Independent QA executed real connected browser smoke with actual main app and isolated database/files, plus cleanup."
-            },
-            "integrator": {
-              "status": "passed",
-              "context": "Root verified code identical to validated subject, clean primary,42actual200responses and both test ports closed."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "48a5f3bf408ecbce6ab5f2600329b8d817117ede",
-            "primary_before": "0fb5951ba10fbef831b879498202a150e442b575",
-            "integrated_head": "0fb5951ba10fbef831b879498202a150e442b575",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
