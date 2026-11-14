@@ -3,12 +3,13 @@ import { createPortal } from "react-dom";
 import type { ReferenceProject } from "../../api/referenceLibrary";
 import { openReferenceFile } from "../../api/referenceLibrary";
 import * as api from "../../api/materialReceipts";
-import type { ReceiptBatch, ReceiptDetail, ReceiptLocationPlan } from "../../api/materialReceipts";
+import type { ReceiptBatch, ReceiptDetail, ReceiptHistory, ReceiptLocationPlan } from "../../api/materialReceipts";
 import { changeLegacyProjectLocation, getLegacyProject, type LegacyProjectRecord } from "../../api/legacyProjects";
 import { ReceiptResults } from "./ReceiveMaterials";
 import "./materials.css";
 
 export function MaterialDetails({ project, onClose, onBrowse, onProject, onChanged, onSupplement }: { project: ReferenceProject; onClose: () => void; onBrowse: (key: string) => void; onProject: (id: string) => void; onChanged: () => void; onSupplement?: (project: ReferenceProject) => void }) {
+ const [catalogHistory, setCatalogHistory] = useState<ReceiptHistory[]>([]);
  const [historyBatch, setHistoryBatch] = useState<ReceiptBatch | null>(null);
  const [detail, setDetail] = useState<ReceiptDetail | null>(null);
  const [reconnected, setReconnected] = useState(false);
@@ -29,6 +30,7 @@ export function MaterialDetails({ project, onClose, onBrowse, onProject, onChang
  const linkedId = project.key.startsWith("linked:") ? project.key.slice(7) : null;
  useEffect(() => { let live = true;
   if (id) void api.getReceiptDetail(id).then(value => { if (live) setDetail(value); }).catch(cause => { if (live) setError((cause as Error).message); });
+  if (!id && !linkedId) void api.getCatalogReceiptHistory(project.key).then(value => { if (live) setCatalogHistory(value.items); }).catch(cause => { if (live) setError((cause as Error).message); });
   if (linkedId) void getLegacyProject(linkedId, new AbortController().signal).then(value => { if (live) setLegacy(value); }).catch(cause => { if (live) setError((cause as Error).message); });
   return () => { live = false; };
  }, [id, linkedId]);
@@ -36,7 +38,7 @@ export function MaterialDetails({ project, onClose, onBrowse, onProject, onChang
  const path = detail?.folder_path ?? legacy?.folder_path ?? memberPath ?? project.folder_path;
  const available = detail?.available ?? (reconnected ? true : project.available);
  function edit() { if (!detail) return; setProduct(detail.product_name); setTests(detail.test_keywords); setState(detail.material_state); setEditing(true); }
- async function reloadDetail() { if (id) setDetail(await api.getReceiptDetail(id)); onChanged(); }
+ async function reloadDetail() { if (id) setDetail(await api.getReceiptDetail(id)); else if (!linkedId) setCatalogHistory((await api.getCatalogReceiptHistory(project.key)).items); onChanged(); }
  return createPortal(<div className="materials-overlay"><section className="materials-dialog" role="dialog" aria-modal="true" aria-labelledby="materials-detail-title">
   <header><h2 id="materials-detail-title">{project.number || "Project materials"}</h2><button disabled={busy} onClick={onClose}>Close details</button></header>
   {error && <p role="alert">{error}</p>}
@@ -63,6 +65,11 @@ export function MaterialDetails({ project, onClose, onBrowse, onProject, onChang
    <div className="materials-actions"><button disabled={busy} onClick={() => void act(async () => { const value = await api.pickReceiptFolder(); if (value) { setLocation(value); setLocationPlan(null); setLegacyPlan(false); } })}>Choose managed folder</button><button disabled={busy || !location || Boolean(linkedId && !legacy)} onClick={() => void act(async () => { if (id) setLocationPlan(await api.previewReceiptLocation(id, location)); else if (memberOnly) setLocationPlan(await api.previewCatalogLocation(project.key, location)); else setLegacyPlan(true); })}>Review location</button><button disabled={busy} onClick={() => setLocating(false)}>Cancel location</button></div>
    {(locationPlan || legacyPlan) && <><p className="materials-path">Current: {path}</p><p className="materials-path">After confirmation: {locationPlan?.folder_path ?? location}</p><p>Only the registered location changes. No files are moved or restored.</p><button disabled={busy} onClick={() => void act(async () => { if (id && locationPlan) { await api.confirmReceiptLocation(id, locationPlan); await reloadDetail(); } else if (memberOnly && locationPlan) { const value = await api.confirmCatalogLocation(project.key, locationPlan); setMemberPath(value.folder_path); setReconnected(true); onChanged(); } else if (linkedId && legacy) { setLegacy(await changeLegacyProjectLocation(linkedId, location, legacy.revision)); setReconnected(true); onChanged(); } setLocating(false); setLocationPlan(null); setLegacyPlan(false); })}>Confirm location</button></>}
   </section>}
-  {detail && <details><summary>Receipt history and source</summary><p className="materials-path">Original source (traceability only): {detail.source_path}</p><p>Received: {detail.created_at}</p><ul className="materials-items">{detail.history?.map(row => <li key={row.batch_id}><span>{row.created_at} · {row.status}</span><span>{row.source_path}</span><button disabled={busy} onClick={() => void act(async () => { setHistoryBatch(await api.getReceiptBatch(row.batch_id)); })}>View receipt {row.batch_id.slice(0, 8)}</button></li>)}</ul><ReceiptResults batch={historyBatch ?? detail.batch} />{(historyBatch ?? detail.batch).status !== "completed" && <button disabled={busy} onClick={() => void act(async () => { const result = await api.retryReceipt((historyBatch ?? detail.batch).batch_id); setHistoryBatch(result); await reloadDetail(); })}>Retry receipt</button>}</details>}
+  {(detail || !linkedId) && <details><summary>Receipt history and source</summary>
+   {detail && <><p className="materials-path">Original source (traceability only): {detail.source_path}</p><p>Received: {detail.created_at}</p></>}
+   <button disabled={busy} onClick={() => void act(reloadDetail)}>Refresh receipt history</button>
+   <ul className="materials-items">{(detail?.history ?? catalogHistory).map(row => <li key={row.batch_id}><span>{row.created_at} · {row.status}</span><span>{row.source_path}</span><button disabled={busy} onClick={() => void act(async () => { setHistoryBatch(await api.getReceiptBatch(row.batch_id)); })}>View receipt {row.batch_id.slice(0, 8)}</button></li>)}</ul>
+   {(historyBatch || detail?.batch) && <><ReceiptResults batch={(historyBatch ?? detail?.batch)!} />{(historyBatch ?? detail?.batch)!.status !== "completed" && <button disabled={busy} onClick={() => void act(async () => { const result = await api.retryReceipt((historyBatch ?? detail?.batch)!.batch_id); setHistoryBatch(result); await reloadDetail(); })}>Retry receipt</button>}</>}
+  </details>}
  </section></div>, document.body);
 }

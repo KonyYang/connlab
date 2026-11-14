@@ -28,3 +28,5 @@ export const confirmCatalogLocation = (key: string, plan: ReceiptLocationPlan) =
 
 export const previewMaterialCopy = (input: { source_key: string; relative_path: string; target_key: string; target_relative_directory: string }) => post<ReceiptPlan>("/copy-preview", input);
 export const confirmMaterialCopy = (plan: ReceiptPlan) => post<ReceiptBatch>("/copy-confirm", { plan_id: plan.plan_id, fingerprint: plan.fingerprint });
+
+export const getCatalogReceiptHistory = (key: string) => requestJson<{ items: ReceiptHistory[] }>(`${base}/catalog-history?${new URLSearchParams({ key })}`);

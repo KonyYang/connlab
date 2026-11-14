@@ -78,6 +78,6 @@ export function ReferenceLibraryPage({ onOpenProject, currentProjectId }: { onOp
   </div>
   {receiving && <ReceiveMaterials initialTarget={receiveTarget} onClose={closeReceipt} onReceived={received}/>}
   {details && <MaterialDetails project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)} onSupplement={row=>{setDetails(null);setReceiveTarget(row);setReceiving(true);}}/>}
-  {copy && <CopyMaterials source={copy.project} file={copy.file} currentProjectId={currentProjectId} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)}/>}
+  {copy && <CopyMaterials source={copy.project} file={copy.file} currentProjectId={currentProjectId} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetHistory={row=>{setCopy(null);setDetails(row);setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
  </section>;
 }
