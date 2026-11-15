@@ -613,8 +613,16 @@
         ],
         "activation_head": "0b5d210f88a29aee5aa3c1705336ee9621276de0",
         "started_at": "2026-11-15T23:51:22.817753Z",
-        "updated_at": "2026-11-15T23:51:22.817753Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-15T23:54:07.838173Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
+          "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
+          "stage": "development",
+          "status": "running",
+          "summary": "Independent Planner completed read-only design. Developer is sole code writer in material-archive-20261116. Approved design: additive folder index separate from real archive operation; same-volume controlled staging, durable identity before copying, publish then index repair. Scope locked to 28 paths; no real business data, no push. Independent Reviewer, final QA and Integrator still pending.",
+          "requires_user": false
+        },
         "report": null
       }
     }
