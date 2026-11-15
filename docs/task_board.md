@@ -557,11 +557,11 @@
   "tasks": {
     "TASK_MATERIAL_LIBRARY_SETTINGS_20261115": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\material-library-settings-20261115",
       "branch": "codex/material-library-settings-20261115",
       "resources": [],
-      "integrated_head": "985d55a1037019bb170fe31c667ef96a5f13c66a",
+      "integrated_head": "ede7545406825ee49d2c326310b8660698e24a69",
       "task": {
         "task_id": "TASK_MATERIAL_LIBRARY_SETTINGS_20261115",
         "summary": "Centralize Receive save location in Settings and simplify daily material browsing",
@@ -597,7 +597,7 @@
         "risk_reasons": [],
         "activation_head": "8795fc9800741d306a98e0a04b0ca9a28423cf89",
         "started_at": "2026-11-15T06:18:51.812226Z",
-        "updated_at": "2026-11-15T08:08:06.055008Z",
+        "updated_at": "2026-11-15T08:09:07.240946Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -607,7 +607,75 @@
           "summary": "User requested continuing the same task: rename UI to Materials library folder; use Windows Documents/ConnLab/Materials only when unconfigured; preserve existing settings and do not move files. Local work only, no push.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_MATERIAL_LIBRARY_SETTINGS_20261115",
+          "subject": "7576b56a0758b19e8e0c479dc421a5f3d585da36",
+          "summary": "Continued the same task: Materials library folder is now the UI name. Only an unconfigured installation initializes and persists Windows Documents/ConnLab/Materials under the library lock. Existing saved paths/revisions, including offline paths, remain unchanged. No files are moved/adopted. Prior simplified daily browsing and backend history/official-folder boundaries remain intact. Local work only, no push.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/application/project_library/material_receipt.py",
+            "backend/infrastructure/files/user_documents.py",
+            "backend/infrastructure/project_library/material_receipt_files.py",
+            "docs/architecture/material_receipt.md",
+            "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
+            "frontend/src/features/settings/ReceiveSaveLocation.tsx",
+            "frontend/src/pages/SettingsPage.test.tsx",
+            "tests/integration/test_material_receipt.py"
+          ],
+          "validation": [
+            {
+              "name": "Final full frontend gate",
+              "status": "passed",
+              "command": "scripts/run_tests.ps1 -Suite Frontend",
+              "result": "1366 passed, 1 skipped across 146 passing and 1 skipped test files; TypeScript and Vite build passed."
+            },
+            {
+              "name": "Final affected backend integration",
+              "status": "passed",
+              "result": "73 passed, 4 skipped (Windows symlink permissions). Three suites: test_library_search.py, test_material_receipt.py, test_report_shortcuts.py. Isolated SQLite/folders and redirected synthetic Documents only. Eight default/config/file-preservation cases included."
+            },
+            {
+              "name": "Documents resolution",
+              "status": "passed",
+              "result": "Windows known-folder path matched .NET MyDocuments in a read-only comparison; no runtime service was called against real settings/Documents."
+            },
+            {
+              "name": "Final browser verification",
+              "status": "passed",
+              "result": "Mocked actual /api/ requests only, isolated Vite5275. Verified new name/default path, stored destination reuse, offline/default-initialization failures and Settings link. Rechecked prior 60 missing-entry case, hidden daily history and formal-root independence. 1366/640/360 widths; no page/main/control overflow or JS page errors. Screenshots inspected; dedicated browser/server stopped."
+            },
+            {
+              "name": "Exact revision review",
+              "status": "passed",
+              "result": "Same-agent Standards and Spec passes on the 9-file revision; no remaining actionable findings; git diff --check passed. Full affected validation is on final production/test bytes."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "Same primary agent after Revise; RED/GREEN tests for default initialization and failure Settings link. No schema change or new dependency."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Same-agent focused review, not independent. Checked platform/IO boundaries, Windows pointer release, saved config priority, filesystem safety, names/default path and preservation requirements."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "Same agent final risk-proportionate matrix once after final executable edits. Real business files and settings were not used for experiments."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "7576b56a0758b19e8e0c479dc421a5f3d585da36",
+            "primary_before": "a8f710826d05c85bffbe380c82d2dbc758e52381",
+            "integrated_head": "ede7545406825ee49d2c326310b8660698e24a69",
+            "recovered": false
+          }
+        }
       }
     }
   }
