@@ -563,7 +563,62 @@
       "closed_at": "2026-11-14T13:34:48.468379Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_MATERIAL_ARCHIVE_20261116": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\material-archive-20261116",
+      "branch": "codex/material-archive-20261116",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
+        "summary": "Historical materials archive: one confirmation, safe independent copies, recoverable operations and folder discovery",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Implement approved single-folder archive and direct-child discovery/index, using additive archive folder table and durable staging/operation identity. Same-name never overwrite or cross-operation deduplicate; partial/index failure visible and retryable. Preserve old data/APIs, native project boundaries and user files; hide control files from ordinary search. Retire ordinary complex Import UI. Isolated validation only; local work, no push/publication.",
+        "scope_paths": [
+          "backend/application/project_library/material_archive.py",
+          "backend/application/project_library/search.py",
+          "backend/infrastructure/project_library/material_archive_files.py",
+          "backend/infrastructure/project_library/search_files.py",
+          "backend/infrastructure/storage/models_project_library.py",
+          "backend/infrastructure/storage/repositories/material_archive.py",
+          "backend/infrastructure/storage/repositories/library_search.py",
+          "backend/api/routes_material_receipts.py",
+          "backend/api/routes_project_library.py",
+          "frontend/src/api/materialReceipts.ts",
+          "frontend/src/api/referenceLibrary.ts",
+          "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
+          "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
+          "frontend/src/features/material-receipts/MaterialDetails.tsx",
+          "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
+          "frontend/src/features/material-receipts/materials.css",
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+          "frontend/src/pages/reference-library.css",
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+          "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
+          "tests/integration/test_material_archive.py",
+          "tests/integration/test_library_search.py",
+          "docs/architecture/material_receipt.md",
+          "docs/material_archive_intake.md"
+        ],
+        "risk_reasons": [
+          "database/schema migration",
+          "broad architecture change"
+        ],
+        "activation_head": "0b5d210f88a29aee5aa3c1705336ee9621276de0",
+        "started_at": "2026-11-15T23:51:22.817753Z",
+        "updated_at": "2026-11-15T23:51:22.817753Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
