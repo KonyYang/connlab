@@ -557,11 +557,11 @@
   "tasks": {
     "TASK_MATERIAL_LIBRARY_SETTINGS_20261115": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\material-library-settings-20261115",
       "branch": "codex/material-library-settings-20261115",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "985d55a1037019bb170fe31c667ef96a5f13c66a",
       "task": {
         "task_id": "TASK_MATERIAL_LIBRARY_SETTINGS_20261115",
         "summary": "Centralize Receive save location in Settings and simplify daily material browsing",
@@ -593,9 +593,84 @@
         "risk_reasons": [],
         "activation_head": "8795fc9800741d306a98e0a04b0ca9a28423cf89",
         "started_at": "2026-11-15T06:18:51.812226Z",
-        "updated_at": "2026-11-15T06:35:09.846038Z",
+        "updated_at": "2026-11-15T06:35:10.727281Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_MATERIAL_LIBRARY_SETTINGS_20261115",
+          "subject": "a20176c1e5a1fac50e70e0ac9a5afc323d0a105f",
+          "summary": "Receive destination is edited only in Settings using existing persistence; library hides unavailable roots and has no Locate or daily history/source UI. Backend catalog/history/relocation APIs, native roots and current operation protections retained. Local only; no real business files or settings changed.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/application/project_library/search.py",
+            "docs/architecture/material_receipt.md",
+            "frontend/src/features/material-receipts/CopyMaterials.test.tsx",
+            "frontend/src/features/material-receipts/CopyMaterials.tsx",
+            "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
+            "frontend/src/features/material-receipts/MaterialDetails.tsx",
+            "frontend/src/features/material-receipts/MaterialFiles.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
+            "frontend/src/features/material-receipts/ReportShortcuts.test.tsx",
+            "frontend/src/features/material-receipts/ReportShortcuts.tsx",
+            "frontend/src/features/settings/ReceiveSaveLocation.tsx",
+            "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx",
+            "frontend/src/pages/SettingsPage.test.tsx",
+            "frontend/src/pages/SettingsPage.tsx",
+            "frontend/src/pages/reference-library.css",
+            "frontend/src/settings.css",
+            "tests/integration/test_library_search.py"
+          ],
+          "validation": [
+            {
+              "name": "Frontend complete gate",
+              "status": "passed",
+              "command": "scripts/run_tests.ps1 -Suite Frontend",
+              "result": "146 test files passed, 1 skipped; 1365 tests passed, 1 skipped; tsc -b and Vite production build passed."
+            },
+            {
+              "name": "Affected backend integration matrix",
+              "status": "passed",
+              "command": "C:/PythonEnvs/connlab/.venv/Scripts/python.exe -m pytest tests/integration/test_library_search.py tests/integration/test_material_receipt.py tests/integration/test_report_shortcuts.py -q -p no:cacheprovider",
+              "result": "65 passed, 4 skipped; Windows test symlink privileges unavailable. Isolated SQLite and folders only."
+            },
+            {
+              "name": "Browser interaction and responsive verification",
+              "status": "passed",
+              "result": "Isolated Vite 5275 with all actual /api/ requests mocked. 1366/640/360 widths; 60 unavailable rows hidden, details source/history absent, Settings destination reused by Receive, independent formal folder retained, unavailable root blocked with Settings link. Screenshots inspected; no page errors or page/main overflow. Narrow Settings input repaired and rechecked."
+            },
+            {
+              "name": "Final diff",
+              "status": "passed",
+              "result": "git diff --check passed; production/test bytes unchanged after final affected validation; final documentation wording reviewed separately."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "Same primary agent; coherent TDD slices with failing controls/catalog warning tests before implementation and passing affected tests after changes."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Same-agent focused review after implementation, not an independent agent. Standards pass and user-spec pass checked exact diff; no remaining actionable findings."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "Same agent final risk-proportionate matrix once after final code/test edits; full frontend gate plus affected backend integration and mocked browser checks. No full backend/Office gate needed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "a20176c1e5a1fac50e70e0ac9a5afc323d0a105f",
+            "primary_before": "8d7726b9e617e78b90d05724007ff6226865eb8b",
+            "integrated_head": "985d55a1037019bb170fe31c667ef96a5f13c66a",
+            "recovered": false
+          }
+        }
       }
     }
   }
