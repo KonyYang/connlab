@@ -204,7 +204,7 @@ it("maintains the receive destination independently from the project default loc
   vi.mocked(listExternalResources).mockResolvedValue([locationResource({resource_type:"project_output_root", path:"D:/Projects"})]);
   vi.mocked(receipts.setReceiptDestination).mockResolvedValue({root_path:"D:/NewReceived",revision:2,configured:true,available:true});
   render(<SettingsPage />);
-  const input = await screen.findByLabelText("Receive save location path");
+  const input = await screen.findByLabelText("Materials library folder path");
   await waitFor(() => expect((input as HTMLInputElement).value).toBe("D:/received"));
   fireEvent.change(input, {target:{value:"D:/NewReceived"}});
   fireEvent.blur(input);
@@ -216,7 +216,7 @@ it("maintains the receive destination independently from the project default loc
 it("keeps an invalid receive destination editable and shows its save failure", async () => {
   vi.mocked(receipts.setReceiptDestination).mockRejectedValue(new Error("Choose an existing folder."));
   render(<SettingsPage />);
-  const input = await screen.findByLabelText("Receive save location path");
+  const input = await screen.findByLabelText("Materials library folder path");
   await waitFor(() => expect((input as HTMLInputElement).value).toBe("D:/received"));
   fireEvent.change(input, {target:{value:"D:/Missing"}});
   fireEvent.keyDown(input,{key:"Enter"});
@@ -234,14 +234,14 @@ it("saves a chosen receive folder and loads the saved value when Settings reopen
   vi.mocked(receipts.getReceiptRuntime).mockResolvedValue(value); return value;
  });
  const view=render(<SettingsPage/>);
- const input=await screen.findByLabelText("Receive save location path");
+ const input=await screen.findByLabelText("Materials library folder path");
  await waitFor(()=>expect((input as HTMLInputElement).value).toBe("D:/received"));
  const row=input.closest("article")!;
  fireEvent.click(within(row).getByRole("button",{name:"Browse folder"}));
  await waitFor(()=>expect((input as HTMLInputElement).value).toBe("D:/ChosenReceived"));
  expect(receipts.setReceiptDestination).toHaveBeenCalledWith("D:/ChosenReceived");
  view.unmount(); render(<SettingsPage/>);
- await waitFor(()=>expect((screen.getByLabelText("Receive save location path") as HTMLInputElement).value).toBe("D:/ChosenReceived"));
+ await waitFor(()=>expect((screen.getByLabelText("Materials library folder path") as HTMLInputElement).value).toBe("D:/ChosenReceived"));
 });
 
 it("can retry loading the receive destination without saving a path",async()=>{
@@ -249,7 +249,7 @@ it("can retry loading the receive destination without saving a path",async()=>{
  const saves=vi.mocked(receipts.setReceiptDestination).mock.calls.length;
  render(<SettingsPage/>);
  expect(await screen.findByText("Location settings could not be loaded.")).toBeTruthy();
- fireEvent.click(screen.getByRole("button",{name:"Retry receive location"}));
- await waitFor(()=>expect((screen.getByLabelText("Receive save location path") as HTMLInputElement).value).toBe("D:/received"));
+ fireEvent.click(screen.getByRole("button",{name:"Retry materials library folder"}));
+ await waitFor(()=>expect((screen.getByLabelText("Materials library folder path") as HTMLInputElement).value).toBe("D:/received"));
  expect(vi.mocked(receipts.setReceiptDestination).mock.calls.length).toBe(saves);
 });

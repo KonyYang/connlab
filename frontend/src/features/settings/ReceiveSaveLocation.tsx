@@ -24,7 +24,7 @@ export function ReceiveSaveLocation() {
 
   async function save(value: string) {
     const next = value.trim();
-    if (!next) { setError("Choose an existing folder for received materials."); return; }
+    if (!next) { setError("Choose an existing Materials library folder."); return; }
     if (working.current || next === runtime?.root_path && runtime.available) return;
     working.current = true; setBusy(true); setError("");
     try {
@@ -43,13 +43,13 @@ export function ReceiveSaveLocation() {
     if (chosen && live.current) { setPath(chosen); await save(chosen); }
   }
   const unavailable = !loading && runtime && !runtime.available;
-  const message = error || (unavailable ? "Choose an available Receive save location." : "");
+  const message = error || (unavailable ? "Choose an available Materials library folder." : "");
   return <article className="settings-resource-row settings-receive-location">
-    <div className="settings-resource-label"><strong>Receive save location</strong></div>
+    <div className="settings-resource-label"><strong>Materials library folder</strong></div>
     <div className="settings-path-field">
       <div className="settings-path-control">
-        <input aria-label="Receive save location path" className={"settings-path-input" + (message ? " is-invalid-path" : "")}
-          aria-invalid={Boolean(message)} title={message || "Receive save location"} placeholder="Paste path"
+        <input aria-label="Materials library folder path" className={"settings-path-input" + (message ? " is-invalid-path" : "")}
+          aria-invalid={Boolean(message)} title={message || "Materials library folder"} placeholder="Paste path"
           value={path} disabled={loading || busy}
           onChange={event => { setPath(event.target.value); setError(""); }}
           onBlur={() => void save(path)}
@@ -57,7 +57,7 @@ export function ReceiveSaveLocation() {
         <button className="ui-tertiary-action" disabled={loading || busy} onClick={() => void browse()}>Browse folder</button>
       </div>
       {message && <span role="alert">{message}</span>}
-      {!runtime && !loading && <button className="ui-tertiary-action" disabled={busy} onClick={() => setReload(value => value + 1)}>Retry receive location</button>}
+      {!runtime && !loading && <button className="ui-tertiary-action" disabled={busy} onClick={() => setReload(value => value + 1)}>Retry materials library folder</button>}
     </div>
   </article>;
 }

@@ -27,8 +27,22 @@ class MaterialReceiptService:
         from backend.application.project_library.material_copy import MaterialCopyService
         return MaterialCopyService(self.store, self.files, self.catalog, self.contexts).confirm(plan_id, fingerprint, context)
 
-    def runtime(self):
+    def _ensure_library_settings(self):
         config = self.store.settings()
+        if config["root_path"]:
+            return config
+        with self.files.lock():
+            self.store.refresh()
+            config = self.store.settings()
+            if not config["root_path"]:
+                root = self.files.default_root()
+                self._check_receive_ownership(str(root))
+                root = self.files.root(root, create=True)
+                config = self.store.configure(str(root))
+            return config
+
+    def runtime(self):
+        config = self._ensure_library_settings()
         return {**config, "configured": bool(config["root_path"]),
                 "available": bool(config["root_path"] and self.files.available(config["root_path"]))}
 
@@ -49,7 +63,7 @@ class MaterialReceiptService:
         # be inside an entry; each new destination must also be disjoint from them.
         if any(self.files.contains(path, root) or target and self.files.overlaps(target, path)
                for path in protected):
-            raise ProjectLibraryConflict("Choose a receive location separate from folders owned by existing entries or original sources.")
+            raise ProjectLibraryConflict("Choose a Materials library folder separate from folders owned by existing entries or original sources.")
 
     def _candidates(self, number, target_key=""):
         self.store.refresh()
@@ -81,6 +95,7 @@ class MaterialReceiptService:
         product_name = product_name.strip() or Path(source).name
         if not product_name:
             raise ValueError("Enter a product name or description.")
+        self._ensure_library_settings()
         with self.files.lock():
             binding = self.files.binding(self.store.settings())
             candidates = self._candidates(number, target_key)
@@ -121,7 +136,7 @@ class MaterialReceiptService:
 
     def _check_binding(self, plan, batch):
         if self.files.binding(self.store.settings()) != plan["binding"]:
-            raise ProjectLibraryConflict("The receive save location changed. Preview again.")
+            raise ProjectLibraryConflict("The Materials library folder changed. Preview again.")
         candidate = plan["candidate"]
         if not candidate:
             receipt_id = (batch or {}).get("receipt_id")

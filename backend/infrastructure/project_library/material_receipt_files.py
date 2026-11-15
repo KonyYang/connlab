@@ -6,6 +6,7 @@ import re
 import shutil
 from uuid import uuid4
 from backend.domain.project_library import ProjectLibraryConflict
+from backend.infrastructure.files.user_documents import user_documents_directory
 from backend.infrastructure.project_library.files import (
     LibraryFiles, checked_path, inventory, identity, file_hash,
 )
@@ -64,13 +65,22 @@ class MaterialReceiptFiles:
     def plan(self, plan_id, fingerprint):
         return self.control.plan(plan_id, fingerprint, "material_receipt")
 
-    def root(self, value):
-        root = checked_path(value)
-        if not root.is_dir():
-            raise ValueError("Choose an available folder for received materials.")
+    def default_root(self):
+        documents = checked_path(user_documents_directory())
+        if not documents.is_dir():
+            raise ValueError("Documents is unavailable. Set the Materials library folder in Settings.")
+        return documents / "ConnLab" / "Materials"
+
+    def root(self, value, *, create=False):
+        root = checked_path(value, must_exist=not create)
         data = self.settings.data_dir.resolve()
         if root.is_relative_to(data) or data.is_relative_to(root):
-            raise ValueError("The receive location must be separate from ConnLab internal data.")
+            raise ValueError("The materials library folder must be separate from ConnLab internal data.")
+        if create:
+            root.mkdir(parents=True, exist_ok=True)
+            root = checked_path(root)
+        if not root.is_dir():
+            raise ValueError("Choose an available Materials library folder.")
         return root
 
     def binding(self, config):
