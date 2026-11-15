@@ -554,7 +554,41 @@
       "closed_at": "2026-11-14T05:00:54.099923Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_MATERIAL_LIBRARY_SETTINGS_20261115": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\material-library-settings-20261115",
+      "branch": "codex/material-library-settings-20261115",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_MATERIAL_LIBRARY_SETTINGS_20261115",
+        "summary": "Centralize Receive save location in Settings and simplify daily material browsing",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Use persisted receipt destination from Settings; hide unavailable library folders and remove Locate UI and daily receipt history/source. Preserve backend records, recovery APIs, official project roots and file protections. Isolated validation only; local work without push.",
+        "scope_paths": [
+          "frontend/src/pages/SettingsPage.tsx",
+          "frontend/src/pages/SettingsPage.test.tsx",
+          "frontend/src/features/settings",
+          "frontend/src/features/material-receipts",
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+          "frontend/src/pages/reference-library.css",
+          "frontend/src/settings.css",
+          "frontend/src/App.test.tsx",
+          "docs/architecture/material_receipt.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "8795fc9800741d306a98e0a04b0ca9a28423cf89",
+        "started_at": "2026-11-15T06:18:51.812226Z",
+        "updated_at": "2026-11-15T06:18:51.812226Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
