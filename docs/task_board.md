@@ -569,7 +569,10 @@
         "route": "sol_build_review_qa",
         "scope": "Use persisted receipt destination from Settings; hide unavailable library folders and remove Locate UI and daily receipt history/source. Preserve backend records, recovery APIs, official project roots and file protections. Isolated validation only; local work without push.",
         "scope_paths": [
+          "backend/application/project_library/material_receipt.py",
           "backend/application/project_library/search.py",
+          "backend/infrastructure/files/user_documents.py",
+          "backend/infrastructure/project_library/material_receipt_files.py",
           "docs/architecture/material_receipt.md",
           "frontend/src/features/material-receipts/CopyMaterials.test.tsx",
           "frontend/src/features/material-receipts/CopyMaterials.tsx",
@@ -588,12 +591,13 @@
           "frontend/src/pages/SettingsPage.tsx",
           "frontend/src/pages/reference-library.css",
           "frontend/src/settings.css",
-          "tests/integration/test_library_search.py"
+          "tests/integration/test_library_search.py",
+          "tests/integration/test_material_receipt.py"
         ],
         "risk_reasons": [],
         "activation_head": "8795fc9800741d306a98e0a04b0ca9a28423cf89",
         "started_at": "2026-11-15T06:18:51.812226Z",
-        "updated_at": "2026-11-15T07:52:44.196822Z",
+        "updated_at": "2026-11-15T08:08:06.055008Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
