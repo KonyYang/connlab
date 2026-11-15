@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type ReactElement
 } from "react";
 import type { ExternalResource, ExternalResourceType } from "../../api/client";
@@ -10,6 +11,7 @@ import { SHARED_RESOURCE_CONFIGS } from "./settingsResourceConfig";
 import { buildSettingsResourceRows, type SettingsResourceRow } from "./settingsSelectors";
 
 type SettingsExternalResourcesPanelProps = {
+  receiveLocation?: ReactNode;
   resources: ExternalResource[];
   savingType: ExternalResourceType | null;
   browseEnabled: boolean;
@@ -28,6 +30,7 @@ type DraftValue = {
 };
 
 export function SettingsExternalResourcesPanel({
+  receiveLocation,
   resources,
   savingType,
   browseEnabled,
@@ -84,6 +87,7 @@ export function SettingsExternalResourcesPanel({
           <div className="settings-resource-group" key={category}>
             <h3 className="ui-section-title">{category}</h3>
             <div className="settings-resource-list">
+              {category === "Default locations" && receiveLocation}
               {categoryRows.map((row) => (
                 <ResourceRow
                   draft={drafts[row.resourceType] ?? {

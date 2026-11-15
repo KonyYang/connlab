@@ -6,9 +6,9 @@ import { ApiRequestError } from "../../api/client";
 import { ReceiptResults } from "./ReceiveMaterials";
 import "./materials.css";
 
-export function CopyMaterials({ source, file, context, onClose, onCopied, onTargetHistory }: {
+export function CopyMaterials({ source, file, context, onClose, onCopied, onTargetMaterials }: {
  source:ReferenceProject; file:BrowseFile; context?:WorkbenchCopyContext|null; onClose:()=>void;
- onCopied:()=>void; onTargetHistory?:(project:ReferenceProject)=>void;
+ onCopied:()=>void; onTargetMaterials?:(project:ReferenceProject)=>void;
 }) {
  const [directory,setDirectory]=useState("Reference materials");
  const [plan,setPlan]=useState<ReceiptPlan|null>(null);
@@ -51,8 +51,8 @@ export function CopyMaterials({ source, file, context, onClose, onCopied, onTarg
     <button disabled={busy || attempted} onClick={()=>void act(async current=>{const result=await previewMaterialCopy({source_key:source.key,relative_path:file.relative_path,context:proof!,target_relative_directory:directory});if(current())setPlan(result);})}>Check destination</button>
     {plan && <section className="materials-review"><p className="materials-path">Target: {plan.target_path}</p>{plan.items?.map(row=><div key={row.relative_path}><strong>{row.action==="skip"?"Skip identical":row.action==="supplement"?"Save supplementary copy":"New copy"}</strong><p className="materials-path">{row.target_relative}</p>{row.reason && <p>{row.reason}</p>}</div>)}{!attempted && <button disabled={busy} onClick={()=>void act(confirm)}>Confirm copy</button>}</section>}
    </>}
-   {valid && attempted && !batch && plan && <section className="materials-review"><p>The copy result is not confirmed. Check this operation or the target receipt history before starting another.</p><div className="materials-actions"><button disabled={busy} onClick={()=>void act(confirm)}>Retry confirmed copy</button><button disabled={busy || !plan.batch_id} onClick={()=>void act(async current=>{setNoBatch(false);try{const result=await getReceiptBatch(plan.batch_id!);if(current())setBatch(result);}catch(cause){if(current() && cause instanceof ApiRequestError && cause.status===404)setNoBatch(true);else throw cause;}})}>Check copy result</button><button disabled={busy} onClick={()=>onTargetHistory?.(selected)}>View target receipt history</button>{noBatch && <button disabled={busy} onClick={()=>{setAttempted(false);setPlan(null);setNoBatch(false);}}>Review copy again</button>}</div></section>}
-   {valid && batch && <><ReceiptResults batch={batch}/><div className="materials-actions">{batch.status!=="completed" && <button disabled={busy} onClick={()=>void act(async current=>{const result=await retryReceipt(batch.batch_id,proof!);if(current()){setBatch(result);onCopied();}})}>Retry copy</button>}<button disabled={busy} onClick={()=>void act(async()=>{await openReferenceFile(selected.key);})}>Open target folder</button><button disabled={busy} onClick={()=>onTargetHistory?.(selected)}>View target receipt history</button></div></>}
+   {valid && attempted && !batch && plan && <section className="materials-review"><p>The copy result is not confirmed. Check this operation before starting another.</p><div className="materials-actions"><button disabled={busy} onClick={()=>void act(confirm)}>Retry confirmed copy</button><button disabled={busy || !plan.batch_id} onClick={()=>void act(async current=>{setNoBatch(false);try{const result=await getReceiptBatch(plan.batch_id!);if(current())setBatch(result);}catch(cause){if(current() && cause instanceof ApiRequestError && cause.status===404)setNoBatch(true);else throw cause;}})}>Check copy result</button><button disabled={busy} onClick={()=>onTargetMaterials?.(selected)}>View target materials</button>{noBatch && <button disabled={busy} onClick={()=>{setAttempted(false);setPlan(null);setNoBatch(false);}}>Review copy again</button>}</div></section>}
+   {valid && batch && <><ReceiptResults batch={batch}/><div className="materials-actions">{batch.status!=="completed" && <button disabled={busy} onClick={()=>void act(async current=>{const result=await retryReceipt(batch.batch_id,proof!);if(current()){setBatch(result);onCopied();}})}>Retry copy</button>}<button disabled={busy} onClick={()=>void act(async()=>{await openReferenceFile(selected.key);})}>Open target folder</button><button disabled={busy} onClick={()=>onTargetMaterials?.(selected)}>View target materials</button></div></>}
   </>}
  </section></div>,document.body);
 }

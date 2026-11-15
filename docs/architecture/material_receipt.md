@@ -8,12 +8,17 @@ portable data. Legacy import/recovery routes remain compatibility code; ordinary
 must not call their member or portable APIs.
 
 The receive save root lives in `material_receipt_settings`, independently of the native project output
-root. New received-only identities live in `material_receipt_entries`; durable progress lives in
+root. Settings > Default locations is its only ordinary editing surface; existing saved values remain
+in use without migration. Receive reads that setting directly and shows the destination without
+configuration controls. An unset/unavailable root blocks new receipt with a link to Settings. Changing
+the default does not move existing files, rewrite received-entry roots or change native project roots.
+New received-only identities live in `material_receipt_entries`; durable progress lives in
 `material_receipt_batches`. These additive tables are registered by the existing database bootstrap.
 Metadata is central; the received source's `.connlab` files are never rewritten by receipt management.
 Search distinguishes `unassociated` (no registered folder), `unavailable` (registered location cannot be
-read) and `available`. Unassociated native/planning projects stay out of the default library listing;
-an explicit number/name search or project selection can reveal them without a missing-location warning.
+read) and `available`. The backend catalog retains these distinctions; explicit backend number/name
+queries or project selections can resolve unassociated entries without a missing-location warning.
+The ordinary library UI displays only available material directories, including when searching.
 The same distinction appears in same-number receipt candidates, which cannot supplement an unlinked root.
 
 `MaterialReceiptService` owns preview/confirmation/retry/metadata decisions. `MaterialReceiptFiles`
@@ -64,8 +69,14 @@ writers must share the same central data directory for the library/project lock 
 
 Received-only product descriptions, keywords and materials state are revision-checked metadata edits;
 files and folder names are not changed. Native metadata remains in its Project business authority.
-Received entries remain searchable when their root is unavailable. Explicit location preview and
-confirmation reconnect a moved managed copy without copying files, parsing markers or changing a native
+Unavailable entries remain in the backend catalog, with their existing identities and records.
+The ordinary library lists only currently available directories, without a lost-location list or
+Locate actions; refresh can reveal an entry again when its registered directory is available.
+Scan limits/access errors and failed requests still surface actionable warnings. Daily details show
+current materials metadata and location, without receipt history or source paths, and do not fetch
+catalog history or run retries. Current receipt/copy dialogs retain their operation-bound result
+checks and retries. Backend history and relocation endpoints remain available for compatibility.
+Explicit location preview and confirmation reconnect a moved managed copy without copying files, parsing markers or changing a native
 workspace. Original sources and all known native/member/linked/other-receipt roots (including retained
 ones) are protected against aliasing. Unknown moved copies require the user's explicit folder choice.
 
@@ -134,3 +145,18 @@ results and explicit retry remain separate endpoints. This read-only history doe
 portable state or write native metadata. Across selected-copy and whole-folder operations,
 archive reuse additionally requires the same intended destination relative path; a copy under
 `Reference materials` cannot satisfy a later receipt intended for the project's root.
+
+
+## Settings and daily browsing acceptance (2026-11-15)
+
+- Existing receipt destination loads in Settings and is persisted through the existing receipt API;
+  native project default and each registered project folder remain separate.
+- Ordinary Receive has no location editor; no valid root means no receipt confirmation can start.
+- Many unavailable catalog entries produce no repair list; restoring a registered folder and refreshing
+  makes it visible again without recreating its record. No deletion, relocation or filesystem scan
+  of unrelated directories is introduced.
+- Daily details omit history/source/Locate controls, while receipt metadata edits, formal Workbench
+  navigation and current-operation confirmation/retry remain intact.
+- Validate with synthetic API/browser responses plus isolated SQLite/folder tests. Root settings do
+  not migrate old material folders, and hidden entries remain backend records rather than a cleanup
+  queue. Real business files are outside validation scope.

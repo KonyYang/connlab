@@ -39,25 +39,36 @@ it("searches filenames across projects and supports type filtering", async () =>
  await act(async()=>{await user.selectOptions(screen.getByLabelText("Material type"),"record");});
  await waitFor(()=>expect(api.searchReferenceLibrary).toHaveBeenCalledWith("PwrBlade 温升","all","record",project.key,0,expect.any(AbortSignal)));
 });
-it("keeps unavailable entries, aggregates issues and uses ordinary linked details", async () => {
- const user=userEvent.setup(); const old=vi.fn();
- vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...project,key:"linked:old",project_id:null,source:"linked",available:false}],files:[],total:0,warnings:["Search incomplete: original location unavailable"]});
- render(<ReferenceLibraryPage onOpenProject={vi.fn()} onOpenLinked={old}/>);
- await screen.findByText("Original material location is unavailable. The entry is retained.");
- expect(screen.getByText("1 material location(s) unavailable")).toBeTruthy();
- expect(screen.getByRole("button",{name:"Open folder",exact:true}).hasAttribute("disabled")).toBe(true);
- await act(async()=>{await user.click(screen.getByRole("button",{name:"Materials information"}));});
- expect(screen.getByRole("dialog")).toBeTruthy(); expect(old).not.toHaveBeenCalled();
- expect(screen.queryByText("Prepare to Take")).toBeNull();
+it("hides unavailable materials without a repair list and restores them after refresh", async () => {
+ const user=userEvent.setup();
+ const missing=Array.from({length:60},(_,i)=>({...project,key:`linked:old-${i}`,number:`OLD-${i}`,project_id:null,source:"linked",available:false}));
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[...missing,project],files:[],total:0,warnings:[]});
+ render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ await screen.findByRole("button",{name:"温升记录.xlsx"});
+ expect(screen.queryByText(/OLD-0/)).toBeNull();
+ expect(screen.queryByRole("button",{name:/Locate/i})).toBeNull();
+ expect(screen.queryByText(/material location\(s\) unavailable/)).toBeNull();
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...missing[0],available:true},project],files:[],total:0,warnings:[]});
+ await user.click(screen.getByRole("button",{name:"Refresh"}));
+ expect(await screen.findByRole("button",{name:/OLD-0/})).toBeTruthy();
 });
-it("distinguishes unassociated materials from a lost location", async () => {
+it("preserves actionable scan warnings and search failures",async()=>{
+ const user=userEvent.setup();
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[project],files:[],total:0,warnings:["Search incomplete: scan limit reached"]});
+ render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ expect(await screen.findByText("Search incomplete: scan limit reached")).toBeTruthy();
+ vi.mocked(api.searchReferenceLibrary).mockRejectedValue(new Error("Could not load materials."));
+ await user.click(screen.getByRole("button",{name:"Refresh"}));
+ expect(await screen.findByRole("alert")).toHaveProperty("textContent",expect.stringContaining("Could not load materials."));
+ expect(screen.getByRole("button",{name:"Retry"})).toBeTruthy();
+});
+it("does not list projects with no associated materials",async()=>{
  vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...project,folder_path:"",available:false}],files:[],total:0,warnings:[]});
  render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
- await screen.findByRole("button",{name:/DL-2026-08-079.*No materials linked yet/});
- expect(screen.queryByText("Original material location is unavailable. The entry is retained.")).toBeNull();
+ expect(await screen.findByText(/No materials to show/)).toBeTruthy();
+ expect(screen.queryByRole("button",{name:/DL-2026-08-079/})).toBeNull();
  expect(screen.queryByRole("alert")).toBeNull();
 });
-
 
 it("keeps an exact member entry when a project with the same member id has another root",async()=>{
  window.history.replaceState(null,"","/reference?entry=member:m1");

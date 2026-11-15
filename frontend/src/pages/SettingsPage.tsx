@@ -10,6 +10,7 @@ import {
   pickExternalResourcePathFromDesktop
 } from "../desktop/pathPickerBridge";
 import { SettingsExternalResourcesPanel } from "../features/settings/SettingsExternalResourcesPanel";
+import { ReceiveSaveLocation } from "../features/settings/ReceiveSaveLocation";
 import "../settings.css";
 import { useSettingsResources } from "../features/settings/useSettingsResources";
 
@@ -60,6 +61,7 @@ export function SettingsPage(): ReactElement {
 
       {!loading && (
         <SettingsExternalResourcesPanel
+          receiveLocation={<ReceiveSaveLocation />}
           resources={resources}
           savingType={savingType}
           onSave={handleSave}

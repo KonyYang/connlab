@@ -21,7 +21,6 @@ export function ReceiptResults({ batch }: { batch: ReceiptBatch }) {
 }
 export function ReceiveMaterials({ onClose, onReceived, initialTarget }: { onClose: () => void; onReceived: (key: string) => void; initialTarget?: ReferenceProject | null }) {
  const [runtime, setRuntime] = useState<ReceiptRuntime | null>(null);
- const [root, setRoot] = useState("");
  const [form, setForm] = useState<ReceiptInput>({ source: "", number: initialTarget?.number ?? "", product_name: initialTarget?.title ?? "", test_keywords: initialTarget?.test_item ?? "", target_key: initialTarget?.key ?? "", separate_description: "", material_state: initialTarget?.material_state ?? null });
  const [plan, setPlan] = useState<ReceiptPlan | null>(null);
  const [candidates, setCandidates] = useState<ReceiptCandidate[]>([]);
@@ -34,7 +33,7 @@ export function ReceiveMaterials({ onClose, onReceived, initialTarget }: { onClo
  const title = useRef<HTMLHeadingElement>(null);
  useEffect(() => {
   live.current = true; const previous = document.activeElement as HTMLElement | null; title.current?.focus();
-  void api.getReceiptRuntime().then(value => { if (live.current) { setRuntime(value); setRoot(value.root_path); } }).catch(cause => { if (live.current) setError((cause as Error).message); });
+  void api.getReceiptRuntime().then(value => { if (live.current) { setRuntime(value); } }).catch(cause => { if (live.current) setError((cause as Error).message); });
   const unfinished = readPending();
   if (unfinished?.batch_id) { setPending(unfinished); void api.getReceiptBatch(unfinished.batch_id).then(value => { if (live.current) finish(value); }).catch(() => { if (live.current) setError("A previous receipt has no confirmed result. Retry that receipt before starting another."); }); }
   return () => { live.current = false; previous?.focus(); };
@@ -65,14 +64,12 @@ export function ReceiveMaterials({ onClose, onReceived, initialTarget }: { onClo
   {error && <p role="alert">{error}</p>}
   {busy && <p role="status">Working…</p>}
   {!batch && !pending && <>
-   <fieldset disabled={locked}><legend>Receive save location</legend>
-    <div className="materials-inline"><input aria-label="Receive save location" value={root} onChange={event => { setRoot(event.target.value); setPlan(null); }} /><button onClick={() => void act(async () => { const value = await api.pickReceiptFolder(); if (value && live.current) { setRoot(value); setPlan(null); } })}>Choose save location</button><button disabled={!root} onClick={() => void act(async () => { const value = await api.setReceiptDestination(root); if (live.current) { setRuntime(value); setRoot(value.root_path); setPlan(null); } })}>Use save location</button></div>
-    {runtime && !runtime.available && <p>Choose an available location for received copies. The Projects save setting is separate.</p>}
-   </fieldset>
+   {runtime?.available && <p className="materials-path">Save location: {runtime.root_path}</p>}
+   {runtime && !runtime.available && <p role="alert">Set an available Receive save location in Settings before receiving materials. <a href="/settings">Open Settings</a></p>}
    {initialTarget && <p className="materials-path">Supplementing: {initialTarget.number || "No number"} · {initialTarget.title} — {initialTarget.folder_path}</p>}
    <fieldset disabled={locked}><legend>Source and materials information</legend>
     <label>Source folder<div className="materials-inline"><input aria-label="Source folder" value={form.source} onChange={event => update("source", event.target.value)} /><button onClick={() => void act(chooseSource)}>Choose source folder</button></div></label>
-    <div className="materials-fields"><label>Project number<input readOnly={Boolean(initialTarget)} value={form.number} onChange={event => update("number", event.target.value)} /></label><label>Product name<input value={form.product_name} onChange={event => update("product_name", event.target.value)} /></label><label>Test items<input value={form.test_keywords} onChange={event => update("test_keywords", event.target.value)} /></label><label>Declared project state<select value={form.material_state ?? ""} onChange={event => update("material_state", event.target.value || null)}><option value="">Manual project: default Completed</option><option value="completed">Completed</option><option value="ongoing">On-going</option></select></label></div>
+    <div className="materials-fields"><label>Project number<input readOnly={Boolean(initialTarget)} value={form.number} onChange={event => update("number", event.target.value)} /></label><label>Product name<input value={form.product_name} onChange={event => update("product_name", event.target.value)} /></label><label>Test items<input value={form.test_keywords} onChange={event => update("test_keywords", event.target.value)} /></label><label>Declared project state<select value={form.material_state ?? ""} onChange={event => update("material_state", event.target.value || null)}><option value="">Completed (default)</option><option value="completed">Completed</option><option value="ongoing">On-going</option></select></label></div>
     <label>Distinguishing description<input value={form.separate_description} onChange={event => update("separate_description", event.target.value)} /></label>
     <p className="materials-help">The number is retained as entered. LTR availability does not block receipt. Product and test items are search information; no execution data is restored.</p>
    </fieldset>
@@ -83,7 +80,7 @@ export function ReceiveMaterials({ onClose, onReceived, initialTarget }: { onClo
    {plan?.message && <p role="status">{plan.message}</p>}
    {plan?.status === "choose_target" && <p role="status">Choose an existing managed project to supplement, or keep a clearly distinguished independent entry.</p>}
    {plan?.status === "choose_state" && <p role="status">Choose Completed or On-going explicitly, then review again.</p>}
-   <div className="materials-actions"><button disabled={locked || !form.source || !runtime?.available || root !== runtime.root_path} onClick={() => void act(review)}>Review receipt</button></div>
+   <div className="materials-actions"><button disabled={locked || !form.source || !runtime?.available} onClick={() => void act(review)}>Review receipt</button></div>
    {plan?.status === "ready" && <section className="materials-review" aria-label="Receipt confirmation"><h3>Confirm receipt</h3><p>Not received yet. Your source folder will remain unchanged.</p><p className="materials-path">Planned location: {plan.target_path}</p>{plan.supplement && <p>Only files will be added. Existing project information, Matrix and progress remain unchanged.</p>}<p>New {counts.copy ?? 0} · Skip identical {counts.skip ?? 0} · Supplementary {counts.supplement ?? 0}</p>
     {(counts.supplement ?? 0) > 0 && <p className="materials-path">Incoming conflict copy: {plan.items?.find(row => row.action === "supplement" && !row.directory)?.target_relative}. Existing files are retained.</p>}
     <details><summary>File differences</summary><ul className="materials-items">{plan.items?.map(row => <li key={row.relative_path}><strong>{row.relative_path}{row.directory ? " (folder)" : ""}</strong><span>{labels[row.action] ?? row.action}</span><span>{row.target_relative}</span>{row.reason && <span>{row.reason}</span>}</li>)}</ul></details>

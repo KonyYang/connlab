@@ -40,7 +40,6 @@ class LibrarySearchService:
             if location_state == "unassociated":
                 continue
             if not entry["available"]:
-                warnings.append(f"{entry['number'] or entry['title']}: material location unavailable. Locate the folder before opening files.")
                 continue
             if not tokens and not project and kind == "all":
                 continue
@@ -73,7 +72,7 @@ class LibrarySearchService:
         if state == "available":
             directory, rows, warnings = self.files.browse(root, relative_directory)
         elif state == "unavailable":
-            warnings.append("The material location is unavailable. Locate the folder and refresh.")
+            warnings.append("The material folder is unavailable. Refresh the library.")
         return {"key": entry["key"], "root": root, "current_directory": directory,
                 "location_state": state, "items": rows, "warnings": warnings}
 

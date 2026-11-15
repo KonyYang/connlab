@@ -32,11 +32,11 @@ def test_search_combines_project_fields_and_deep_filename_and_refreshes(tmp_path
     assert (folder / "new.xlsx").read_bytes() == b"manual data"
 
 
-def test_missing_root_retains_project_and_reports_incomplete_search(tmp_path):
+def test_missing_root_retains_project_without_a_catalog_repair_warning(tmp_path):
     service = LibrarySearchService(Catalog(tmp_path / "missing"), SearchFiles(), lambda path: None)
     result = service.search("PwrBlade")
     assert result["projects"][0]["available"] is False
-    assert result["warnings"]
+    assert result["warnings"] == []
     assert result["files"] == []
     browse = service.browse("project:p1")
     assert browse["location_state"] == "unavailable" and browse["items"] == []
@@ -133,7 +133,7 @@ def test_api_unifies_existing_identities_without_copying_or_writing(tmp_path):
         assert result.status_code == 200, result.text
         assert len(result.json()["projects"]) == 3
         assert len(result.json()["files"]) == 2
-        assert result.json()["warnings"]
+        assert result.json()["warnings"] == []
         browsing = client.get("/api/project-library/browse", params={"key": "member:m1"})
         assert browsing.status_code == 200, browsing.text
         assert browsing.json()["key"] == "project:p1"
@@ -166,8 +166,7 @@ def test_unassociated_projects_are_quiet_by_default_but_explicitly_searchable(tm
     service = LibrarySearchService(Entries(), SearchFiles(), lambda path: None)
     default = service.search()
     assert {row['key'] for row in default['projects']} == {'project:missing', 'project:available'}
-    assert len(default['warnings']) == 1
-    assert 'TMP-1' not in default['warnings'][0]
+    assert default['warnings'] == []
     assert {row['key']: row['location_state'] for row in default['projects']} == {
         'project:missing': 'unavailable', 'project:available': 'available'}
     found = service.search('TMP-1')['projects']

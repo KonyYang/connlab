@@ -27,17 +27,17 @@ it("requires target review and explicit confirmation for a selected file",async(
  expect(api.confirmMaterialCopy).toHaveBeenCalledWith(plan,{session_id:"session",token:"context-1"});expect(copied).toHaveBeenCalled();
 });
 
-it("keeps a lost copy result bound to its operation and exposes durable target history",async()=>{
+it("keeps a lost copy result bound to its operation and can show target materials",async()=>{
  const user=userEvent.setup();const history=vi.fn();
  vi.mocked(api.previewMaterialCopy).mockResolvedValue({status:"ready",candidates:[],plan_id:"copy",fingerprint:"hash",batch_id:"bcopy",items:[],target_path:"D:/current"});
  vi.mocked(api.confirmMaterialCopy).mockRejectedValue(new Error("Response lost"));
- render(<CopyMaterials source={source} file={{name:"report.docx",relative_path:"report.docx",is_directory:false,modified_at:null,extension:".docx"}} context={context} onClose={vi.fn()} onCopied={vi.fn()} onTargetHistory={history}/>);
+ render(<CopyMaterials source={source} file={{name:"report.docx",relative_path:"report.docx",is_directory:false,modified_at:null,extension:".docx"}} context={context} onClose={vi.fn()} onCopied={vi.fn()} onTargetMaterials={history}/>);
  await screen.findByText("Project location: D:/current");
  await act(async()=>{await user.click(screen.getByRole("button",{name:"Check destination"}));});
  await act(async()=>{await user.click(screen.getByRole("button",{name:"Confirm copy"}));});
  expect(await screen.findByText("Response lost")).toBeTruthy();
  expect(screen.getByLabelText("Target directory within project").hasAttribute("disabled")).toBe(true);
- await act(async()=>{await user.click(screen.getByRole("button",{name:"View target receipt history"}));});
+ await act(async()=>{await user.click(screen.getByRole("button",{name:"View target materials"}));});
  expect(history).toHaveBeenCalledWith(target);expect(api.confirmMaterialCopy).toHaveBeenCalledTimes(1);
 });
 
