@@ -24,7 +24,7 @@ class Catalog:
 
 
 @pytest.fixture
-def receipt(tmp_path):
+def receipt(tmp_path, request):
     data = tmp_path / 'state'
     data.mkdir()
     engine = create_engine(f"sqlite:///{data / 'test.sqlite3'}")
@@ -35,9 +35,10 @@ def receipt(tmp_path):
         files = MaterialReceiptFiles(settings)
         catalog = Catalog(store)
         service = MaterialReceiptService(store, files, catalog)
-        root = tmp_path / 'received'
-        root.mkdir()
-        service.configure_root(str(root))
+        if getattr(request, 'param', True):
+            root = tmp_path / 'received'
+            root.mkdir()
+            service.configure_root(str(root))
         yield service, store, files, catalog, session
     engine.dispose()
 
@@ -974,3 +975,120 @@ def test_copy_http_never_accepts_target_only_or_stale_context(copy_materials):
         assert client.post(base+'/copy-confirm',json={**confirm,'context':context}).status_code == 409
         assert client.post(base+'/copy-preview',json=valid).status_code == 409
     assert list(target.iterdir()) == []
+
+
+@pytest.mark.parametrize('receipt', [False], indirect=True)
+@pytest.mark.parametrize('already_exists', [False, True])
+def test_unconfigured_material_library_uses_documents_and_keeps_its_saved_location(receipt, tmp_path, monkeypatch, already_exists):
+    from backend.infrastructure.project_library import material_receipt_files
+    service, store, files, catalog, session = receipt
+    documents = tmp_path / 'Redirected Documents'
+    documents.mkdir()
+    original = documents / 'personal.txt'
+    original.write_bytes(b'personal document retained')
+    monkeypatch.setattr(material_receipt_files, 'user_documents_directory', lambda: documents)
+    expected = documents / 'ConnLab' / 'Materials'
+    if already_exists:
+        expected.mkdir(parents=True)
+        (expected / 'retained.txt').write_bytes(b'existing materials')
+    runtime = service.runtime()
+    assert runtime['root_path'] == str(expected)
+    assert runtime['configured'] and runtime['available']
+    assert expected.is_dir()
+    if already_exists:
+        assert (expected / 'retained.txt').read_bytes() == b'existing materials'
+    else:
+        assert list(expected.iterdir()) == []
+    assert original.read_bytes() == b'personal document retained'
+    saved = store.settings()
+    monkeypatch.setattr(material_receipt_files, 'user_documents_directory', lambda: tmp_path / 'Different Documents')
+    with Session(session.bind) as fresh:
+        fresh_store = MaterialReceiptRepository(fresh)
+        fresh_service = MaterialReceiptService(fresh_store, MaterialReceiptFiles(files.settings), Catalog(fresh_store))
+        assert fresh_service.runtime() == runtime
+        assert fresh_store.settings() == saved
+    assert not (tmp_path / 'Different Documents').exists()
+    assert store.catalog() == []
+
+
+@pytest.mark.parametrize('receipt', [False], indirect=True)
+def test_first_receipt_preview_can_use_default_library_without_changing_source(receipt, tmp_path, monkeypatch):
+    from backend.infrastructure.project_library import material_receipt_files
+    service, store, files, catalog, session = receipt
+    documents = tmp_path / 'Documents'
+    documents.mkdir()
+    monkeypatch.setattr(material_receipt_files, 'user_documents_directory', lambda: documents)
+    source = tmp_path / 'incoming'
+    source.mkdir()
+    (source / 'manual.txt').write_bytes(b'manual content')
+    plan = service.preview(str(source), product_name='Connector')
+    assert Path(plan['target_path']).parent == documents / 'ConnLab' / 'Materials'
+    assert not Path(plan['target_path']).exists()
+    assert (source / 'manual.txt').read_bytes() == b'manual content'
+    assert store.catalog() == []
+
+
+@pytest.mark.parametrize('offline', [False, True])
+def test_existing_library_is_never_replaced_by_the_default(receipt, tmp_path, monkeypatch, offline):
+    from backend.infrastructure.project_library import material_receipt_files
+    service, store, files, catalog, session = receipt
+    before = store.settings()
+    root = Path(before['root_path'])
+    (root / 'manual.txt').write_bytes(b'human edit')
+    moved = tmp_path / 'moved-by-user' if offline else root
+    if offline:
+        root.rename(moved)
+    def unexpected_default():
+        raise AssertionError('Existing config must win')
+    monkeypatch.setattr(material_receipt_files, 'user_documents_directory', unexpected_default)
+    runtime = service.runtime()
+    assert runtime['root_path'] == before['root_path']
+    assert runtime['configured'] and runtime['available'] is not offline
+    assert store.settings() == before
+    assert root.exists() is not offline
+    assert (moved / 'manual.txt').read_bytes() == b'human edit'
+
+
+@pytest.mark.parametrize('receipt', [False], indirect=True)
+def test_default_library_does_not_claim_a_registered_project_directory(receipt, tmp_path, monkeypatch):
+    from backend.infrastructure.project_library import material_receipt_files
+    service, store, files, catalog, session = receipt
+    documents = tmp_path / 'Documents'
+    documents.mkdir()
+    monkeypatch.setattr(material_receipt_files, 'user_documents_directory', lambda: documents)
+    catalog.extra.append(dict(key='project:p1', project_id='p1', source='connlab', folder_path=str(documents)))
+    with pytest.raises(ValueError, match='separate'):
+        service.runtime()
+    assert store.settings() == {'root_path': '', 'revision': 0}
+    assert not (documents / 'ConnLab').exists()
+
+
+@pytest.mark.parametrize('receipt', [False], indirect=True)
+def test_default_library_creation_failure_does_not_save_a_setting(receipt, tmp_path, monkeypatch):
+    from backend.infrastructure.project_library import material_receipt_files
+    service, store, files, catalog, session = receipt
+    documents = tmp_path / 'Documents'
+    documents.mkdir()
+    monkeypatch.setattr(material_receipt_files, 'user_documents_directory', lambda: documents)
+    expected = documents / 'ConnLab' / 'Materials'
+    mkdir = Path.mkdir
+    def deny_default(path, *args, **kwargs):
+        if path == expected:
+            raise PermissionError('Synthetic default folder access denied')
+        return mkdir(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'mkdir', deny_default)
+    with pytest.raises(PermissionError, match='access denied'):
+        service.runtime()
+    assert store.settings() == {'root_path': '', 'revision': 0}
+    assert not expected.exists()
+
+
+@pytest.mark.parametrize('receipt', [False], indirect=True)
+def test_default_library_stays_separate_from_internal_data(receipt, tmp_path, monkeypatch):
+    from backend.infrastructure.project_library import material_receipt_files
+    service, store, files, catalog, session = receipt
+    monkeypatch.setattr(material_receipt_files, 'user_documents_directory', lambda: files.settings.data_dir)
+    with pytest.raises(ValueError, match='separate'):
+        service.runtime()
+    assert store.settings() == {'root_path': '', 'revision': 0}
+    assert not (files.settings.data_dir / 'ConnLab').exists()

@@ -61,11 +61,11 @@ export function ReceiveMaterials({ onClose, onReceived, initialTarget }: { onClo
  const counts = (plan?.items ?? []).filter(row => !row.directory).reduce<Record<string, number>>((value, row) => ({ ...value, [row.action]: (value[row.action] ?? 0) + 1 }), {});
  return createPortal(<div className="materials-overlay"><section className="materials-dialog" role="dialog" aria-modal="true" aria-labelledby="receive-materials-title">
   <header><h2 id="receive-materials-title" ref={title} tabIndex={-1}>Receive project materials</h2><button disabled={busy} onClick={onClose}>Close</button></header>
-  {error && <p role="alert">{error}</p>}
+  {error && <p role="alert">{error}{!runtime && <> <a href="/settings">Open Settings</a></>}</p>}
   {busy && <p role="status">Working…</p>}
   {!batch && !pending && <>
-   {runtime?.available && <p className="materials-path">Save location: {runtime.root_path}</p>}
-   {runtime && !runtime.available && <p role="alert">Set an available Receive save location in Settings before receiving materials. <a href="/settings">Open Settings</a></p>}
+   {runtime?.available && <p className="materials-path">Materials library folder: {runtime.root_path}</p>}
+   {runtime && !runtime.available && <p role="alert">Set an available Materials library folder in Settings before receiving materials. <a href="/settings">Open Settings</a></p>}
    {initialTarget && <p className="materials-path">Supplementing: {initialTarget.number || "No number"} · {initialTarget.title} — {initialTarget.folder_path}</p>}
    <fieldset disabled={locked}><legend>Source and materials information</legend>
     <label>Source folder<div className="materials-inline"><input aria-label="Source folder" value={form.source} onChange={event => update("source", event.target.value)} /><button onClick={() => void act(chooseSource)}>Choose source folder</button></div></label>

@@ -8,10 +8,17 @@ portable data. Legacy import/recovery routes remain compatibility code; ordinary
 must not call their member or portable APIs.
 
 The receive save root lives in `material_receipt_settings`, independently of the native project output
-root. Settings > Default locations is its only ordinary editing surface; existing saved values remain
-in use without migration. Receive reads that setting directly and shows the destination without
-configuration controls. An unset/unavailable root blocks new receipt with a link to Settings. Changing
-the default does not move existing files, rewrite received-entry roots or change native project roots.
+root. Settings > Default locations > Materials library folder is its only ordinary editing surface.
+Existing saved values and revisions remain in use without migration, even when temporarily offline.
+With no saved path, the first runtime/settings read or receipt preview initializes
+`<Windows Documents>/ConnLab/Materials` and persists that setting under the existing library lock.
+Windows Documents is resolved through the OS known-folder API, including redirected Documents
+locations; it is not a hard-coded user-profile path. Only the missing app-owned directories are
+created. Existing contents are retained without scanning/adopting or moving them. Ownership and
+internal-data boundaries are checked before creation; failures leave the setting unconfigured.
+Receive reads that setting directly and shows the destination without configuration controls. An
+unavailable root or failed default initialization blocks new receipt with actionable Settings guidance.
+Changing the default does not move existing files, rewrite received-entry roots or change native project roots.
 New received-only identities live in `material_receipt_entries`; durable progress lives in
 `material_receipt_batches`. These additive tables are registered by the existing database bootstrap.
 Metadata is central; the received source's `.connlab` files are never rewritten by receipt management.
@@ -151,7 +158,8 @@ archive reuse additionally requires the same intended destination relative path;
 
 - Existing receipt destination loads in Settings and is persisted through the existing receipt API;
   native project default and each registered project folder remain separate.
-- Ordinary Receive has no location editor; no valid root means no receipt confirmation can start.
+- Ordinary Receive has no location editor; it displays Materials library folder and uses the saved
+  default directly. No valid root means no receipt confirmation can start.
 - Many unavailable catalog entries produce no repair list; restoring a registered folder and refreshing
   makes it visible again without recreating its record. No deletion, relocation or filesystem scan
   of unrelated directories is introduced.
