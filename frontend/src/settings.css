@@ -175,3 +175,10 @@
     flex-direction: column;
   }
 }
+
+
+@media (max-width: 600px) {
+  .settings-receive-location .settings-path-control {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

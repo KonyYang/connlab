@@ -6,7 +6,7 @@ import * as api from "../../api/materialReceipts";
 vi.mock("../../api/materialReceipts", () => ({ getReceiptDetail: vi.fn(), editReceiptMetadata: vi.fn(), pickReceiptFolder: vi.fn(), previewReceiptLocation: vi.fn(), confirmReceiptLocation: vi.fn(), getCatalogReceiptHistory: vi.fn(), getReceiptBatch: vi.fn(), retryReceipt: vi.fn() }));
 const project = { key: "receipt:r1", receipt_id: "r1", project_id: null, member_id: null, number: "Legacy/2001-a", title: "Product", test_item: "", source: "received", available: true, folder_path: "D:/received" };
 const detail = { receipt_id: "r1", number: "Legacy/2001-a", product_name: "Product", test_keywords: "Temperature", description: "old PC", material_state: "completed", folder_path: "D:/received", source_path: "C:/old", revision: 1, batch_id: "b1", created_at: "2026-11-14", available: true, batch: { batch_id: "b1", status: "completed", source_path: "C:/old", target_path: "D:/received", target_key: "receipt:r1", receipt_id: "r1", items: [], counts: {}, directory_counts: {} } };
-beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.getReceiptDetail).mockResolvedValue(detail); vi.mocked(api.editReceiptMetadata).mockResolvedValue(detail); });
+beforeEach(() => { vi.resetAllMocks(); vi.mocked(api.getCatalogReceiptHistory).mockResolvedValue({items:[]}); vi.mocked(api.getReceiptDetail).mockResolvedValue(detail); vi.mocked(api.editReceiptMetadata).mockResolvedValue(detail); });
 it("edits only receipt information and refreshes details", async () => {
  const user = userEvent.setup(); const changed = vi.fn();
  render(<MaterialDetails project={project} onClose={vi.fn()} onBrowse={vi.fn()} onProject={vi.fn()} onChanged={changed} />);
@@ -17,33 +17,20 @@ it("edits only receipt information and refreshes details", async () => {
  expect(changed).toHaveBeenCalled(); expect(screen.queryByText("Prepare to Take")).toBeNull();
 });
 
-it("opens a native project's durable batch and retries explicitly without old recovery",async()=>{
- const user=userEvent.setup();const batch={...detail.batch,batch_id:"bcopy",status:"incomplete",target_key:"project:p1"};
- vi.mocked(api.getCatalogReceiptHistory).mockResolvedValue({items:[{batch_id:"bcopy",status:"incomplete",source_path:"D:/old/file.docx",created_at:"2026-11-14",counts:{failed:1},directory_counts:{}}]});
- vi.mocked(api.getReceiptBatch).mockResolvedValue(batch);
- vi.mocked(api.retryReceipt).mockResolvedValue({...batch,status:"completed"});
- render(<MaterialDetails project={{...project,key:"project:p1",receipt_id:undefined,project_id:"p1",source:"connlab"}} onClose={vi.fn()} onBrowse={vi.fn()} onProject={vi.fn()} onChanged={vi.fn()}/>);
- await act(async()=>{await user.click(screen.getByText("Receipt history and source"));});
- const view=await screen.findByRole("button",{name:"View receipt bcopy"});
- await act(async()=>{await user.click(view);});
- await act(async()=>{await user.click(screen.getByRole("button",{name:"Retry receipt"}));});
- expect(api.retryReceipt).toHaveBeenCalledWith("bcopy");
- expect(api.getReceiptDetail).not.toHaveBeenCalled();
- expect(await screen.findByText("Materials received and verified.")).toBeTruthy();
-});
-
-
-it("keeps old copy outcomes readable but enables retry only in their live context",async()=>{
- const user=userEvent.setup();const native={...project,key:"project:p1",receipt_id:undefined,project_id:"p1",source:"connlab"};
- const batch={...detail.batch,batch_id:"copy",operation:"copy_file",copy_context:{session_id:"browser",intent:7},status:"incomplete",target_key:native.key};
- vi.mocked(api.getCatalogReceiptHistory).mockResolvedValue({items:[{batch_id:"copy",status:"incomplete",source_path:"D:/old",created_at:"2026-11-14",counts:{failed:1},directory_counts:{}}]});
- vi.mocked(api.getReceiptBatch).mockResolvedValue(batch);vi.mocked(api.retryReceipt).mockResolvedValue({...batch,status:"completed"});
- const props={project:native,onClose:vi.fn(),onBrowse:vi.fn(),onProject:vi.fn(),onChanged:vi.fn()};
- const view=render(<MaterialDetails {...props}/>);
- await user.click(screen.getByText("Receipt history and source"));await user.click(await screen.findByRole("button",{name:"View receipt copy"}));
- expect(screen.getByRole("button",{name:"Retry receipt"}).hasAttribute("disabled")).toBe(true);
+it.each([true,false])("shows daily details without source, history or relocation (receipt=%s)",async received=>{
+ const native={...project,key:"project:p1",receipt_id:undefined,project_id:"p1",source:"connlab",folder_path:"D:/Projects/Native"};
+ const openProject=vi.fn();const user=userEvent.setup();
+ render(<MaterialDetails project={received?project:native} onClose={vi.fn()} onBrowse={vi.fn()} onProject={openProject} onChanged={vi.fn()}/>);
+ if(received) await screen.findByText("Declared project state: Completed");
+ expect(screen.queryAllByText(/Receipt history|Original source/)).toHaveLength(0);
+ expect(screen.queryByText("C:/old")).toBeNull();
+ expect(screen.queryByRole("button",{name:/Locate|Retry receipt|View receipt/})).toBeNull();
+ expect(api.getCatalogReceiptHistory).not.toHaveBeenCalled();
+ expect(api.getReceiptBatch).not.toHaveBeenCalled();
  expect(api.retryReceipt).not.toHaveBeenCalled();
- view.rerender(<MaterialDetails {...props} copyContext={{session_id:"browser",token:"live",intent:7,target:native}}/>);
- await user.click(screen.getByRole("button",{name:"Retry receipt"}));
- expect(api.retryReceipt).toHaveBeenCalledWith("copy",{session_id:"browser",token:"live"});
+ if(!received){
+  expect(screen.getByText("Managed location: D:/Projects/Native")).toBeTruthy();
+  await user.click(screen.getByRole("button",{name:"Project workspace"}));
+  expect(openProject).toHaveBeenCalledWith("p1");
+ }
 });

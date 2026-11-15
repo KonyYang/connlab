@@ -3,8 +3,8 @@ import { browseReferenceFiles, openReferenceFile, searchReferenceLibrary, type R
 import { useReportShortcuts, reportLabels } from "./ReportShortcuts";
 import type { ReportRole } from "../../api/reportShortcuts";
 import { UiIcon } from "../../components/common/UiIcon";
-export function MaterialFiles({ project, query, kind, refresh, onError, onWarnings, onCopy, onLocate }: { project: ReferenceProject; query: string; kind: string; refresh: number; onError: (message: string) => void; onWarnings: (notes: string[]) => void; onCopy: (file: BrowseFile) => void; onLocate?:()=>void }) {
- const shortcuts=useReportShortcuts(project.key,refresh,onError,project.available,onLocate);
+export function MaterialFiles({ project, query, kind, refresh, onError, onWarnings, onCopy }: { project: ReferenceProject; query: string; kind: string; refresh: number; onError: (message: string) => void; onWarnings: (notes: string[]) => void; onCopy: (file: BrowseFile) => void }) {
+ const shortcuts=useReportShortcuts(project.key,refresh,onError,project.available);
  const [directory, setDirectory] = useState("");
  const [rows, setRows] = useState<BrowseFile[]>([]);
  const [selected, setSelected] = useState<BrowseFile | null>(null);

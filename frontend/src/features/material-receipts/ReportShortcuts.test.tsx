@@ -44,14 +44,14 @@ it("shows old and new paths before replacing and cancels associations directly",
 
 
 it.each([false,true])("can remove a missing report with no file rows, root available=%s",async available=>{
- const user=userEvent.setup();const locate=vi.fn();
+ const user=userEvent.setup();
  vi.mocked(reports.getReportShortcuts).mockResolvedValue({key:project.key,items:[{role:"internal",relative_path:"missing.docx",available:false,modified_at:null}]});
  vi.mocked(files.browseReferenceFiles).mockResolvedValue({key:project.key,root:project.folder_path,current_directory:"",location_state:"available",items:[],warnings:[]});
  vi.mocked(reports.clearReportShortcut).mockResolvedValue({key:project.key,items:[]});
- render(<MaterialFiles project={{...project,available}} query="" kind="all" refresh={0} onError={vi.fn()} onWarnings={vi.fn()} onCopy={vi.fn()} onLocate={locate}/>);
+ render(<MaterialFiles project={{...project,available}} query="" kind="all" refresh={0} onError={vi.fn()} onWarnings={vi.fn()} onCopy={vi.fn()}/>);
  expect(await screen.findByText("Common reports")).toBeTruthy();
  expect(screen.getByRole("button",{name:"Internal report · missing.docx"}).hasAttribute("disabled")).toBe(true);
- if(!available){await user.click(screen.getByRole("button",{name:"Locate report folder"}));expect(locate).toHaveBeenCalledOnce();}
+ if(!available) expect(screen.queryByRole("button",{name:/Locate/})).toBeNull();
  else expect(screen.getByRole("button",{name:"Choose replacement for Internal report"})).toBeTruthy();
  await user.click(screen.getByRole("button",{name:"Remove Internal report shortcut"}));
  expect(reports.clearReportShortcut).toHaveBeenCalledWith(project.key,"internal","missing.docx");

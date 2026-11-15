@@ -40,6 +40,7 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
     rows=[...rows,...extra.projects.filter(row=>!rows.some(old=>old.key===row.key))];
    }
    if (!live) return;
+   rows=rows.filter(row=>row.available);
    setProjects(rows); setWarnings(result.warnings);
    setSelectedKey(current=>rows.find(row=>row.key===current)?.key ?? rows.find(row=>matchesKey(row,current))?.key ?? rows[0]?.key ?? "");
   }).catch(cause=>{if(live)setError((cause as Error).message);}).finally(()=>{if(live)setBusy(false);});
@@ -48,7 +49,6 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
  const selected=projects.find(row=>row.key===selectedKey) ?? null;
  useEffect(()=>{sessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));},[selectedKey,search,source,kind]);
  const issues=useMemo(()=>Array.from(new Set([...(error?[error]:[]),...warnings,...browseWarnings])),[error,warnings,browseWarnings]);
- const lost=projects.filter(row=>!row.available && row.folder_path);
  function closeReceipt(){setReceiving(false);const url=new URL(window.location.href);url.searchParams.delete("receive");window.history.replaceState(null,"",url);}
  function received(key:string){closeReceipt();setSelectedKey(key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}
  async function openFolder(){if(!selected)return;setError("");try{await openReferenceFile(selected.key);}catch(cause){setError((cause as Error).message);}}
@@ -63,22 +63,21 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
    {(search || source!=="all" || kind!=="all") && <button onClick={()=>{setQuery("");setSearch("");setSource("all");setKind("all");}}>Clear filters</button>}
    <button className="library-refresh" disabled={busy} onClick={()=>setReload(value=>value+1)}><UiIcon name="refresh"/>Refresh</button>
   </div>
-  {issues.length>0 && <div className="library-issues" role={error?"alert":"status"}><details><summary>{lost.length ? lost.length+" material location(s) unavailable" : "Materials need attention"}<span>View issues and locate</span></summary><ul>{issues.map(note=><li key={note}>{note}</li>)}</ul>{lost.map(row=><button key={row.key} onClick={()=>{setSelectedKey(row.key);setDetails(row);}}>Locate {row.number || row.title}</button>)}{error && <button onClick={()=>setReload(value=>value+1)}>Retry</button>}</details></div>}
+  {issues.length>0 && <div className="library-issues" role={error?"alert":"status"}><ul>{issues.map(note=><li key={note}>{note}</li>)}</ul>{error && <button onClick={()=>setReload(value=>value+1)}>Retry</button>}</div>}
   <div className="library-workspace">
    <aside className="library-projects" aria-label="Project materials"><header><strong>Project materials</strong><span>{projects.length}</span></header>{busy && <p role="status">Searching…</p>}
     <div className="library-project-list">{projects.map(row=><div className={"library-project-card"+(row.key===selectedKey?" is-selected":"")} key={row.key}>
-     <button className="library-project-choice" aria-pressed={row.key===selectedKey} onClick={()=>{setSelectedKey(row.key);setError("");}}><strong>{row.number || "No number"}</strong><span>{row.title || "Not recorded"}</span><small>{sources[row.source]}</small>{!row.available && <em>{row.folder_path?"Original location unavailable":"No materials linked yet"}</em>}</button>
-     {!row.available && row.folder_path && <button className="library-locate-link" onClick={()=>setDetails(row)}>Locate folder</button>}
+     <button className="library-project-choice" aria-pressed={row.key===selectedKey} onClick={()=>{setSelectedKey(row.key);setError("");}}><strong>{row.number || "No number"}</strong><span>{row.title || "Not recorded"}</span><small>{sources[row.source]}</small></button>
     </div>)}</div>
-    {!busy && !projects.length && <p className="library-empty">{search?"No matching project materials.":"No linked materials to show. Search to find unlinked projects, or receive existing files."}</p>}
+    {!busy && !projects.length && <p className="library-empty">{search?"No matching project materials.":"No materials to show. Receive existing files."}</p>}
    </aside>
    <section className="library-files" aria-label="Selected project materials">{selected ? <>
     <header className="library-project-heading"><h2>{selected.number || "Project materials"}</h2><p>{selected.title}</p><div className="library-location"><strong>Managed location</strong><span className="library-location-path"><UiIcon name="folder"/>{selected.folder_path || "No materials linked yet"}</span><button disabled={!selected.available} onClick={()=>void openFolder()}><UiIcon name="folder"/>Open folder</button></div><button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button></header>
-    <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onLocate={()=>setDetails(selected)} onCopy={file=>setCopy({project:selected,file})}/>
+    <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>
    </> : <div className="library-empty"><UiIcon name="folder"/><p>Select a project to view its materials.</p></div>}</section>
   </div>
   {receiving && <ReceiveMaterials initialTarget={receiveTarget} onClose={closeReceipt} onReceived={received}/>}
-  {details && <MaterialDetails copyContext={copyContext} project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)} onSupplement={row=>{setDetails(null);setReceiveTarget(row);setReceiving(true);}}/>}
-  {copy && <CopyMaterials source={copy.project} file={copy.file} context={copyContext} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetHistory={row=>{setCopy(null);setDetails(row);setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
+  {details && <MaterialDetails key={details.key} project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)} onSupplement={row=>{setDetails(null);setReceiveTarget(row);setReceiving(true);}}/>}
+  {copy && <CopyMaterials source={copy.project} file={copy.file} context={copyContext} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetMaterials={row=>{setCopy(null);setDetails(row);setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
  </section>;
 }
