@@ -12,8 +12,9 @@ Ordinary `tmp_path` storage remains a unique managed run under
 prefixes can consume the path budget before a test exercises the intended Windows boundary.
 
 `portable_tmp_path` supplies compact, independent per-test directories for official-workspace
-backup, relocation and generation recovery tests. Those modules locally bind `tmp_path` to this
-fixture. Their business folder/file names and the production 248/260-character guards are unchanged;
+backup, relocation and generation recovery tests, and for isolated Git lifecycle tests whose
+internal worktree/object-store paths also have Windows limits. Those modules locally bind `tmp_path`
+to this fixture. Their business folder/file names and the production 248/260-character guards are unchanged;
 the deliberate too-long-path rejection tests still execute the real guard.
 
 The compact store defaults to `D:/ConnLabTestArtifacts/p` on Windows (a local temporary store on
@@ -40,7 +41,9 @@ Python runs therefore do not wait for an actual folder selection.
 
 Relevant regression protection covers a long ordinary evidence root, independent compact scratch,
 Unicode filenames, per-test isolation, session completion, explicit caller storage, and the real
-workspace backup/relocation/recovery cases that previously failed. Artifact ownership, concurrent
+workspace backup/relocation/recovery cases that previously failed, plus local-only Git workflow
+fixtures. Test bare origins contain only synthetic test commits; no real project remote is used.
+Artifact ownership, concurrent
 leases and retention continue through their existing tests. Validation uses isolated directories and
 SQLite only. The change is test infrastructure; it does not extend supported production path lengths,
 shorten business names, alter directory permissions or migrate/clean business files.

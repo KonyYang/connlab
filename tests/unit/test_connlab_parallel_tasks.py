@@ -12,6 +12,12 @@ from test_connlab_sol_native_workflow import (
 )
 
 
+@pytest.fixture
+def tmp_path(portable_tmp_path):
+    """Leave room for Git's internal worktree and object-store paths on Windows."""
+    return portable_tmp_path
+
+
 def commit_board(root: Path) -> None:
     if not git(root, "status", "--porcelain"):
         return
