@@ -15,6 +15,12 @@ from backend.infrastructure.office import OfficeFacade
 from backend.infrastructure.office.models import FeeEvaluationWorkbookWriteResult
 
 
+@pytest.fixture
+def tmp_path(portable_tmp_path):
+    """Reserve the path budget for the workspace and its controlled file names."""
+    return portable_tmp_path
+
+
 def _ok(response):
     assert response.status_code in (200, 201, 202), response.text
     return response.json()

@@ -160,3 +160,53 @@ def test_cleaner_cli_defaults_to_preview_and_applies_only_with_delete(tmp_path: 
     assert refused.returncode == 0
     assert "WARNING" in refused.stderr
     assert keep.read_text(encoding="utf-8") == "keep"
+
+
+def test_portable_fixture_keeps_path_budget_when_artifact_root_is_long(tmp_path: Path) -> None:
+    checkout = fixture_checkout(tmp_path / "checkout", """
+from pathlib import Path
+
+def test_portable_location(portable_tmp_path):
+    payload = portable_tmp_path / ("资料-" + "x" * 150 + ".txt")
+    assert len(str(payload)) < 260
+    payload.write_text("isolated", encoding="utf-8")
+    Path("location.txt").write_text(str(portable_tmp_path), encoding="utf-8")
+
+def test_next_case_has_fresh_scratch(portable_tmp_path):
+    assert list(portable_tmp_path.iterdir()) == []
+    Path("next-location.txt").write_text(str(portable_tmp_path), encoding="utf-8")
+""")
+    root = tmp_path / ("long-artifact-evidence-" + "e" * 40)
+    environment = {**os.environ, "CONNLAB_PYTEST_ARTIFACT_ROOT": str(root),
+                   "PYTHONPATH": str(REPOSITORY), "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
+    result = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"],
+                            cwd=checkout, env=environment, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    actual = Path((checkout / "location.txt").read_text(encoding="utf-8"))
+    assert not actual.is_relative_to(root)
+    assert actual != Path((checkout / "next-location.txt").read_text(encoding="utf-8"))
+    assert (actual / ("资料-" + "x" * 150 + ".txt")).read_text(encoding="utf-8") == "isolated"
+    assert (actual.parent.parent / ".finished.json").is_file()
+    assert len(list(root.glob("run-*/.finished.json"))) == 1
+
+
+def test_portable_fixture_honors_explicit_caller_owned_basetemp(tmp_path: Path) -> None:
+    checkout = fixture_checkout(tmp_path / "checkout", """
+from pathlib import Path
+
+def test_portable_location(portable_tmp_path):
+    Path("location.txt").write_text(str(portable_tmp_path), encoding="utf-8")
+""")
+    explicit = tmp_path / "explicit"
+    unused = tmp_path / "unused-portable-root"
+    root = tmp_path / "unused-artifacts"
+    environment = {**os.environ, "CONNLAB_PYTEST_ARTIFACT_ROOT": str(root),
+                   "CONNLAB_PYTEST_PORTABLE_ROOT": str(unused), "PYTHONPATH": str(REPOSITORY),
+                   "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
+    result = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
+                             "--basetemp", str(explicit)], cwd=checkout, env=environment,
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    actual = Path((checkout / "location.txt").read_text(encoding="utf-8"))
+    assert actual.is_relative_to(explicit)
+    assert not root.exists() and not unused.exists()

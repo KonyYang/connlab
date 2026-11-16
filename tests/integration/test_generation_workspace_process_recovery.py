@@ -24,6 +24,12 @@ from backend.infrastructure.storage.models_project_schedule import ProjectSchedu
 from backend.shared.config import Settings
 
 
+@pytest.fixture
+def tmp_path(portable_tmp_path):
+    """Reserve the path budget for the workspace and its controlled file names."""
+    return portable_tmp_path
+
+
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "connlab.sqlite3")

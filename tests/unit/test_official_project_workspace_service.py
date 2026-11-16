@@ -33,6 +33,12 @@ from backend.shared.config import OfficialWorkspaceSettings
 from backend.application.project_basic_information_output import ConfirmedBasicInformationSnapshot
 
 
+@pytest.fixture
+def tmp_path(portable_tmp_path):
+    """Reserve the path budget for the workspace and its controlled file names."""
+    return portable_tmp_path
+
+
 class _BasicReader:
     def __init__(self, values=None):
         self.values = values
