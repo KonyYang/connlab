@@ -8,6 +8,12 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture
+def tmp_path(portable_tmp_path):
+    """Leave room for Git's internal worktree and object-store paths on Windows."""
+    return portable_tmp_path
+
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "connlab_publish_closed_task.py"
 BOARD = Path("docs/task_board.md")

@@ -40,6 +40,12 @@ from backend.infrastructure.official_workspace_manifest import stable_folder_ide
 from backend.infrastructure.storage.database import create_database_engine, init_db
 
 
+@pytest.fixture
+def tmp_path(portable_tmp_path):
+    """Reserve the path budget for the workspace and its controlled file names."""
+    return portable_tmp_path
+
+
 @pytest.fixture(autouse=True)
 def _isolated_generation_storage(tmp_path):
     settings = Settings(

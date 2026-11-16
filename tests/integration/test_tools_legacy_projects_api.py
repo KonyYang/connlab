@@ -39,36 +39,28 @@ def test_invalid_batches_and_picker_cancel_are_non_writing(tmp_path):
 @pytest.mark.skipif(os.name != "nt", reason="Windows native picker boundary")
 @pytest.mark.parametrize("cancelled", [False, True])
 def test_project_picker_uses_compact_windows_folder_browser(monkeypatch, tmp_path, cancelled):
-    import pythoncom
-    from win32com.shell import shell, shellcon
+    from win32com.shell import shell
+    from backend.infrastructure.files import windows_project_folder_dialog as dialog
     from backend.infrastructure.files.windows_path_picker import WindowsPathPicker, filedialog
 
     selected = tmp_path / "DL-2026-09-032 项目"
-    released = []
     calls = []
-    monkeypatch.setattr(pythoncom, "CoInitialize", lambda: None)
-    monkeypatch.setattr(pythoncom, "CoUninitialize", lambda: released.append(True))
 
-    def choose(*args):
-        calls.append(args)
-        return None if cancelled else (b"selected", "name", 0)
+    def choose():
+        calls.append(True)
+        return None if cancelled else selected
 
-    monkeypatch.setattr(shell, "SHBrowseForFolder", choose)
-    monkeypatch.setattr(shell, "SHGetPathFromIDListW", lambda value: str(selected))
-    monkeypatch.setattr(
-        filedialog,
-        "askdirectory",
-        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("Tk folder dialog not expected")),
-    )
+    def forbidden(*args, **kwargs):
+        raise AssertionError("The legacy or Tk picker must not open during this test")
+
+    monkeypatch.setattr(dialog, "pick_project_folder", choose)
+    monkeypatch.setattr(shell, "SHBrowseForFolder", forbidden)
+    monkeypatch.setattr(filedialog, "askdirectory", forbidden)
 
     assert WindowsPathPicker().pick_legacy_project_directory() == (
         None if cancelled else selected
     )
-    assert calls[0][2] == "Choose one project folder"
-    assert calls[0][3] & shellcon.BIF_RETURNONLYFSDIRS
-    assert calls[0][3] & shellcon.BIF_EDITBOX
-    assert not calls[0][3] & 0x0040
-    assert released == [True]
+    assert calls == [True]
 
 
 def test_registered_application_preview_never_requests_database_or_settings(tmp_path):
