@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_MATERIAL_LIBRARY_SETTINGS_20261115",
-    "tier": "standard",
-    "subject": "7576b56a0758b19e8e0c479dc421a5f3d585da36",
-    "summary": "Centralize Receive save location in Settings and simplify daily material browsing",
+    "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
+    "tier": "high_risk",
+    "subject": "ad8fafdc04bcf1ce189173a204d0cce47af2d77d",
+    "summary": "Historical materials archive: one confirmation, safe independent copies, recoverable operations and folder discovery",
     "disposition": "completed",
-    "decision_ref": "User explicitly confirmed local Close of the current task only. Preserve implementation commits 7576b56a and a20176c1, task worktree and all validation evidence. Do not push or publish; --publish-close intentionally omitted. No cleanup, file moves or business data operations.",
-    "closed_at": "2026-11-15T08:30:59.434998Z"
+    "decision_ref": "User explicitly confirmed local-only Close of the completed task. Preserve implementation commits 608bce14,818c8edf,48f3a84d,297a2b01,ad8fafdc, task worktree and all validation evidence including original full-Python failure records and bounded replay results. No push, publication or packaging. --publish-close intentionally omitted; no cleanup or business-file operations.",
+    "closed_at": "2026-11-16T11:01:49.274121Z"
   },
   "retained_history": [
     {
@@ -561,145 +561,18 @@
       "disposition": "completed",
       "decision_ref": "User accepted and explicitly closed common internal/customer report shortcuts and Workbench copy target task. Preserve all local implementation commits, task worktree, isolated databases, test folders and validation evidence, including real Word/Excel UI edits and four explicitly unverified symlink cases. Only verified isolated demo processes on5211/8831 were stopped;17 test material files retain identical SHA256. NO push or publication; --publish-close deliberately omitted. No business-data mutation or cleanup.",
       "closed_at": "2026-11-14T13:34:48.468379Z"
+    },
+    {
+      "task_id": "TASK_MATERIAL_LIBRARY_SETTINGS_20261115",
+      "tier": "standard",
+      "subject": "7576b56a0758b19e8e0c479dc421a5f3d585da36",
+      "summary": "Centralize Receive save location in Settings and simplify daily material browsing",
+      "disposition": "completed",
+      "decision_ref": "User explicitly confirmed local Close of the current task only. Preserve implementation commits 7576b56a and a20176c1, task worktree and all validation evidence. Do not push or publish; --publish-close intentionally omitted. No cleanup, file moves or business data operations.",
+      "closed_at": "2026-11-15T08:30:59.434998Z"
     }
   ],
-  "tasks": {
-    "TASK_MATERIAL_ARCHIVE_20261116": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\material-archive-20261116",
-      "branch": "codex/material-archive-20261116",
-      "resources": [],
-      "integrated_head": "21f3470041d2fb54c2c4b72e9485908dd4c02c21",
-      "task": {
-        "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
-        "summary": "Historical materials archive: one confirmation, safe independent copies, recoverable operations and folder discovery",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Implement approved single-folder archive and direct-child discovery/index, using additive archive folder table and durable staging/operation identity. Same-name never overwrite or cross-operation deduplicate; partial/index failure visible and retryable. Preserve old data/APIs, native project boundaries and user files; hide control files from ordinary search. Retire ordinary complex Import UI. Isolated validation only; local work, no push/publication.",
-        "scope_paths": [
-          "backend/api/routes_material_receipts.py",
-          "backend/application/project_library/material_archive.py",
-          "backend/application/project_library/search.py",
-          "backend/infrastructure/project_library/material_archive_files.py",
-          "backend/infrastructure/project_library/ownership.py",
-          "backend/infrastructure/project_library/search_files.py",
-          "backend/infrastructure/storage/models_project_library.py",
-          "backend/infrastructure/storage/repositories/library_search.py",
-          "backend/infrastructure/storage/repositories/material_archive.py",
-          "docs/architecture/material_receipt.md",
-          "docs/material_archive_intake.md",
-          "frontend/src/App.test.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/api/materialReceipts.ts",
-          "frontend/src/api/referenceLibrary.ts",
-          "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
-          "frontend/src/features/material-receipts/MaterialDetails.tsx",
-          "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
-          "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
-          "frontend/src/features/material-receipts/materials.css",
-          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.tsx",
-          "tests/integration/test_library_search.py",
-          "tests/integration/test_material_archive.py"
-        ],
-        "risk_reasons": [
-          "database/schema migration",
-          "broad architecture change"
-        ],
-        "activation_head": "0b5d210f88a29aee5aa3c1705336ee9621276de0",
-        "started_at": "2026-11-15T23:51:22.817753Z",
-        "updated_at": "2026-11-16T10:54:25.267649Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User requests consistent colored buttons in materials receipt dialog; replace white-on-white secondary actions using existing theme tokens, distinguish primary actions, verify hover/focus/disabled and narrow layout. Continue same scope locally only; no push/publication/packaging/Close.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
-          "subject": "ad8fafdc04bcf1ce189173a204d0cce47af2d77d",
-          "summary": "Same-task bounded button-style revision uses existing theme colors: primary Receive/independent-copy/continue actions are blue; secondary actions are light blue, with readable hover/focus/disabled states and narrow layouts. Only shared materials CSS and action class markers changed; prior archive behavior and evidence retained. Local only; await User Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
-            "frontend/src/features/material-receipts/materials.css"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Developer related behavior smoke",
-              "details": "Receive/Details/Copy 19 tests passed on current style bytes. Developer execution, not an independent QA rerun; no implementation-mirroring tests or invented RED phase were added for this reversible style-only change.",
-              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/developer-materials-button-smoke.log"
-            },
-            {
-              "status": "passed",
-              "name": "Independent final typecheck and production build",
-              "details": "Sequential npm run build ran TypeScript then Vite successfully on exact style subject.",
-              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/button-style-build.log"
-            },
-            {
-              "status": "passed",
-              "name": "Independent resolved browser style acceptance",
-              "details": "Five passing groups and 13 screenshots at 1366/640/360; actual computed primary #1f66d1 / hover #164aa3 and secondary #eef5ff / hover #e3efff. Real keyboard focus-visible, natural disabled opacity 0.55/default cursor with inert hover, shared Details/Copy coverage and no horizontal overflow. Zero page errors. APIs/native picker mocked; dedicated browser/Vite closed.",
-              "evidence": [
-                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/button-style-browser-check-result.log",
-                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/button-style-final-report.md"
-              ]
-            },
-            {
-              "status": "passed",
-              "name": "Unchanged earlier archive and receive behavior evidence",
-              "details": "No handlers, conditions, text or backend changed. Prior final relevant 53-test UI matrix and 12+3 held-response browser checks remain applicable to behavior; original isolated SQLite/file/cross-process evidence retained. Prior unchanged behavior/backend evidence is reused, not rerun. Original complete Python invocation remains red: 20 failed, 4763 passed, 14 skipped, 29 deselected. Eighteen path-guard failures passed unchanged under shorter isolated scratch paths; two representative baseline tests reproduced guards at the long root. Two old picker-mock failures remain recorded with identical baseline/candidate blobs. No all-green full-suite claim is made.",
-              "evidence": [
-                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-final-report.md",
-                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-final-report.md"
-              ]
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "execution": "Original independent archive_planner context and same-task boundaries retained. Current feedback is limited to existing theme button colors and states, without new product behavior or invented planning pass."
-            },
-            "developer": {
-              "status": "passed",
-              "execution": "Independent archive_developer committed ad8fafdc with only materials.css and ReceiveMaterials.tsx primary class markers; related 19-test smoke passed and task remained clean."
-            },
-            "reviewer": {
-              "status": "passed",
-              "execution": "Independent archive_reviewer inspected exact style diff, token cascade, primary/secondary semantics and normal-text primary contrast (5.31). Standards/Spec zero unresolved findings."
-            },
-            "qa": {
-              "status": "passed",
-              "execution": "Independent archive_qa ran exact final build and bounded browser style matrix: 5 groups / 13 screenshots, actual hover/focus/naturally-disabled/responsive/shared-dialog styles and zero page errors. Earlier Developer/QA checks are accurately reused, not claimed independently rerun. Prior unchanged behavior/backend evidence is reused, not rerun. Original complete Python invocation remains red: 20 failed, 4763 passed, 14 skipped, 29 deselected. Eighteen path-guard failures passed unchanged under shorter isolated scratch paths; two representative baseline tests reproduced guards at the long root. Two old picker-mock failures remain recorded with identical baseline/candidate blobs. No all-green full-suite claim is made.",
-              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/button-style-final-report.md"
-            },
-            "integrator": {
-              "status": "passed",
-              "execution": "Independent archive_integrator verified clean master053c2b42/taskad8fafdc, exact parent and merge base, two-path diff within allowlist, Receive JSX class-only delta, retained backend identity and raw QA/smoke evidence. Actual merge remains pending sole writer and postcheck."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "ad8fafdc04bcf1ce189173a204d0cce47af2d77d",
-            "primary_before": "053c2b42c7dcd32fe24705cabc2ef73eb9c92428",
-            "integrated_head": "21f3470041d2fb54c2c4b72e9485908dd4c02c21",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
