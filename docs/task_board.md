@@ -581,7 +581,41 @@
       "closed_at": "2026-11-16T11:01:49.274121Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LEGACY_IMPORT_CLEANUP_20261116": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\legacy-import-cleanup-20261116",
+      "branch": "codex/legacy-import-cleanup-20261116",
+      "resources": [
+        "d:/connlabcleanupbackups",
+        "d:/connlabprojectsdev",
+        "d:/pythonproject/connlab/data/connlab.sqlite3"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
+        "summary": "Back up and clear exactly nine approved legacy import copies plus one database-only remainder; recycle copies locally",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Exact User-approved legacy import cleanup, verified backups and audit, protected sources/exclusions/root/config unchanged; no push publication or packaging",
+        "scope_paths": [
+          "scripts/legacy_import_cleanup.py",
+          "backend/infrastructure/files/windows_recycle.py",
+          "tests/integration/test_legacy_import_cleanup.py",
+          "docs/runbooks/legacy_import_cleanup.md"
+        ],
+        "risk_reasons": [
+          "Authorized real SQLite association removal and nine real directories moved to Windows Recycle Bin after verified backups"
+        ],
+        "activation_head": "cb25f70fc3dc990914b5951339d8950ad71158b0",
+        "started_at": "2026-11-16T15:37:03.436495Z",
+        "updated_at": "2026-11-16T15:37:03.436495Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
