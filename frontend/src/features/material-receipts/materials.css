@@ -6,11 +6,17 @@
 .materials-dialog fieldset, .materials-review { display: grid; gap: 12px; min-width: 0; padding: 14px; border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px; }
 .materials-dialog label { display: grid; gap: 5px; min-width: 0; }
 .materials-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.materials-dialog input, .materials-dialog select, .materials-dialog button { font: inherit; padding: 7px 10px; color: inherit; border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px; background: var(--color-surface, white); min-width: 0; }
+.materials-dialog input, .materials-dialog select { font: inherit; padding: 7px 10px; color: inherit; border: 1px solid var(--color-border, #cbd5e1); border-radius: 6px; background: var(--color-surface, white); min-width: 0; }
 .materials-dialog input { width: 100%; box-sizing: border-box; }
 .materials-inline input { flex: 1 1 240px; }
-.materials-dialog button { cursor: pointer; }
-.materials-dialog button:disabled { opacity: .55; cursor: default; }
+/* Inline preparation also needs to outrank the library's base button rule. */
+.materials-dialog button, .materials-preparing button, .reference-library .materials-preparing button {
+  font: inherit; padding: 7px 10px; min-width: 0; border: 1px solid var(--color-action-secondary-border);
+  border-radius: 6px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); cursor: pointer;
+}
+.materials-dialog button:hover:not(:disabled), .materials-preparing button:hover:not(:disabled) { background: var(--color-action-secondary-hover); }
+.materials-dialog button:focus-visible, .materials-preparing button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.materials-dialog button:disabled, .materials-preparing button:disabled, .reference-library .materials-preparing button:disabled { opacity: .55; cursor: default; }
 .materials-dialog .materials-radio, .materials-dialog .materials-candidate { display: flex; align-items: flex-start; gap: 8px; }
 .materials-radio input, .materials-candidate input { width: auto; flex: 0 0 auto; margin-top: 5px; }
 .materials-candidate span { display: grid; gap: 4px; min-width: 0; }
@@ -22,6 +28,7 @@
 @media(max-width: 600px) { .materials-overlay { padding: 10px; } .materials-dialog { padding: 14px; } .materials-fields { grid-template-columns: 1fr; } }
 
 .materials-receive-dialog { width: min(640px, 100%); }
-.materials-dialog .materials-primary { background: var(--color-primary, #1f66d1); border-color: var(--color-primary, #1f66d1); color: #fbfdff; }
+.materials-dialog button.materials-primary { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-surface); }
+.materials-dialog button.materials-primary:hover:not(:disabled) { background: var(--color-primary-strong); border-color: var(--color-primary-strong); }
 
 .materials-preparing { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--color-ink-muted, #647084); }
