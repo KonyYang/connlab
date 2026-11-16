@@ -584,7 +584,7 @@
   "tasks": {
     "TASK_LEGACY_IMPORT_CLEANUP_20261116": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\legacy-import-cleanup-20261116",
       "branch": "codex/legacy-import-cleanup-20261116",
       "resources": [
@@ -592,7 +592,7 @@
         "d:/connlabprojectsdev",
         "d:/pythonproject/connlab/data/connlab.sqlite3"
       ],
-      "integrated_head": null,
+      "integrated_head": "417e2b7b004fbfa19ef4675219ae03a904aa34e8",
       "task": {
         "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
         "summary": "Back up and clear exactly nine approved legacy import copies plus one database-only remainder; recycle copies locally",
@@ -610,7 +610,7 @@
         ],
         "activation_head": "cb25f70fc3dc990914b5951339d8950ad71158b0",
         "started_at": "2026-11-16T15:37:03.436495Z",
-        "updated_at": "2026-11-16T15:55:09.652523Z",
+        "updated_at": "2026-11-16T15:58:21.775137Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -620,7 +620,64 @@
           "summary": "Reviewed clean implementation 7457d4c; independent QA 44 passed / 1 host-permission symlink skip. Authorized real prepare+apply completed: verified backup D:/ConnLabCleanupBackups/20261116-235317-legacy-import-cleanup, all 9 copies in actual system Recycle Bin with verified receipts; 10 members, 6 empty project/workspace roots, 9 caches,109 indexes and 6 fully backed-up lifecycle events unlinked. Originals/exclusions/root/config untouched by tool. Independent read-only postverification underway. Preserve run/receipts; no restore/second cleanup run/publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
+          "subject": "7457d4c56b2dcbbea98d906009e556ce14777332",
+          "summary": "Exact authorized cleanup complete after verified durable backups: nine copies in Windows Recycle Bin, one DB-only remainder removed; originals/six exclusions/root/config preserved. Local only; await explicit Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/infrastructure/files/windows_recycle.py",
+            "docs/runbooks/legacy_import_cleanup.md",
+            "scripts/legacy_import_cleanup.py",
+            "tests/integration/test_legacy_import_cleanup.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "Independent final QA 44 passed / 1 host-permission symlink skip; all17 new tests and actual isolated Windows recycle probe passed."
+            },
+            {
+              "status": "passed",
+              "summary": "Independent real postverify17 checks: backup/live integrity ok,79-table diff exactly146 authorized deletions,9 backup/bin trees124 files verified,9 originals109 files unchanged,6 exclusions259 files unchanged,root/config/10completed batches/28 journal slots unchanged. HTTP32 to22 exactly10 authorized keys removed."
+            },
+            {
+              "status": "passed",
+              "summary": "py_compile and exact four-file diff--check passed. Durable backup/audit D:/ConnLabCleanupBackups/20261116-235317-legacy-import-cleanup."
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "evidence": "Independent /root/legacy_cleanup_planner bounded exact cleanup and recovery plan."
+            },
+            "developer": {
+              "status": "passed",
+              "evidence": "Independent /root/legacy_cleanup_developer fixed7457d4c; behavioral RED/GREEN and final17passed, development evidence retained."
+            },
+            "reviewer": {
+              "status": "passed",
+              "evidence": "Independent /root/legacy_cleanup_reviewer fixedSHA Standards0 Spec0; real readonly capture79tables and aliases."
+            },
+            "qa": {
+              "status": "passed",
+              "evidence": "Independent /root/legacy_cleanup_qa 44pass1skip and all17 real postchecks; report/json/logs retained."
+            },
+            "integrator": {
+              "status": "passed",
+              "evidence": "Independent /root/legacy_cleanup_integrator preflight passed scope/subject/parents/cleanliness. Actual merge remains pending sole writer and independent postmerge verification."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "7457d4c56b2dcbbea98d906009e556ce14777332",
+            "primary_before": "77304005f6d73cdaf582303167477697103149bc",
+            "integrated_head": "417e2b7b004fbfa19ef4675219ae03a904aa34e8",
+            "recovered": false
+          }
+        }
       }
     }
   }
