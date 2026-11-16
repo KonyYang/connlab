@@ -610,8 +610,16 @@
         ],
         "activation_head": "cb25f70fc3dc990914b5951339d8950ad71158b0",
         "started_at": "2026-11-16T15:37:03.436495Z",
-        "updated_at": "2026-11-16T15:37:03.436495Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-16T15:46:36.657674Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
+          "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
+          "stage": "implementation",
+          "status": "running",
+          "summary": "Independent Planner complete. Exact 9 copies + 1 DB-only member authorized; originals/excluded six/root/config preserved. Isolated Developer work underway; no real cleanup yet. Read-only preview and User authorization evidence in primary tmp/legacy-import-cleanup-20261116. Use verified durable backups before any unlink/recycle; no publication.",
+          "requires_user": false
+        },
         "report": null
       }
     }
