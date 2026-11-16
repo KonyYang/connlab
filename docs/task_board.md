@@ -566,11 +566,11 @@
   "tasks": {
     "TASK_MATERIAL_ARCHIVE_20261116": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\material-archive-20261116",
       "branch": "codex/material-archive-20261116",
       "resources": [],
-      "integrated_head": "a5af22d51c9d0d7165ece8d6ea047eab6e7a5f09",
+      "integrated_head": "21f3470041d2fb54c2c4b72e9485908dd4c02c21",
       "task": {
         "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
         "summary": "Historical materials archive: one confirmation, safe independent copies, recoverable operations and folder discovery",
@@ -612,7 +612,7 @@
         ],
         "activation_head": "0b5d210f88a29aee5aa3c1705336ee9621276de0",
         "started_at": "2026-11-15T23:51:22.817753Z",
-        "updated_at": "2026-11-16T10:44:01.101396Z",
+        "updated_at": "2026-11-16T10:54:25.267649Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -622,7 +622,81 @@
           "summary": "User requests consistent colored buttons in materials receipt dialog; replace white-on-white secondary actions using existing theme tokens, distinguish primary actions, verify hover/focus/disabled and narrow layout. Continue same scope locally only; no push/publication/packaging/Close.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
+          "subject": "ad8fafdc04bcf1ce189173a204d0cce47af2d77d",
+          "summary": "Same-task bounded button-style revision uses existing theme colors: primary Receive/independent-copy/continue actions are blue; secondary actions are light blue, with readable hover/focus/disabled states and narrow layouts. Only shared materials CSS and action class markers changed; prior archive behavior and evidence retained. Local only; await User Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
+            "frontend/src/features/material-receipts/materials.css"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Developer related behavior smoke",
+              "details": "Receive/Details/Copy 19 tests passed on current style bytes. Developer execution, not an independent QA rerun; no implementation-mirroring tests or invented RED phase were added for this reversible style-only change.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/developer-materials-button-smoke.log"
+            },
+            {
+              "status": "passed",
+              "name": "Independent final typecheck and production build",
+              "details": "Sequential npm run build ran TypeScript then Vite successfully on exact style subject.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/button-style-build.log"
+            },
+            {
+              "status": "passed",
+              "name": "Independent resolved browser style acceptance",
+              "details": "Five passing groups and 13 screenshots at 1366/640/360; actual computed primary #1f66d1 / hover #164aa3 and secondary #eef5ff / hover #e3efff. Real keyboard focus-visible, natural disabled opacity 0.55/default cursor with inert hover, shared Details/Copy coverage and no horizontal overflow. Zero page errors. APIs/native picker mocked; dedicated browser/Vite closed.",
+              "evidence": [
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/button-style-browser-check-result.log",
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/button-style-final-report.md"
+              ]
+            },
+            {
+              "status": "passed",
+              "name": "Unchanged earlier archive and receive behavior evidence",
+              "details": "No handlers, conditions, text or backend changed. Prior final relevant 53-test UI matrix and 12+3 held-response browser checks remain applicable to behavior; original isolated SQLite/file/cross-process evidence retained. Prior unchanged behavior/backend evidence is reused, not rerun. Original complete Python invocation remains red: 20 failed, 4763 passed, 14 skipped, 29 deselected. Eighteen path-guard failures passed unchanged under shorter isolated scratch paths; two representative baseline tests reproduced guards at the long root. Two old picker-mock failures remain recorded with identical baseline/candidate blobs. No all-green full-suite claim is made.",
+              "evidence": [
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-final-report.md",
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-final-report.md"
+              ]
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "execution": "Original independent archive_planner context and same-task boundaries retained. Current feedback is limited to existing theme button colors and states, without new product behavior or invented planning pass."
+            },
+            "developer": {
+              "status": "passed",
+              "execution": "Independent archive_developer committed ad8fafdc with only materials.css and ReceiveMaterials.tsx primary class markers; related 19-test smoke passed and task remained clean."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Independent archive_reviewer inspected exact style diff, token cascade, primary/secondary semantics and normal-text primary contrast (5.31). Standards/Spec zero unresolved findings."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "Independent archive_qa ran exact final build and bounded browser style matrix: 5 groups / 13 screenshots, actual hover/focus/naturally-disabled/responsive/shared-dialog styles and zero page errors. Earlier Developer/QA checks are accurately reused, not claimed independently rerun. Prior unchanged behavior/backend evidence is reused, not rerun. Original complete Python invocation remains red: 20 failed, 4763 passed, 14 skipped, 29 deselected. Eighteen path-guard failures passed unchanged under shorter isolated scratch paths; two representative baseline tests reproduced guards at the long root. Two old picker-mock failures remain recorded with identical baseline/candidate blobs. No all-green full-suite claim is made.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/button-style-final-report.md"
+            },
+            "integrator": {
+              "status": "passed",
+              "execution": "Independent archive_integrator verified clean master053c2b42/taskad8fafdc, exact parent and merge base, two-path diff within allowlist, Receive JSX class-only delta, retained backend identity and raw QA/smoke evidence. Actual merge remains pending sole writer and postcheck."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "ad8fafdc04bcf1ce189173a204d0cce47af2d77d",
+            "primary_before": "053c2b42c7dcd32fe24705cabc2ef73eb9c92428",
+            "integrated_head": "21f3470041d2fb54c2c4b72e9485908dd4c02c21",
+            "recovered": false
+          }
+        }
       }
     }
   }
