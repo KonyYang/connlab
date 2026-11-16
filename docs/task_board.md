@@ -566,11 +566,11 @@
   "tasks": {
     "TASK_MATERIAL_ARCHIVE_20261116": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\material-archive-20261116",
       "branch": "codex/material-archive-20261116",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "b7210ed33ebe598f037c63695541d667a7fe7981",
       "task": {
         "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
         "summary": "Historical materials archive: one confirmation, safe independent copies, recoverable operations and folder discovery",
@@ -612,7 +612,7 @@
         ],
         "activation_head": "0b5d210f88a29aee5aa3c1705336ee9621276de0",
         "started_at": "2026-11-15T23:51:22.817753Z",
-        "updated_at": "2026-11-16T00:45:33.008135Z",
+        "updated_at": "2026-11-16T01:17:16.463503Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -622,7 +622,107 @@
           "summary": "Implementation 608bce14 and bounded fixes 818c8edf are committed and task worktree clean. Independent Reviewer inspected all 27 paths, confirmed both mixed-catalog/root-cache findings fixed with independent focused 5 passing tests and no unresolved findings. Independent QA now runs the final full gate/build and isolated 1366/640/360 browser acceptance on exact 818c8edf. Local only; no publication, packaging or real business-file operations.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
+          "subject": "818c8edfba994a30f53ef9418ddb6ec7f4dee189",
+          "summary": "Simplify independent historical materials collection and indexed lookup: direct folder picker, one confirmation, safe independent copies, durable retry/index repair and direct-child Refresh discovery. Local implementation and scoped acceptance complete; full-suite harness/path limitations remain explicitly recorded; await User Close with no publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/routes_material_receipts.py",
+            "backend/application/project_library/material_archive.py",
+            "backend/application/project_library/search.py",
+            "backend/infrastructure/project_library/material_archive_files.py",
+            "backend/infrastructure/project_library/ownership.py",
+            "backend/infrastructure/project_library/search_files.py",
+            "backend/infrastructure/storage/models_project_library.py",
+            "backend/infrastructure/storage/repositories/library_search.py",
+            "backend/infrastructure/storage/repositories/material_archive.py",
+            "docs/architecture/material_receipt.md",
+            "docs/material_archive_intake.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/api/materialReceipts.ts",
+            "frontend/src/api/referenceLibrary.ts",
+            "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
+            "frontend/src/features/material-receipts/MaterialDetails.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
+            "frontend/src/features/material-receipts/materials.css",
+            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-library/ProjectLibrarySingleImport.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx",
+            "tests/integration/test_library_search.py",
+            "tests/integration/test_material_archive.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Archive and existing receipt behavioral contracts",
+              "details": "Original complete Python run passed archive 28 tests (1 symlink privilege skip), receipt 56 tests (2 symlink skips), actual junction, four process-crash windows, isolated SQL registration recovery, cancellation and formal workflow independence. Original complete Python invocation remains red: 20 failed, 4763 passed, 14 skipped, 29 deselected. Eighteen portable-path-guard failures passed unchanged with shorter isolated scratch paths (16 then 2); two representative baseline public tests reproduce the same guards under the original long root. Two obsolete picker-mock failures remain recorded; baseline/candidate picker test and both adapter blobs are identical. No fixtures or production paths were changed to hide failures. This is not an all-green full-suite claim.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-full-gate.log"
+            },
+            {
+              "status": "passed",
+              "name": "Affected formal-path failed-only replay and baseline diagnosis",
+              "details": "All 18 exact portable-path failures passed unchanged after shortening only exclusive test scratch paths: 16 passed in qa-short-root-failed-only.log, then remaining 2 passed in qa-short-basetemp-remaining-only.log. Baseline long-root 2 representative tests reproduced guards; not a complete baseline rerun. Old picker failures remain outside task and unmodified.",
+              "evidence": [
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-short-root-failed-only.log",
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-short-basetemp-remaining-only.log",
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-baseline-long-root.log"
+              ]
+            },
+            {
+              "status": "passed",
+              "name": "Complete frontend, typecheck and production build",
+              "details": "144 Vitest test files passed / 1 skipped; 1308 tests passed / 1 skipped. Sequential tsc -b and Vite production build passed.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-frontend-gate.log"
+            },
+            {
+              "status": "passed",
+              "name": "Isolated real-browser UI acceptance",
+              "details": "11 checks, 9 screenshots across 1366/640/360 pixels, no page errors or horizontal overflow. API/native picker mocked strictly under /api/; actual SQLite/copy/recovery covered by backend tests. Dedicated browser/Vite closed, no real business files or user services touched.",
+              "evidence": [
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/browser-check-result.log",
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/output/playwright/"
+              ]
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "execution": "Independent archive_planner context; final narrowed User scope and archive/recovery/index boundaries handed off before implementation."
+            },
+            "developer": {
+              "status": "passed",
+              "execution": "Independent archive_developer context committed 608bce14 and 818c8edf with meaningful RED/GREEN and affected checks; sole source writer, clean fixed SHA."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Independent archive_reviewer inspected exact 27-file diff. Two P2 canonical-key/root-cache findings fixed in 818c8edf and independently replayed with 5 passing focused checks. Standards and Spec have no unresolved findings."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "Independent archive_qa accepted current archive contract and affected formal-project risk matrix, completed frontend/build and isolated browser acceptance. Original complete Python invocation remains red: 20 failed, 4763 passed, 14 skipped, 29 deselected. Eighteen portable-path-guard failures passed unchanged with shorter isolated scratch paths (16 then 2); two representative baseline public tests reproduce the same guards under the original long root. Two obsolete picker-mock failures remain recorded; baseline/candidate picker test and both adapter blobs are identical. No fixtures or production paths were changed to hide failures. This is not an all-green full-suite claim.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-final-report.md"
+            },
+            "integrator": {
+              "status": "passed",
+              "execution": "Independent archive_integrator verified exact subject/parent chain, clean primary and task worktrees, merge base 0b5d210f, primary board-only changes, exact 27-path scope, actual QA evidence and baseline blob identities. Integration is pending writer execution and will be checked after actual merge; no full matrix rerun."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "818c8edfba994a30f53ef9418ddb6ec7f4dee189",
+            "primary_before": "d15afacdaf7aaa6a22c75f000f507752c5ae7710",
+            "integrated_head": "b7210ed33ebe598f037c63695541d667a7fe7981",
+            "recovered": false
+          }
+        }
       }
     }
   }
