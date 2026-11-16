@@ -1,5 +1,5 @@
 import {StrictMode} from "react";
-import {render,screen,waitFor} from "@testing-library/react";
+import {act,render,screen,waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {beforeEach,expect,it,vi} from "vitest";
 import {ReceiveMaterials} from "./ReceiveMaterials";
@@ -47,9 +47,10 @@ it("retains an incomplete operation and continues it instead of creating a new p
 
 it("allows leaving while the worker is still cancelling and never reports completion",async()=>{
  const user=userEvent.setup();const close=vi.fn(),received=vi.fn();
- vi.mocked(api.getArchiveJob).mockResolvedValue({status:"working"});
+ vi.mocked(api.getArchiveJob).mockImplementation(async id=>({status:id==="preview"?"done":"working",result:id==="preview"?plan:undefined}));
  vi.mocked(api.cancelArchiveJob).mockResolvedValue({status:"cancellation_requested"});
  const view=render(<ReceiveMaterials onClose={close} onReceived={received}/>);
+ await user.click(await screen.findByRole("button",{name:"Receive",exact:true}));
  await user.click(await screen.findByRole("button",{name:"Cancel processing"}));
  await user.click(screen.getByRole("button",{name:"Back to library"}));
  expect(close).toHaveBeenCalled();expect(received).not.toHaveBeenCalled();expect(api.cancelArchiveJob).toHaveBeenCalled();view.unmount();
@@ -60,4 +61,52 @@ it("selects an existing canonical receipt key without confirming or duplicating 
  render(<ReceiveMaterials onClose={vi.fn()} onReceived={received}/>);
  await waitFor(()=>expect(received).toHaveBeenCalledWith("receipt:retained"));
  expect(api.confirmArchive).not.toHaveBeenCalled();
+});
+
+it("shows no web dialog during the native picker or preparation, then one real confirmation",async()=>{
+ const user=userEvent.setup(),otherPage=vi.fn();
+ let choose!:(value:string)=>void,prepare!:(value:api.ArchiveJob)=>void;
+ vi.mocked(api.pickReceiptFolder).mockImplementation(()=>new Promise(resolve=>{choose=resolve;}));
+ vi.mocked(api.getArchiveJob).mockImplementation(()=>new Promise(resolve=>{prepare=resolve;}));
+ render(<><button onClick={otherPage}>Other page</button><ReceiveMaterials onClose={vi.fn()} onReceived={vi.fn()}/></>);
+ expect(screen.queryByRole("dialog")).toBeNull();expect(screen.queryByRole("button",{name:"Cancel"})).toBeNull();
+ await act(async()=>choose(plan.source_path));
+ await screen.findByText("Preparing materials…");expect(screen.queryByRole("dialog")).toBeNull();
+ await user.click(screen.getByRole("button",{name:"Other page"}));expect(otherPage).toHaveBeenCalledOnce();
+ await act(async()=>prepare({status:"done",result:plan}));
+ expect(screen.getAllByRole("dialog")).toHaveLength(1);
+ expect(screen.getByText(`Source: ${plan.source_path}`)).toBeTruthy();expect(screen.getByText(`Target: ${plan.target_path}`)).toBeTruthy();
+ expect(api.confirmArchive).not.toHaveBeenCalled();
+ await user.click(screen.getByRole("button",{name:"Receive",exact:true}));expect(api.confirmArchive).toHaveBeenCalledOnce();
+});
+
+it("cancels preparation before its start response and discards a late result",async()=>{
+ const user=userEvent.setup(),close=vi.fn(),received=vi.fn();
+ let start!:(value:{job_id:string})=>void;
+ vi.mocked(api.startArchivePreview).mockImplementation(()=>new Promise(resolve=>{start=resolve;}));
+ vi.mocked(api.cancelArchiveJob).mockResolvedValue({status:"cancellation_requested"});
+ const view=render(<ReceiveMaterials onClose={close} onReceived={received}/>);
+ await screen.findByText("Preparing materials…");expect(screen.queryByRole("dialog")).toBeNull();
+ await user.click(screen.getByRole("button",{name:"Cancel",exact:true}));expect(close).toHaveBeenCalledOnce();
+ await act(async()=>start({job_id:"late-preview"}));
+ expect(api.cancelArchiveJob).toHaveBeenCalledWith("late-preview");expect(api.getArchiveJob).not.toHaveBeenCalled();
+ expect(api.confirmArchive).not.toHaveBeenCalled();expect(received).not.toHaveBeenCalled();expect(screen.queryByRole("dialog")).toBeNull();view.unmount();
+});
+
+it("loads an original incomplete operation without reopening the picker",async()=>{
+ vi.mocked(api.getArchiveOperation).mockResolvedValue({...completed,status:"incomplete",message:"Registration incomplete"});
+ render(<ReceiveMaterials initialOperation="original" onClose={vi.fn()} onReceived={vi.fn()}/>);
+ await screen.findByRole("button",{name:"Continue receipt"});
+ expect(api.getArchiveOperation).toHaveBeenCalledWith("original");expect(api.pickReceiptFolder).not.toHaveBeenCalled();
+});
+
+it("cancels an in-flight preview and ignores its late ready confirmation",async()=>{
+ const user=userEvent.setup(),close=vi.fn(),received=vi.fn();let prepare!:(value:api.ArchiveJob)=>void;
+ vi.mocked(api.getArchiveJob).mockImplementation(()=>new Promise(resolve=>{prepare=resolve;}));
+ vi.mocked(api.cancelArchiveJob).mockResolvedValue({status:"cancellation_requested"});
+ const view=render(<ReceiveMaterials onClose={close} onReceived={received}/>);
+ await screen.findByText("Preparing materials…");await user.click(screen.getByRole("button",{name:"Cancel",exact:true}));
+ expect(api.cancelArchiveJob).toHaveBeenCalledWith("preview");expect(close).toHaveBeenCalledOnce();
+ await act(async()=>prepare({status:"done",result:plan}));
+ expect(screen.queryByRole("dialog")).toBeNull();expect(api.confirmArchive).not.toHaveBeenCalled();expect(received).not.toHaveBeenCalled();view.unmount();
 });

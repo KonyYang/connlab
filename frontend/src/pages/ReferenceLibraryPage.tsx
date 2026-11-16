@@ -79,8 +79,9 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
  return <section className="reference-library" aria-label="Project materials library">
   <form className="library-search" onSubmit={event=>{event.preventDefault();setSearch(query);setReload(value=>value+1);}}>
    <div className="library-search-input"><UiIcon name="search"/><input aria-label="Search project materials" placeholder="Project number, product, test item or filename…" value={query} onChange={event=>setQuery(event.target.value)}/></div>
-   <button className="library-primary" type="submit" disabled={busy}>Search</button><button className="library-primary" type="button" onClick={()=>{setResumeOperation(undefined);setReceiving(true);}}><UiIcon name="new-project"/>Receive materials</button>
+   <button className="library-primary" type="submit" disabled={busy}>Search</button><button className="library-primary" type="button" disabled={receiving} onClick={()=>{setResumeOperation(undefined);setReceiving(true);}}><UiIcon name="new-project"/>Receive materials</button>
   </form>
+  {receiving && <ReceiveMaterials initialOperation={resumeOperation} onClose={closeReceipt} onReceived={received}/>}
   <div className="library-filters">
    <label><span className="library-sr-only">Source</span><select value={source} onChange={event=>setSource(event.target.value)}><option value="all">All sources</option>{Object.entries(sources).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
    <label><span className="library-sr-only">Material type</span><select value={kind} onChange={event=>setKind(event.target.value)}><option value="all">All material types</option>{Object.entries(kinds).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
@@ -92,7 +93,7 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
    <aside className="library-projects" aria-label="Project materials"><header><strong>Project materials</strong><span>{projects.length}</span></header>{busy && <p role="status">Searching…</p>}
     <div className="library-project-list">{projects.map(row=><div className={"library-project-card"+(row.key===selectedKey?" is-selected":"")} key={row.key}>
      <button className="library-project-choice" aria-pressed={row.key===selectedKey} onClick={()=>{setSelectedKey(row.key);setError("");}}><strong>{row.number || "No number"}</strong><span>{row.title || "Not recorded"}</span><small>{sources[row.source]}</small></button>
-     {row.operation_id && row.intake_status!=="completed" && <div className="library-incomplete"><span>Receipt incomplete</span><button onClick={()=>{setResumeOperation(row.operation_id!);setReceiving(true);}}>Continue receipt</button></div>}
+     {row.operation_id && row.intake_status!=="completed" && <div className="library-incomplete"><span>Receipt incomplete</span><button disabled={receiving} onClick={()=>{setResumeOperation(row.operation_id!);setReceiving(true);}}>Continue receipt</button></div>}
     </div>)}</div>
     {!busy && !projects.length && <p className="library-empty">{search?"No matching project materials.":"No materials to show. Receive existing files."}</p>}
    </aside>
@@ -101,7 +102,6 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
     {selected.operation_id && selected.intake_status!=="completed" ? <p className="library-empty">Receipt incomplete. Continue receipt to finish copying and registration.</p> : <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>}
    </> : <div className="library-empty"><UiIcon name="folder"/><p>Select a project to view its materials.</p></div>}</section>
   </div>
-  {receiving && <ReceiveMaterials initialOperation={resumeOperation} onClose={closeReceipt} onReceived={received}/>}
   {details && <MaterialDetails key={details.key} project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)}/>}
   {copy && <CopyMaterials source={copy.project} file={copy.file} context={copyContext} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetMaterials={row=>{setCopy(null);setDetails(row);setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
  </section>;

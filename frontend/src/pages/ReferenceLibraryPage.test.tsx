@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { ReferenceLibraryPage } from "./ReferenceLibraryPage";
 import * as api from "../api/referenceLibrary";
 import * as archive from "../api/materialReceipts";
-vi.mock("../api/materialReceipts",()=>({refreshArchive:vi.fn(),getArchiveJob:vi.fn(),cancelArchiveJob:vi.fn()}));
+vi.mock("../api/materialReceipts",()=>({refreshArchive:vi.fn(),getArchiveJob:vi.fn(),cancelArchiveJob:vi.fn(),pickReceiptFolder:vi.fn(),startArchivePreview:vi.fn()}));
 import {getReportShortcuts} from "../api/reportShortcuts";
 import { getLegacyProject } from "../api/legacyProjects";
 vi.mock("../api/referenceLibrary", () => ({ searchReferenceLibrary: vi.fn(), openReferenceFile: vi.fn(), browseReferenceFiles: vi.fn() }));
@@ -96,4 +96,18 @@ it("keeps incomplete receipts visible and allows search while a scan cancellatio
  await user.click(screen.getByRole("button",{name:"Search",exact:true}));
  await waitFor(()=>expect(api.searchReferenceLibrary).toHaveBeenCalledWith("old folder","all","all","",0,expect.any(AbortSignal)));
  view.unmount();
+});
+
+it("prevents duplicate receipt pickers while leaving library search usable",async()=>{
+ const user=userEvent.setup();let choose!:(source:string)=>void;
+ vi.mocked(archive.pickReceiptFolder).mockImplementation(()=>new Promise(resolve=>{choose=resolve;}));
+ const view=render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ await screen.findByRole("button",{name:"温升记录.xlsx"});
+ const receive=screen.getByRole("button",{name:"Receive materials"});await user.click(receive);await user.click(receive);
+ expect(receive).toHaveProperty("disabled",true);expect(archive.pickReceiptFolder).toHaveBeenCalledOnce();
+ expect(screen.queryByRole("dialog")).toBeNull();
+ await user.type(screen.getByRole("textbox",{name:"Search project materials"}),"record");
+ await user.click(screen.getByRole("button",{name:"Search",exact:true}));
+ await waitFor(()=>expect(api.searchReferenceLibrary).toHaveBeenCalledWith("record","all","all","",0,expect.any(AbortSignal)));
+ view.unmount();await act(async()=>choose("C:/late"));expect(archive.startArchivePreview).not.toHaveBeenCalled();
 });
