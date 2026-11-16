@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PYTHON_TEST_HARNESS_20261116",
-    "tier": "standard",
-    "subject": "0e41331a1ee695b6aa33ffcf85c379b89005d824",
-    "summary": "Fix Python test path-budget failures and obsolete native folder picker mocks",
+    "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
+    "tier": "high_risk",
+    "subject": "7457d4c56b2dcbbea98d906009e556ce14777332",
+    "summary": "Back up and clear exactly nine approved legacy import copies plus one database-only remainder; recycle copies locally",
     "disposition": "completed",
-    "decision_ref": "User explicitly confirmed local-only Close of the completed Python test harness task. Preserve implementation commits 1d59806c and 0e41331a, the task worktree, all RED/GREEN evidence, original full-run failure records, final affected replay and integration verification. No push, publication or packaging. --publish-close intentionally omitted; no cleanup, file moves or business-file operations.",
-    "closed_at": "2026-11-16T11:51:02.837983Z"
+    "decision_ref": "User explicitly confirmed local-only Close on 2026-11-17. Preserve implementation7457d4c, integration417e2b7b, task checkout, complete database/tree backups and all audit/validation/recycle evidence at D:/ConnLabCleanupBackups/20261116-235317-legacy-import-cleanup. No backup/worktree/recycle cleanup, no database or directory mutation, no push, publication or packaging. --publish-close intentionally omitted.",
+    "closed_at": "2026-11-16T22:39:10.776852Z"
   },
   "retained_history": [
     {
@@ -579,108 +579,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly confirmed local-only Close of the completed task. Preserve implementation commits 608bce14,818c8edf,48f3a84d,297a2b01,ad8fafdc, task worktree and all validation evidence including original full-Python failure records and bounded replay results. No push, publication or packaging. --publish-close intentionally omitted; no cleanup or business-file operations.",
       "closed_at": "2026-11-16T11:01:49.274121Z"
+    },
+    {
+      "task_id": "TASK_PYTHON_TEST_HARNESS_20261116",
+      "tier": "standard",
+      "subject": "0e41331a1ee695b6aa33ffcf85c379b89005d824",
+      "summary": "Fix Python test path-budget failures and obsolete native folder picker mocks",
+      "disposition": "completed",
+      "decision_ref": "User explicitly confirmed local-only Close of the completed Python test harness task. Preserve implementation commits 1d59806c and 0e41331a, the task worktree, all RED/GREEN evidence, original full-run failure records, final affected replay and integration verification. No push, publication or packaging. --publish-close intentionally omitted; no cleanup, file moves or business-file operations.",
+      "closed_at": "2026-11-16T11:51:02.837983Z"
     }
   ],
-  "tasks": {
-    "TASK_LEGACY_IMPORT_CLEANUP_20261116": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\legacy-import-cleanup-20261116",
-      "branch": "codex/legacy-import-cleanup-20261116",
-      "resources": [
-        "d:/connlabcleanupbackups",
-        "d:/connlabprojectsdev",
-        "d:/pythonproject/connlab/data/connlab.sqlite3"
-      ],
-      "integrated_head": "417e2b7b004fbfa19ef4675219ae03a904aa34e8",
-      "task": {
-        "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
-        "summary": "Back up and clear exactly nine approved legacy import copies plus one database-only remainder; recycle copies locally",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Exact User-approved legacy import cleanup, verified backups and audit, protected sources/exclusions/root/config unchanged; no push publication or packaging",
-        "scope_paths": [
-          "scripts/legacy_import_cleanup.py",
-          "backend/infrastructure/files/windows_recycle.py",
-          "tests/integration/test_legacy_import_cleanup.py",
-          "docs/runbooks/legacy_import_cleanup.md"
-        ],
-        "risk_reasons": [
-          "Authorized real SQLite association removal and nine real directories moved to Windows Recycle Bin after verified backups"
-        ],
-        "activation_head": "cb25f70fc3dc990914b5951339d8950ad71158b0",
-        "started_at": "2026-11-16T15:37:03.436495Z",
-        "updated_at": "2026-11-16T15:58:21.775137Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
-          "stage": "verification",
-          "status": "running",
-          "summary": "Reviewed clean implementation 7457d4c; independent QA 44 passed / 1 host-permission symlink skip. Authorized real prepare+apply completed: verified backup D:/ConnLabCleanupBackups/20261116-235317-legacy-import-cleanup, all 9 copies in actual system Recycle Bin with verified receipts; 10 members, 6 empty project/workspace roots, 9 caches,109 indexes and 6 fully backed-up lifecycle events unlinked. Originals/exclusions/root/config untouched by tool. Independent read-only postverification underway. Preserve run/receipts; no restore/second cleanup run/publication.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
-          "subject": "7457d4c56b2dcbbea98d906009e556ce14777332",
-          "summary": "Exact authorized cleanup complete after verified durable backups: nine copies in Windows Recycle Bin, one DB-only remainder removed; originals/six exclusions/root/config preserved. Local only; await explicit Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/infrastructure/files/windows_recycle.py",
-            "docs/runbooks/legacy_import_cleanup.md",
-            "scripts/legacy_import_cleanup.py",
-            "tests/integration/test_legacy_import_cleanup.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "Independent final QA 44 passed / 1 host-permission symlink skip; all17 new tests and actual isolated Windows recycle probe passed."
-            },
-            {
-              "status": "passed",
-              "summary": "Independent real postverify17 checks: backup/live integrity ok,79-table diff exactly146 authorized deletions,9 backup/bin trees124 files verified,9 originals109 files unchanged,6 exclusions259 files unchanged,root/config/10completed batches/28 journal slots unchanged. HTTP32 to22 exactly10 authorized keys removed."
-            },
-            {
-              "status": "passed",
-              "summary": "py_compile and exact four-file diff--check passed. Durable backup/audit D:/ConnLabCleanupBackups/20261116-235317-legacy-import-cleanup."
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "evidence": "Independent /root/legacy_cleanup_planner bounded exact cleanup and recovery plan."
-            },
-            "developer": {
-              "status": "passed",
-              "evidence": "Independent /root/legacy_cleanup_developer fixed7457d4c; behavioral RED/GREEN and final17passed, development evidence retained."
-            },
-            "reviewer": {
-              "status": "passed",
-              "evidence": "Independent /root/legacy_cleanup_reviewer fixedSHA Standards0 Spec0; real readonly capture79tables and aliases."
-            },
-            "qa": {
-              "status": "passed",
-              "evidence": "Independent /root/legacy_cleanup_qa 44pass1skip and all17 real postchecks; report/json/logs retained."
-            },
-            "integrator": {
-              "status": "passed",
-              "evidence": "Independent /root/legacy_cleanup_integrator preflight passed scope/subject/parents/cleanliness. Actual merge remains pending sole writer and independent postmerge verification."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "7457d4c56b2dcbbea98d906009e556ce14777332",
-            "primary_before": "77304005f6d73cdaf582303167477697103149bc",
-            "integrated_head": "417e2b7b004fbfa19ef4675219ae03a904aa34e8",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
