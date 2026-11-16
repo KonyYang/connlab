@@ -23,3 +23,5 @@
 
 .materials-receive-dialog { width: min(640px, 100%); }
 .materials-dialog .materials-primary { background: var(--color-primary, #1f66d1); border-color: var(--color-primary, #1f66d1); color: #fbfdff; }
+
+.materials-preparing { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--color-ink-muted, #647084); }

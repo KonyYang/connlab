@@ -64,6 +64,7 @@ export function ReceiveMaterials({onClose,onReceived,initialOperation}:{onClose:
   onClose();
  }
  function leave(){
+  live.current=false;
   const current=job.current;job.current=null;
   if(current)void Promise.resolve(api.cancelArchiveJob(current)).catch(()=>undefined);
   // Closing never claims that OS work stopped; the original receipt remains recoverable.
@@ -71,6 +72,10 @@ export function ReceiveMaterials({onClose,onReceived,initialOperation}:{onClose:
  }
  function confirm(){if(!plan)return;sessionStorage.setItem(pendingKey,JSON.stringify(plan));setAttempted(true);void run(api.confirmArchive(plan),"copy");}
  function retry(){if(operation)void run(api.retryArchive(operation.batch_id),"copy");else if(plan)void run(api.confirmArchive(plan),"copy");}
+ if(!error && !operation && !attempted && (!plan || busy)){
+  if(!busy)return null;
+  return <div className="materials-preparing" role="status"><span>Preparing materials…</span><button type="button" onClick={leave}>Cancel</button></div>;
+ }
  return createPortal(<div className="materials-overlay"><section className="materials-dialog materials-receive-dialog" role="dialog" aria-modal="true" aria-label="Receive project materials">
   <header><h2>Receive project materials</h2></header>
   {error && <p role="alert">{error} <a href="/settings">Settings</a></p>}
