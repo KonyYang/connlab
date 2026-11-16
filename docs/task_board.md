@@ -572,7 +572,42 @@
       "closed_at": "2026-11-15T08:30:59.434998Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_PYTHON_TEST_HARNESS_20261116": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\python-test-harness-20261116",
+      "branch": "codex/python-test-harness-20261116",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PYTHON_TEST_HARNESS_20261116",
+        "summary": "Fix Python test path-budget failures and obsolete native folder picker mocks",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Repair test-only scratch path budgeting for portable Windows workspace tests and replace the two obsolete folder-picker mocks with the actual adapter seam. Preserve production path guards, names, existing artifact ownership/retention guarantees and all prior task evidence. Use isolated files/databases; meaningful RED/GREEN then focused review and one final Python matrix. Local implementation and integration only; no push, publication, packaging or automatic Close.",
+        "scope_paths": [
+          "conftest.py",
+          "scripts/pytest_artifacts.py",
+          "tests/integration/test_tools_legacy_projects_api.py",
+          "tests/integration/test_pytest_artifact_lifecycle.py",
+          "tests/unit/test_pytest_artifacts.py",
+          "tests/integration/test_generation_workspace_process_recovery.py",
+          "tests/integration/test_official_project_workspace_api.py",
+          "tests/integration/test_project_folder_generation_complete_chain.py",
+          "tests/integration/test_project_folder_generation_recovery.py",
+          "tests/unit/test_official_project_workspace_service.py",
+          "docs/python_testing.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "c346607356d33d7c92890be4a5dd1aa60309ad7f",
+        "started_at": "2026-11-16T11:05:56.489243Z",
+        "updated_at": "2026-11-16T11:05:56.489243Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
