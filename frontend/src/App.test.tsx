@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -296,14 +296,37 @@ describe("Basic Information route entry behavior", () => {
 });
 
 
-it("keeps receipt explicit while the source picker is pending", async () => {
-  vi.mocked(receipts.pickReceiptFolder).mockReturnValue(new Promise(() => {}));
+it("waits for source preparation before opening the receipt confirmation", async () => {
+  let choose!: (source: string) => void;
+  let prepare!: (result: receipts.ArchiveJob) => void;
+  vi.mocked(receipts.pickReceiptFolder).mockImplementation(() => new Promise(resolve => { choose = resolve; }));
+  vi.mocked(receipts.getArchiveJob).mockImplementation(async id => id === "preview"
+    ? new Promise(resolve => { prepare = resolve; })
+    : {status: "done", result: {warnings: []}});
   window.history.replaceState({}, "", "/reference?receive=1");
-  const user = userEvent.setup(); render(<App />);
-  await waitFor(()=>expect(receipts.pickReceiptFolder).toHaveBeenCalled());
-  expect(screen.getByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
+  const mounted = render(<App />);
+  await waitFor(() => expect(receipts.pickReceiptFolder).toHaveBeenCalledOnce());
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.queryByRole("button", {name: "Receive", exact: true})).toBeNull();
+  expect(receipts.startArchivePreview).not.toHaveBeenCalled();
+
+  await act(async () => choose("C:/old/Connector"));
+  await screen.findByText("Preparing materials…");
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(receipts.confirmArchive).not.toHaveBeenCalled();
+  await act(async () => prepare({status: "done", result: {
+    status: "ready", source_path: "C:/old/Connector", target_path: "D:/received/Connector",
+    plan_id: "p", fingerprint: "h", batch_id: "b",
+  }}));
+  const confirmation = await screen.findByRole("dialog", {name: "Receive project materials"});
+  expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  expect(within(confirmation).getByText("Source: C:/old/Connector")).toBeTruthy();
+  expect(within(confirmation).getByText("Target: D:/received/Connector")).toBeTruthy();
+  expect(within(confirmation).getByRole("button", {name: "Receive", exact: true})).toBeTruthy();
+  expect(receipts.confirmArchive).not.toHaveBeenCalled();
   expect(receipts.confirmReceipt).not.toHaveBeenCalled();
   expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();
+  mounted.unmount();
 });
 
 
