@@ -602,8 +602,16 @@
         "risk_reasons": [],
         "activation_head": "c346607356d33d7c92890be4a5dd1aa60309ad7f",
         "started_at": "2026-11-16T11:05:56.489243Z",
-        "updated_at": "2026-11-16T11:05:56.489243Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-16T11:19:05.407013Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
+          "task_id": "TASK_PYTHON_TEST_HARNESS_20261116",
+          "stage": "qa",
+          "status": "running",
+          "summary": "Committed 1d59806cdc4cb988cbef8b593cdedb9a9421dfbf. Test-only compact portable_tmp_path fixture for five Windows workspace modules; obsolete picker mock now targets current public adapter, legacy/Tk GUI forbidden. Original 20 failed cases passed in affected run; storage lifecycle/ownership checks passed after correcting mixed log encoding (native locale and UTF-8 both verified). Same-agent distinct focused review found no unresolved issue; original business test AST assertions and production code/cleanup algorithm unchanged. Full Python gate is running once with the long ordinary evidence root and consistent UTF-8. All previous task evidence retained; local only, no push/publication/packaging/Close.",
+          "requires_user": false
+        },
         "report": null
       }
     }
