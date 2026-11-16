@@ -575,11 +575,11 @@
   "tasks": {
     "TASK_PYTHON_TEST_HARNESS_20261116": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\python-test-harness-20261116",
       "branch": "codex/python-test-harness-20261116",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "d7a59d819d9740649020ed642435b078b7aa192c",
       "task": {
         "task_id": "TASK_PYTHON_TEST_HARNESS_20261116",
         "summary": "Fix Python test path-budget failures and obsolete native folder picker mocks",
@@ -603,7 +603,7 @@
         "risk_reasons": [],
         "activation_head": "c346607356d33d7c92890be4a5dd1aa60309ad7f",
         "started_at": "2026-11-16T11:05:56.489243Z",
-        "updated_at": "2026-11-16T11:39:30.894470Z",
+        "updated_at": "2026-11-16T11:43:15.507275Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -613,7 +613,93 @@
           "summary": "Committed 1d59806cdc4cb988cbef8b593cdedb9a9421dfbf. Test-only compact portable_tmp_path fixture for five Windows workspace modules; obsolete picker mock now targets current public adapter, legacy/Tk GUI forbidden. Original 20 failed cases passed in affected run; storage lifecycle/ownership checks passed after correcting mixed log encoding (native locale and UTF-8 both verified). Same-agent distinct focused review found no unresolved issue; original business test AST assertions and production code/cleanup algorithm unchanged. Full Python gate is running once with the long ordinary evidence root and consistent UTF-8. All previous task evidence retained; local only, no push/publication/packaging/Close.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_PYTHON_TEST_HARNESS_20261116",
+          "subject": "0e41331a1ee695b6aa33ffcf85c379b89005d824",
+          "summary": "Fix Python long-temporary-path failures using managed compact test fixtures and align both native picker mocks; preserve all production guards and original test assertions. Original 20 failures and 14 additional long-root Git fixture failures resolved by recorded full-run plus bounded final replay.",
+          "scope_ok": true,
+          "changed_paths": [
+            "conftest.py",
+            "docs/python_testing.md",
+            "tests/integration/test_generation_workspace_process_recovery.py",
+            "tests/integration/test_official_project_workspace_api.py",
+            "tests/integration/test_project_folder_generation_complete_chain.py",
+            "tests/integration/test_project_folder_generation_recovery.py",
+            "tests/integration/test_pytest_artifact_lifecycle.py",
+            "tests/integration/test_tools_legacy_projects_api.py",
+            "tests/unit/test_connlab_parallel_tasks.py",
+            "tests/unit/test_connlab_publish_closed_task.py",
+            "tests/unit/test_connlab_sol_native_workflow.py",
+            "tests/unit/test_official_project_workspace_service.py"
+          ],
+          "validation": [
+            {
+              "name": "final effective Python matrix",
+              "status": "passed",
+              "passed": 4785,
+              "skipped": 14,
+              "office_deselected": 29,
+              "method": "one complete Python gate followed by only three affected Git test modules on the final state",
+              "original_full_gate": {
+                "subject": "1d59806cdc4cb988cbef8b593cdedb9a9421dfbf",
+                "passed": 4771,
+                "failed": 6,
+                "errors": 8,
+                "skipped": 14,
+                "note": "Original full command remained red; preserved without claiming all green."
+              },
+              "final_affected_replay": {
+                "passed": 59,
+                "evidence": "D:\\PythonProject\\connlab\\tmp\\python-test-harness-20261116\\qa-git-fixtures-final.log"
+              },
+              "evidence": "D:\\PythonProject\\connlab\\tmp\\python-test-harness-20261116\\final-validation.md"
+            },
+            {
+              "name": "original 20 regressions, managed storage and native boundary",
+              "status": "passed",
+              "evidence": "D:\\PythonProject\\connlab\\tmp\\python-test-harness-20261116\\developer-affected.log",
+              "notes": "50 passed/1 skipped plus one validation-encoding failure; that case passed in both consistent locale and UTF-8 replays; full gate then passed all original 20 cases."
+            },
+            {
+              "name": "original test assertion preservation",
+              "status": "passed",
+              "evidence": "D:\\PythonProject\\connlab\\tmp\\python-test-harness-20261116\\review-extended-path-fixtures.json",
+              "notes": "Eight module AST bodies unchanged except compact tmp_path fixture aliases; no production source or cleanup algorithm edits."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "execution": "same standard work unit",
+              "commits": [
+                "1d59806c",
+                "0e41331a"
+              ],
+              "evidence": "D:\\PythonProject\\connlab\\tmp\\python-test-harness-20261116\\final-validation.md"
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "same agent separate Standards and Spec focused review; not independent",
+              "findings": [],
+              "evidence": "D:\\PythonProject\\connlab\\tmp\\python-test-harness-20261116\\review-extended-path-fixtures.json"
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "same agent final full Python gate and bounded affected replay; no independent claim",
+              "evidence": "D:\\PythonProject\\connlab\\tmp\\python-test-harness-20261116\\final-validation.md"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "0e41331a1ee695b6aa33ffcf85c379b89005d824",
+            "primary_before": "8787fc1fb1a6f2374c0372127e7540adc2b2bfb1",
+            "integrated_head": "d7a59d819d9740649020ed642435b078b7aa192c",
+            "recovered": false
+          }
+        }
       }
     }
   }
