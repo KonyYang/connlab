@@ -1,4 +1,13 @@
-# Reference Library materials receipt
+# Materials receipt and archive boundaries
+
+Ordinary Receive materials now uses the single-folder archive flow described in
+[Historical materials collection and lookup](../material_archive_intake.md). It opens the native
+picker directly, asks for one concise confirmation, and uses Materials library folder from Settings.
+Explicit Refresh discovers direct child directories and updates a lightweight filename index. The
+retained receipt APIs below are compatibility infrastructure and selected-file copy support; their
+old multi-field UI is no longer an ordinary entry point. No historical table or receipt journal is
+removed or interpreted as Project execution authority.
+
 
 ## Authority and boundaries
 

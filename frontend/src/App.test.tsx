@@ -9,7 +9,7 @@ vi.mock("./api/client", async () => ({ ...await vi.importActual<typeof import(".
 import * as libraryApi from "./api/projectLibrary";
 import * as receipts from "./api/materialReceipts";
 import * as referenceApi from "./api/referenceLibrary";
-vi.mock("./api/materialReceipts", () => ({ getReceiptRuntime: vi.fn(), pickReceiptFolder: vi.fn(), previewReceipt: vi.fn(), confirmReceipt: vi.fn(), getReceiptBatch: vi.fn(), createCopyContextSession: vi.fn(async()=>({session_id:"test-browser"})), updateCopyContext: vi.fn(async(session_id,intent)=>({session_id,intent,token:null,target:null})) }));
+vi.mock("./api/materialReceipts", () => ({ startArchivePreview: vi.fn(),getArchiveJob:vi.fn(),cancelArchiveJob:vi.fn(),confirmArchive:vi.fn(),refreshArchive:vi.fn(),getArchiveOperation:vi.fn(),retryArchive:vi.fn(),getReceiptRuntime: vi.fn(), pickReceiptFolder: vi.fn(), previewReceipt: vi.fn(), confirmReceipt: vi.fn(), getReceiptBatch: vi.fn(), createCopyContextSession: vi.fn(async()=>({session_id:"test-browser"})), updateCopyContext: vi.fn(async(session_id,intent)=>({session_id,intent,token:null,target:null})) }));
 vi.mock("./api/reportShortcuts",()=>({getReportShortcuts:vi.fn(async()=>({key:"project:p1",items:[]}))}));
 vi.mock("./api/referenceLibrary", () => ({ searchReferenceLibrary: vi.fn(), openReferenceFile: vi.fn() }));
 
@@ -23,6 +23,9 @@ vi.mock("./pages/ProjectMatrixEditorPage", () => ({ ProjectMatrixEditorPage: ({ 
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(receipts.startArchivePreview).mockResolvedValue({job_id:"preview"});
+  vi.mocked(receipts.refreshArchive).mockResolvedValue({job_id:"scan"});
+  vi.mocked(receipts.getArchiveJob).mockImplementation(async id=>({status:"done",result:id==="scan"?{warnings:[]}:{status:"ready",source_path:"C:/old/Connector",target_path:"D:/received/Connector",plan_id:"p",fingerprint:"h",batch_id:"b"}}));
   vi.mocked(receipts.getReceiptRuntime).mockResolvedValue({ root_path: "D:/received", revision: 1, configured: true, available: true });
   vi.mocked(receipts.pickReceiptFolder).mockResolvedValue("C:/old/Connector");
   vi.mocked(referenceApi.searchReferenceLibrary).mockResolvedValue({ projects: [], files: [], warnings: [], total: 0 });
@@ -44,7 +47,7 @@ it("routes ordinary receipt to the library without old adoption or recovery call
   await user.click(await screen.findByRole("button", { name: "Receive materials" }));
   expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
   expect(window.location.pathname).toBe("/reference");
-  await user.click(screen.getByRole("button", { name: "Choose source folder" }));
+  await screen.findByRole("button", { name: "Receive",exact:true });
   expect(receipts.pickReceiptFolder).toHaveBeenCalledOnce();
   expect(receipts.confirmReceipt).not.toHaveBeenCalled();
   expect(libraryApi.startLibraryBatch).not.toHaveBeenCalled();
@@ -52,28 +55,20 @@ it("routes ordinary receipt to the library without old adoption or recovery call
   expect(libraryApi.getPortableInfo).not.toHaveBeenCalled();
 });
 
-it("closing receipt retains the ordinary library without opening the source picker automatically", async () => {
+it("closing archive confirmation retains the ordinary library", async () => {
   window.history.replaceState({}, "", "/reference?receive=1");
   const user = userEvent.setup(); render(<App />);
-  await user.click(await screen.findByRole("button", { name: "Close", exact: true }));
+  await user.click(await screen.findByRole("button", { name: "Cancel", exact: true }));
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(receipts.pickReceiptFolder).not.toHaveBeenCalled();
+  expect(receipts.pickReceiptFolder).toHaveBeenCalled();
   expect(window.location.search).toBe("");
 });
 
-it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project-library"])("opens project receiving from %s and returns to all Projects", async (path) => {
-  vi.mocked(libraryApi.getLibraryRuntime).mockResolvedValue({ library_root: "D:/test-library", projects_root: "D:/test-library/projects", data_root: "D:/test-library/data", database_path: "D:/test-library/data/connlab.sqlite3", configured: true, format_version: 1 });
-  window.history.replaceState({}, "", path);
-  render(<App />);
-  expect(await screen.findByRole("heading", { name: "Import Projects" })).toBeTruthy();
-  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
-  expect(screen.getByTestId("active-area").textContent).toBe("projects");
-  await userEvent.setup().click(screen.getByRole("button", { name: "Back to Projects" }));
-  expect(window.location.pathname + window.location.search).toBe("/projects");
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Receive materials" }));
-  expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
-  expect(window.location.pathname).toBe("/reference");
-  expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();
+it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project-library"])("retires the old receiving page at %s safely",async(path)=>{
+ window.history.replaceState({},"",path);render(<App/>);
+ expect(await screen.findByRole("region",{name:"Project materials library"})).toBeTruthy();
+ expect(screen.queryByRole("heading",{name:"Import Projects"})).toBeNull();
+ expect(screen.queryByRole("region",{name:"Project Workbench"})).toBeNull();
 });
 
 it("shows an imported project in the normal workbench without a special file action", async () => {
@@ -99,7 +94,7 @@ it.each(["", "batch-1"])("preserves browsing context but returns from import to 
   await user.click(await screen.findByRole("button", { name: "Receive materials" }));
   expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
   expect(window.location.pathname).toBe("/reference");
-  await user.click(screen.getByRole("button", { name: "Close", exact: true }));
+  await user.click(screen.getByRole("button", { name: "Cancel", exact: true }));
   await user.click(within(screen.getByRole("navigation", { name: "Test sidebar" })).getByRole("button", { name: "Projects" }));
   await user.click(await screen.findByRole("button", { name: /Open Workbench.*DL-2026-09-032/ }));
   expect(window.location.pathname).toBe("/projects/project-1");
@@ -139,7 +134,7 @@ it("keeps the old direct folder-linking URL accessible without exposing it in th
   expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Import Projects" }));
   expect(window.location.pathname).toBe("/projects/import");
-  expect(await screen.findByRole("button", { name: "Choose Project Folder" })).toBeTruthy();
+  expect(await screen.findByRole("region", { name: "Project materials library" })).toBeTruthy();
   expect(screen.queryByText("More Options")).toBeNull();
   expect(screen.queryByRole("button", { name: "Link Folders Without Copying" })).toBeNull();
 });
@@ -305,7 +300,7 @@ it("keeps receipt explicit while the source picker is pending", async () => {
   vi.mocked(receipts.pickReceiptFolder).mockReturnValue(new Promise(() => {}));
   window.history.replaceState({}, "", "/reference?receive=1");
   const user = userEvent.setup(); render(<App />);
-  await user.click(await screen.findByRole("button", { name: "Choose source folder" }));
+  await waitFor(()=>expect(receipts.pickReceiptFolder).toHaveBeenCalled());
   expect(screen.getByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
   expect(receipts.confirmReceipt).not.toHaveBeenCalled();
   expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();

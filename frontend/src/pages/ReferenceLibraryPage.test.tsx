@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { ReferenceLibraryPage } from "./ReferenceLibraryPage";
 import * as api from "../api/referenceLibrary";
+import * as archive from "../api/materialReceipts";
+vi.mock("../api/materialReceipts",()=>({refreshArchive:vi.fn(),getArchiveJob:vi.fn(),cancelArchiveJob:vi.fn()}));
 import {getReportShortcuts} from "../api/reportShortcuts";
 import { getLegacyProject } from "../api/legacyProjects";
 vi.mock("../api/referenceLibrary", () => ({ searchReferenceLibrary: vi.fn(), openReferenceFile: vi.fn(), browseReferenceFiles: vi.fn() }));
@@ -12,6 +14,7 @@ const project = { key: "project:p1", project_id: "p1", member_id: null, number: 
 const file = { name: "温升记录.xlsx", relative_path: "Records/温升记录.xlsx", is_directory: false, modified_at: "2026-11-14T01:00:00Z", extension: ".xlsx" };
 beforeEach(() => {
  window.history.replaceState(null,"","/reference"); sessionStorage.clear(); vi.resetAllMocks();
+ vi.mocked(archive.refreshArchive).mockResolvedValue({job_id:"scan"});vi.mocked(archive.getArchiveJob).mockResolvedValue({status:"done",result:{warnings:[]}});
  vi.mocked(getReportShortcuts).mockResolvedValue({key:"project:p1",items:[]});
  vi.mocked(getLegacyProject).mockResolvedValue({ record_id: "old", revision: 1, folder_path: "D:/isolated", name: "PwrBlade", number: "DL-2026-08-079", number_evidence: [], notes: [], imported_at: "", updated_at: "" });
  vi.mocked(api.searchReferenceLibrary).mockResolvedValue({ projects: [project], files: [], total: 0, warnings: [] });
@@ -79,4 +82,18 @@ it("keeps an exact member entry when a project with the same member id has anoth
  expect(await screen.findByText("D:/separate-copy")).toBeTruthy();
  await waitFor(()=>expect(api.browseReferenceFiles).toHaveBeenCalledWith("member:m1","",expect.any(AbortSignal)));
  expect(getReportShortcuts).toHaveBeenCalledWith("member:m1",expect.any(AbortSignal));
+});
+
+it("keeps incomplete receipts visible and allows search while a scan cancellation is pending",async()=>{
+ const user=userEvent.setup();
+ vi.mocked(archive.getArchiveJob).mockResolvedValue({status:"cancellation_requested"});
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...project,key:"archive:pending",project_id:null,available:false,operation_id:"pending",intake_status:"incomplete"}],files:[],total:0,warnings:[]});
+ const view=render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ expect(await screen.findByRole("button",{name:"Continue receipt"})).toBeTruthy();
+ await screen.findByRole("button",{name:"Cancelling scan…"});
+ expect(screen.getByRole("button",{name:"Search",exact:true})).not.toHaveProperty("disabled",true);
+ await user.type(screen.getByRole("textbox",{name:"Search project materials"}),"old folder");
+ await user.click(screen.getByRole("button",{name:"Search",exact:true}));
+ await waitFor(()=>expect(api.searchReferenceLibrary).toHaveBeenCalledWith("old folder","all","all","",0,expect.any(AbortSignal)));
+ view.unmount();
 });

@@ -59,3 +59,23 @@ class ReportShortcutModel(Base):
     catalog_key: Mapped[str] = mapped_column(String(256), primary_key=True)
     role: Mapped[str] = mapped_column(String(16), primary_key=True)
     relative_path: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class MaterialArchiveFolderModel(Base):
+    __tablename__ = "material_archive_folders"
+    folder_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    normalized_path: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    library_root: Mapped[str] = mapped_column(Text, nullable=False)
+    folder_path: Mapped[str] = mapped_column(Text, nullable=False)
+    number: Mapped[str | None] = mapped_column(String(128))
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    operation_id: Mapped[str | None] = mapped_column(String(64))
+    indexed_available: Mapped[bool] = mapped_column(nullable=False, default=True)
+
+
+class MaterialArchiveFileModel(Base):
+    __tablename__ = "material_archive_files"
+    catalog_key: Mapped[str] = mapped_column(String(256), primary_key=True)
+    relative_path: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    modified_at: Mapped[str | None] = mapped_column(String(64))

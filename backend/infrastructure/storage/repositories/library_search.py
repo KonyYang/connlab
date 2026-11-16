@@ -1,10 +1,14 @@
 """Read existing identities and roots without registering or relocating anything."""
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+import logging
 from pathlib import PureWindowsPath
 from backend.infrastructure.storage.models import ProjectFolderRecordModel, ProjectModel
 from backend.infrastructure.storage.models_legacy_projects import LegacyProjectRecordModel
 from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
 
+
+logger=logging.getLogger(__name__)
 
 class LibrarySearchRepository:
     def __init__(self, session, summaries):
@@ -43,4 +47,27 @@ class LibrarySearchRepository:
                 title=row.name, number=row.number, test_item="", source="linked", folder_path=row.folder_path))
         from backend.infrastructure.storage.repositories.material_receipt import MaterialReceiptRepository
         entries.extend(MaterialReceiptRepository(self.session).catalog())
+        try:
+            from backend.infrastructure.storage.repositories.material_archive import MaterialArchiveRepository,normalized
+            represented_paths={normalized(row['folder_path']) for row in entries if row['folder_path']}
+            entries.extend(row for row in MaterialArchiveRepository(self.session).catalog() if normalized(row['folder_path']) not in represented_paths)
+        except (SQLAlchemyError,ValueError,LookupError):
+            logger.exception('Materials archive catalog unavailable')
+            self.session.rollback()
+            self.archive_index_error=True
         return entries
+
+    def indexed_files(self,key):
+        from backend.infrastructure.storage.repositories.material_archive import MaterialArchiveRepository
+        return MaterialArchiveRepository(self.session).indexed_files(key)
+
+    def indexed_available(self,path):
+        from backend.infrastructure.storage.repositories.material_archive import MaterialArchiveRepository
+        try:return MaterialArchiveRepository(self.session).indexed_available(path)
+        except SQLAlchemyError:
+            logger.exception('Materials archive index unavailable for %s',path)
+            self.session.rollback();self.archive_index_error=True;return False
+
+    def cache_index(self,entry,files,available=True):
+        from backend.infrastructure.storage.repositories.material_archive import MaterialArchiveRepository
+        return MaterialArchiveRepository(self.session).cache(entry,files,available)

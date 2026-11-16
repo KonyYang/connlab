@@ -171,3 +171,65 @@ def create_copy_context(service=Depends(get_material_receipt_service)):
 @router.post("/copy-context")
 def update_copy_context(request: ContextUpdateRequest, service=Depends(get_material_receipt_service)):
     return checked(lambda: service.update_copy_context(request.session_id, request.intent, request.project_id))
+
+
+class ArchivePreviewRequest(BaseModel):
+    source: str = Field(min_length=1,max_length=4096)
+    independent: bool = False
+
+
+def archive_service(session,settings):
+    from backend.application.project_library.material_archive import MaterialArchiveService
+    from backend.infrastructure.project_library.material_archive_files import MaterialArchiveFiles
+    from backend.infrastructure.storage.repositories.material_archive import MaterialArchiveRepository
+    return MaterialArchiveService(MaterialArchiveRepository(session),MaterialArchiveFiles(settings),
+        LibrarySearchRepository(session,get_project_registry_summary_service(session)))
+
+
+def start_archive_job(session,settings,action):
+    from sqlalchemy.orm import Session
+    from backend.infrastructure.project_library.material_archive_files import archive_jobs
+    engine=session.get_bind()
+    def worker(cancellation):
+        with Session(engine) as fresh:
+            service=archive_service(fresh,settings)
+            service.files.cancellation=cancellation
+            return action(service)
+    return checked(lambda:archive_jobs.start(worker))
+
+
+@router.post('/archive/refresh',status_code=202)
+def refresh_archive(session=Depends(get_session),settings=Depends(get_settings)):
+    return start_archive_job(session,settings,lambda service:service.refresh())
+
+
+@router.post('/archive/preview',status_code=202)
+def preview_archive(request:ArchivePreviewRequest,session=Depends(get_session),settings=Depends(get_settings)):
+    return start_archive_job(session,settings,lambda service:service.preview(request.source,request.independent))
+
+
+@router.post('/archive/confirm',status_code=202)
+def confirm_archive(request:ConfirmRequest,session=Depends(get_session),settings=Depends(get_settings)):
+    return start_archive_job(session,settings,lambda service:service.confirm(request.plan_id,request.fingerprint))
+
+
+@router.get('/archive/jobs/{job_id}')
+def archive_job(job_id:str):
+    from backend.infrastructure.project_library.material_archive_files import archive_jobs
+    return checked(lambda:archive_jobs.get(job_id))
+
+
+@router.post('/archive/jobs/{job_id}/cancel')
+def cancel_archive_job(job_id:str):
+    from backend.infrastructure.project_library.material_archive_files import archive_jobs
+    return checked(lambda:archive_jobs.cancel(job_id))
+
+
+@router.get('/archive/operations/{operation_id}')
+def archive_operation(operation_id:str,session=Depends(get_session),settings=Depends(get_settings)):
+    return checked(lambda:archive_service(session,settings).operation(operation_id))
+
+
+@router.post('/archive/operations/{operation_id}/retry',status_code=202)
+def retry_archive(operation_id:str,session=Depends(get_session),settings=Depends(get_settings)):
+    return start_archive_job(session,settings,lambda service:service.retry(operation_id))

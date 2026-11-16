@@ -1,5 +1,5 @@
-import type { WorkbenchCopyContext } from "../api/materialReceipts";
-import { useEffect, useMemo, useState } from "react";
+import {refreshArchive,getArchiveJob,cancelArchiveJob,type WorkbenchCopyContext} from "../api/materialReceipts";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { openReferenceFile, searchReferenceLibrary, type ReferenceProject, type BrowseFile } from "../api/referenceLibrary";
 import { ReceiveMaterials } from "../features/material-receipts/ReceiveMaterials";
 import { MaterialDetails } from "../features/material-receipts/MaterialDetails";
@@ -27,7 +27,10 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
  const [busy,setBusy] = useState(false);
  const [reload,setReload] = useState(0);
  const [receiving,setReceiving] = useState(() => new URLSearchParams(window.location.search).get("receive") === "1");
- const [receiveTarget,setReceiveTarget] = useState<ReferenceProject | null>(null);
+ const [resumeOperation,setResumeOperation] = useState<string|undefined>();
+ const [scanning,setScanning]=useState<"idle"|"working"|"cancellation_requested">("idle");
+ const [scanWarnings,setScanWarnings]=useState<string[]>([]);
+ const scanJob=useRef<string|null>(null),mounted=useRef(false),initialScan=useRef(false);
  const [details,setDetails] = useState<ReferenceProject | null>(null);
  const [copy,setCopy] = useState<{project:ReferenceProject;file:BrowseFile} | null>(null);
  useEffect(() => {
@@ -40,7 +43,7 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
     rows=[...rows,...extra.projects.filter(row=>!rows.some(old=>old.key===row.key))];
    }
    if (!live) return;
-   rows=rows.filter(row=>row.available);
+   rows=rows.filter(row=>row.available || Boolean(row.operation_id && row.intake_status!=="completed"));
    setProjects(rows); setWarnings(result.warnings);
    setSelectedKey(current=>rows.find(row=>row.key===current)?.key ?? rows.find(row=>matchesKey(row,current))?.key ?? rows[0]?.key ?? "");
   }).catch(cause=>{if(live)setError((cause as Error).message);}).finally(()=>{if(live)setBusy(false);});
@@ -48,36 +51,58 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
  },[search,source,kind,reload]);
  const selected=projects.find(row=>row.key===selectedKey) ?? null;
  useEffect(()=>{sessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));},[selectedKey,search,source,kind]);
- const issues=useMemo(()=>Array.from(new Set([...(error?[error]:[]),...warnings,...browseWarnings])),[error,warnings,browseWarnings]);
+ const issues=useMemo(()=>Array.from(new Set([...(error?[error]:[]),...scanWarnings,...warnings,...browseWarnings])),[error,scanWarnings,warnings,browseWarnings]);
+ async function refreshIndex(){
+  setScanning("working");setScanWarnings([]);
+  try{
+   const {job_id}=await refreshArchive();scanJob.current=job_id;
+   if(!mounted.current){await cancelArchiveJob(job_id);return;}
+   for(;;){const job=await getArchiveJob(job_id);if(!mounted.current)return;
+    if(job.status==="working"||job.status==="cancellation_requested"){setScanning(job.status);await new Promise(resolve=>setTimeout(resolve,200));continue;}
+    if(job.status==="failed")setScanWarnings([job.error||"Materials scan failed. Refresh to retry."]);
+    else if(job.result)setScanWarnings((job.result as {warnings:string[]}).warnings??[]);
+    setReload(value=>value+1);break;
+   }
+  }catch(cause){if(mounted.current)setScanWarnings([(cause as Error).message]);}
+  finally{scanJob.current=null;if(mounted.current)setScanning("idle");}
+ }
+ useEffect(()=>{mounted.current=true;if(!initialScan.current){initialScan.current=true;void refreshIndex();}return()=>{mounted.current=false;if(scanJob.current)void Promise.resolve(cancelArchiveJob(scanJob.current)).catch(()=>undefined);};},[]);
+ async function cancelScan(){
+  if(!scanJob.current)return;
+  setScanning("cancellation_requested");
+  try{await cancelArchiveJob(scanJob.current);}
+  catch(cause){if(mounted.current){setScanWarnings([(cause as Error).message]);setScanning("working");}}
+ }
  function closeReceipt(){setReceiving(false);const url=new URL(window.location.href);url.searchParams.delete("receive");window.history.replaceState(null,"",url);}
  function received(key:string){closeReceipt();setSelectedKey(key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}
  async function openFolder(){if(!selected)return;setError("");try{await openReferenceFile(selected.key);}catch(cause){setError((cause as Error).message);}}
  return <section className="reference-library" aria-label="Project materials library">
   <form className="library-search" onSubmit={event=>{event.preventDefault();setSearch(query);setReload(value=>value+1);}}>
    <div className="library-search-input"><UiIcon name="search"/><input aria-label="Search project materials" placeholder="Project number, product, test item or filename…" value={query} onChange={event=>setQuery(event.target.value)}/></div>
-   <button className="library-primary" type="submit" disabled={busy}>Search</button><button className="library-primary" type="button" onClick={()=>{setReceiveTarget(null);setReceiving(true);}}><UiIcon name="new-project"/>Receive materials</button>
+   <button className="library-primary" type="submit" disabled={busy}>Search</button><button className="library-primary" type="button" onClick={()=>{setResumeOperation(undefined);setReceiving(true);}}><UiIcon name="new-project"/>Receive materials</button>
   </form>
   <div className="library-filters">
    <label><span className="library-sr-only">Source</span><select value={source} onChange={event=>setSource(event.target.value)}><option value="all">All sources</option>{Object.entries(sources).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
    <label><span className="library-sr-only">Material type</span><select value={kind} onChange={event=>setKind(event.target.value)}><option value="all">All material types</option>{Object.entries(kinds).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
    {(search || source!=="all" || kind!=="all") && <button onClick={()=>{setQuery("");setSearch("");setSource("all");setKind("all");}}>Clear filters</button>}
-   <button className="library-refresh" disabled={busy} onClick={()=>setReload(value=>value+1)}><UiIcon name="refresh"/>Refresh</button>
+   <button className="library-refresh" disabled={scanning==="cancellation_requested"} onClick={()=>{if(scanning==="working")void cancelScan();else void refreshIndex();}}><UiIcon name="refresh"/>{scanning==="cancellation_requested"?"Cancelling scan…":scanning==="working"?"Cancel scan":"Refresh"}</button>
   </div>
   {issues.length>0 && <div className="library-issues" role={error?"alert":"status"}><ul>{issues.map(note=><li key={note}>{note}</li>)}</ul>{error && <button onClick={()=>setReload(value=>value+1)}>Retry</button>}</div>}
   <div className="library-workspace">
    <aside className="library-projects" aria-label="Project materials"><header><strong>Project materials</strong><span>{projects.length}</span></header>{busy && <p role="status">Searching…</p>}
     <div className="library-project-list">{projects.map(row=><div className={"library-project-card"+(row.key===selectedKey?" is-selected":"")} key={row.key}>
      <button className="library-project-choice" aria-pressed={row.key===selectedKey} onClick={()=>{setSelectedKey(row.key);setError("");}}><strong>{row.number || "No number"}</strong><span>{row.title || "Not recorded"}</span><small>{sources[row.source]}</small></button>
+     {row.operation_id && row.intake_status!=="completed" && <div className="library-incomplete"><span>Receipt incomplete</span><button onClick={()=>{setResumeOperation(row.operation_id!);setReceiving(true);}}>Continue receipt</button></div>}
     </div>)}</div>
     {!busy && !projects.length && <p className="library-empty">{search?"No matching project materials.":"No materials to show. Receive existing files."}</p>}
    </aside>
    <section className="library-files" aria-label="Selected project materials">{selected ? <>
     <header className="library-project-heading"><h2>{selected.number || "Project materials"}</h2><p>{selected.title}</p><div className="library-location"><strong>Managed location</strong><span className="library-location-path"><UiIcon name="folder"/>{selected.folder_path || "No materials linked yet"}</span><button disabled={!selected.available} onClick={()=>void openFolder()}><UiIcon name="folder"/>Open folder</button></div><button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button></header>
-    <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>
+    {selected.operation_id && selected.intake_status!=="completed" ? <p className="library-empty">Receipt incomplete. Continue receipt to finish copying and registration.</p> : <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>}
    </> : <div className="library-empty"><UiIcon name="folder"/><p>Select a project to view its materials.</p></div>}</section>
   </div>
-  {receiving && <ReceiveMaterials initialTarget={receiveTarget} onClose={closeReceipt} onReceived={received}/>}
-  {details && <MaterialDetails key={details.key} project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)} onSupplement={row=>{setDetails(null);setReceiveTarget(row);setReceiving(true);}}/>}
+  {receiving && <ReceiveMaterials initialOperation={resumeOperation} onClose={closeReceipt} onReceived={received}/>}
+  {details && <MaterialDetails key={details.key} project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)}/>}
   {copy && <CopyMaterials source={copy.project} file={copy.file} context={copyContext} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetMaterials={row=>{setCopy(null);setDetails(row);setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
  </section>;
 }
