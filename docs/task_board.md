@@ -612,14 +612,14 @@
         ],
         "activation_head": "0b5d210f88a29aee5aa3c1705336ee9621276de0",
         "started_at": "2026-11-15T23:51:22.817753Z",
-        "updated_at": "2026-11-16T00:32:45.400963Z",
+        "updated_at": "2026-11-16T00:45:33.008135Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
-          "stage": "development",
+          "stage": "qa",
           "status": "running",
-          "summary": "Latest User final specification replaces broader plan: lightweight independent materials collection/search; no new metadata editor/state/archive page; skip-or-independent name conflicts; cached filename index, asynchronous library-only scan/copy, real cancellation; no library failure may block main project workflows. Same active task/worktree retained. Developer notified and in-scope design tightened; independent review/QA/integration pending.",
+          "summary": "Implementation 608bce14 and bounded fixes 818c8edf are committed and task worktree clean. Independent Reviewer inspected all 27 paths, confirmed both mixed-catalog/root-cache findings fixed with independent focused 5 passing tests and no unresolved findings. Independent QA now runs the final full gate/build and isolated 1366/640/360 browser acceptance on exact 818c8edf. Local only; no publication, packaging or real business-file operations.",
           "requires_user": false
         },
         "report": null
