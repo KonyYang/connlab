@@ -590,7 +590,41 @@
       "closed_at": "2026-11-16T11:51:02.837983Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_RENAMED_IMPORT_CLEANUP_20261117": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\renamed-import-cleanup-20261117",
+      "branch": "codex/renamed-import-cleanup-20261117",
+      "resources": [
+        "d:/connlabcleanupbackups",
+        "d:/connlabprojectsdev",
+        "d:/pythonproject/connlab/data/connlab.sqlite3"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_RENAMED_IMPORT_CLEANUP_20261117",
+        "summary": "Back up and unlink the single approved DL-2026-11-013 [56cdd25d] legacy copy, then recycle it locally",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Exact new User-authorized single-item cleanup with verified new DB/tree backup and audit; preserve original, unsuffixed directory, all other directories, root/config and completed batch; no push/publication/packaging",
+        "scope_paths": [
+          "scripts/legacy_import_cleanup.py",
+          "scripts/renamed_import_cleanup.py",
+          "tests/integration/test_renamed_import_cleanup.py",
+          "docs/runbooks/renamed_import_cleanup.md"
+        ],
+        "risk_reasons": [
+          "Authorized real SQLite cleanup of exactly28 rows and one real directory sent to Windows Recycle Bin after verified backups"
+        ],
+        "activation_head": "649565375a8cfb419169917fcdfe860cc448eaa7",
+        "started_at": "2026-11-16T22:59:22.015894Z",
+        "updated_at": "2026-11-16T22:59:22.015894Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
