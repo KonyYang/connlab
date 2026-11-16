@@ -619,8 +619,16 @@
         ],
         "activation_head": "649565375a8cfb419169917fcdfe860cc448eaa7",
         "started_at": "2026-11-16T22:59:22.015894Z",
-        "updated_at": "2026-11-16T22:59:22.015894Z",
-        "checkpoint": null,
+        "updated_at": "2026-11-16T23:09:46.705395Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
+          "task_id": "TASK_RENAMED_IMPORT_CLEANUP_20261117",
+          "stage": "verification",
+          "status": "running",
+          "summary": "Fixed clean implementation c46be824 independently reviewed; final QA31passed. User-authorized new backup/realapply complete at D:/ConnLabCleanupBackups/20261117-070750-renamed-import-cleanup: full DB integrity ok,27file tree verified,exact28rows unlinked and single renamed copy in actual system Recycle Bin with durable receipt. No Project deletion. Independent readonly postverify running; preserve run/batches/logs/sources/protected roots, do not start another run or restore automatically. No push/publication/package/Close.",
+          "requires_user": false
+        },
         "report": null
       }
     }
