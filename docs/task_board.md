@@ -566,11 +566,11 @@
   "tasks": {
     "TASK_MATERIAL_ARCHIVE_20261116": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\material-archive-20261116",
       "branch": "codex/material-archive-20261116",
       "resources": [],
-      "integrated_head": "b7210ed33ebe598f037c63695541d667a7fe7981",
+      "integrated_head": "a5af22d51c9d0d7165ece8d6ea047eab6e7a5f09",
       "task": {
         "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
         "summary": "Historical materials archive: one confirmation, safe independent copies, recoverable operations and folder discovery",
@@ -612,7 +612,7 @@
         ],
         "activation_head": "0b5d210f88a29aee5aa3c1705336ee9621276de0",
         "started_at": "2026-11-15T23:51:22.817753Z",
-        "updated_at": "2026-11-16T09:44:56.746880Z",
+        "updated_at": "2026-11-16T10:05:25.892525Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -622,7 +622,86 @@
           "summary": "User reports unnecessary blank Receive project materials and another intermediate popup. Continue same task: remove picker/preparation intermediate dialogs, preserve one source/target confirmation, inline cancellable preparation and existing recovery. Local only, no push/publication/packaging/Close.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_MATERIAL_ARCHIVE_20261116",
+          "subject": "297a2b016cf2de2c580dad283d9e97da3a62503a",
+          "summary": "Same-task UI revision removes blank picker/preparation dialogs. Native picker waits without a web overlay; preparation is inline and cancellable; only a ready plan opens the single source/target confirmation. Late responses cannot revive UI or hijack formal navigation. Local incremental acceptance complete; prior backend evidence and full-suite limitations retained; await User Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/App.test.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
+            "frontend/src/features/material-receipts/materials.css",
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Final affected frontend behavior matrix",
+              "details": "Seven files / 53 effective tests passed on final relevant bytes: unchanged six files retain 35 passing checks; App independently rerun 18 passed after test-only 297a2b01 corrected an obsolete intermediate-dialog expectation. Original 48f3a84d result 52 passed / 1 failed remains retained, not claimed green.",
+              "evidence": [
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-frontend-tests.log",
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-app-tests.log"
+              ]
+            },
+            {
+              "status": "passed",
+              "name": "Sequential final typecheck and production build",
+              "details": "npm run build ran tsc -b then Vite build successfully on final subject; no concurrent Vitest/build.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-build.log"
+            },
+            {
+              "status": "passed",
+              "name": "Incremental isolated browser acceptance",
+              "details": "12 primary checks and 3 actual held-response checks passed; 1366/640/360 screenshots show zero web dialog/overlay while picker or preview pending and no horizontal overflow. Main checks have zero uncaught page errors; corrected supplemental fixture has zero page/console errors and verifies fully rendered New Project plus late ready/failure responses and original-operation copy retry. APIs/native picker mocked, owned browser/Vite closed.",
+              "evidence": [
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-browser-check-result.log",
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-browser-late-barrier-corrected-result.log",
+                "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-final-report.md"
+              ]
+            },
+            {
+              "status": "passed",
+              "name": "Unchanged archive/backend and formal boundary evidence",
+              "details": "No backend or Python test bytes changed since tested 818c8edf. Prior archive 28 passing (1 symlink skip), receipt 56 passing (2 symlink skips), actual junction, isolated SQL/index repair, crash recovery, cancellation and formal workflow independence remain applicable. Prior unchanged backend evidence is reused, not rerun. Original complete Python invocation remains red: 20 failed, 4763 passed, 14 skipped, 29 deselected. Eighteen path-guard failures passed unchanged under shorter isolated scratch paths; two representative baseline tests reproduced guards at the long root. Two old picker-mock failures remain recorded with identical baseline/candidate blobs. This revision does not convert the original full Python suite into an all-green claim.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/qa-final-report.md"
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "execution": "Original independent archive_planner plan retained for the same task and archive boundaries; current User feedback narrows only receive preparation presentation, with no invented new planning context."
+            },
+            "developer": {
+              "status": "passed",
+              "execution": "Independent archive_developer committed product UI revision 48f3a84d and test-only correction 297a2b01, preserving archive and recovery behavior. Final exact subject clean."
+            },
+            "reviewer": {
+              "status": "passed",
+              "execution": "Independent archive_reviewer reviewed 48f3a84d product changes and 297a2b01 App test correction with no unresolved Standards/Spec findings; product focused 7 tests passed."
+            },
+            "qa": {
+              "status": "passed",
+              "execution": "Independent archive_qa incrementally verified final 53 affected tests, build and 12+3 browser checks. Initial stale App expectation and supplemental mock timing/navigation-fixture failures are preserved with corrected final evidence. Prior unchanged backend evidence is reused, not rerun. Original complete Python invocation remains red: 20 failed, 4763 passed, 14 skipped, 29 deselected. Eighteen path-guard failures passed unchanged under shorter isolated scratch paths; two representative baseline tests reproduced guards at the long root. Two old picker-mock failures remain recorded with identical baseline/candidate blobs. This revision does not convert the original full Python suite into an all-green claim.",
+              "evidence": "D:/PythonProject/connlab-worktrees/material-archive-20261116/tmp/material-archive-qa/revision-final-report.md"
+            },
+            "integrator": {
+              "status": "passed",
+              "execution": "Independent archive_integrator verified current master c3bd4216, clean task subject 297a2b01, c3bd-to-48-to-297 parents, exact six-path diff within original allowlist, unchanged backend/Python tests, final QA logs and retained prior limitations. Actual local integration remains pending writer and subsequent postcheck."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "297a2b016cf2de2c580dad283d9e97da3a62503a",
+            "primary_before": "c3bd421653f84963d9b24c34a3dd92b0da6482a3",
+            "integrated_head": "a5af22d51c9d0d7165ece8d6ea047eab6e7a5f09",
+            "recovered": false
+          }
+        }
       }
     }
   }
