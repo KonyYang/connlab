@@ -38,3 +38,14 @@ export type CopyContextState = {session_id: string; intent: number; token: strin
 export const createCopyContextSession = () => post<{session_id: string}>("/copy-context/session", {});
 export const updateCopyContext = (session_id: string, intent: number, project_id: string | null) => post<CopyContextState>("/copy-context", {session_id, intent, project_id});
 export const copyContextProof = (context: WorkbenchCopyContext): CopyContextProof => ({session_id: context.session_id, token: context.token});
+
+
+export type ArchivePlan = {status:"ready"|"conflict"|"existing"|"pending";source_path:string;target_path:string;target_key?:string;plan_id?:string;fingerprint?:string;batch_id?:string;file_count?:number;operation?:ReceiptBatch};
+export type ArchiveJob = {status:"working"|"cancellation_requested"|"done"|"cancelled"|"failed";result?:unknown;error?:string};
+export const startArchivePreview=(source:string,independent=false)=>post<{job_id:string}>("/archive/preview",{source,independent});
+export const confirmArchive=(plan:ArchivePlan)=>post<{job_id:string}>("/archive/confirm",{plan_id:plan.plan_id,fingerprint:plan.fingerprint});
+export const refreshArchive=()=>post<{job_id:string}>("/archive/refresh",{});
+export const getArchiveJob=(id:string)=>requestJson<ArchiveJob>(`${base}/archive/jobs/${encodeURIComponent(id)}`);
+export const cancelArchiveJob=(id:string)=>post<ArchiveJob>(`/archive/jobs/${encodeURIComponent(id)}/cancel`,{});
+export const getArchiveOperation=(id:string)=>requestJson<ReceiptBatch>(`${base}/archive/operations/${encodeURIComponent(id)}`);
+export const retryArchive=(id:string)=>post<{job_id:string}>(`/archive/operations/${encodeURIComponent(id)}/retry`,{});

@@ -5,6 +5,11 @@ from pathlib import Path
 from backend.infrastructure.project_library.files import checked_path
 
 
+def internal_material_path(relative):
+    path=Path(relative)
+    name=path.name.casefold()
+    return any(part.casefold()=='.connlab' for part in path.parts) or name.endswith(('.db','.sqlite','.sqlite3','.db-wal','.db-shm','.sqlite-wal','.sqlite-shm','.sqlite3-wal','.sqlite3-shm','.db-journal','.sqlite-journal','.sqlite3-journal'))
+
 class SearchFiles:
     def available(self, root):
         try:
@@ -22,6 +27,7 @@ class SearchFiles:
             try:
                 with os.scandir(folder) as entries:
                     for entry in entries:
+                        if internal_material_path(str(Path(entry.path).relative_to(root))): continue
                         visited += 1
                         if visited > limit:
                             return files, [*warnings, "Search is incomplete: folder scan limit reached."]
@@ -54,6 +60,7 @@ class SearchFiles:
                     warnings.append("Directory listing is incomplete: entry limit reached.")
                     break
                 try:
+                    if internal_material_path(str(Path(entry.path).relative_to(base))): continue
                     path = checked_path(entry.path)
                     if not path.is_relative_to(base):
                         raise ValueError("Outside material folder")

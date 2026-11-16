@@ -1,5 +1,5 @@
 import { requestJson } from "./client";
-export type ReferenceProject = { key: string; receipt_id?: string; description?: string; material_state?: string; revision?: number; project_id: string | null; member_id: string | null; number: string | null; title: string; test_item: string; source: string; available: boolean; folder_path: string };
+export type ReferenceProject = { key: string; operation_id?:string|null; intake_status?:string; folder_id?:string; receipt_id?: string; description?: string; material_state?: string; revision?: number; project_id: string | null; member_id: string | null; number: string | null; title: string; test_item: string; source: string; available: boolean; folder_path: string };
 export type ReferenceFile = { key: string; title: string; number: string | null; name: string; relative_path: string; directory: string; kind: string };
 export type ReferenceResults = { projects: ReferenceProject[]; files: ReferenceFile[]; total: number; warnings: string[] };
 export const searchReferenceLibrary = (query: string, source: string, kind: string, project: string, offset: number, signal?: AbortSignal) =>

@@ -120,6 +120,8 @@ def test_api_unifies_existing_identities_without_copying_or_writing(tmp_path):
             LegacyProjectRecordModel(record_id="l1", name="Linked PwrBlade", number="DL-2026-08-079", evidence_json="[]", folder_path=str(tmp_path / "missing"), normalized_path="missing", notes_json="[]", imported_at="2026-11-14", updated_at="2026-11-14"),
         ])
         session.commit()
+    with Session(engine) as session:
+        LibrarySearchService(LibrarySearchRepository(session, get_project_registry_summary_service(session)), SearchFiles(), opened.append).refresh()
     app = FastAPI()
     app.include_router(router)
     def service():

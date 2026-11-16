@@ -1,5 +1,5 @@
 """Read-only search and explicit access; independent of intake and recovery."""
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 
 
 def material_kind(name):
@@ -29,12 +29,12 @@ class LibrarySearchService:
             if selected_key and entry["key"] != selected_key or source != "all" and entry["source"] != source:
                 continue
             associated = bool(entry["folder_path"].strip())
-            available = associated and self.files.available(entry["folder_path"])
+            available = associated and (self.store.indexed_available(entry["folder_path"]) if hasattr(self.store,"indexed_files") else self.files.available(entry["folder_path"]))
             location_state = "unassociated" if not associated else "available" if available else "unavailable"
             entry = {**entry, "available": available, "location_state": location_state}
             if location_state == "unassociated" and entry.get("project_id") and not tokens and not project:
                 continue
-            metadata = " ".join(str(entry.get(k) or "") for k in ("number", "title", "test_item", "description")).casefold()
+            metadata = (" ".join(str(entry.get(k) or "") for k in ("number", "title", "test_item", "description")) + " " + PureWindowsPath(entry["folder_path"]).name).casefold()
             if all(token in metadata for token in tokens):
                 projects.append(entry)
             if location_state == "unassociated":
@@ -43,7 +43,7 @@ class LibrarySearchService:
                 continue
             if not tokens and not project and kind == "all":
                 continue
-            rows, notes = self.files.scan(entry["folder_path"])
+            rows, notes = (self.store.indexed_files(entry["key"]), []) if hasattr(self.store,"indexed_files") else self.files.scan(entry["folder_path"])
             warnings.extend(f"{entry['title']}: {note}" for note in notes)
             for row in rows:
                 category = material_kind(row["name"])
@@ -55,6 +55,8 @@ class LibrarySearchService:
                     matches.append({**row, "key": entry["key"], "title": entry["title"],
                                     "number": entry["number"], "kind": category,
                                     "directory": str(PurePosixPath(row["relative_path"]).parent)})
+        if getattr(self.store,'archive_index_error',False):
+            warnings.append('Materials index is unavailable. Refresh the library to retry; project work is unaffected.')
         matches.sort(key=lambda row: (row["name"].casefold() != query.casefold(), row["number"] or "", row["relative_path"]))
         return {"projects": projects, "files": matches[offset:offset + limit], "total": len(matches),
                 "warnings": list(dict.fromkeys(warnings))}
@@ -91,3 +93,11 @@ class LibrarySearchService:
             raise ValueError("Open this file from its folder using a suitable application.")
         self.opener(path)
         return {"status": "opened", "message": "Folder opened." if path.is_dir() else "File opened."}
+
+    def refresh(self):
+        """Explicit cache refresh for existing catalog sources; queries never perform this walk."""
+        for entry in self.store.catalog():
+            if not entry.get('folder_path') or not hasattr(self.store,'cache_index'):continue
+            if not self.files.available(entry['folder_path']):continue
+            rows,warnings=self.files.scan(entry['folder_path'])
+            if not warnings:self.store.cache_index(entry,rows)
