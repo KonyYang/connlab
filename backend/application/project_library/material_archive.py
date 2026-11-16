@@ -1,6 +1,6 @@
 """Single-folder archival receipt; no business-project adoption or restoration."""
 from datetime import datetime,timezone
-from pathlib import Path
+from pathlib import Path,PureWindowsPath
 from uuid import uuid4
 import logging
 from backend.application.project_library.material_receipt import MaterialReceiptService
@@ -60,6 +60,8 @@ class MaterialArchiveService:
             if source.parent==root:
                 number,title=self.files.metadata(source)
                 row=self.store.register(root,source,number,title)
+                # Existing receipt/project identities own their links and selection state.
+                row=self._entry_for_path(source) or row
                 self.store.cache(row,self.files.scan_index(source))
                 return dict(status='existing',source_path=str(source),target_path=str(source),target_key=row['key'])
             target=root/source.name
@@ -85,8 +87,12 @@ class MaterialArchiveService:
             return dict(status='ready',source_path=str(source),target_path=str(target),plan_id=plan['plan_id'],fingerprint=plan['fingerprint'],
                 batch_id=operation_id,file_count=sum(not row['directory'] for row in entries))
 
+    def _entry_for_path(self,path):
+        return next((row for row in self.catalog.catalog() if row.get('folder_path') and PureWindowsPath(path)==PureWindowsPath(row['folder_path'])),None)
+
     def _key_for_path(self,path):
-        return next((row['key'] for row in self.catalog.catalog() if row.get('folder_path') and self.files.overlaps(path,row['folder_path']) and self.files.overlaps(row['folder_path'],path)),None)
+        entry=self._entry_for_path(path)
+        return entry['key'] if entry else None
 
     def confirm(self,plan_id,fingerprint):
         with self.files.lock():

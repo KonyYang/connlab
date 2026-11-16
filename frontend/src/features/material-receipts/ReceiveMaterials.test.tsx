@@ -54,3 +54,10 @@ it("allows leaving while the worker is still cancelling and never reports comple
  await user.click(screen.getByRole("button",{name:"Back to library"}));
  expect(close).toHaveBeenCalled();expect(received).not.toHaveBeenCalled();expect(api.cancelArchiveJob).toHaveBeenCalled();view.unmount();
 });
+
+it("selects an existing canonical receipt key without confirming or duplicating it",async()=>{
+ const received=vi.fn();vi.mocked(api.getArchiveJob).mockResolvedValue({status:"done",result:{status:"existing",source_path:plan.target_path,target_path:plan.target_path,target_key:"receipt:retained"}});
+ render(<ReceiveMaterials onClose={vi.fn()} onReceived={received}/>);
+ await waitFor(()=>expect(received).toHaveBeenCalledWith("receipt:retained"));
+ expect(api.confirmArchive).not.toHaveBeenCalled();
+});

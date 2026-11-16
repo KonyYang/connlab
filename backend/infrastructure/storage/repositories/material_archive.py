@@ -44,6 +44,8 @@ class MaterialArchiveRepository:
             raise ProjectLibraryConflict("This directory belongs to another archive operation.")
         elif operation_id:
             row.operation_id=operation_id
+        # A cached external source may later become a child of the configured library.
+        row.library_root=str(root)
         try: self.session.commit()
         except Exception:
             self.session.rollback()

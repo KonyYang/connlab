@@ -386,3 +386,69 @@ def test_retry_preserves_manual_edits_to_received_partial_files(archive,tmp_path
     assert received.read_bytes()==b'human edit' and (source/'a.txt').read_bytes()==b'original'
     assert (Path(op['stage_path'])/'b.txt').read_bytes()==b'second'
     assert not Path(op['target_path']).exists()
+
+
+def existing_material_catalog(store,folder,kind):
+    from backend.infrastructure.storage.repositories.library_search import LibrarySearchRepository
+    from backend.api.dependencies import get_project_registry_summary_service
+    if kind=='receipt':
+        store.receipts.add_entry(dict(receipt_id='retained-receipt',product_name='Retained connector',folder_path=str(folder),
+            source_path='historical-origin',batch_id='historical-batch',created_at='2020-01-01'))
+        key='receipt:retained-receipt'
+    else:
+        from backend.infrastructure.storage.models import ProjectModel,ProjectFolderRecordModel
+        store.session.add(ProjectModel(project_id='retained-native',product_name='Retained connector',requestor='Lab',status='draft'))
+        store.session.commit()
+        store.session.add(ProjectFolderRecordModel(folder_id='retained-folder',project_id='retained-native',folder_path=str(folder)))
+        store.session.commit();key='project:retained-native'
+    return LibrarySearchRepository(store.session,get_project_registry_summary_service(store.session)),key
+
+
+@pytest.mark.parametrize('kind',['receipt','native'])
+def test_receiving_a_known_direct_child_returns_its_real_browsable_catalog_identity(archive,kind):
+    from backend.application.project_library.search import LibrarySearchService
+    from backend.infrastructure.project_library.search_files import SearchFiles
+    service,store,files,root=archive
+    folder=root/'Already registered';folder.mkdir();(folder/'report.txt').write_bytes(b'retained')
+    catalog,key=existing_material_catalog(store,folder,kind);service.catalog=catalog
+    result=service.preview(str(folder))
+    assert result['status']=='existing' and result['target_key']==key
+    search=LibrarySearchService(catalog,SearchFiles(),lambda path:None)
+    assert search.browse(result['target_key'])['items'][0]['name']=='report.txt'
+    selected=search.search(project=result['target_key'])
+    assert [row['key'] for row in selected['projects']]==[key]
+    assert [row['name'] for row in selected['files']]==['report.txt']
+    assert [row['key'] for row in catalog.catalog()]==[key]
+    assert store.operations()==[] and (folder/'report.txt').read_bytes()==b'retained'
+
+
+@pytest.mark.parametrize('kind',['receipt','native'])
+def test_existing_external_index_adopts_library_root_and_becomes_unavailable_when_root_is_offline(archive,tmp_path,kind):
+    from backend.application.project_library.search import LibrarySearchService
+    from backend.infrastructure.project_library.search_files import SearchFiles
+    service,store,files,root=archive
+    configured=tmp_path/'Later library';folder=configured/'Existing connector';folder.mkdir(parents=True)
+    (folder/'report.txt').write_bytes(b'retained')
+    catalog,key=existing_material_catalog(store,folder,kind);service.catalog=catalog
+    service.refresh()
+    before=store.indexed_files(key);assert before and store.indexed_available(str(folder))
+    store.receipts.configure(str(configured));service.refresh()
+    configured.rename(tmp_path/'Offline library')
+    result=service.refresh()
+    assert not result['available'] and len(result['warnings'])==1
+    search=LibrarySearchService(catalog,SearchFiles(),lambda path:None).search()
+    assert [row['key'] for row in search['projects']]==[key]
+    assert not search['projects'][0]['available'] and search['files']==[]
+    assert store.indexed_files(key)==before and store.receipts.settings()['root_path']==str(configured)
+
+
+def test_receiving_a_child_does_not_select_an_overlapping_parent_catalog_entry(archive):
+    from backend.application.project_library.search import LibrarySearchService
+    from backend.infrastructure.project_library.search_files import SearchFiles
+    service,store,files,root=archive
+    folder=root/'Distinct child';folder.mkdir();(folder/'report.txt').write_bytes(b'child report')
+    catalog,parent_key=existing_material_catalog(store,root,'receipt');service.catalog=catalog
+    result=service.preview(str(folder))
+    assert result['target_key']!=parent_key
+    assert result['target_key'].startswith('archive:')
+    assert LibrarySearchService(catalog,SearchFiles(),lambda path:None).browse(result['target_key'])['root']==str(folder)
