@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
+    "task_id": "TASK_RENAMED_IMPORT_CLEANUP_20261117",
     "tier": "high_risk",
-    "subject": "7457d4c56b2dcbbea98d906009e556ce14777332",
-    "summary": "Back up and clear exactly nine approved legacy import copies plus one database-only remainder; recycle copies locally",
+    "subject": "c46be8246ca79efc2a67d3340f597f40fe14bab3",
+    "summary": "Back up and unlink the single approved DL-2026-11-013 [56cdd25d] legacy copy, then recycle it locally",
     "disposition": "completed",
-    "decision_ref": "User explicitly confirmed local-only Close on 2026-11-17. Preserve implementation7457d4c, integration417e2b7b, task checkout, complete database/tree backups and all audit/validation/recycle evidence at D:/ConnLabCleanupBackups/20261116-235317-legacy-import-cleanup. No backup/worktree/recycle cleanup, no database or directory mutation, no push, publication or packaging. --publish-close intentionally omitted.",
-    "closed_at": "2026-11-16T22:39:10.776852Z"
+    "decision_ref": "User explicitly confirmed Close on 2026-11-17. Existing local-only authority persists: preserve implementation c46be824, integration f958e071, task checkout, full DB/tree backups and audit/validation/recycle evidence at D:/ConnLabCleanupBackups/20261117-070750-renamed-import-cleanup, including original strict check differences and User-confirmed MaterialsDev/rev2 configuration. Preserve previous cleanup backups/evidence too. No business-data/config changes, no backup/worktree/bin cleanup, no push/publication/packaging. --publish-close intentionally omitted.",
+    "closed_at": "2026-11-16T23:20:12.858153Z"
   },
   "retained_history": [
     {
@@ -588,108 +588,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly confirmed local-only Close of the completed Python test harness task. Preserve implementation commits 1d59806c and 0e41331a, the task worktree, all RED/GREEN evidence, original full-run failure records, final affected replay and integration verification. No push, publication or packaging. --publish-close intentionally omitted; no cleanup, file moves or business-file operations.",
       "closed_at": "2026-11-16T11:51:02.837983Z"
+    },
+    {
+      "task_id": "TASK_LEGACY_IMPORT_CLEANUP_20261116",
+      "tier": "high_risk",
+      "subject": "7457d4c56b2dcbbea98d906009e556ce14777332",
+      "summary": "Back up and clear exactly nine approved legacy import copies plus one database-only remainder; recycle copies locally",
+      "disposition": "completed",
+      "decision_ref": "User explicitly confirmed local-only Close on 2026-11-17. Preserve implementation7457d4c, integration417e2b7b, task checkout, complete database/tree backups and all audit/validation/recycle evidence at D:/ConnLabCleanupBackups/20261116-235317-legacy-import-cleanup. No backup/worktree/recycle cleanup, no database or directory mutation, no push, publication or packaging. --publish-close intentionally omitted.",
+      "closed_at": "2026-11-16T22:39:10.776852Z"
     }
   ],
-  "tasks": {
-    "TASK_RENAMED_IMPORT_CLEANUP_20261117": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\renamed-import-cleanup-20261117",
-      "branch": "codex/renamed-import-cleanup-20261117",
-      "resources": [
-        "d:/connlabcleanupbackups",
-        "d:/connlabprojectsdev",
-        "d:/pythonproject/connlab/data/connlab.sqlite3"
-      ],
-      "integrated_head": "f958e0715f5f12ff7a1b47da5ea289c7f767fe28",
-      "task": {
-        "task_id": "TASK_RENAMED_IMPORT_CLEANUP_20261117",
-        "summary": "Back up and unlink the single approved DL-2026-11-013 [56cdd25d] legacy copy, then recycle it locally",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Exact new User-authorized single-item cleanup with verified new DB/tree backup and audit; preserve original, unsuffixed directory, all other directories, root/config and completed batch; no push/publication/packaging",
-        "scope_paths": [
-          "scripts/legacy_import_cleanup.py",
-          "scripts/renamed_import_cleanup.py",
-          "tests/integration/test_renamed_import_cleanup.py",
-          "docs/runbooks/renamed_import_cleanup.md"
-        ],
-        "risk_reasons": [
-          "Authorized real SQLite cleanup of exactly28 rows and one real directory sent to Windows Recycle Bin after verified backups"
-        ],
-        "activation_head": "649565375a8cfb419169917fcdfe860cc448eaa7",
-        "started_at": "2026-11-16T22:59:22.015894Z",
-        "updated_at": "2026-11-16T23:17:36.863823Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_RENAMED_IMPORT_CLEANUP_20261117",
-          "stage": "verification",
-          "status": "running",
-          "summary": "Fixed clean implementation c46be824 independently reviewed; final QA31passed. User-authorized new backup/realapply complete at D:/ConnLabCleanupBackups/20261117-070750-renamed-import-cleanup: full DB integrity ok,27file tree verified,exact28rows unlinked and single renamed copy in actual system Recycle Bin with durable receipt. No Project deletion. Independent readonly postverify running; preserve run/batches/logs/sources/protected roots, do not start another run or restore automatically. No push/publication/package/Close.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_RENAMED_IMPORT_CLEANUP_20261117",
-          "subject": "c46be8246ca79efc2a67d3340f597f40fe14bab3",
-          "summary": "Single renamed legacy copy backed up,exact28 old rows unlinked and directory recycled. Originals/retained directories/root/batch preserved. Preserve User-confirmed concurrent MaterialsDev/revision2 setting; record4 runtime validation timestamps. Local only; await explicit Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/runbooks/renamed_import_cleanup.md",
-            "scripts/legacy_import_cleanup.py",
-            "scripts/renamed_import_cleanup.py",
-            "tests/integration/test_renamed_import_cleanup.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "Independent fixedSHA final matrix: legacy17+new14=31passed,0skip,0warning; real isolated Windows Recycle probe passed; py_compile/diffcheck clean."
-            },
-            {
-              "status": "passed",
-              "summary": "Verified new DB integrity and27file directory backup at D:/ConnLabCleanupBackups/20261117-070750-renamed-import-cleanup; actual one Windows bin tree27files and I metadata match; exact28 deletion,no Project/workspace/lifecycle deletion."
-            },
-            {
-              "status": "passed",
-              "summary": "Independent postreview with documented observations: source34 and5 protected dirs236files/rootidentity/batch/logs preserved; actual readonly production search22to21 precisely one target removed. Complete79-table diff=28 authorized deletions+4 resource validation timestamp refreshes+1 User-confirmed MaterialsDev/rev2 settings update, no other data/schema delta. Initial strict109pass2fail retained; User explicitly answered keep current configuration; separate final-acceptance passed under latest instruction, no settings rollback."
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "evidence": "Independent /root/renamed_cleanup_planner exact single-item safety/recovery plan."
-            },
-            "developer": {
-              "status": "passed",
-              "evidence": "Independent /root/renamed_cleanup_developer fixedc46be824,RED/GREEN and final14focusedpass; evidence retained."
-            },
-            "reviewer": {
-              "status": "passed",
-              "evidence": "Independent /root/renamed_cleanup_reviewer fixedSHA Standards0 Spec0 and real readonly79table28row capture."
-            },
-            "qa": {
-              "status": "passed",
-              "evidence": "Independent /root/renamed_cleanup_qa31pass; final acceptance passed_with_documented_observations after explicit User confirmation of concurrent MaterialsDev setting; raw109pass2fail and4timestamp/1settingdelta retained."
-            },
-            "integrator": {
-              "status": "passed",
-              "evidence": "Independent /root/renamed_cleanup_integrator preflight passed cleanSHA/4paths/base/main/evidence; actual merge pending solewriter and postcheck."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "c46be8246ca79efc2a67d3340f597f40fe14bab3",
-            "primary_before": "39d44618e92bdca9c4ea743907303fe687f4212f",
-            "integrated_head": "f958e0715f5f12ff7a1b47da5ea289c7f767fe28",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
