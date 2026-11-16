@@ -275,7 +275,7 @@ def locks(manifest):
         yield
 
 
-def prepare(facts, run, *, authorization=None):
+def prepare(facts, run, *, authorization=None, audit_authorization=AUDIT_AUTHORIZATION):
     """Create and verify recoverable backups. Never mutate source DB or directories."""
     authorization = AUTHORIZATION if authorization is None else authorization
     run = checked_path(run, must_exist=False)
@@ -289,9 +289,9 @@ def prepare(facts, run, *, authorization=None):
                 raise CleanupError("Backup overlaps an original")
     run.mkdir(parents=True)
     atomic_json(run / "approved-preview.json", facts)
-    (run / "authorization.txt").write_text(AUDIT_AUTHORIZATION, encoding="utf-8")
+    (run / "authorization.txt").write_text(audit_authorization, encoding="utf-8")
     manifest = {"version": 1, "created_at": stamp(), "database": str(db), "root": str(root), "root_identity": identities(root),
-                "authorization": authorization, "units": units, "directories": [], "preview_sha256": digest(run / "approved-preview.json")}
+                "authorization": authorization, "audit_authorization": audit_authorization, "units": units, "directories": [], "preview_sha256": digest(run / "approved-preview.json")}
     with locks(manifest):
         # Completed recovery states remain in their shared store; retain scoped copies in audit.
         data = db.parent
