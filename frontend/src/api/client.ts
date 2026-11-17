@@ -1,3 +1,4 @@
+import {boundFetch} from "./runtime";
 export type ProjectFolderGeneration = {
   project_id: string;
   operation_id: string;
@@ -3224,7 +3225,7 @@ function isProjectClosureType(value: unknown): value is ProjectClosureType {
 }
 
 export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await boundFetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",
@@ -3283,7 +3284,7 @@ export async function requestBlobResponse(
   path: string,
   init?: RequestInit
 ): Promise<BlobDownloadResponse> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await boundFetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       Accept: "*/*",
@@ -3310,7 +3311,7 @@ async function blobDownloadFromResponse(
 }
 
 async function requestNoContent(path: string, init?: RequestInit): Promise<void> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await boundFetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",
@@ -5329,7 +5330,7 @@ export function readProjectCustomerReportJob(projectId: string, operationId: str
 }
 
 export async function downloadProjectCustomerReportJob(projectId: string, operationId: string): Promise<BlobDownloadResponse> {
-  const response = await fetch(`${API_BASE}${projectCustomerReportJobsUrl(projectId)}/${encodeURIComponent(operationId)}/download`);
+  const response = await boundFetch(`${API_BASE}${projectCustomerReportJobsUrl(projectId)}/${encodeURIComponent(operationId)}/download`);
   if (!response.ok) throw await responseError(response);
   return blobDownloadFromResponse(response);
 }
@@ -5439,7 +5440,7 @@ export async function generateCurrentCustomerReport(
     expected_customer_report_sha256: string | null;
   }
 ): Promise<CustomerReportGenerationResponse> {
-  const response = await fetch(
+  const response = await boundFetch(
     `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-customer-report`,
     {
       method: "POST",
@@ -5702,7 +5703,7 @@ export async function encryptStandaloneFolder(files: File[]): Promise<BlobDownlo
   const body = new FormData();
   files.forEach(file => body.append("files", file));
   body.append("relative_paths", JSON.stringify(files.map(file => file.webkitRelativePath)));
-  const response = await fetch(`${API_BASE}/api/tools/encrypt-folder`, { method: "POST", body });
+  const response = await boundFetch(`${API_BASE}/api/tools/encrypt-folder`, { method: "POST", body });
   if (!response.ok) throw await responseError(response);
   let summary: FolderEncryptionSummary;
   try {
@@ -5751,7 +5752,7 @@ export async function updateStandaloneEquipmentList(
   body.append("file", file);
   if (input.equipmentFile) body.append("equipment_file", input.equipmentFile);
   if (input.referencesText !== undefined) body.append("references_text", input.referencesText);
-  const response = await fetch(`${API_BASE}/api/tools/equipment-list`, { method: "POST", body });
+  const response = await boundFetch(`${API_BASE}/api/tools/equipment-list`, { method: "POST", body });
   if (!response.ok) throw await responseError(response);
   let review: EquipmentReview;
   try {

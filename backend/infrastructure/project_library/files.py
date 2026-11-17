@@ -595,7 +595,10 @@ class LibraryFiles:
         if workspace:
             business_path = Path(business["candidate"])
             name = business_path.name
-            title = name[len(member["ltr_number"]):].strip() if member["ltr_number"] and name.upper().startswith(member["ltr_number"].upper()+" ") else member["title"]
+            # Copying an unchanged business folder to a new root changes only location.
+            # A portable wrapper such as "DL-... files" is not the product title.
+            unchanged_name = name == Path(workspace["official_folder_path"]).name
+            title = member["title"] if unchanged_name else (name[len(member["ltr_number"]):].strip() if member["ltr_number"] and name.upper().startswith(member["ltr_number"].upper()+" ") else member["title"])
             details = {"business_target_path": str(business_path), "business_identity": identity(business_path),
                        "business_reconnect_required": not business["ready"], "business_warning": business["warning"], "title": title}
         return {**details, "member_id": member["member_id"], "revision": member["revision"],

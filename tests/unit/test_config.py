@@ -31,7 +31,7 @@ def test_settings_load_defaults_and_create_directories() -> None:
         settings = Settings.load(base_dir=workspace_tmp)
 
         assert settings.data_dir == workspace_tmp / "data"
-        assert settings.projects_dir == workspace_tmp / "projects"
+        assert settings.projects_dir == Path("D:/ConnLabDev/Projects")
         assert settings.templates_dir == workspace_tmp / "templates"
         assert settings.log_level == DEFAULT_LOG_LEVEL
         assert settings.contact_measurement_plan_authority_enabled is True
@@ -47,8 +47,8 @@ def test_settings_load_defaults_and_create_directories() -> None:
         assert settings.ltr_workbook.backup_retention_max_mb == 500
         assert settings.test_record.template_path is None
         assert settings.data_dir.is_dir()
-        assert settings.projects_dir.is_dir()
-        assert settings.templates_dir.is_dir()
+        assert not (workspace_tmp / "projects").exists()
+        assert not settings.templates_dir.exists()
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 
@@ -107,7 +107,7 @@ templates_dir = "operator-templates"
         assert settings.templates_dir == (
             workspace_tmp / "operator-templates"
         ).resolve()
-        assert settings.templates_dir.is_dir()
+        assert not settings.templates_dir.exists()
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 
@@ -445,8 +445,8 @@ def test_settings_respect_environment_overrides(
         assert settings.ltr_workbook.backup_retention_days == 11
         assert settings.ltr_workbook.backup_retention_max_mb == 123
         assert settings.data_dir.is_dir()
-        assert settings.projects_dir.is_dir()
-        assert settings.templates_dir.is_dir()
+        assert not settings.projects_dir.exists()
+        assert not settings.templates_dir.exists()
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 

@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../../runtimeEnvironment";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiRequestError, downloadProjectCustomerReportJob, fetchLatestProjectCustomerReportJob,
@@ -13,8 +14,8 @@ const detail = (reason: unknown) => reason instanceof Error ? reason.message : "
 function remember(projectId: string, operationId?: string): string | null {
   try {
     const key = `connlab.customer-report-job.${projectId}`;
-    if (operationId !== undefined) sessionStorage.setItem(key, operationId);
-    return sessionStorage.getItem(key);
+    if (operationId !== undefined) runtimeSessionStorage.setItem(key, operationId);
+    return runtimeSessionStorage.getItem(key);
   } catch { return null; }
 }
 

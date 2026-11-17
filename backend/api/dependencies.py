@@ -1927,9 +1927,10 @@ def _confirmed_contact_point_profile_consumer_adapter(session: Session):
 
 
 def get_official_project_workspace_service(
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
 ) -> OfficialProjectWorkspaceService:
     """Build the official project workspace service for API routes."""
+    settings = settings if isinstance(settings, Settings) else get_settings()
     external_resources = ExternalResourceRepository(session)
     return OfficialProjectWorkspaceService(
         project_repository=ProjectRepository(session),
@@ -1942,7 +1943,14 @@ def get_official_project_workspace_service(
         settings=_official_workspace_settings_from_registry(
             external_resources,
         ),
+        default_root=lambda: get_default_storage_locations(session, settings).ensure(ExternalResourceType.PROJECT_OUTPUT_ROOT),
     )
+
+
+def get_default_storage_locations(session, settings):
+    from backend.application.default_storage_locations import DefaultStorageLocations
+    from backend.infrastructure.files.default_storage_directory import DefaultStorageDirectory
+    return DefaultStorageLocations(settings, ExternalResourceRepository(session), DefaultStorageDirectory())
 
 
 def get_basic_project_workspace_service(
@@ -1955,6 +1963,7 @@ def get_basic_project_workspace_service(
         projects=ProjectRepository(session), workspaces=ProjectOfficialWorkspaceRepository(session),
         ltrs=LtrRecordRepository(session),
         settings=_official_workspace_settings_from_registry(ExternalResourceRepository(session)),
+        default_root=lambda: get_default_storage_locations(session, settings).ensure(ExternalResourceType.PROJECT_OUTPUT_ROOT),
         data_dir=settings.data_dir, collect_materials=materials.collect_available,
         commit=session.commit,
         check_other_writes=lambda project_id: (

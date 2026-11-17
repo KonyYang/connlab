@@ -1,3 +1,4 @@
+import {getRuntimeEnvironment} from "../../runtimeEnvironment";
 import type { ReactElement, ReactNode } from "react";
 import { useTopBarHostRegistration } from "./TopBarActionsContext";
 
@@ -38,6 +39,7 @@ export function TopBar({ activeRoute, titleOverride, actions }: TopBarProps): Re
     <header className={`top-bar top-bar-${activeRoute}`}>
       <div className="top-bar-title-slot">
         <h1 title={title}>{title}</h1>
+        {getRuntimeEnvironment()?.environment === "development" && <span className="runtime-dev-badge">Dev</span>}
       </div>
       <div
         className="top-bar-actions"

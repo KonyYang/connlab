@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../../runtimeEnvironment";
 import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import * as api from "../../api/materialReceipts";
@@ -5,7 +6,7 @@ import type {ReceiptBatch,ArchivePlan} from "../../api/materialReceipts";
 import "./materials.css";
 const labels:Record<string,string>={copied:"Copied",skipped:"Skipped",supplemented:"Saved supplementary copy",failed:"Failed",retained_changed:"Changed after receipt — retained"};
 const pendingKey="materials-archive-pending";
-const readPending=():ArchivePlan|null=>{try{return JSON.parse(sessionStorage.getItem(pendingKey)??"null");}catch{return null;}};
+const readPending=():ArchivePlan|null=>{try{return JSON.parse(runtimeSessionStorage.getItem(pendingKey)??"null");}catch{return null;}};
 export function ReceiptResults({ batch }: { batch: ReceiptBatch }) {
  return <section aria-label="Receipt result">
   <p role="status">{batch.status === "completed" ? "Materials received and verified." : "Receipt incomplete. Review the items below; existing files are retained."}</p>
@@ -22,7 +23,7 @@ export function ReceiveMaterials({onClose,onReceived,initialOperation}:{onClose:
  const [attempted,setAttempted]=useState(()=>Boolean(readPending()));
  const [busy,setBusy]=useState(false),[cancelling,setCancelling]=useState(false),[error,setError]=useState("");
  const live=useRef(false),started=useRef(false),job=useRef<string|null>(null);
- const finish=(value:ReceiptBatch)=>{setOperation(value);if(value.status==="completed"){sessionStorage.removeItem(pendingKey);onReceived(value.target_key);}};
+ const finish=(value:ReceiptBatch)=>{setOperation(value);if(value.status==="completed"){runtimeSessionStorage.removeItem(pendingKey);onReceived(value.target_key);}};
  async function run(start:Promise<{job_id:string}>,kind:"preview"|"copy") {
   setBusy(true);setError("");setCancelling(false);
   try {
@@ -70,7 +71,7 @@ export function ReceiveMaterials({onClose,onReceived,initialOperation}:{onClose:
   // Closing never claims that OS work stopped; the original receipt remains recoverable.
   onClose();
  }
- function confirm(){if(!plan)return;sessionStorage.setItem(pendingKey,JSON.stringify(plan));setAttempted(true);void run(api.confirmArchive(plan),"copy");}
+ function confirm(){if(!plan)return;runtimeSessionStorage.setItem(pendingKey,JSON.stringify(plan));setAttempted(true);void run(api.confirmArchive(plan),"copy");}
  function retry(){if(operation)void run(api.retryArchive(operation.batch_id),"copy");else if(plan)void run(api.confirmArchive(plan),"copy");}
  if(!error && !operation && !attempted && (!plan || busy)){
   if(!busy)return null;

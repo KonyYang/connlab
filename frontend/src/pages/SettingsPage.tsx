@@ -1,6 +1,8 @@
+import {getRuntimeEnvironment} from "../runtimeEnvironment";
 import { useState, type ReactElement } from "react";
 import {
   downloadSupportDiagnosticBundle,
+  type ExternalResource,
   type ExternalResourceType
 } from "../api/client";
 import { ErrorMessage } from "../components/common/ErrorMessage";
@@ -62,7 +64,7 @@ export function SettingsPage(): ReactElement {
       {!loading && (
         <SettingsExternalResourcesPanel
           receiveLocation={<ReceiveSaveLocation />}
-          resources={resources}
+          resources={withDefaultLocations(resources)}
           savingType={savingType}
           onSave={handleSave}
           browseEnabled={hasDesktopPathPickerBridge()}
@@ -98,4 +100,14 @@ export function SettingsPage(): ReactElement {
       </section>
     </section>
   );
+}
+
+function withDefaultLocations(resources: ExternalResource[]):ExternalResource[]{
+ const defaults=getRuntimeEnvironment()?.default_output_paths;
+ if(!defaults)return resources;
+ const rows=[...resources];
+ for(const [resource_type,purpose] of [["project_output_root","Projects"],["temporary_materials_root","TemporaryMaterials"]] as const){
+  if(!rows.some(row=>row.resource_type===resource_type)) rows.push({resource_id:`default-${resource_type}`,resource_type,path:defaults[purpose],active:true,validation_status:"not_validated",last_validated_at:null,validation_failure_reason:null,worksheet_name:null});
+ }
+ return rows;
 }

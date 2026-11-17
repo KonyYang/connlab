@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from backend.api.dependencies import get_session
+from backend.api.dependencies import get_session, get_settings, get_default_storage_locations
 from backend.application.intake_materials_service import IntakeMaterialsService
 from backend.infrastructure.files.materials_copy_gateway import MaterialsCopyGateway
 from backend.infrastructure.storage.repositories.intake_package import IntakePackageRepository, IntakeAssetRepository
@@ -11,8 +11,8 @@ from backend.infrastructure.files.local_folder_open_gateway import LocalFolderOp
 
 router = APIRouter(tags=['intake-materials'])
 
-def get_materials_service(session: Session = Depends(get_session)):
-    return IntakeMaterialsService(IntakePackageRepository(session), IntakeAssetRepository(session), ExternalResourceRepository(session), MaterialsCopyGateway())
+def get_materials_service(session: Session = Depends(get_session), settings=Depends(get_settings)):
+    return IntakeMaterialsService(IntakePackageRepository(session), IntakeAssetRepository(session), ExternalResourceRepository(session), MaterialsCopyGateway(), get_default_storage_locations(session, settings))
 
 class FolderRequest(BaseModel):
     folder_name: str

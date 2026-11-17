@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../../runtimeEnvironment";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type FeeEvaluationDraft } from '../../api/client';
 import { loadPlanningSeed, calculatePlanningFees, exportPlanningFees, inspectPlanningFeeForm } from '../../api/toolsPlanning';
@@ -27,7 +28,7 @@ export function ToolsFeeWorkspace({onBack}: {onBack: () => void}) {
       const current = seed.editor_draft;
       if (!current) throw new Error('Create or import a Matrix in Tools first.');
       setMatrix(current);
-      const raw = sessionStorage.getItem(KEY);
+      const raw = runtimeSessionStorage.getItem(KEY);
       if (raw) setSaved(JSON.parse(raw) as SavedFee);
       else void calculate(current);
     } catch (failure) { setError(message(failure)); }
@@ -46,7 +47,7 @@ export function ToolsFeeWorkspace({onBack}: {onBack: () => void}) {
   function update(next: SavedFee) {
     // Keep the visible edits even if browser storage is full, and report the failure.
     setSaved(next);
-    try {sessionStorage.setItem(KEY, JSON.stringify(next)); setError('');}
+    try {runtimeSessionStorage.setItem(KEY, JSON.stringify(next)); setError('');}
     catch {setError('The browser could not retain this estimate. Download the Fee Form before leaving.');}
   }
   const rows = useMemo(() => saved ? applyFeeEvaluationPreviewEdits(buildFeeEvaluationPreviewRows(saved.draft),saved.edits) : [], [saved]);

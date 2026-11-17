@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../../runtimeEnvironment";
 import { useDeferredValue, useEffect, useState } from "react";
 import { listLegacyProjects, type LegacyProjectRecord } from "../../api/legacyProjects";
 import "./legacy-project-preview.css";
@@ -5,14 +6,14 @@ import "./legacy-project-preview.css";
 const SEARCH_KEY = "connlab.legacyProjects.search";
 
 export function LegacyProjectList({ onOpen, onBack, onImport }: { onOpen: (recordId: string) => void; onBack: () => void; onImport?: () => void }) {
-  const [search, setSearch] = useState(() => sessionStorage.getItem(SEARCH_KEY) ?? "");
+  const [search, setSearch] = useState(() => runtimeSessionStorage.getItem(SEARCH_KEY) ?? "");
   const query = useDeferredValue(search);
   const [rows, setRows] = useState<LegacyProjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [page, setPage] = useState(1);
-  useEffect(() => { sessionStorage.setItem(SEARCH_KEY, search); }, [search]);
+  useEffect(() => { runtimeSessionStorage.setItem(SEARCH_KEY, search); }, [search]);
   useEffect(() => {
     const request = new AbortController();
     setLoading(true); setError(null); setPage(1);

@@ -122,3 +122,26 @@ def test_basic_api_uses_same_canonical_lock_and_preserves_other_writer(tmp_path)
         with sessions() as session:
             assert deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1") is None
         assert create(client)["directory_available"]
+
+
+
+def test_first_project_save_creates_isolated_default_even_when_materials_library_is_offline(tmp_path):
+    from sqlalchemy import delete
+    from backend.infrastructure.storage.models import ExternalResourceModel
+    from backend.infrastructure.storage.repositories.material_receipt import MaterialReceiptRepository
+    from backend.shared.config import Settings
+    with prepared(tmp_path) as (client,sessions,_,_):
+        isolated=Settings(tmp_path/"data",tmp_path/"new-default/Projects",tmp_path/"templates",tmp_path/"connlab.sqlite3",output_root=tmp_path/"new-default")
+        app.dependency_overrides[deps.get_settings]=lambda:isolated
+        with sessions() as session:
+            session.execute(delete(ExternalResourceModel).where(ExternalResourceModel.resource_type==ExternalResourceType.PROJECT_OUTPUT_ROOT.value))
+            MaterialReceiptRepository(session).configure(str(tmp_path/"offline-materials"))
+            session.commit()
+        assert not isolated.projects_dir.exists()
+        result=create(client,"first-default")
+        assert result["directory_available"]
+        assert Path(result["official_project_folder_path"]).is_relative_to(isolated.projects_dir)
+        with sessions() as session:
+            assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT).path==isolated.projects_dir
+            assert MaterialReceiptRepository(session).settings()["root_path"]==str(tmp_path/"offline-materials")
+        assert not (tmp_path/"offline-materials").exists()

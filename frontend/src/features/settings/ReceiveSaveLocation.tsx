@@ -24,7 +24,7 @@ export function ReceiveSaveLocation() {
 
   async function save(value: string) {
     const next = value.trim();
-    if (!next) { setError("Choose an existing Materials library folder."); return; }
+    if (!next) { setError("Choose a Materials library folder."); return; }
     if (working.current || next === runtime?.root_path && runtime.available) return;
     working.current = true; setBusy(true); setError("");
     try {
@@ -42,7 +42,7 @@ export function ReceiveSaveLocation() {
     finally { working.current = false; if (live.current) setBusy(false); }
     if (chosen && live.current) { setPath(chosen); await save(chosen); }
   }
-  const unavailable = !loading && runtime && !runtime.available;
+  const unavailable = !loading && runtime?.configured && !runtime.available;
   const message = error || (unavailable ? "Choose an available Materials library folder." : "");
   return <article className="settings-resource-row settings-receive-location">
     <div className="settings-resource-label"><strong>Materials library folder</strong></div>

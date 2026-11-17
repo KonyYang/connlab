@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 import sys
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from backend.shared.runtime_environment import output_path
 
 
 APP_NAME = "ConnLab"
@@ -32,7 +32,6 @@ class PackagedRuntimePaths:
         for path in (
             self.user_root,
             self.data_dir,
-            self.projects_dir,
             self.templates_dir,
             self.logs_dir,
             self.config_dir,
@@ -93,7 +92,7 @@ def build_packaged_runtime_paths(
         frontend_dist=resolved_frontend,
         user_root=resolved_user_root,
         data_dir=data_dir,
-        projects_dir=resolved_user_root / "projects",
+        projects_dir=output_path("release", "Projects"),
         templates_dir=resolved_user_root / "templates",
         logs_dir=resolved_user_root / "logs",
         config_dir=config_dir,
@@ -105,21 +104,15 @@ def build_packaged_runtime_paths(
 def apply_packaged_environment_defaults(paths: PackagedRuntimePaths) -> None:
     """Apply packaged-mode environment defaults without overriding user choices."""
     program_data_root = Path(os.getenv("PROGRAMDATA", r"C:\ProgramData"))
-    library_value = os.getenv("CONNLAB_LIBRARY_ROOT")
-    config_path = Path(os.getenv("CONNLAB_LOCAL_CONFIG_PATH") or paths.local_config_path)
-    if not library_value and config_path.is_file():
-        with config_path.open("rb") as stream:
-            library_value = tomllib.load(stream).get("paths", {}).get("library_root")
-    library = Path(str(library_value)).expanduser() if library_value else None
-    if library is not None:
-        if not library.is_absolute():
-            raise ValueError("Choose an absolute project library path.")
-        library = library.resolve()
-        os.environ.setdefault("CONNLAB_LIBRARY_ROOT", str(library))
+    from backend.shared.runtime_environment import apply_entry_defaults, prepare_entry_config, configured_library_root
+    base = {"CONNLAB_LOCAL_CONFIG_PATH": paths.local_config_path,
+            "CONNLAB_ADMIN_CONFIG_PATH": program_data_root / APP_NAME / "config" / "connlab.admin.toml"}
+    configured = prepare_entry_config("release", base)
+    library = configured_library_root(configured)
     defaults = {
         "CONNLAB_DATA_DIR": library / "Data" if library else paths.data_dir,
-        "CONNLAB_PROJECTS_DIR": library / "Projects" if library else paths.projects_dir,
-        "CONNLAB_TEMPLATES_DIR": paths.templates_dir,
+        "CONNLAB_PROJECTS_DIR": configured.get("projects_dir") or (library / "Projects" if library else paths.projects_dir),
+        "CONNLAB_TEMPLATES_DIR": configured.get("templates_dir") or paths.templates_dir,
         "CONNLAB_LOGS_DIR": library / "Logs" if library else paths.logs_dir,
         "CONNLAB_DATABASE_PATH": library / "Data" / "connlab.sqlite3" if library else paths.database_path,
         "CONNLAB_RELEASE_MANIFEST_PATH": paths.app_root / "release_manifest.json",
@@ -128,8 +121,9 @@ def apply_packaged_environment_defaults(paths: PackagedRuntimePaths) -> None:
             program_data_root / APP_NAME / "config" / "connlab.admin.toml"
         ),
     }
-    for name, value in defaults.items():
-        os.environ.setdefault(name, str(value))
+    if library:
+        defaults["CONNLAB_LIBRARY_ROOT"] = library
+    apply_entry_defaults("release", defaults)
 
 
 def prepare_packaged_runtime_environment(
@@ -139,4 +133,7 @@ def prepare_packaged_runtime_environment(
     runtime_paths = paths or build_packaged_runtime_paths()
     runtime_paths.ensure_user_directories()
     apply_packaged_environment_defaults(runtime_paths)
+    from backend.shared.config import Settings
+    from backend.shared.runtime_environment import configure_process_temporary_storage
+    configure_process_temporary_storage(Settings.load(base_dir=runtime_paths.app_root))
     return runtime_paths

@@ -253,3 +253,14 @@ it("can retry loading the receive destination without saving a path",async()=>{
  await waitFor(()=>expect((screen.getByLabelText("Materials library folder path") as HTMLInputElement).value).toBe("D:/received"));
  expect(vi.mocked(receipts.setReceiptDestination).mock.calls.length).toBe(saves);
 });
+
+
+it("shows an unconfigured lazy materials default without a false offline warning",async()=>{
+ vi.mocked(listExternalResources).mockResolvedValue([]);
+ vi.mocked(receipts.getReceiptRuntime).mockResolvedValue({root_path:"D:/ConnLabDev/Materials",revision:0,configured:false,available:false});
+ render(<SettingsPage/>);
+ const input=await screen.findByLabelText("Materials library folder path");
+ await waitFor(()=>expect((input as HTMLInputElement).value).toBe("D:/ConnLabDev/Materials"));
+ expect(input.getAttribute("aria-invalid")).toBe("false");
+ expect(screen.queryByText("Choose an available Materials library folder.")).toBeNull();
+});

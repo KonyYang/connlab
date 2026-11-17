@@ -47,6 +47,8 @@ def find_available_port(host: str = "127.0.0.1") -> int:
 def create_packaged_app(paths: PackagedRuntimePaths):
     """Create the FastAPI app after packaged environment defaults are active."""
     from backend.api.main import app
+    from backend.api.runtime_binding import initialize_runtime_binding
+    initialize_runtime_binding(app)
 
     mount_packaged_frontend(app, paths.frontend_dist)
     return app

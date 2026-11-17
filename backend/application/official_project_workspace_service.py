@@ -185,6 +185,7 @@ class OfficialProjectWorkspaceService:
         application_form_repository: ApplicationFormRepositoryPort | None = None,
         manifest_gateway: OfficialWorkspaceManifestGateway | None = None,
         basic_information_reader: ConfirmedBasicInformationReader | None = None,
+        default_root=None,
     ) -> None:
         """Create the workspace service."""
         self._projects = project_repository
@@ -192,8 +193,18 @@ class OfficialProjectWorkspaceService:
         self._ltrs = ltr_repository
         self._forms = application_form_repository
         self._settings = settings
+        self._default_root = default_root
         self._manifests = manifest_gateway or OfficialWorkspaceManifestGateway()
         self._basic_information = basic_information_reader
+
+    def _local_root(self):
+        if self._settings.local_workspace_root is not None:
+            return self._settings.local_workspace_root
+        try:
+            return self._default_root() if self._default_root else None
+        except (OSError, ValueError) as error:
+            self._default_root_error = str(error)
+            return None
 
     def require_write_allowed(self, project_id: str) -> None:
         """Use the same project lifecycle gate as folder creation and adoption."""
@@ -257,10 +268,10 @@ class OfficialProjectWorkspaceService:
         warnings: list[str] = []
         if not dl_number:
             blockers.append("DL number is required before creating a local project workspace.")
-        local_root = self._settings.local_workspace_root
+        local_root = self._local_root()
         template_setting = self._settings.template_path
         if local_root is None:
-            blockers.append("Project default save location is not configured.")
+            blockers.append(getattr(self, "_default_root_error", "Project default save location is not configured. Choose a location in Settings."))
         elif not local_root.is_dir():
             blockers.append(f"Project default save location does not exist: {local_root}")
         if self._settings.public_drive_root is None:
@@ -937,7 +948,7 @@ class OfficialProjectWorkspaceService:
         local_workspace_path: Path,
     ) -> OfficialTemplateRoot:
         """Resolve a real template only for an operation that will generate files."""
-        workspace_root = self._settings.local_workspace_root
+        workspace_root = self._local_root()
         candidates = [self._settings.template_path, retained_template_path]
         errors: list[str] = []
         for candidate in dict.fromkeys(path for path in candidates if path is not None):
@@ -1096,7 +1107,7 @@ class OfficialProjectWorkspaceService:
             return "Local project workspace record does not match current project."
         if record.dl_number != dl_number:
             return "Local project workspace record does not match current DL number."
-        local_root = self._settings.local_workspace_root
+        local_root = self._local_root()
         if (
             local_root is None
             or record.local_workspace_path == local_root

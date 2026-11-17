@@ -1,3 +1,5 @@
+import "../../api/runtime.testHelpers";
+import {runtimeSessionStorage} from "../../runtimeEnvironment";
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToolsFeeWorkspace } from './ToolsFeeWorkspace';
@@ -31,6 +33,6 @@ describe('Tools fee estimate session',()=>{
   await waitFor(()=>expect(calculatePlanningFees).toHaveBeenCalledOnce());
   view.unmount();
   await act(async()=>finish(draft));
-  expect(sessionStorage.getItem('connlab:tools-fees:v1')).toBeNull();
+  expect(runtimeSessionStorage.getItem('connlab:tools-fees:v1')).toBeNull();
  });
 });

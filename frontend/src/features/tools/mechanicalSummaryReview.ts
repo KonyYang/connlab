@@ -1,3 +1,4 @@
+import {runtimeLocalStorage} from "../../runtimeEnvironment";
 import type { FolderAnalysis, FolderReview, FolderSection, ReportTable } from '../../api/mechanicalSummary';
 export const informationFields = ['LTR', 'Test Date', 'Tested By', 'Amb Temp. and Rel. Hum.', 'Test Equipment ID', 'Test Condition', 'Item/Process', 'Remark'];
 export const qualitative = (section: FolderSection) => ['qualitative', 'polarisation', 'protection'].includes(section.kind);
@@ -25,7 +26,7 @@ const storageKey = (project: string) => `connlab.mechanical-folder.v1.${project}
 export function savedReview(analysis: FolderAnalysis): FolderReview | undefined {
   if (!analysis.project) return undefined;
   try {
-    const stored: FolderReview = JSON.parse(localStorage.getItem(storageKey(analysis.project)) || 'null');
+    const stored: FolderReview = JSON.parse(runtimeLocalStorage.getItem(storageKey(analysis.project)) || 'null');
     if (!stored || stored.project !== analysis.project || typeof stored.sections !== 'object') return undefined;
     const sections = Object.fromEntries(analysis.sections.filter(s => stored.sections[s.id]).map(s => [s.id, stored.sections[s.id]]));
     return Object.keys(sections).length ? { project: analysis.project, sections } : undefined;
@@ -33,7 +34,7 @@ export function savedReview(analysis: FolderAnalysis): FolderReview | undefined 
 }
 export function saveReview(analysis: FolderAnalysis): boolean {
   if (!analysis.project) return false;
-  try { localStorage.setItem(storageKey(analysis.project), JSON.stringify(reviewFor(analysis))); return true; }
+  try { runtimeLocalStorage.setItem(storageKey(analysis.project), JSON.stringify(reviewFor(analysis))); return true; }
   catch { return false; }
 }
 export function resizeTable(table: ReportTable, samples: string[], columns: string[], diagonal = table.diagonal): ReportTable {

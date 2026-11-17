@@ -19,6 +19,10 @@ def fixture_checkout(checkout: Path, source: str | None = None) -> Path:
     shutil.copyfile(REPOSITORY / "conftest.py", checkout / "conftest.py")
     (checkout / "scripts").mkdir()
     shutil.copyfile(REPOSITORY / "scripts/pytest_artifacts.py", checkout / "scripts/pytest_artifacts.py")
+    (checkout / "backend/shared").mkdir(parents=True)
+    (checkout / "backend/__init__.py").write_text("",encoding="utf-8")
+    (checkout / "backend/shared/__init__.py").write_text("",encoding="utf-8")
+    shutil.copyfile(REPOSITORY / "backend/shared/runtime_environment.py", checkout / "backend/shared/runtime_environment.py")
     (checkout / "test_fixture.py").write_text(
         source or "from pathlib import Path\n"
         "def test_location(tmp_path):\n"

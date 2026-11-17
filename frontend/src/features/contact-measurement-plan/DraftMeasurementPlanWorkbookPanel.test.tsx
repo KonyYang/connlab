@@ -1,3 +1,4 @@
+import "../../api/runtime.testHelpers";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../../api/client";
@@ -38,7 +39,7 @@ describe("DraftMeasurementPlanWorkbookPanel", () => {
     });
     vi.mocked(api.generateDraftMeasurementPlanWorkbook).mockResolvedValue({
       project_id: "P1", revision_id: "draft-1", artifact_id: "a".repeat(32),
-      file_name: "draft.xlsx", output_label: "DRAFT", download_url: "/download",
+      file_name: "draft.xlsx", output_label: "DRAFT", download_url: "/api/projects/P1/draft-workbook/files/artifact",
       cleanup_warning: "Older draft artifacts could not be cleaned up.",
     });
 
@@ -48,6 +49,7 @@ describe("DraftMeasurementPlanWorkbookPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Generate draft workbook" }));
 
     await waitFor(() => expect(screen.getByText("Older draft artifacts could not be cleaned up.")).toBeTruthy());
-    expect(screen.getByRole("link", { name: "Download draft workbook" })).toBeTruthy();
+    const download=screen.getByRole("link", { name: "Download draft workbook" });
+    expect(download.getAttribute("href")).toContain("connlab_instance=unit-data-instance");
   });
 });

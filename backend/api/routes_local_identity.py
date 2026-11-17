@@ -17,6 +17,11 @@ COOKIE = 'connlab_local_session'
 COOKIE_PATH = '/api/local-identity'
 
 
+def _cookie_name(request):
+    binding = request.scope.get("connlab_runtime_binding") or getattr(request.app.state, "runtime_binding", None)
+    return COOKIE + "_" + binding.cookie_suffix if binding else COOKIE
+
+
 def get_identity_service(settings: Settings = Depends(get_settings)) -> LocalIdentityService:
     return LocalIdentityService(LocalIdentityStore(settings.data_dir / 'local_identity.sqlite3'))
 
@@ -86,7 +91,7 @@ def _response(user) -> JSONResponse:
 def session(request: Request, service: LocalIdentityService = Depends(get_identity_service)):
     _local_request(request)
     # Reads never set/delete cookies: a stale GET must not erase a newer login response.
-    return _response(service.session(request.cookies.get(COOKIE)))
+    return _response(service.session(request.cookies.get(_cookie_name(request))))
 
 
 async def _authenticate(request: Request, service: LocalIdentityService, registering: bool):
@@ -95,11 +100,11 @@ async def _authenticate(request: Request, service: LocalIdentityService, registe
     arguments = (body.get('username'), body.get('display_name'), body.get('password')) if registering else (body.get('username'), body.get('password'))
     method = service.register if registering else service.login
     try:
-        result = await run_in_threadpool(method, *arguments, remember=body.get('remember', True), prior_token=request.cookies.get(COOKIE))
+        result = await run_in_threadpool(method, *arguments, remember=body.get('remember', True), prior_token=request.cookies.get(_cookie_name(request)))
     except IdentityError as error:
         raise _reject(error.status, str(error)) from None
     response = _response(result.user)
-    response.set_cookie(COOKIE, result.token, max_age=result.max_age, httponly=True, samesite='strict',
+    response.set_cookie(_cookie_name(request), result.token, max_age=result.max_age, httponly=True, samesite='strict',
                         secure=request.url.scheme == 'https', path=COOKIE_PATH)
     return response
 
@@ -117,7 +122,7 @@ async def login(request: Request, service: LocalIdentityService = Depends(get_id
 @router.post('/logout')
 async def logout(request: Request, service: LocalIdentityService = Depends(get_identity_service)):
     await _mutation_body(request, set())
-    await run_in_threadpool(service.logout, request.cookies.get(COOKIE))
+    await run_in_threadpool(service.logout, request.cookies.get(_cookie_name(request)))
     response = _response(None)
-    response.delete_cookie(COOKIE, path=COOKIE_PATH, httponly=True, samesite='strict', secure=request.url.scheme == 'https')
+    response.delete_cookie(_cookie_name(request), path=COOKIE_PATH, httponly=True, samesite='strict', secure=request.url.scheme == 'https')
     return response

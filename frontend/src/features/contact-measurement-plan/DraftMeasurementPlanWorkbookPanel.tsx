@@ -1,3 +1,4 @@
+import {boundResourceUrl} from "../../api/runtime";
 import { useEffect } from "react";
 import { useDraftMeasurementPlanWorkbookModel } from "./useDraftMeasurementPlanWorkbookModel";
 
@@ -23,7 +24,7 @@ export function DraftMeasurementPlanWorkbookPanel({ projectId, revisionId, disab
     <div>
       <button type="button" disabled={!revisionId || disabled || model.busy} onClick={() => void model.previewDraft()}>Preview draft workbook</button>
       <button type="button" disabled={!model.preview?.generate_allowed || disabled || model.busy} onClick={() => void model.generateDraft()}>Generate draft workbook</button>
-      {model.artifact ? <a href={model.artifact.download_url} download={model.artifact.file_name}>Download {model.artifact.output_label.toLowerCase()} workbook</a> : null}
+      {model.artifact ? <a href={boundResourceUrl(model.artifact.download_url)} download={model.artifact.file_name}>Download {model.artifact.output_label.toLowerCase()} workbook</a> : null}
     </div>
   </section>;
 }

@@ -17,9 +17,10 @@ from backend.domain import LtrStatus
 
 
 class BasicProjectWorkspaceService:
-    def __init__(self, *, projects, workspaces, ltrs, settings, data_dir, collect_materials=None, commit=None, check_other_writes=None):
+    def __init__(self, *, projects, workspaces, ltrs, settings, data_dir, collect_materials=None, commit=None, check_other_writes=None, default_root=None):
         self.projects, self.workspaces, self.ltrs = projects, workspaces, ltrs
         self.settings, self.data_dir = settings, data_dir
+        self.default_root = default_root
         self.journal = BasicProjectWorkspaceJournal(data_dir / "basic_project_workspace")
         self.shared = GenerationJournal(data_dir / "project_folder_generation")
         self.collect_materials = collect_materials
@@ -37,6 +38,8 @@ class BasicProjectWorkspaceService:
             raise ValueError("A registered LTR number is required before creating the project folder.")
         number = parse_ltr_number(identity.ltr_number).normalized
         root = self.settings.local_workspace_root
+        if root is None and self.default_root is not None:
+            root = self.default_root()
         if root is None or not root.is_dir():
             raise ValueError(f"Project default save location must be an existing folder: {root}")
         require_safe_output_path(root)

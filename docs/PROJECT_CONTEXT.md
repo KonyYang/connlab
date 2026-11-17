@@ -691,3 +691,17 @@ and worksheet still match the checked configuration. A slow result cannot restor
 replaced path or worksheet. Background work stops queuing checks after leaving Settings.
 Validation reads business resources without rewriting their contents; tests use isolated
 SQLite and filesystem fixtures, with Office ports stubbed where required.
+
+
+### Environment-specific default output and browser state
+
+The explicit development and packaged entries select separate environments. Unconfigured
+business output defaults use `D:\ConnLabDev` and `D:\ConnLab` respectively, with lazy
+`Projects`, `Materials`, and `TemporaryMaterials` children. Explicit saved locations remain
+authoritative, including temporarily offline ones. Existing internal database/config/index/
+log/cache locations stay in place. Runtime upload/temp files and browser drafts/recovery
+are bound to the environment and actual database instance before business UI loading.
+A changed backend/instance stops old business operations rather than adopting their state.
+Shared physical external-file locks retain their existing domain. See
+[development_storage_migration.md](development_storage_migration.md) for the path contract,
+supported database replacement boundary, and this machine's finite retained-copy relocation.
