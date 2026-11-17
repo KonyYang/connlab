@@ -62,6 +62,8 @@ class DevelopmentRelocation:
     def __init__(self, settings, engine, rows, evidence_dir, config_paths=()):
         if settings.environment != "development" or settings.library_root:
             raise ValueError("This reviewed relocation is only for the existing standalone development data instance.")
+        from backend.infrastructure.storage.database import register_models
+        register_models()
         self.settings, self.engine, self.rows = settings, engine, tuple(rows)
         self.evidence = checked_path(evidence_dir, must_exist=False)
         self.config_paths = tuple(Path(path) for path in config_paths)

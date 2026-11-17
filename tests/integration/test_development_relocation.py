@@ -114,3 +114,73 @@ def test_interrupted_copy_never_adopts_an_existing_target_even_with_matching_byt
     with Session(engine) as session:
         assert session.get(ProjectLibraryMemberModel,"m").folder_path==str(rows[0].source)
     assert (rows[0].target/"DL-2026-11-013 files/人工记录.txt").read_text(encoding="utf-8")=="human data"
+
+
+
+def test_cold_coordinator_registers_complete_models_without_bootstrapping_schema(relocation):
+    import hashlib
+    import os
+    import sqlite3
+    from contextlib import closing
+    import subprocess
+    import sys
+    coordinator,settings,engine,rows=relocation
+    engine.dispose()
+    def schema():
+        with closing(sqlite3.connect(settings.database_path)) as connection:
+            return connection.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name").fetchall()
+    def digest(): return hashlib.sha256(settings.database_path.read_bytes()).hexdigest()
+    original_schema=schema()
+    original_source={row.key:inventory(row.source) for row in rows}
+    payload=dict(data=str(settings.data_dir),projects=str(settings.projects_dir),templates=str(settings.templates_dir),
+        database=str(settings.database_path),output=str(settings.output_root),evidence=str(coordinator.evidence),
+        rows=[dict(kind=row.kind,key=row.key,source=str(row.source),target=str(row.target)) for row in rows])
+    code=r"""
+import json,sys
+from pathlib import Path
+from sqlalchemy import event
+from backend.shared.config import Settings
+from backend.infrastructure.storage import database
+from scripts.migrate_local_development_materials import DevelopmentRelocation,Relocation
+p=json.loads(sys.argv[1]);phase=sys.argv[2]
+settings=Settings(Path(p['data']),Path(p['projects']),Path(p['templates']),Path(p['database']),output_root=Path(p['output']))
+def forbidden(*args,**kwargs):raise AssertionError('Cold relocation must never initialize or migrate the source schema.')
+database.init_db=forbidden
+database.Base.metadata.create_all=forbidden
+engine=database.create_database_engine(settings)
+statements=[]
+@event.listens_for(engine,'before_cursor_execute')
+def reject_source_writes(connection,cursor,statement,parameters,context,executemany):
+ word=statement.lstrip().split(None,1)[0].upper()
+ assert word not in {'CREATE','ALTER','DROP','VACUUM','REINDEX','ATTACH','DETACH'},statement
+ if phase!='apply':assert word not in {'INSERT','UPDATE','DELETE','REPLACE'},statement
+ statements.append(word)
+try:
+ rows=[Relocation(row['kind'],row['key'],Path(row['source']),Path(row['target'])) for row in p['rows']]
+ coordinator=DevelopmentRelocation(settings,engine,rows,Path(p['evidence']))
+ result=coordinator.prepare() if phase=='prepare' else coordinator.apply(writers_stopped=True) if phase=='apply' else coordinator.verify()
+ with engine.connect() as connection:
+  names=set(connection.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").scalars())
+  sqlite_table_count=connection.exec_driver_sql("SELECT count(*) FROM sqlite_master WHERE type='table'").scalar_one()
+ assert names.issubset(database.Base.metadata.tables)
+ print(json.dumps(dict(phase=phase,status=result['status'],table_count=len(names),sqlite_table_count=sqlite_table_count,metadata_complete=True,source_statements=sorted(set(statements)))))
+finally:engine.dispose()
+"""
+    environment={**os.environ,"PYTHONUTF8":"1","PYTHONDONTWRITEBYTECODE":"1"}
+    results=[]
+    for phase in ('prepare','apply','verify'):
+        before=digest()
+        run=subprocess.run([sys.executable,'-c',code,json.dumps(payload),phase],cwd=Path(__file__).resolve().parents[2],
+            env=environment,capture_output=True,text=True,encoding='utf-8',timeout=60)
+        assert run.returncode==0,run.stdout+run.stderr
+        result=json.loads(run.stdout.strip().splitlines()[-1]);results.append(result)
+        assert result['metadata_complete']
+        assert schema()==original_schema
+        if phase!='apply':assert digest()==before
+        if phase=='prepare':
+            assert result['status']=='prepared'
+            assert Path(json.loads(coordinator.journal.read_text(encoding='utf-8'))['database_backup']).is_file()
+            assert not any(row.target.exists() for row in rows)
+        else:assert result['status']=='completed'
+        assert all(inventory(row.source)==original_source[row.key] for row in rows)
+    (coordinator.evidence/'cold-process-validation.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
