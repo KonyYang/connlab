@@ -662,14 +662,14 @@
         ],
         "activation_head": "4041c6f2e63e19a5f4739c9ebbc1c8704ae5c622",
         "started_at": "2026-11-17T11:32:52.129745Z",
-        "updated_at": "2026-11-17T11:49:11.378842Z",
+        "updated_at": "2026-11-17T11:54:03.517860Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
-          "stage": "independent_review",
+          "stage": "bounded_review_fixes",
           "status": "running",
-          "summary": "Planner completed. Developer clean subject f1f1b8f2e4a44f0c8f97c239b22ca988100613a5; both environment rename RED/GREEN, 21 backend and 42 frontend targeted pass. Independent Reviewer running. No real business mutation, push, packaging or publication. Evidence task checkout tmp/folder-sync-rename and primary tmp/folder-sync-rename-20261117.",
+          "summary": "Independent Reviewer found two reproducible issues on f1f1b8f2: P1 journal replacement race can resume non-keep-custom rename; P2 stale frontend guard blocks new project. Developer fixing both with regressions. No final QA or integration yet. Evidence checkout tmp/folder-sync-review and frontend/tmp/folder-sync-review. Local only; no business mutation/push/build package.",
           "requires_user": false
         },
         "report": null
