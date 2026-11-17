@@ -726,14 +726,14 @@
         ],
         "activation_head": "e2f5b19c6516b1ff934835da15a26f63ff856393",
         "started_at": "2026-11-16T23:40:47.594136Z",
-        "updated_at": "2026-11-17T01:43:03.587225Z",
+        "updated_at": "2026-11-17T01:45:23.021993Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_DEV_STORAGE_ISOLATION_20261117",
           "stage": "qa",
           "status": "running",
-          "summary": "Implementation fixed at 545af2a4490d8cf88be3a7a0921320b81a0fa55f in registered worktree; independent Reviewer passed with Standards/Spec 0 unresolved and focused 21 Python + 6 frontend tests. Exact 88-path scope amended, independent Integrator clean preflight only. Independent QA now executing full non-Office Python, full frontend tests/build sequential and isolated dual-backend/browser/narrow-screen checks. Actual migration NOT begun: dev8000 and release8765 running unchanged. Readonly inventory: four member projects, two archives and three temporary folders candidates; missing basic11-003 and seven dev references into release Projects held. Two old LTR-saving journals outside candidates retained, not resumed. No data backups/copies/rebinding/process stop yet. No push/publication/package/Close. Pending optional export-destination question retains existing browser/user download mechanism.",
+          "summary": "Final implementation25d9bb7c87df8940865cfb3e1f4673eecbb3b0ab clean in registered worktree; exact95-path scope. Independent Reviewer final Standards0/Spec0, focused4passed; initial545 core unchanged, follow-up only10 fixture/CSS files. First QA full Python partial936 reports=798pass132F6skip retained, not success; failure causes proven engine fixture setup cache and legacy existing-library fixture directories, not weakened runtime. Developer131prefix+6 real first-use/offline+159 legacy+53 frontend passed. QA real isolated dual backends/browser local/session/IndexedDB File/recovery/late-response/wrong-env, uploads/drafts/cookies/download, restart identity, shared lock and fixed360/640 hit tests passed; evidence D:/ConnLabDev/TestArtifacts/dev-storage-qa-545af2a/evidence. Final full nonOfficePython + fullfrontend/build now starting on25. Actual dev8000/release8765 remain running, no physical migration/backup/rebinding yet. Nine folders candidates, basic11-003 and7 release-root legacy refs held; old LTR journals retained. Browser downloads keep existing browser/user destinations as stated. No push/publication/package/Close.",
           "requires_user": false
         },
         "report": null
