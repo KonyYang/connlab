@@ -611,13 +611,13 @@
   "tasks": {
     "TASK_FOLDER_SYNC_RENAME_20261117": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\folder-sync-rename-20261117",
       "branch": "codex/folder-sync-rename-20261117",
       "resources": [
         "folder-sync-rename-implementation"
       ],
-      "integrated_head": "94a7f92bab5a8a63f811f676bac782382510518f",
+      "integrated_head": "d78c2c64f81180f5e1c07b13521fb4fcd830c803",
       "task": {
         "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
         "summary": "Fix public working copy confirmation/execution and preserve verified project child-folder description renames in development and release environments.",
@@ -662,7 +662,7 @@
         ],
         "activation_head": "4041c6f2e63e19a5f4739c9ebbc1c8704ae5c622",
         "started_at": "2026-11-17T11:32:52.129745Z",
-        "updated_at": "2026-11-17T16:04:06.608922Z",
+        "updated_at": "2026-11-17T16:23:28.359245Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -672,7 +672,78 @@
           "requires_user": false,
           "summary": "Minimal default-save-root correction committed at 553ff559971fa8a99b7a94386f9f2e8d330ffff9 in the registered task worktree; clean. Defaults affect unregistered workspaces only; registered directories and description rename remain usable, missing originals never replan. Isolated Developer validation: 127 direct + 230 dependent tests passed; 3 Windows symlink-creation permission skips. Exact-diff self-review completed, not independent review. Evidence: docs/project_folder_sync_rename_validation.md and D:/ConnLabDev/TestArtifacts/default-root-followup/{green3,dependencies}.log. Side conversation forbids subagents; independent Reviewer/QA and primary integration remain pending. No real business data, migration, service restart, push or publication."
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
+          "subject": "6ecb3dbd73f3c132c29778df1cdbd6337acce6c3",
+          "summary": "Bounded default-save-location follow-up reviewed and corrected: new defaults apply only to unregistered workspaces; existing projects and template operations retain registered locations; missing registered paths block with registration retained. Local integration only; task remains open; no real business-data mutation, publication or packaging.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/application/basic_project_workspace_service.py",
+            "backend/application/official_project_workspace_service.py",
+            "docs/project_folder_sync_rename_validation.md",
+            "tests/integration/test_basic_project_workspace_api.py",
+            "tests/unit/test_official_project_workspace_service.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "command": "Audit preserved Developer green3.log and dependencies.log",
+              "result": "Logs substantiate127+230 passed and3 Windows symlink-creation skips. Historical Developer evidence only: no immutable subject stamp or complete node list, not claimed as current independent QA. Those3 special-link runtime cases remain unverified."
+            },
+            {
+              "status": "passed",
+              "command": "Bounded Developer RED/GREEN on two review findings",
+              "result": "4 RED failures reproduced; final19 focused official-workspace cases and2 interrupted root/LTR protection cases passed. No broader synchronization or frontend changes."
+            },
+            {
+              "status": "passed",
+              "command": "Independent exact-diff Standards/Spec review and five isolated public-service checks",
+              "result": "Initial553ff559 had2P2 spec findings, retained in review-553.json. Final6ecb3dbd Standards0/Spec0; both findings corrected and5 independent targeted checks passed."
+            },
+            {
+              "status": "passed",
+              "command": "Independent pytest of test_basic_project_workspace_api.py and test_official_project_workspace_service.py on exact clean subject",
+              "result": "122 unique passed,0skipped: API37 + service85. Initial108pass14QA-env failures retained; corrected only common isolated library-root configuration, verified Settings containment and reran exact14failednodes, all passed. Product source/assertions and5file hashes unchanged."
+            },
+            {
+              "status": "passed",
+              "command": "Independent integration preflight, file hashes and primary service shutdown",
+              "result": "Exact5paths match approvedscope and QA hashes; base81432bf3 already integrated, primary sincebase changes only board; both trees clean. Verified primary reload/Vite and attributed spawn child stopped;8000/5173 closed. No requests to business services or business DB/file operations."
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "context": "Retained original independent /root/folder_sync_planner plan recorded at097d3aa8; follow-up uses existing services and User-explicit three directory rules, with no new architecture/storage/public-sync scope."
+            },
+            "developer": {
+              "status": "passed",
+              "context": "Prior553ff559 Developer evidence retained; /root/developer implemented only bounded review corrections in6ecb3dbd with4RED failures and19+2GREEN targeted checks; clean handoff."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Independent /root/reviewer reviewed full five-file follow-up and three-file bounded fix, Standards0/Spec0 on6ecb3dbd; two originalP2 records and five isolated checks preserved."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Independent /root/qa executed122unique affected cases on6ecb3dbd with exact failed-node env replay, clean/hash locks and explicit isolation. Historical357/3 and current QA are separated."
+            },
+            "integrator": {
+              "status": "passed",
+              "context": "Independent /root/integrator admitted sole-writer serial local integration after actual review/QA/XML/node-set/SHA/tree/parents/scope/board/port checks; actual merge is next and independent postcheck will follow."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "6ecb3dbd73f3c132c29778df1cdbd6337acce6c3",
+            "primary_before": "63a8690f13e56aaa023e55989e19173c6fe707bc",
+            "integrated_head": "d78c2c64f81180f5e1c07b13521fb4fcd830c803",
+            "recovered": false
+          }
+        }
       }
     }
   }
