@@ -131,9 +131,10 @@ traversal, drives and alternate data streams are rejected. Filename search resul
 matching project's catalog metadata for the two-pane navigation surface.
 
 Selected-file copying is a separate application service and file-plan adapter. The public
-`/api/material-receipts/copy-preview` input is `source_key`, `relative_path`, `target_key`, and
+`/api/material-receipts/copy-preview` input is `source_key`, `relative_path`, live Workbench `context` proof (`session_id`, `token`), and
 `target_relative_directory` (default `Reference materials`); `/copy-confirm` accepts the saved
-plan ID and fingerprint. Roots and target project identity are server-derived. Only an existing
+plan ID, fingerprint and the same live context proof. A target-key-only request is rejected.
+Roots and target project identity are server-derived from the Workbench context. Only an existing
 business project can be the destination, including project-bound imported material entries.
 The copy service uses the same project/library locks, exclusive publication and receipt journal,
 but does not create a received identity, business Project, Matrix, snapshot or restoration state.
@@ -142,16 +143,20 @@ and target contents are rechecked at confirmation. Equal content is skipped; con
 ConnLab control data are archived under a batch supplementary directory without replacing the
 selected destination. Repeated archived files are skipped only after current-byte verification.
 A failed copy retains an explicit result and uses the normal batch retry endpoint; a later manual
-collision is never overwritten. Completed batch replay returns its historical result without
-re-copying files. Selected-file confirmation currently inventories the destination root for stale
+collision is never overwritten. Completed confirmation replay requires its still-live context and returns the historical result
+without re-copying files. After context switch/clear, old confirmation and retry are rejected;
+read-only GET of a completed batch remains available. Selected-file confirmation currently inventories the destination root for stale
 preview and conflict checks, so very large roots incur bounded receipt inventory costs.
 
 Acceptance coverage includes browsing refresh and containment, filename-to-project navigation,
 exact selected-file publication, explicit confirmation, native-only target eligibility, changed
 source/target registrations and physical roots, conflict archives/repeat skipping, control-data
 isolation, concurrent confirmation, failed-copy retry with manual collision, and HTTP contracts.
-All checks use temporary files/databases; OS symlink cases are skipped where host privileges
-prevent fixture creation. Ordinary copied files remain ordinary files, without automatic sync.
+All checks use temporary files/databases. Four real-OS symlink cases belong to this boundary:
+search/browse/open exclusion, receipt source rejection, selected-copy source/destination rejection,
+and shortcut selection rejection. A fixture-creation privilege failure skips the actual OS case;
+it is not evidence that the rejection path ran. See the current validation section in
+[report shortcuts and copy context](report_shortcuts_and_copy_context.md) for this host's measured results. Ordinary copied files remain ordinary files, without automatic sync.
 
 
 `GET /api/material-receipts/catalog-history?key=...` exposes durable copy and receipt batch

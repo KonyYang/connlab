@@ -32,7 +32,9 @@ change reasons, repeated decisions, or independently testable behavior.
 - Avoid duplicating the same decision in JSX, hook state, and backend responses.
 - Preserve loading, empty, error, read-only, cancellation, stale-response, and retry behavior relevant
   to the changed operation.
-- Never expose local filesystem paths in browser UI or accept arbitrary client paths as authority.
+- Show server-derived registered paths where file operations require the operator to review source
+  and destination. Do not expose unrelated internal paths; never treat a client path as authority.
+  Relative destination input and explicit folder selection remain subject to backend validation.
 
 ## UI quality
 

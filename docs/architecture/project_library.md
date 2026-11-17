@@ -1,6 +1,46 @@
-# Unified project library and portable project data
+# Project materials library and retained import compatibility
 
-Status: current implementation contract. The shared task board and current test
+## Current entry and authority
+
+Reference Library is the project materials library: find materials, receive a confirmed
+folder copy, and open or use ordinary files. Projects owns ConnLab execution. Local ConnLab
+projects reference their registered directories; the library neither copies them again nor
+creates a second business project. Ordinary receipt uses the independent Materials library
+folder in Settings, retains original files/names/structure, and requires confirmation before
+copying. LTR lookup is not a receipt prerequisite and cannot renumber a project.
+
+The current entry is `ReferenceLibraryPage` with `ReceiveMaterials`, `MaterialFiles` and
+`CopyMaterials`; see [archive intake](../material_archive_intake.md),
+[receipt and file protection](material_receipt.md), and
+[report shortcuts and copy context](report_shortcuts_and_copy_context.md).
+Neither this entry nor its More actions offer database/Matrix/portable recovery, automatic
+synchronization, automatic backup, or Tools integration. Retained restoration code is isolated
+compatibility, not a feature or acceptance goal for this surface.
+
+The file header identifies the **browsed source** and managed location; the selected-file line
+identifies the root-relative file. Only an explicit live Workbench supplies the **copy target**.
+Browsing another project does not switch it. No selection means select a file; no target means
+open the intended Workbench and return through Reference Library. Ordinary file open remains
+independent of a copy target. Destination checking and the existing single copy confirmation
+remain; no extra confirmation or content review is introduced.
+
+Unavailable registered locations are retained and summarized in one expandable issue area.
+View location exposes the registered path and instructs the operator to restore access and
+refresh; it does not rebind, reconstruct, or silently choose a replacement directory. The current
+page does not expose location reassignment. Unassociated projects are omitted from the normal
+file list by the existing search service; an explicit matching search/selection can show
+**No materials linked yet** and a Workbench action. That state is not a missing location and
+says nothing about Matrix, execution progress or completion. This UI change does not change
+search matching, sorting, classification or index rules.
+
+## Retained legacy implementation reference (not ordinary navigation)
+
+The sections below describe retained import/portable mechanisms and their historical acceptance
+contract. They are not instructions for the current materials-library entry, not a promise of
+cross-computer restoration, and not part of this round's implementation or acceptance. Code and
+historical journals remain intact; no legacy cleanup is authorized here.
+
+Status: retained legacy contract, superseded for ordinary navigation by the current entry above. The shared task board and current test
 evidence determine acceptance. Production data migration is a separate,
 explicitly authorized operation.
 
@@ -365,7 +405,7 @@ matching LTR is permission to merge fields, discard history or overwrite a copy.
 Interrupted operations must leave an explicit recoverable state rather than
 reporting a partially applied copy as complete.
 
-## Acceptance boundaries
+## Historical legacy acceptance boundaries
 
 The intended operator sequence is:
 

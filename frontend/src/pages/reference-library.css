@@ -65,3 +65,9 @@
 
 .library-report-shortcuts .library-remove-shortcut { padding:0 6px; margin-left:6px; color:var(--color-ink-muted,#647084); }
 .library-reselect-report { margin:8px 12px; font-size:13px; }
+
+.library-copy-destination { display: grid; gap: 3px; color: var(--color-ink-muted, #647084); font-size: .9rem; overflow-wrap: anywhere; }
+.library-copy-destination strong { color: var(--color-text, #172033); font-weight: 600; }
+.library-file-selection { margin: 0; font-size: .9rem; color: var(--color-ink-muted, #647084); overflow-wrap: anywhere; }
+.library-location-issues > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.library-location-issues p { margin: 8px 0; }
