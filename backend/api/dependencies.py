@@ -2971,7 +2971,7 @@ def get_official_folder_relocation_service(
     from backend.infrastructure.files.generation_journal import GenerationJournal
 
     return OfficialFolderRelocationService(
-        workspace_service=get_official_project_workspace_service(session),
+        workspace_service=get_official_project_workspace_service(session, settings),
         workspace_repository=ProjectOfficialWorkspaceRepository(session),
         journal=GenerationJournal(settings.data_dir / "official_folder_relocation"),
     )
