@@ -662,15 +662,15 @@
         ],
         "activation_head": "4041c6f2e63e19a5f4739c9ebbc1c8704ae5c622",
         "started_at": "2026-11-17T11:32:52.129745Z",
-        "updated_at": "2026-11-17T15:48:47.668359Z",
+        "updated_at": "2026-11-17T16:04:06.608922Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User authorizes minimal follow-up: default project save root applies only to unregistered new workspaces; existing registered workspaces keep their locations, including description rename and unavailable defaults. Retain identity/write guards; no real business data, migration, push or publication. Side conversation executes locally without subagents; independent review remains a separate outstanding gate.",
-          "requires_user": false
+          "stage": "independent_review",
+          "status": "blocked",
+          "requires_user": false,
+          "summary": "Minimal default-save-root correction committed at 553ff559971fa8a99b7a94386f9f2e8d330ffff9 in the registered task worktree; clean. Defaults affect unregistered workspaces only; registered directories and description rename remain usable, missing originals never replan. Isolated Developer validation: 127 direct + 230 dependent tests passed; 3 Windows symlink-creation permission skips. Exact-diff self-review completed, not independent review. Evidence: docs/project_folder_sync_rename_validation.md and D:/ConnLabDev/TestArtifacts/default-root-followup/{green3,dependencies}.log. Side conversation forbids subagents; independent Reviewer/QA and primary integration remain pending. No real business data, migration, service restart, push or publication."
         },
         "report": null
       }
