@@ -645,6 +645,7 @@
           "backend/infrastructure/files/default_storage_directory.py",
           "backend/infrastructure/project_library/files.py",
           "backend/infrastructure/project_library/material_receipt_files.py",
+          "backend/infrastructure/storage/database.py",
           "backend/infrastructure/storage/repositories/external_resources.py",
           "backend/infrastructure/storage/repositories/material_archive.py",
           "backend/shared/config.py",
@@ -728,7 +729,7 @@
         ],
         "activation_head": "e2f5b19c6516b1ff934835da15a26f63ff856393",
         "started_at": "2026-11-16T23:40:47.594136Z",
-        "updated_at": "2026-11-17T03:04:23.219216Z",
+        "updated_at": "2026-11-17T05:37:06.147174Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
