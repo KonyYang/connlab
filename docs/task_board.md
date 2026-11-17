@@ -617,7 +617,42 @@
       "closed_at": "2026-11-17T10:33:15.512206Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LIBRARY_STATUS_HINTS_20261118": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-status-hints-20261118",
+      "branch": "codex/library-status-hints-20261118",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_STATUS_HINTS_20261118",
+        "summary": "Finish compact material-library browsing, selected-file and explicit Workbench copy-target guidance; correct boundary documentation.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "UI status/guidance and boundary documents only. Preserve search, context authority and file protections. Isolated A/B regressions and connected-browser validation, audit symlink gaps. No Tools integration, restore/sync/backup expansion, legacy cleanup or real business data mutation. No push/publication.",
+        "scope_paths": [
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+          "frontend/src/pages/reference-library.css",
+          "frontend/src/features/material-receipts",
+          "docs/architecture/project_library.md",
+          "docs/architecture/material_receipt.md",
+          "docs/architecture/report_shortcuts_and_copy_context.md",
+          "docs/FRONTEND_GUIDE.md",
+          "tests/integration/test_material_receipt.py",
+          "tests/integration/test_report_shortcuts.py",
+          "tests/integration/test_library_search.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "b85da13b6210a5006a64d1c624b5059159a48d81",
+        "started_at": "2026-11-17T23:32:12.868922Z",
+        "updated_at": "2026-11-17T23:32:12.868922Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
