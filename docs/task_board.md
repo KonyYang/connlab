@@ -611,13 +611,13 @@
   "tasks": {
     "TASK_FOLDER_SYNC_RENAME_20261117": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\folder-sync-rename-20261117",
       "branch": "codex/folder-sync-rename-20261117",
       "resources": [
         "folder-sync-rename-implementation"
       ],
-      "integrated_head": null,
+      "integrated_head": "94a7f92bab5a8a63f811f676bac782382510518f",
       "task": {
         "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
         "summary": "Fix public working copy confirmation/execution and preserve verified project child-folder description renames in development and release environments.",
@@ -662,7 +662,7 @@
         ],
         "activation_head": "4041c6f2e63e19a5f4739c9ebbc1c8704ae5c622",
         "started_at": "2026-11-17T11:32:52.129745Z",
-        "updated_at": "2026-11-17T12:00:45.844979Z",
+        "updated_at": "2026-11-17T12:14:23.097425Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -672,7 +672,107 @@
           "summary": "Clean fixed subject 81432bf3d8ce1b183b0ca27740bc91bfd21c4549. Reviewer independently reran both originally failing race probes: passed, 0 unresolved findings. Developer final22backend/43frontendpassed. IndependentQA running selected affected backend matrix, fullfrontend/build/narrow checks on frozen source. Evidence checkout tmp/folder-sync-rename and tmp/folder-sync-review. No realdata repair, push, packaging or publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
+          "subject": "81432bf3d8ce1b183b0ca27740bc91bfd21c4549",
+          "summary": "Correct public working-copy preview/Auto sync race, preserve explicit copy confirmation, recover same-identity description renames through existing durable rebinding in development and release; fix reviewed journal-replacement and project-navigation races. Local source and validation only; old packaged executable and business files unchanged.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/application/official_folder_relocation_service.py",
+            "backend/application/public_folder_workflow_service.py",
+            "backend/infrastructure/storage/repositories/official_workspace.py",
+            "docs/project_folder_sync_rename_validation.md",
+            "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+            "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+            "tests/integration/test_basic_project_workspace_api.py"
+          ],
+          "validation": [
+            {
+              "name": "Developer regression feedback",
+              "status": "passed",
+              "summary": "Meaningful original and review regression RED/GREEN; final 22 backend and 43 frontend targeted pass.",
+              "evidence": "D:/PythonProject/connlab-worktrees/folder-sync-rename-20261117/tmp/folder-sync-rename"
+            },
+            {
+              "name": "Independent focused review",
+              "status": "passed",
+              "summary": "0 Standards findings, 0 unresolved Spec findings on final subject; both originally failing race probes independently rerun and pass.",
+              "evidence": "D:/PythonProject/connlab-worktrees/folder-sync-rename-20261117/tmp/folder-sync-review"
+            },
+            {
+              "name": "Affected Python QA matrix",
+              "status": "passed",
+              "summary": "30 modules, 465 passed and 1 Windows file-symlink privilege skip; explicit development/release cases and real isolated nested Chinese file copies; valid run zero audit denials.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/folder-sync-rename-qa-814/QA_FINAL.md"
+            },
+            {
+              "name": "Full frontend QA",
+              "status": "passed",
+              "summary": "1322 passed, 1 opt-in profiling skip.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/folder-sync-rename-qa-814/QA_FINAL.md"
+            },
+            {
+              "name": "TypeScript and Vite validation",
+              "status": "passed",
+              "summary": "npm run build passed after Vitest; no release packaging.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/folder-sync-rename-qa-814/QA_FINAL.md"
+            },
+            {
+              "name": "Chrome narrow-screen QA",
+              "status": "passed",
+              "summary": "360/640 actual component fixture: confirmation/cancel hit targets, busy Auto sync disabled, long paths no horizontal overflow. Mock-state visual boundary; real IO separately tested through APIs.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/folder-sync-rename-qa-814/QA_FINAL.md"
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "context": "/root/folder_sync_planner",
+              "summary": "Independent real-code/log plan reuses stable-identity keep-custom recovery and existing conservative publication; no new search/storage/schema scope."
+            },
+            "developer": {
+              "status": "passed",
+              "context": "/root/folder_sync_developer",
+              "subjects": [
+                "f1f1b8f2e4a44f0c8f97c239b22ca988100613a5",
+                "81432bf3d8ce1b183b0ca27740bc91bfd21c4549"
+              ],
+              "summary": "Implementation and bounded review fixes committed clean; 22 backend and 43 frontend targeted checks on final executable state."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "/root/folder_sync_reviewer",
+              "subject": "81432bf3d8ce1b183b0ca27740bc91bfd21c4549",
+              "standards_findings": 0,
+              "spec_findings": 0,
+              "summary": "Two initial race findings fixed; exact failing journal and navigation probes independently pass against final source."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "/root/folder_sync_qa",
+              "subject": "81432bf3d8ce1b183b0ca27740bc91bfd21c4549",
+              "evidence": "D:/ConnLabDev/TestArtifacts/folder-sync-rename-qa-814/QA_FINAL.md",
+              "summary": "Final affected backend, full frontend, build and component browser QA passed; skips and harness/provenance limits recorded honestly; no real business file writes."
+            },
+            "integrator": {
+              "status": "passed",
+              "context": "/root/folder_sync_integrator",
+              "summary": "Independent preflight verified clean frozen source, nine allowed paths, primary board-only changes, exact QA provenance and unchanged local origin record. Actual merge remains for sole writer; post-merge independent verification will follow."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "81432bf3d8ce1b183b0ca27740bc91bfd21c4549",
+            "primary_before": "3ac30a5981d665ea4e5bc1116cff4b37a5a27550",
+            "integrated_head": "94a7f92bab5a8a63f811f676bac782382510518f",
+            "recovered": false
+          }
+        }
       }
     }
   }
