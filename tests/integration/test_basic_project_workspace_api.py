@@ -218,8 +218,9 @@ def test_description_rename_remains_usable_through_normal_folder_actions(tmp_pat
         assert (renamed / "Test results" / "中文资料" / "result.txt").read_bytes() == content
 
 
-@pytest.mark.parametrize("case", ["legacy_identity", "ambiguous", "replaced", "changed_root", "changed_ltr", "writer_busy", "generation_pending", "basic_pending"])
-def test_automatic_description_rebind_does_not_claim_unverified_folders(tmp_path, case):
+@pytest.mark.parametrize("case", ["legacy_identity", "ambiguous", "replaced", "changed_ltr", "writer_busy", "generation_pending", "basic_pending"])
+@pytest.mark.parametrize("change_default", [False, True])
+def test_automatic_description_rebind_does_not_claim_unverified_folders(tmp_path, case, change_default):
     import json
     import shutil
     from backend.infrastructure.files.generation_journal import GenerationJournal
@@ -228,6 +229,13 @@ def test_automatic_description_rebind_does_not_claim_unverified_folders(tmp_path
         manifest = original.parent / ".connlab" / "manifest.json"
         candidate = original.with_name("DL-2026-09-002A custom description")
         original.rename(candidate)
+        if change_default:
+            new_root = tmp_path / "new-default"
+            new_root.mkdir()
+            with sessions() as session:
+                deps.ExternalResourceRepository(session).upsert(
+                    ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, new_root))
+                session.commit()
         if case == "legacy_identity":
             payload = json.loads(manifest.read_text(encoding="utf-8"))
             payload.pop("official_folder_identity")
@@ -238,12 +246,6 @@ def test_automatic_description_rebind_does_not_claim_unverified_folders(tmp_path
             retained = tmp_path / "retained-original"
             candidate.rename(retained)
             shutil.copytree(retained, candidate)
-        elif case == "changed_root":
-            other = tmp_path / "other-configured-root"
-            other.mkdir()
-            with sessions() as session:
-                deps.ExternalResourceRepository(session).upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, other))
-                session.commit()
         elif case == "changed_ltr":
             with sessions() as session:
                 ltr = deps.LtrRecordRepository(session).list_by_project("P1")[0]
@@ -359,3 +361,106 @@ def test_lookup_does_not_resume_a_newer_explicit_rename_after_waiting_for_the_wr
         assert custom.is_dir() and not original.exists()
         retained = journal.read("P1")
         assert retained["strategy"] == "rename_to_confirmed" and retained["status"] != "completed"
+
+
+@pytest.mark.parametrize("environment", ["development", "release"])
+@pytest.mark.parametrize("default_state", ["available", "offline"])
+@pytest.mark.parametrize("rename", [False, True])
+def test_registered_workspace_survives_default_location_change(tmp_path, monkeypatch, environment, default_state, rename):
+    from dataclasses import replace
+    from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
+    from backend.application.project_folder_open_service import ProjectFolderOpenResult
+    from backend.infrastructure.files.local_folder_open_gateway import LocalFolderOpenGateway
+
+    with prepared(tmp_path) as (client, sessions, output, _):
+        settings = replace(app.dependency_overrides[deps.get_settings](), environment=environment)
+        app.dependency_overrides[deps.get_settings] = lambda: settings
+        original = Path(create(client)["official_project_folder_path"])
+        # Search reads the explicit library index, not a live directory scan.
+        from backend.api.routes_project_library import get_library_search_service
+        with sessions() as session:
+            get_library_search_service(session).refresh()
+            session.commit()
+        manual = original / "Test results" / "manual.txt"
+        manual.write_bytes(b"operator-owned content")
+        expected = original
+        if rename:
+            expected = original.with_name("DL-2026-09-002A revised description")
+            original.rename(expected)
+        new_root = tmp_path / "new-default"
+        if default_state == "available":
+            new_root.mkdir()
+        with sessions() as session:
+            deps.ExternalResourceRepository(session).upsert(
+                ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, new_root))
+            session.commit()
+
+        basic = client.get("/api/projects/P1/official-workspace/basic/preview")
+        assert basic.status_code == 200, basic.text
+        assert basic.json()["status"] == "available", basic.text
+        assert basic.json()["official_project_folder_path"] == str(expected)
+        workspace = client.get("/api/projects/P1/official-workspace/preview")
+        assert workspace.status_code == 200, workspace.text
+        assert workspace.json()["status"] == "completed", workspace.text
+        assert workspace.json()["official_project_folder_path"] == str(expected)
+        assert create(client, "after-default-change")["official_project_folder_path"] == str(expected)
+
+        opened = []
+        monkeypatch.setattr(LocalFolderOpenGateway, "open_directory", lambda self, path: opened.append(path) or
+            ProjectFolderOpenResult("", "opened", "opened", path))
+        response = client.post("/api/projects/P1/folder/open-local")
+        assert response.status_code == 200, response.text
+        assert opened == [expected]
+        catalog = client.get("/api/project-library/search").json()["projects"]
+        entry = next(row for row in catalog if row["project_id"] == "P1")
+        assert entry["available"] and entry["folder_path"] == str(expected.parent)
+        session_id = client.post("/api/material-receipts/copy-context/session").json()["session_id"]
+        target = client.post("/api/material-receipts/copy-context", json={
+            "session_id": session_id, "intent": 1, "project_id": "P1"})
+        assert target.status_code == 200, target.text
+        assert target.json()["target"]["folder_path"] == str(expected.parent)
+        runner = ProjectFolderGenerationRunner(sessions, settings)
+        try:
+            generated = runner.preview("P1")
+            assert generated["workspace_preview"]["official_project_folder_path"] == str(expected)
+        finally:
+            runner.pool.shutdown(wait=True)
+        assert (expected / "Test results" / "manual.txt").read_bytes() == b"operator-owned content"
+        assert not (new_root / "DL-2026-09-002A").exists()
+        assert new_root.exists() == (default_state == "available")
+
+        fixture = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_session_api.py")))
+        fixture["_seed_project"]("P2", tmp_path)
+        with sessions() as session:
+            deps.LtrRecordRepository(session).create(LtrRecord("ltr2", "P2", "DL-2026-09-003", LtrStatus.REGISTERED))
+            session.commit()
+        second = client.get("/api/projects/P2/official-workspace/basic/preview")
+        assert second.status_code == 200, second.text
+        if default_state == "offline":
+            assert second.json()["status"] == "blocked"
+            assert not new_root.exists()
+        else:
+            created = client.post("/api/projects/P2/official-workspace/basic/create", json={
+                "expected_context": second.json()["expected_context"], "request_id": "new-project"})
+            assert created.status_code == 200, created.text
+            assert Path(created.json()["official_project_folder_path"]).is_relative_to(new_root)
+
+
+def test_missing_registered_workspace_does_not_fall_back_to_new_default(tmp_path):
+    with prepared(tmp_path) as (client, sessions, output, _):
+        original = Path(create(client)["official_project_folder_path"])
+        old_workspace = original.parent
+        old_workspace.rename(tmp_path / "retained-workspace")
+        new_root = tmp_path / "new-default"
+        new_root.mkdir()
+        with sessions() as session:
+            deps.ExternalResourceRepository(session).upsert(
+                ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, new_root))
+            session.commit()
+        preview = client.get("/api/projects/P1/official-workspace/preview")
+        assert preview.status_code == 200, preview.text
+        assert preview.json()["status"] in {"blocked", "inconsistent"}, preview.text
+        assert preview.json()["official_project_folder_path"] == str(original), preview.text
+        assert not list(new_root.iterdir())
+        with sessions() as session:
+            assert deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1").official_folder_path == original

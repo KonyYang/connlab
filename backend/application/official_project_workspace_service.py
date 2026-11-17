@@ -268,11 +268,13 @@ class OfficialProjectWorkspaceService:
         warnings: list[str] = []
         if not dl_number:
             blockers.append("DL number is required before creating a local project workspace.")
-        local_root = self._local_root()
+        completed_record = self._workspaces.get_by_project(project_id)
+        # Changing the default must never relocate or replace a registered workspace.
+        local_root = completed_record.local_workspace_path.parent if completed_record else self._local_root()
         template_setting = self._settings.template_path
         if local_root is None:
             blockers.append(getattr(self, "_default_root_error", "Project default save location is not configured. Choose a location in Settings."))
-        elif not local_root.is_dir():
+        elif completed_record is None and not local_root.is_dir():
             blockers.append(f"Project default save location does not exist: {local_root}")
         if self._settings.public_drive_root is None:
             warnings.append("Public Project locations is not configured; upload readiness will be checked later.")
@@ -323,20 +325,11 @@ class OfficialProjectWorkspaceService:
         except OfficialWorkspaceNamingError as exc:
             return _blocked_preview(project_id, dl_number, local_root, template_root, [str(exc)], warnings)
 
-        workspace_path = local_root / dl_number
+        workspace_path = completed_record.local_workspace_path if completed_record else local_root / dl_number
         source_book_path = workspace_path / "Source Book"
         official_folder_path = workspace_path / folder_name
         manifest_path = workspace_path / ".connlab" / "manifest.json"
-        completed_record = self._workspaces.get_by_project(project_id)
-        recorded_path_exists = completed_record is not None and any(
-            path.exists() for path in (
-                completed_record.local_workspace_path,
-                completed_record.source_book_path,
-                completed_record.official_folder_path,
-                completed_record.manifest_path,
-            )
-        )
-        if not workspace_path.exists() and not recorded_path_exists:
+        if completed_record is None and not workspace_path.exists():
             legacy_candidates = self._legacy_workspace_candidates(
                 local_root, project_id, dl_number
             )
@@ -420,7 +413,7 @@ class OfficialProjectWorkspaceService:
                 official_folder_path=official_folder_path,
                 manifest_path=manifest_path,
                 template_root_mode=template_root.mode if template_root else None,
-                status="conflict",
+                status="inconsistent" if completed_record is not None else "conflict",
                 blockers=(
                     "Project workspace identity cannot be linked through a symbolic link "
                     f"or junction: {redirected_path}",
@@ -431,24 +424,6 @@ class OfficialProjectWorkspaceService:
                 conflict_options=tuple(),
             )
 
-        if (
-            completed_record is not None
-            and completed_record.local_workspace_path != workspace_path
-            and not any(
-                path.exists()
-                for path in (
-                    completed_record.local_workspace_path,
-                    completed_record.source_book_path,
-                    completed_record.official_folder_path,
-                    completed_record.manifest_path,
-                )
-            )
-        ):
-            warnings.append(
-                "The previous workspace record has no remaining files; ConnLab will "
-                "use the current Project default save location."
-            )
-            completed_record = None
         if completed_record is not None:
             record_inconsistency = self._workspace_record_inconsistency(
                 completed_record,
@@ -524,11 +499,11 @@ class OfficialProjectWorkspaceService:
                         "Recorded official folder is missing; its manifest identity requires manual review."
                     )
                 else:
-                    status = "ready" if template_root is not None else "blocked"
-                    selected_folder = official_folder_path
-                    detail = template_blockers[0] if template_blockers else None
-                    record_warnings.append(
-                        "ConnLab can generate a new official folder from the standard template."
+                    status = "inconsistent"
+                    selected_folder = completed_record.official_folder_path
+                    detail = (
+                        f"{record_inconsistency}. Review the registered location before repair; "
+                        "a missing folder does not authorize creating a replacement."
                     )
                 return OfficialWorkspacePreview(
                     project_id=project_id,
@@ -832,7 +807,7 @@ class OfficialProjectWorkspaceService:
                 "Create will not modify operator-owned content."
             )
         template_root = self._template_root_for_generation(
-            preview.template_path, preview.local_workspace_path
+            preview.template_path, preview.local_workspace_path, preview.local_workspace_root
         )
         preview = replace(
             preview,
@@ -946,16 +921,16 @@ class OfficialProjectWorkspaceService:
         self,
         retained_template_path: Path | None,
         local_workspace_path: Path,
+        effective_workspace_root: Path | None,
     ) -> OfficialTemplateRoot:
         """Resolve a real template only for an operation that will generate files."""
-        workspace_root = self._local_root()
+        # Registered workspaces retain their own root; a new default is not their target.
+        workspace_roots = (local_workspace_path.parent, effective_workspace_root)
         candidates = [self._settings.template_path, retained_template_path]
         errors: list[str] = []
         for candidate in dict.fromkeys(path for path in candidates if path is not None):
             if (
-                candidate.is_relative_to(local_workspace_path)
-                or workspace_root is not None
-                and candidate.is_relative_to(workspace_root)
+                any(root is not None and candidate.is_relative_to(root) for root in workspace_roots)
             ):
                 errors.append(
                     "Template source cannot be inside the configured project workspace root."
@@ -1107,13 +1082,13 @@ class OfficialProjectWorkspaceService:
             return "Local project workspace record does not match current project."
         if record.dl_number != dl_number:
             return "Local project workspace record does not match current DL number."
-        local_root = self._local_root()
+        local_root = record.local_workspace_path.parent
         if (
-            local_root is None
+            not record.local_workspace_path.is_absolute()
+            or ".." in record.local_workspace_path.parts
             or record.local_workspace_path == local_root
-            or not record.local_workspace_path.is_relative_to(local_root)
         ):
-            return "Local project workspace record is outside the configured workspace root."
+            return "Local project workspace record has an invalid absolute workspace path."
         if record.source_book_path != record.local_workspace_path / "Source Book":
             return "Local project workspace record has an invalid Source Book path."
         if record.official_folder_path.parent != record.local_workspace_path:
@@ -1122,6 +1097,7 @@ class OfficialProjectWorkspaceService:
             return "Local project workspace record has an invalid manifest path."
         redirected = self._manifests.first_redirected_path(
             local_root,
+            *local_root.parents,
             record.local_workspace_path,
             record.source_book_path,
             record.official_folder_path,

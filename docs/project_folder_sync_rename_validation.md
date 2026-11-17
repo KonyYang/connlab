@@ -30,8 +30,8 @@ The manifest still identifies the original directory, but consumers checked its 
   generation, basic-folder, file-generation and report-save operations. Normal preview
   resolves before guarded writes; an already-held writer lock returns a review error.
 - Only the same registered filesystem directory identity, unique complete-LTR child,
-  matching manifest/project and configured root can be rebound. Custom descriptions
-  remain unchanged. Legacy identity, ambiguous or replaced directories, changed LTR/root,
+  matching manifest/project and registered workspace can be rebound. Custom descriptions
+  remain unchanged. Legacy identity, ambiguous or replaced directories, changed LTR,
   redirects and offline paths do not grant association or overwrite authority.
 - The existing keep-custom relocation journal, manifest locking and publish_relocation
   update verified file assets, folder records, material targets and output provenance.
@@ -85,3 +85,99 @@ review-red-frontend.log), then corrected:
 Final Developer feedback on this revision is retained in backend-reviewed-developer.log
 (22 API tests) and frontend-reviewed-developer.log (43 hook/selector tests). These are
 narrow affected checks; independent Reviewer/QA remain separate from this self-review.
+
+
+## Default save location follow-up (2026-11-18)
+
+User-authorized minimal correction: changing Project default save location only plans
+new, unregistered workspaces. Existing projects continue to use their recorded absolute
+workspace, including manual description renames, library lookup, opening and Workbench
+copy targets. No project reimport, directory move, database migration or business-file
+replacement is part of this change.
+
+BasicProjectWorkspaceService derives the existing project's root from its registration.
+OfficialProjectWorkspaceService plans suggested names within that same workspace and no
+longer discards a missing registration to replan under the new default. Missing old
+locations remain unavailable with their registration retained. An unavailable/unset new
+default does not block an existing available project. Template generation also avoids
+initializing an unused default location; template/workspace separation remains checked.
+Identity, complete LTR, manifest, child-path structure, redirect and writer guards remain
+in place. Unregistered interrupted creation still rejects a changed destination.
+
+Changed implementation: backend/application/basic_project_workspace_service.py and
+backend/application/official_project_workspace_service.py. Regression updates are in
+tests/integration/test_basic_project_workspace_api.py and
+tests/unit/test_official_project_workspace_service.py.
+
+Developer evidence uses only D:/ConnLabDev/TestArtifacts/default-root-followup and each
+test's own database/folders, with runtime/config paths explicitly isolated:
+
+- RED: nine API regression cases fail on the original implementation (eight reject the
+  existing location after default change; one incorrectly replans a missing workspace).
+  An earlier setup-only attempt lacked a scratch parent and is not product-failure evidence.
+- green3.log: 127 directly affected service/API tests pass, including development/release,
+  available/offline/unset defaults, manual rename, new project destination, preserved
+  manual bytes, actual open gateway arguments, library index and Workbench target paths.
+  Seven adverse identity/writer cases run both before and after a default change.
+- dependencies.log: 230 dependent generation/recovery/open/public-copy/library/material
+  tests pass. Three real-symlink cases skip because Windows denies test symlink creation
+  (test_library_search.py and two test_material_receipt.py cases); these are not passes.
+  The directly affected mocked redirect guards pass. Total: 357 passed, 3 skipped.
+  The only warning is the existing Starlette/httpx deprecation emitted during import.
+- Historical expectations that changed defaults invalidate existing workspaces, or that
+  missing workspaces silently replan under the current default, were intentionally updated.
+
+Self-review of the exact follow-up diff: Standards has no unresolved findings; Spec has
+no unresolved findings. This is one agent's review and Developer validation, not an
+independent Reviewer or QA pass. The current task remains high-risk; this side conversation
+prohibits subagents. Independent review/QA and primary integration remain outstanding.
+No real business data, active application settings, running services or packaged releases
+were modified. No push or publication is authorized by this follow-up.
+
+
+### Independent review corrections (2026-11-18)
+
+The current User-authorized continuation requests independent review and QA. The
+side-conversation restriction and 357 passed / 3 skipped results above describe the
+previous Developer checkpoint, not the independent evidence for this revision.
+
+Independent review of 553ff559 found two specification defects:
+
+- Explicit rebuild of a registered workspace still rejected an otherwise valid
+  template inside the newly configured, unused default root. Generation now checks
+  the preview's effective root together with the actual workspace parent. For new
+  workspaces that effective root is still the configured default; for registered
+  workspaces it remains the registered root. The operator-tree containment guard is
+  retained.
+- If the registered official child and manifest were both missing while the workspace
+  and Source Book remained, preview could offer new creation. This now reports an
+  inconsistent registration with a blocking reason and retains the recorded paths,
+  whether or not the default changed. Create, explicit rebuild and linking do not
+  authorize replacement of the missing registered folder. The historical test that
+  expected automatic regeneration was updated to the explicitly requested contract.
+
+Developer RED: four cases failed before the production correction: one valid-template
+rebuild was rejected and three missing-child cases returned ready instead of
+inconsistent (a historical synthetic registration and a real created workspace with
+its child/manifest retained elsewhere, with unchanged/changed defaults).
+
+Developer GREEN on the final source/test state: 19 selected cases passed in
+`tests/unit/test_official_project_workspace_service.py`, covering both findings,
+registered-root reuse for available/offline/unset defaults, new-target template
+containment, retained operator-tree rejection, missing/renamed/redirected locations,
+foreign identity and closed-project guards. A further two cases in
+`tests/unit/test_basic_project_workspace_service.py::test_resume_refuses_changed_registered_inputs`
+passed, preserving interrupted unregistered creation rejection after root/LTR changes.
+No complete matrix was rerun by Developer. `git diff --check` passed.
+
+All validation used isolated runtime/config paths under
+`D:/ConnLabDev/TestArtifacts/folder-root-review` and disposable short-path fixtures under
+`D:/ConnLabDev/TestArtifacts/frp`. No real business data, running services, localhost
+application APIs, primary integration or publication were touched. This correction
+changes only the official workspace service, its unit tests and this document, within
+the existing five-path follow-up scope.
+
+Developer self-review (Standards and Spec) has no unresolved findings. Independent
+Reviewer and QA will evaluate the immutable commit separately; their final results
+belong in board/evidence, not the historical Developer counts above. No broader public
+folder synchronization behavior is changed.

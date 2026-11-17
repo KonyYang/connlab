@@ -37,11 +37,16 @@ class BasicProjectWorkspaceService:
         if not identity.has_registered_ltr:
             raise ValueError("A registered LTR number is required before creating the project folder.")
         number = parse_ltr_number(identity.ltr_number).normalized
-        root = self.settings.local_workspace_root
-        if root is None and self.default_root is not None:
+        record = self.workspaces.get_by_project(project_id)
+        # Defaults plan new workspaces; a registered project keeps its own location.
+        root = record.local_workspace_path.parent if record else self.settings.local_workspace_root
+        if record and (not record.local_workspace_path.is_absolute() or ".." in record.local_workspace_path.parts):
+            raise ValueError("The linked project workspace must use an absolute directory path.")
+        if record is None and root is None and self.default_root is not None:
             root = self.default_root()
         if root is None or not root.is_dir():
-            raise ValueError(f"Project default save location must be an existing folder: {root}")
+            location = "Registered project workspace parent" if record else "Project default save location"
+            raise ValueError(f"{location} must be an existing folder: {root}")
         require_safe_output_path(root)
         return project, identity, number, root
 
