@@ -444,6 +444,60 @@ describe("useProjectWorkbenchModel", () => {
     expect(result.current.publicFolderWorkflowResults.sync?.items?.[0].relative_path).toBe("conflict.txt");
   });
 
+  it("does not supersede an Auto sync change with another preview", async () => {
+    let finish!: (value: { project_id: string; auto_sync_enabled: boolean; sync_locked: boolean; submitted_at: null }) => void;
+    apiMocks.setPublicFolderWorkflowAutoSync.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(result.current.project).toBeTruthy());
+    let pending!: Promise<void>;
+    act(() => { pending = result.current.onSetPublicFolderWorkflowAutoSync(true); });
+    await waitFor(() => expect(apiMocks.setPublicFolderWorkflowAutoSync).toHaveBeenCalledTimes(1));
+    await act(async () => { await result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    expect(apiMocks.previewPublicFolderWorkflowSync).not.toHaveBeenCalled();
+    await act(async () => { finish({project_id:"project-1", auto_sync_enabled:true, sync_locked:false, submitted_at:null}); await pending; });
+    expect(result.current.publicFolderWorkflowAutoSyncBusy).toBe(false);
+    await act(async () => { await result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBe("sync");
+  });
+
+  it("continues new public folder association to an explicit copy confirmation", async () => {
+    const binding = {project_id:"project-1", status:"review_required", expected_context:"new-folder", candidates:[], can_create:true, blockers:[]};
+    apiMocks.previewPublicProjectFolderBinding.mockResolvedValue(binding);
+    let finish!: (value: typeof binding) => void;
+    apiMocks.confirmPublicProjectFolderBinding.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(result.current.project).toBeTruthy());
+    await act(async () => { await result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    let pending!: Promise<void>;
+    act(() => { pending = result.current.publicFolderBinding!.onConfirm("create"); });
+    await waitFor(() => expect(apiMocks.confirmPublicProjectFolderBinding).toHaveBeenCalledTimes(1));
+    await act(async () => { await result.current.onSetPublicFolderWorkflowAutoSync(true); });
+    await act(async () => { finish({...binding, status:"bound"}); await pending; });
+    expect(result.current.publicFolderWorkflowBusyOperation).toBeNull();
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBe("sync");
+    expect(apiMocks.executePublicFolderWorkflowSync).not.toHaveBeenCalled();
+    await act(async () => { await result.current.onConfirmPublicFolderWorkflowOperation("sync"); });
+    expect(apiMocks.executePublicFolderWorkflowSync).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps sync confirmation reachable when Auto sync is clicked during a slow preview", async () => {
+    let resolvePreview!: (value: ReturnType<typeof publicFolderWorkflowPreview>) => void;
+    apiMocks.previewPublicFolderWorkflowSync.mockReturnValueOnce(new Promise(resolve => { resolvePreview = resolve; }));
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(result.current.project).toBeTruthy());
+    let pending!: Promise<void>;
+    act(() => { pending = result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    await waitFor(() => expect(apiMocks.previewPublicFolderWorkflowSync).toHaveBeenCalledTimes(1));
+    await act(async () => { await result.current.onSetPublicFolderWorkflowAutoSync(true); });
+    await act(async () => { resolvePreview(publicFolderWorkflowPreview("sync")); await pending; });
+    expect(result.current.publicFolderWorkflowBusyOperation).toBeNull();
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBe("sync");
+    expect(apiMocks.setPublicFolderWorkflowAutoSync).not.toHaveBeenCalled();
+    expect(apiMocks.executePublicFolderWorkflowSync).not.toHaveBeenCalled();
+    await act(async () => { await result.current.onConfirmPublicFolderWorkflowOperation("sync"); });
+    expect(apiMocks.executePublicFolderWorkflowSync).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores a late sync preview after switching projects", async () => {
     let resolvePreview!: (value: ReturnType<typeof publicFolderWorkflowPreview>) => void;
     apiMocks.previewPublicFolderWorkflowSync.mockImplementationOnce(() => new Promise((resolve) => { resolvePreview = resolve; }));

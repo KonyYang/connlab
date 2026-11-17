@@ -338,6 +338,12 @@ class PublicFolderWorkflowService:
             year_resolver=self._year_resolver, path_resolver=self._path_resolver, public_root=self._public_root,
             commit=commit or (lambda: None))
 
+    def _workspace(self, project_id):
+        try:
+            return self._workspaces.get_by_project(project_id)
+        except (ValueError, OSError) as exc:
+            raise PublicFolderWorkflowBlockedError(str(exc)) from exc
+
     def binding_preview(self, project_id):
         self._require_project(project_id)
         return self.bindings.preview(project_id)
@@ -345,17 +351,17 @@ class PublicFolderWorkflowService:
     def confirm_binding(self, project_id, expected_context, candidate_id):
         from backend.application.project_lifecycle_write_guard import ProjectLifecycleWriteGuard, LifecycleWriteOperation
         ProjectLifecycleWriteGuard(self._projects).require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE)
-        workspace = self._workspaces.get_by_project(project_id)
+        workspace = self._workspace(project_id)
         if workspace is None:
             raise PublicFolderWorkflowBlockedError("Create local project folder first.")
         self._validate_workspace(workspace)
         return self.bindings.confirm(project_id, expected_context, candidate_id)
 
     def context(self, project_id: str) -> PublicFolderWorkflowContext:
-        """Return workflow context without mutating files."""
+        """Return context, repairing verified description links without moving business files."""
         self._require_project(project_id)
         state = self._repository.get_state(project_id)
-        workspace = self._workspaces.get_by_project(project_id)
+        workspace = self._workspace(project_id)
         year = self._resolve_year(project_id)
         blockers = list(year.blockers)
         warnings = list(year.warnings)
@@ -801,7 +807,7 @@ class PublicFolderWorkflowService:
     ) -> PublicFolderWorkflowPreview:
         self._require_project(project_id)
         state = self._repository.get_state(project_id)
-        workspace = self._workspaces.get_by_project(project_id)
+        workspace = self._workspace(project_id)
         year = self._resolve_year(project_id)
         blockers = list(year.blockers)
         if not self._workspace_available(workspace):

@@ -1025,6 +1025,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     if (publicFolderExecutionRef.current) return;
     const epoch = lifecycleEpoch.current;
     const request = ++publicFolderRequestEpoch.current;
+    publicFolderExecutionRef.current = true;
     setPublicFolderWorkflowAutoSyncBusy(true);
     try {
       if (enabled && !bindingConfirmed && !await ensurePublicFolderBinding("auto_sync", epoch, request)) return;
@@ -1038,6 +1039,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     } catch (error) {
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowError(error instanceof Error ? error.message : "Failed to update Auto sync.");
     } finally {
+      publicFolderExecutionRef.current = false;
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowAutoSyncBusy(false);
     }
   }
@@ -1070,6 +1072,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     if (publicFolderExecutionRef.current) return;
     const epoch = lifecycleEpoch.current;
     const request = ++publicFolderRequestEpoch.current;
+    publicFolderExecutionRef.current = true;
     setPublicFolderWorkflowBusyOperation(operation);
     setPublicFolderWorkflowConfirmingOperation(null);
     setPublicFolderWorkflowError(null);
@@ -1111,6 +1114,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         err instanceof Error ? err.message : `Failed to preview ${operation}.`
       );
     } finally {
+      publicFolderExecutionRef.current = false;
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowBusyOperation(null);
     }
   }

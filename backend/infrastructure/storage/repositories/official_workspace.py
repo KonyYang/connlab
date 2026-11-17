@@ -20,18 +20,22 @@ from backend.infrastructure.storage.repositories.project_output_record import Pr
 class ProjectOfficialWorkspaceRepository:
     """Persist and load local official project workspace records."""
 
-    def __init__(self, session: Session) -> None:
-        """Create a repository bound to a SQLAlchemy session."""
+    def __init__(self, session: Session, *, resolve_description_rename=None) -> None:
+        """Bind a session, optionally resolving verified description links on lookup."""
         self._session = session
+        self._resolve_description_rename = resolve_description_rename
 
     def get_by_project(self, project_id: str) -> OfficialWorkspaceRecord | None:
         """Return the workspace record for a project when one exists."""
         row = self._session.scalar(
             select(ProjectOfficialWorkspaceRecordModel).where(
                 ProjectOfficialWorkspaceRecordModel.project_id == project_id
-            )
+            ).execution_options(populate_existing=True)
         )
-        return _to_domain(row) if row else None
+        record = _to_domain(row) if row else None
+        if record is not None and self._resolve_description_rename is not None:
+            return self._resolve_description_rename(record)
+        return record
 
     def save(self, record: OfficialWorkspaceRecord) -> OfficialWorkspaceRecord:
         """Create or update the workspace record for a project."""
