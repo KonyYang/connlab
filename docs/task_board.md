@@ -728,14 +728,14 @@
         ],
         "activation_head": "e2f5b19c6516b1ff934835da15a26f63ff856393",
         "started_at": "2026-11-16T23:40:47.594136Z",
-        "updated_at": "2026-11-17T02:57:11.739475Z",
+        "updated_at": "2026-11-17T03:04:23.219216Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_DEV_STORAGE_ISOLATION_20261117",
-          "stage": "implementation",
+          "stage": "qa",
           "status": "running",
-          "summary": "25d9bb7 reviewed/frozen baseline95paths; finalfrontend1318pass1skip and tsc/Vite pass. Full Python clean detached QA checkout D:/PythonProject/connlab-worktrees/qa-dev-storage-25 running session19488 (no globalCONNLABpathoverrides); >1144 reports0F as of10:42. Earlier partial/harness runs retained honestly, not full successes. Real dualbackend/browser/upload/draft/cookie/restart/offline/sharedlock/narrow evidence sealed. New in-scope defect found via real-empty-default-root audit: D:/ConnLabDev/Projects empty parent created09:32:02, no child/business files, mainDB unchanged07:33. Same portability nonempty_graph case had2 guard-denied mkdir/open10:25;0F had masked blocked preview. Developer proved Runner.preview omitted supplied Settings at factory: sessionB but globalsettingsG, wrong B ProjectRoot; RED owner assertion, forwarding-only GREEN. Implementing3 minimal explicitsettings calls (composition preview+worker, dependencies relocation), plus real row/preview/no-global-write regressions; newsubject/review/affectedQA pending. Original25full immutable continues, not advertised as newSHAfull. QA plans test-only child audit hook with synthetic sentinel, no prod hook. Actual dev8000/release8765 running; no backup/copy/rebind/migration/Close yet. Nine source dirs retained; missing basic11-003+7 release-root devrefs held; downloads keep browser/user choices. No push/package/publication.",
+          "summary": "Final914b5d291236840d1cf79ce215e4427af4e19228 clean, exact97paths; independent Reviewer914 Standards0/Spec0,2 ownercontracts pass/28.41s with0 real-root guard events, integrator cleanpreflight. Fix3 injectedSettings forwards+owned preview-session commit; persisted B root/preview+relocation/worker ownership/offline/no-domain-change/no-ambient-write regressions. Immutable25 complete nonOffice Python exit0:4839pass14skip29deselected, frontend1318pass1skip and tsc/Vite pass; dualbackend/browser/upload/drafts/cookie/restart/late-response/offline/sharedlock/narrow evidence sealed. Known25 portablecase only200 had masked globalRoot bug;2guardblocks and09:32 empty actualDProjects parent preserved/audited, no businessfiles touched; original mainDB still07:33. New independent affected QA16 targetfiles/nodes running session34673 in detached D:/PythonProject/connlab-worktrees/qa-dev-storage-914, test-only siteguard with synthetic nestedchild proof, HEAD/module origin assertions; no productCONNLABpath overrides. 25QA checkout preserved. Readonly live runtime endpoints confirm dev8000DB=primary/data, release8765DB=realCUserAppDataConnLab; original project/material cfg unchanged. No actual dev stop/backup/copy/rebind/migration yet. Nine directories candidates; missing11-003+7devrefsReleaseRoot held. Browser/user downloads preserved. No push/publication/package/Close.",
           "requires_user": false
         },
         "report": null
