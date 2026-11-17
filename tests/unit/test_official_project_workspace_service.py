@@ -126,7 +126,7 @@ def test_rebuild_of_indexed_legacy_workspace_keeps_new_folder_in_that_workspace(
     )
 
     assert current.preview("project-1").suggested_folder_path == (
-        current_root / "DL-2025-11-074" / "DL-2025-11-074 Confirmed connector Qualification"
+        original.record.local_workspace_path / "DL-2025-11-074 Confirmed connector Qualification"
     )
     rebuild = current.preview_for_rebuild("project-1")
     assert rebuild.conflict_paths == (original.official_folder_path,)
@@ -1354,7 +1354,7 @@ def test_unreadable_manifest_remains_blocked_as_an_inconsistency(tmp_path: Path)
     assert preview.conflict_options == ()
 
 
-def test_missing_stale_workspace_record_replans_under_current_project_root(
+def test_missing_registered_workspace_keeps_original_location_after_default_change(
     tmp_path: Path,
 ) -> None:
     template = _make_template(tmp_path / "template")
@@ -1387,16 +1387,15 @@ def test_missing_stale_workspace_record_replans_under_current_project_root(
 
     preview = service.preview("project-1")
 
-    assert preview.status == "ready"
-    assert not preview.blockers
-    assert preview.local_workspace_path == current_root / "DL-2025-11-074"
-    assert any("previous workspace record" in warning.lower() for warning in preview.warnings)
-
-    result = service.create("project-1")
-
-    assert result.record.local_workspace_path == current_root / "DL-2025-11-074"
-    assert result.record.official_folder_path.is_dir()
-    assert repository.saved == result.record
+    assert preview.status == "inconsistent"
+    assert any("workspace path is missing" in item for item in preview.blockers)
+    assert preview.local_workspace_path == old_workspace
+    assert preview.official_folder_path == repository.saved.official_folder_path
+    with pytest.raises(OfficialWorkspaceCreateError, match="workspace path is missing"):
+        service.create("project-1")
+    assert repository.saved.local_workspace_path == old_workspace
+    assert not list(current_root.iterdir())
+    assert not old_workspace.exists()
 
 
 def test_unique_relocated_legacy_manifest_can_be_explicitly_linked(tmp_path: Path) -> None:
@@ -1508,9 +1507,9 @@ def test_relocated_legacy_candidate_requires_project_and_dl_manifest_identity(
 
 @pytest.mark.parametrize(
     "escaped_component",
-    ["workspace", "source_book", "official_folder", "manifest"],
+    ["source_book", "official_folder", "manifest"],
 )
-def test_completed_record_rejects_paths_outside_configured_workspace_relationships(
+def test_completed_record_rejects_paths_outside_registered_workspace_relationships(
     tmp_path: Path,
     escaped_component: str,
 ) -> None:
@@ -1521,12 +1520,7 @@ def test_completed_record_rejects_paths_outside_configured_workspace_relationshi
     source_book = workspace / "Source Book"
     official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
     manifest = workspace / ".connlab" / "manifest.json"
-    if escaped_component == "workspace":
-        workspace = tmp_path / "outside" / "DL-2025-11-074"
-        source_book = workspace / "Source Book"
-        official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
-        manifest = workspace / ".connlab" / "manifest.json"
-    elif escaped_component == "source_book":
+    if escaped_component == "source_book":
         source_book = tmp_path / "outside-source"
     elif escaped_component == "official_folder":
         official_folder = tmp_path / "outside-official"
@@ -2276,6 +2270,7 @@ def _service(
     basic_information_reader=None,
     manifest_gateway: OfficialWorkspaceManifestGateway | None = None,
     settings: OfficialWorkspaceSettings,
+    default_root=None,
 ) -> OfficialProjectWorkspaceService:
     return OfficialProjectWorkspaceService(
         project_repository=_ProjectRepo(
@@ -2294,6 +2289,7 @@ def _service(
         basic_information_reader=basic_information_reader,
         manifest_gateway=manifest_gateway,
         settings=settings,
+        default_root=default_root,
     )
 
 
@@ -2318,3 +2314,39 @@ def _make_template(path: Path) -> Path:
     (path / "Photos").mkdir()
     (path / "Test results" / "Final Examination").mkdir(parents=True)
     return path
+
+
+@pytest.mark.parametrize("default_state", ["available", "offline", "unset"])
+def test_template_created_workspace_uses_registered_location_after_default_change(tmp_path, default_state):
+    template = _make_template(tmp_path / "template")
+    original_root = tmp_path / "original"
+    original_root.mkdir()
+    repository = _WorkspaceRepo()
+    service = _service(tmp_path, repository=repository, settings=OfficialWorkspaceSettings(
+        local_workspace_root=original_root, template_path=template, public_drive_root=None))
+    original = service.create("project-1")
+    manual = original.official_folder_path / "Test results" / "operator.txt"
+    manual.write_bytes(b"manual result")
+    new_root = tmp_path / "new-default"
+    if default_state == "available":
+        new_root.mkdir()
+    service = _service(tmp_path, repository=repository, settings=OfficialWorkspaceSettings(
+        local_workspace_root=None if default_state == "unset" else new_root,
+        template_path=template, public_drive_root=None),
+        default_root=lambda: pytest.fail("An existing workspace must not initialize the default root"))
+    preview = service.preview("project-1")
+    assert preview.status == "completed"
+    assert preview.local_workspace_root == original_root
+    assert preview.local_workspace_path == original.record.local_workspace_path
+    assert preview.suggested_folder_path.parent == original.record.local_workspace_path
+    reused = service.create("project-1")
+    assert reused.record == original.record
+    assert manual.read_bytes() == b"manual result"
+    assert new_root.exists() == (default_state == "available")
+    if new_root.exists():
+        assert not list(new_root.iterdir())
+    rebuilt = service.create("project-1", conflict_strategy="backup_and_recreate")
+    assert rebuilt.record.local_workspace_path == original.record.local_workspace_path
+    retained_files = list(original.record.local_workspace_path.rglob("operator.txt"))
+    assert len(retained_files) == 1 and retained_files[0].read_bytes() == b"manual result"
+    assert not (new_root / original.record.dl_number).exists()
