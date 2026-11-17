@@ -608,7 +608,66 @@
       "closed_at": "2026-11-16T23:20:12.858153Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_FOLDER_SYNC_RENAME_20261117": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\folder-sync-rename-20261117",
+      "branch": "codex/folder-sync-rename-20261117",
+      "resources": [
+        "folder-sync-rename-implementation"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
+        "summary": "Fix public working copy confirmation/execution and preserve verified project child-folder description renames in development and release environments.",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Reproduce and fix both symptoms in isolated development/release settings; preserve user files and stable identity, use existing path-rebind/recovery mechanisms; local implementation and validation only, no real business file mutation, push, packaging or publication.",
+        "scope_paths": [
+          "backend/application/basic_project_workspace_service.py",
+          "backend/application/official_project_workspace_service.py",
+          "backend/application/official_folder_relocation_service.py",
+          "backend/application/public_folder_workflow_service.py",
+          "backend/application/project_folder_open_service.py",
+          "backend/infrastructure/official_workspace_manifest.py",
+          "backend/infrastructure/storage/repositories/official_workspace.py",
+          "backend/api/dependencies.py",
+          "backend/api/project_folder_preflight.py",
+          "backend/api/project_folder_generation_composition.py",
+          "backend/api/routes_official_project_workspace.py",
+          "backend/api/routes_public_folder_workflow.py",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+          "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+          "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
+          "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+          "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+          "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
+          "tests/unit/test_basic_project_workspace_service.py",
+          "tests/unit/test_official_project_workspace_service.py",
+          "tests/unit/test_public_folder_workflow_service.py",
+          "tests/unit/test_public_folder_workflow_gateway.py",
+          "tests/unit/test_project_folder_open_service.py",
+          "tests/integration/test_basic_project_workspace_api.py",
+          "tests/integration/test_official_project_workspace_api.py",
+          "tests/integration/test_public_folder_workflow_api.py",
+          "tests/integration/test_public_folder_binding_api.py",
+          "tests/integration/test_project_folder_open_api.py",
+          "tests/integration/test_project_folder_generation_api.py",
+          "tests/integration/test_project_folder_generation_write_guard.py",
+          "docs/project_folder_sync_rename_validation.md"
+        ],
+        "risk_reasons": [
+          "Filesystem publication to authoritative public locations and persistent trusted folder path rebinding require independent high-risk checks."
+        ],
+        "activation_head": "4041c6f2e63e19a5f4739c9ebbc1c8704ae5c622",
+        "started_at": "2026-11-17T11:32:52.129745Z",
+        "updated_at": "2026-11-17T11:32:52.129745Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
