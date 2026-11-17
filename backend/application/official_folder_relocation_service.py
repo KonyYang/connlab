@@ -75,6 +75,53 @@ class OfficialFolderRelocationService:
         self._journal = journal
         self._manifests = manifest_gateway or OfficialWorkspaceManifestGateway()
 
+    @staticmethod
+    def _is_description_rebind(operation, record):
+        effect = operation.get("effects", {}).get("relocation") if operation else None
+        saved = effect.get("record", {}) if isinstance(effect, dict) else {}
+        return bool(isinstance(saved, dict) and operation and operation["status"] != "completed"
+            and operation.get("operation_id") and operation.get("project_id") == record.project_id
+            and operation.get("strategy") == "rebind_keep_custom" and effect
+            and effect.get("source") == effect.get("target")
+            and saved.get("project_id") == record.project_id
+            and saved.get("dl_number") == record.dl_number
+            and saved.get("local_workspace_path") == str(record.local_workspace_path)
+            and saved.get("manifest_path") == str(record.manifest_path)
+            and saved.get("source_book_path") == str(record.source_book_path)
+            and str(record.official_folder_path) in {saved.get("official_folder_path"), effect.get("target")})
+
+    def recover_description_rename(self, record, *, writer_journal, check_other_writes):
+        """Rebind the same directory object, never authorize a business-folder move."""
+        pending = self._journal.read(record.project_id)
+        if record.official_folder_path.exists() and (not pending or pending["status"] == "completed"):
+            return record
+        with writer_journal.lock(record.project_id):
+            active = writer_journal.read(record.project_id)
+            if active and active["status"] != "completed":
+                raise OfficialWorkspaceCreateError("Project folder generation is unfinished. Resume it before resolving a renamed folder.")
+            check_other_writes(record.project_id)
+            current = self._repository.get_by_project(record.project_id)
+            if current is None:
+                raise OfficialWorkspaceCreateError("Official workspace index is missing.")
+            # The pre-lock read is only a fast-path hint. Another writer may have
+            # completed it and persisted a different operation before this lock.
+            pending = self._journal.read(record.project_id)
+            resumable = self._is_description_rebind(pending, current)
+            if not resumable and (current.official_folder_path.exists() or pending and pending["status"] != "completed"):
+                return current
+            workspace = self._workspaces.preview(record.project_id)
+            root = workspace.local_workspace_root
+            if (workspace.dl_number != current.dl_number or root is None or not root.is_dir()
+                    or current.local_workspace_path == root or not current.local_workspace_path.is_relative_to(root)):
+                return current
+            review = self.preview(record.project_id)
+            if resumable and review.status == "interrupted":
+                return self.apply(record.project_id, "resume", review.expected_context,
+                    expected_rebind_operation_id=pending["operation_id"]).record
+            if review.status != "manual_relink_available" or review.blockers:
+                return current
+            return self.apply(record.project_id, "rebind_keep_custom", review.expected_context).record
+
     def preview(self, project_id: str) -> OfficialFolderRelocationPreview:
         """Return one explicit, identity-checked action or a review blocker."""
         operation = self._journal.read(project_id)
@@ -270,12 +317,18 @@ class OfficialFolderRelocationService:
         )
 
     def apply(
-        self, project_id: str, action: str, expected_context: str
+        self, project_id: str, action: str, expected_context: str,
+        *, expected_rebind_operation_id: str | None = None,
     ) -> OfficialWorkspaceCreateResult:
         """Resume a reviewed move; never claim a folder merely from its display name."""
         with self._journal.lock(project_id):
             self._workspaces.require_write_allowed(project_id)
             operation = self._journal.read(project_id)
+            if expected_rebind_operation_id is not None:
+                record = self._repository.get_by_project(project_id)
+                if (record is None or not self._is_description_rebind(operation, record)
+                        or operation["operation_id"] != expected_rebind_operation_id or action != "resume"):
+                    raise OfficialWorkspaceCreateError("Interrupted description association changed. Review it before continuing.")
             if operation and operation["status"] != "completed":
                 if action != "resume" or expected_context != operation["context"]:
                     raise OfficialWorkspaceCreateError("Resume the previous folder relocation first.")

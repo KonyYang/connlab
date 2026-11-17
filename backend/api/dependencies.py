@@ -1931,10 +1931,14 @@ def get_official_project_workspace_service(
 ) -> OfficialProjectWorkspaceService:
     """Build the official project workspace service for API routes."""
     settings = settings if isinstance(settings, Settings) else get_settings()
+    return _build_official_workspace_service(session, settings, _description_aware_workspace_repository(session, settings))
+
+
+def _build_official_workspace_service(session, settings, workspaces):
     external_resources = ExternalResourceRepository(session)
     return OfficialProjectWorkspaceService(
         project_repository=ProjectRepository(session),
-        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        workspace_repository=workspaces,
         ltr_repository=LtrRecordRepository(session),
         application_form_repository=ApplicationFormRepository(session),
         basic_information_reader=ProjectBasicInformationSnapshotReader(
@@ -1945,6 +1949,30 @@ def get_official_project_workspace_service(
         ),
         default_root=lambda: get_default_storage_locations(session, settings).ensure(ExternalResourceType.PROJECT_OUTPUT_ROOT),
     )
+
+
+def _description_aware_workspace_repository(session, settings):
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+    from backend.api.project_folder_write_guard import require_report_delivery_clear
+
+    def check_other_writes(project_id):
+        basic = GenerationJournal(settings.data_dir / "basic_project_workspace").read(project_id)
+        if basic and basic["status"] != "completed":
+            raise ValueError("Basic project folder creation is unfinished. Resume it before resolving a renamed folder.")
+        _require_project_files_clear(settings, project_id)
+        require_report_delivery_clear(settings, project_id)
+
+    def resolve(record):
+        try:
+            return get_official_folder_relocation_service(session, settings).recover_description_rename(
+                record, writer_journal=GenerationJournal(settings.data_dir / "project_folder_generation"),
+                check_other_writes=check_other_writes,
+            )
+        except (ValueError, OSError) as exc:
+            from backend.application.official_project_workspace_service import OfficialWorkspaceCreateError
+            raise OfficialWorkspaceCreateError(f"Renamed project folder needs review: {exc}") from exc
+
+    return ProjectOfficialWorkspaceRepository(session, resolve_description_rename=resolve)
 
 
 def get_default_storage_locations(session, settings):
@@ -1960,7 +1988,7 @@ def get_basic_project_workspace_service(
     from backend.api.project_folder_write_guard import require_report_delivery_clear
     materials = get_project_request_material_collection_service(session)
     return BasicProjectWorkspaceService(
-        projects=ProjectRepository(session), workspaces=ProjectOfficialWorkspaceRepository(session),
+        projects=ProjectRepository(session), workspaces=_description_aware_workspace_repository(session, settings),
         ltrs=LtrRecordRepository(session),
         settings=_official_workspace_settings_from_registry(ExternalResourceRepository(session)),
         default_root=lambda: get_default_storage_locations(session, settings).ensure(ExternalResourceType.PROJECT_OUTPUT_ROOT),
@@ -2125,7 +2153,7 @@ def get_public_folder_workflow_service(
             raise ValueError("Local project folder registration changed; review its association.")
     return PublicFolderWorkflowService(
         project_repository=project_repository,
-        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        workspace_repository=_description_aware_workspace_repository(session, settings),
         year_resolver=PublicFolderYearResolver(
             project_repository=project_repository,
             ltr_repository=ltr_repository,
@@ -2971,7 +2999,7 @@ def get_official_folder_relocation_service(
     from backend.infrastructure.files.generation_journal import GenerationJournal
 
     return OfficialFolderRelocationService(
-        workspace_service=get_official_project_workspace_service(session, settings),
+        workspace_service=_build_official_workspace_service(session, settings, ProjectOfficialWorkspaceRepository(session)),
         workspace_repository=ProjectOfficialWorkspaceRepository(session),
         journal=GenerationJournal(settings.data_dir / "official_folder_relocation"),
     )

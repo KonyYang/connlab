@@ -207,7 +207,7 @@ function deriveWorkflowTask(
       operation === "sync"
         ? {
             checked: input.publicFolderWorkflowContext?.auto_sync_enabled ?? false,
-            disabled: Boolean(readonlyReason || projectFolderBlocker || contextBlocker || input.publicFolderWorkflowAutoSyncBusy),
+            disabled: Boolean(readonlyReason || projectFolderBlocker || contextBlocker || input.publicFolderWorkflowBusyOperation || input.publicFolderWorkflowAutoSyncBusy),
             busy: input.publicFolderWorkflowAutoSyncBusy,
             blocker: readonlyReason ?? projectFolderBlocker ?? contextBlocker,
           }

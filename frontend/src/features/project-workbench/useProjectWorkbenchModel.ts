@@ -322,7 +322,7 @@ const DEFAULT_APPROVAL_INPUT_SOURCES: ApprovalInputSources = {
 export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchModel {
   const lifecycleEpoch = useRef(0);
   const publicFolderRequestEpoch = useRef(0);
-  const publicFolderExecutionRef = useRef(false);
+  const publicFolderExecutionRef = useRef<{ epoch: number; request: number } | null>(null);
   useEffect(() => () => {lifecycleEpoch.current += 1;}, [projectId]);
   const [project, setProject] = useState<Project | null>(null);
   const [ltrs, setLtrs] = useState<LtrRecord[]>([]);
@@ -488,6 +488,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const officialWorkspaceProgressLabel = generation.progressLabel ?? legacyWorkspaceProgressLabel;
 
   useEffect(() => {
+    publicFolderExecutionRef.current = null;
+    publicFolderRequestEpoch.current += 1;
     setBindingPreview(null);
     setBindingBusy(false);
     setBindingError(null);
@@ -990,7 +992,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     const epoch = lifecycleEpoch.current;
     const request = ++publicFolderRequestEpoch.current;
     const intent = bindingIntent.current;
-    publicFolderExecutionRef.current = true;
+    publicFolderExecutionRef.current = { epoch, request };
     setBindingBusy(true);
     setBindingError(null);
     let confirmed = false;
@@ -1004,7 +1006,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     } catch (error) {
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setBindingError(error instanceof Error ? error.message : "Could not associate the public folder. Refresh and try again.");
     } finally {
-      publicFolderExecutionRef.current = false;
+      if (publicFolderExecutionRef.current?.epoch === epoch && publicFolderExecutionRef.current?.request === request) publicFolderExecutionRef.current = null;
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setBindingBusy(false);
     }
     if (confirmed) {
@@ -1025,6 +1027,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     if (publicFolderExecutionRef.current) return;
     const epoch = lifecycleEpoch.current;
     const request = ++publicFolderRequestEpoch.current;
+    publicFolderExecutionRef.current = { epoch, request };
     setPublicFolderWorkflowAutoSyncBusy(true);
     try {
       if (enabled && !bindingConfirmed && !await ensurePublicFolderBinding("auto_sync", epoch, request)) return;
@@ -1038,6 +1041,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     } catch (error) {
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowError(error instanceof Error ? error.message : "Failed to update Auto sync.");
     } finally {
+      if (publicFolderExecutionRef.current?.epoch === epoch && publicFolderExecutionRef.current?.request === request) publicFolderExecutionRef.current = null;
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowAutoSyncBusy(false);
     }
   }
@@ -1070,6 +1074,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     if (publicFolderExecutionRef.current) return;
     const epoch = lifecycleEpoch.current;
     const request = ++publicFolderRequestEpoch.current;
+    publicFolderExecutionRef.current = { epoch, request };
     setPublicFolderWorkflowBusyOperation(operation);
     setPublicFolderWorkflowConfirmingOperation(null);
     setPublicFolderWorkflowError(null);
@@ -1111,6 +1116,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         err instanceof Error ? err.message : `Failed to preview ${operation}.`
       );
     } finally {
+      if (publicFolderExecutionRef.current?.epoch === epoch && publicFolderExecutionRef.current?.request === request) publicFolderExecutionRef.current = null;
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowBusyOperation(null);
     }
   }
@@ -1126,7 +1132,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
     const epoch = lifecycleEpoch.current;
     const request = ++publicFolderRequestEpoch.current;
-    publicFolderExecutionRef.current = true;
+    publicFolderExecutionRef.current = { epoch, request };
     setPublicFolderWorkflowBusyOperation(operation);
     setPublicFolderWorkflowError(null);
     setPublicFolderWorkflowMessage(null);
@@ -1160,7 +1166,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         err instanceof Error ? err.message : `Failed to execute ${operation}.`
       );
     } finally {
-      publicFolderExecutionRef.current = false;
+      if (publicFolderExecutionRef.current?.epoch === epoch && publicFolderExecutionRef.current?.request === request) publicFolderExecutionRef.current = null;
       if (epoch === lifecycleEpoch.current && request === publicFolderRequestEpoch.current) setPublicFolderWorkflowBusyOperation(null);
     }
   }
