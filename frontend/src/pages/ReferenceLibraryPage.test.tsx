@@ -43,18 +43,19 @@ it("searches filenames across projects and supports type filtering", async () =>
  await act(async()=>{await user.selectOptions(screen.getByLabelText("Material type"),"record");});
  await waitFor(()=>expect(api.searchReferenceLibrary).toHaveBeenCalledWith("PwrBlade 温升","all","record",project.key,0,expect.any(AbortSignal)));
 });
-it("hides unavailable materials without a repair list and restores them after refresh", async () => {
+it("keeps unavailable entries out of the main list but offers their registered location and a refresh action", async () => {
  const user=userEvent.setup();
- const missing=Array.from({length:60},(_,i)=>({...project,key:`linked:old-${i}`,number:`OLD-${i}`,project_id:null,source:"linked",available:false}));
- vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[...missing,project],files:[],total:0,warnings:[]});
+ const missing={...project,key:"project:missing",project_id:"missing",number:"OLD-MISSING",folder_path:"D:/missing",available:false};
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[missing,project],files:[],total:0,warnings:[]});
  render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
  await screen.findByRole("button",{name:"温升记录.xlsx"});
- expect(screen.queryByText(/OLD-0/)).toBeNull();
- expect(screen.queryByRole("button",{name:/Locate/i})).toBeNull();
- expect(screen.queryByText(/material location\(s\) unavailable/)).toBeNull();
- vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...missing[0],available:true},project],files:[],total:0,warnings:[]});
- await user.click(screen.getByRole("button",{name:"Refresh"}));
- expect(await screen.findByRole("button",{name:/OLD-0/})).toBeTruthy();
+ expect(screen.queryByRole("button",{name:/OLD-MISSING.*ConnLab project/})).toBeNull();
+ await user.click(screen.getByText("1 material location unavailable"));
+ await user.click(screen.getByRole("button",{name:"View location for OLD-MISSING"}));
+ expect(screen.getByText("D:/missing")).toBeTruthy();
+ expect(screen.getByText(/Restore access to the registered folder, then refresh/)).toBeTruthy();
+ expect(screen.getByRole("button",{name:"Refresh materials"})).toBeTruthy();
+ expect(screen.getByRole("button",{name:"Open folder",exact:true})).toHaveProperty("disabled",true);
 });
 it("preserves actionable scan warnings and search failures",async()=>{
  const user=userEvent.setup();
@@ -111,4 +112,48 @@ it("prevents duplicate receipt pickers while leaving library search usable",asyn
  await user.click(screen.getByRole("button",{name:"Search",exact:true}));
  await waitFor(()=>expect(api.searchReferenceLibrary).toHaveBeenCalledWith("record","all","all","",0,expect.any(AbortSignal)));
  view.unmount();await act(async()=>choose("C:/late"));expect(archive.startArchivePreview).not.toHaveBeenCalled();
+});
+
+it("explains file selection and missing Workbench target without blocking ordinary file access",async()=>{
+ const user=userEvent.setup();render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ await screen.findByRole("button",{name:"温升记录.xlsx"});
+ expect(screen.getByText("Select a file to open or copy.")).toBeTruthy();
+ expect(screen.getByRole("region",{name:"Copy destination"}).textContent).toContain("Open the target project's Workbench");
+ await user.click(screen.getByRole("button",{name:"温升记录.xlsx"}));
+ expect(screen.getByRole("status",{name:"File selection"}).textContent).toContain(file.relative_path);
+ expect(screen.getByRole("button",{name:"Open file",exact:true})).toHaveProperty("disabled",false);
+ expect(screen.getByRole("button",{name:"Copy to current project…"})).toHaveProperty("disabled",true);
+});
+it("browsing project B changes the source and clears file selection but keeps explicit Workbench A as destination",async()=>{
+ const user=userEvent.setup();const b={...project,key:"project:p2",project_id:"p2",number:"DL-B",title:"Product B",folder_path:"D:/B"};
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[project,b],files:[],total:0,warnings:[]});
+ const context={session_id:"session",token:"A-context",intent:1,target:project};
+ const view=render(<ReferenceLibraryPage copyContext={context} onOpenProject={vi.fn()}/>);
+ await screen.findByRole("button",{name:"温升记录.xlsx"});
+ await user.click(screen.getByRole("button",{name:"温升记录.xlsx"}));
+ await user.click(screen.getByRole("button",{name:/DL-B Product B/}));
+ await screen.findByRole("button",{name:"温升记录.xlsx"});
+ expect(screen.getByLabelText("Browsing materials").textContent).toContain("Product B");
+ expect(screen.getByRole("status",{name:"File selection"}).textContent).toContain("Select a file");
+ expect(screen.getByRole("region",{name:"Copy destination"}).textContent).toContain("DL-2026-08-079");
+ expect(screen.getByRole("region",{name:"Copy destination"}).textContent).toContain("D:/isolated");
+ view.rerender(<ReferenceLibraryPage copyContext={null} onOpenProject={vi.fn()}/>);
+ expect(screen.getByRole("region",{name:"Copy destination"}).textContent).not.toContain("D:/isolated");
+});
+
+it("distinguishes an explicitly searched project with no linked materials from a missing registered location",async()=>{
+ const user=userEvent.setup();const open=vi.fn();render(<ReferenceLibraryPage onOpenProject={open}/>);
+ await screen.findByRole("button",{name:"温升记录.xlsx"});
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...project,folder_path:"",available:false}],files:[],total:0,warnings:[]});
+ await user.type(screen.getByLabelText("Search project materials"),"PwrBlade");await user.click(screen.getByRole("button",{name:"Search",exact:true}));
+ await user.click(await screen.findByRole("button",{name:"Open project Workbench"}));
+ expect(open).toHaveBeenCalledWith("p1");
+ expect(screen.getByText(/No materials linked yet. Open the project Workbench/)).toBeTruthy();
+ expect(screen.queryByText(/Original material location is unavailable/)).toBeNull();
+});
+it("does not describe retained unavailable locations as absent materials",async()=>{
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...project,folder_path:"D:/offline",available:false}],files:[],total:0,warnings:[]});
+ render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ expect(await screen.findByText("No available material locations. Review the location warning.")).toBeTruthy();
+ expect(screen.queryByText("No materials to show. Receive existing files.")).toBeNull();
 });

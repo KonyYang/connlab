@@ -44,12 +44,13 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
     rows=[...rows,...extra.projects.filter(row=>!rows.some(old=>old.key===row.key))];
    }
    if (!live) return;
-   rows=rows.filter(row=>row.available || Boolean(row.operation_id && row.intake_status!=="completed"));
    setProjects(rows); setWarnings(result.warnings);
-   setSelectedKey(current=>rows.find(row=>row.key===current)?.key ?? rows.find(row=>matchesKey(row,current))?.key ?? rows[0]?.key ?? "");
+   setSelectedKey(current=>rows.find(row=>row.key===current)?.key ?? rows.find(row=>matchesKey(row,current))?.key ?? rows.find(row=>row.available)?.key ?? rows[0]?.key ?? "");
   }).catch(cause=>{if(live)setError((cause as Error).message);}).finally(()=>{if(live)setBusy(false);});
   return()=>{live=false;controller.abort();};
  },[search,source,kind,reload]);
+ const visibleProjects=projects.filter(row=>row.available || Boolean(row.operation_id && row.intake_status!=="completed") || Boolean(search && !row.folder_path));
+ const unavailableProjects=projects.filter(row=>!row.available && row.folder_path && !(row.operation_id && row.intake_status!=="completed"));
  const selected=projects.find(row=>row.key===selectedKey) ?? null;
  useEffect(()=>{runtimeSessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));},[selectedKey,search,source,kind]);
  const issues=useMemo(()=>Array.from(new Set([...(error?[error]:[]),...scanWarnings,...warnings,...browseWarnings])),[error,scanWarnings,warnings,browseWarnings]);
@@ -89,18 +90,19 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
    {(search || source!=="all" || kind!=="all") && <button onClick={()=>{setQuery("");setSearch("");setSource("all");setKind("all");}}>Clear filters</button>}
    <button className="library-refresh" disabled={scanning==="cancellation_requested"} onClick={()=>{if(scanning==="working")void cancelScan();else void refreshIndex();}}><UiIcon name="refresh"/>{scanning==="cancellation_requested"?"Cancelling scan…":scanning==="working"?"Cancel scan":"Refresh"}</button>
   </div>
-  {issues.length>0 && <div className="library-issues" role={error?"alert":"status"}><ul>{issues.map(note=><li key={note}>{note}</li>)}</ul>{error && <button onClick={()=>setReload(value=>value+1)}>Retry</button>}</div>}
+  {(issues.length>0 || unavailableProjects.length>0) && <div className="library-issues" role={error?"alert":"status"}>{issues.length>0 && <ul>{issues.map(note=><li key={note}>{note}</li>)}</ul>}{unavailableProjects.length>0 && <details className="library-location-issues"><summary>{unavailableProjects.length} material location{unavailableProjects.length===1?"":"s"} unavailable</summary><p>Entries are retained. View a location for the next step.</p>{unavailableProjects.map(row=><div key={row.key}><span>{row.number || row.title}</span><button aria-label={`View location for ${row.number || row.title}`} onClick={()=>{setSelectedKey(row.key);setError("");}}>View location</button></div>)}</details>}{error && <button onClick={()=>setReload(value=>value+1)}>Retry</button>}</div>}
   <div className="library-workspace">
-   <aside className="library-projects" aria-label="Project materials"><header><strong>Project materials</strong><span>{projects.length}</span></header>{busy && <p role="status">Searching…</p>}
-    <div className="library-project-list">{projects.map(row=><div className={"library-project-card"+(row.key===selectedKey?" is-selected":"")} key={row.key}>
+   <aside className="library-projects" aria-label="Project materials"><header><strong>Project materials</strong><span>{visibleProjects.length}</span></header>{busy && <p role="status">Searching…</p>}
+    <div className="library-project-list">{visibleProjects.map(row=><div className={"library-project-card"+(row.key===selectedKey?" is-selected":"")} key={row.key}>
      <button className="library-project-choice" aria-pressed={row.key===selectedKey} onClick={()=>{setSelectedKey(row.key);setError("");}}><strong>{row.number || "No number"}</strong><span>{row.title || "Not recorded"}</span><small>{sources[row.source]}</small></button>
      {row.operation_id && row.intake_status!=="completed" && <div className="library-incomplete"><span>Receipt incomplete</span><button disabled={receiving} onClick={()=>{setResumeOperation(row.operation_id!);setReceiving(true);}}>Continue receipt</button></div>}
     </div>)}</div>
-    {!busy && !projects.length && <p className="library-empty">{search?"No matching project materials.":"No materials to show. Receive existing files."}</p>}
+    {!busy && !visibleProjects.length && <p className="library-empty">{unavailableProjects.length ? "No available material locations. Review the location warning." : search?"No matching project materials.":"No materials to show. Receive existing files."}</p>}
    </aside>
    <section className="library-files" aria-label="Selected project materials">{selected ? <>
-    <header className="library-project-heading"><h2>{selected.number || "Project materials"}</h2><p>{selected.title}</p><div className="library-location"><strong>Managed location</strong><span className="library-location-path"><UiIcon name="folder"/>{selected.folder_path || "No materials linked yet"}</span><button disabled={!selected.available} onClick={()=>void openFolder()}><UiIcon name="folder"/>Open folder</button></div><button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button></header>
-    {selected.operation_id && selected.intake_status!=="completed" ? <p className="library-empty">Receipt incomplete. Continue receipt to finish copying and registration.</p> : <MaterialFiles key={selected.key} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>}
+    <header className="library-project-heading" aria-label="Browsing materials"><small>Browsing materials</small><h2>{selected.number || "Project materials"}</h2><p>{selected.title}</p><div className="library-location"><strong>Managed location</strong><span className="library-location-path"><UiIcon name="folder"/>{selected.folder_path || "No materials linked yet"}</span><button disabled={!selected.available} title={!selected.available ? selected.folder_path ? "Restore access to the registered folder, then refresh." : "Open the project Workbench to create or link its working folder." : undefined} onClick={()=>void openFolder()}><UiIcon name="folder"/>Open folder</button></div><button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button></header>
+    <section className="library-copy-destination" aria-label="Copy destination">{copyContext ? <><strong>Copy destination (Workbench): {copyContext.target.number || "No number"} · {copyContext.target.title}</strong><span>{copyContext.target.folder_path}</span></> : <span>Open the target project's Workbench, then return here using Reference Library to copy files.</span>}</section>
+    {selected.operation_id && selected.intake_status!=="completed" ? <p className="library-empty">Receipt incomplete. Continue receipt to finish copying and registration.</p> : <MaterialFiles key={selected.key} canCopy={Boolean(copyContext)} onRefresh={scanning==="idle" ? ()=>void refreshIndex() : undefined} onOpenWorkbench={selected.project_id ? ()=>onOpenProject(selected.project_id!) : undefined} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>}
    </> : <div className="library-empty"><UiIcon name="folder"/><p>Select a project to view its materials.</p></div>}</section>
   </div>
   {details && <MaterialDetails key={details.key} project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)}/>}

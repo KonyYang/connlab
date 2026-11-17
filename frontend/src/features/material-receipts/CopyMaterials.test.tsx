@@ -82,3 +82,20 @@ it("drops delayed previews when the live Workbench switches and clears retry con
  expect(screen.queryByRole("button",{name:"Check destination"})).toBeNull();
  expect(api.confirmMaterialCopy).not.toHaveBeenCalled();
 });
+
+it.each(["switch", "clear"])("invalidates confirmed-operation retry controls after Workbench %s",async mode=>{
+ const user=userEvent.setup();
+ const plan={status:"ready" as const,candidates:[],plan_id:"old-copy",fingerprint:"hash",batch_id:"old-batch",items:[],target_path:"D:/current"};
+ vi.mocked(api.previewMaterialCopy).mockResolvedValue(plan);
+ vi.mocked(api.confirmMaterialCopy).mockResolvedValue({batch_id:"old-batch",status:"incomplete",target_key:"project:p1",target_path:"D:/current",source_path:"D:/old-managed/report.docx",receipt_id:null,items:[],counts:{failed:1},directory_counts:{}});
+ const props={source,file:{name:"report.docx",relative_path:"report.docx",is_directory:false,modified_at:null,extension:".docx"},onClose:vi.fn(),onCopied:vi.fn()};
+ const view=render(<CopyMaterials {...props} context={context}/>);
+ await user.click(screen.getByRole("button",{name:"Check destination"}));await user.click(await screen.findByRole("button",{name:"Confirm copy"}));
+ expect(await screen.findByRole("button",{name:"Retry copy"})).toBeTruthy();
+ const next=mode==="clear" ? null : {...context,token:"context-B",intent:2,target:{...target,key:"project:p2",project_id:"p2",number:"New-B",folder_path:"D:/B"}};
+ view.rerender(<CopyMaterials {...props} context={next}/>);
+ expect(screen.queryByRole("button",{name:"Retry copy"})).toBeNull();
+ expect(screen.queryByRole("button",{name:"Confirm copy"})).toBeNull();
+ expect(screen.queryByRole("button",{name:"Retry confirmed copy"})).toBeNull();
+ expect(api.retryReceipt).not.toHaveBeenCalled();expect(api.confirmMaterialCopy).toHaveBeenCalledTimes(1);
+});
