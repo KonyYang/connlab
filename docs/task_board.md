@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
-    "tier": "high_risk",
-    "subject": "6ecb3dbd73f3c132c29778df1cdbd6337acce6c3",
-    "summary": "Fix public working copy confirmation/execution and preserve verified project child-folder description renames in development and release environments.",
+    "task_id": "TASK_LIBRARY_STATUS_HINTS_20261118",
+    "tier": "standard",
+    "subject": "5484492210ecb56262dec8c1288981e27bff2c82",
+    "summary": "Finish compact material-library browsing, selected-file and explicit Workbench copy-target guidance; correct boundary documentation.",
     "disposition": "completed",
-    "decision_ref": "User accepted all three directory rules and explicitly requested local Close on 2026-11-18. Stop only isolated acceptance services; retain local commits, branch/worktree, test database/files and validation records. Do not push or publish; --publish-close intentionally omitted. Services 5217/8837 stopped with ownership evidence in tmp/folder-root-acceptance-20261118-071621/services-stopped.json. No real business data mutation.",
-    "closed_at": "2026-11-17T23:29:27.592510Z"
+    "decision_ref": "User accepted and requested completed local Close. Verified only isolated acceptance services on 5238/8858 stopped. Preserve local commits, worktree, acceptance database, sample files and validation evidence. No push or publication; --publish-close intentionally omitted. No real business data operation.",
+    "closed_at": "2026-11-17T23:58:15.759335Z"
   },
   "retained_history": [
     {
@@ -615,116 +615,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly closes this completed task locally only. Preserve implementation commits, old directory copies, database backups, audit and validation evidence. No push, publication, packaging, or checkout reclamation.",
       "closed_at": "2026-11-17T10:33:15.512206Z"
+    },
+    {
+      "task_id": "TASK_FOLDER_SYNC_RENAME_20261117",
+      "tier": "high_risk",
+      "subject": "6ecb3dbd73f3c132c29778df1cdbd6337acce6c3",
+      "summary": "Fix public working copy confirmation/execution and preserve verified project child-folder description renames in development and release environments.",
+      "disposition": "completed",
+      "decision_ref": "User accepted all three directory rules and explicitly requested local Close on 2026-11-18. Stop only isolated acceptance services; retain local commits, branch/worktree, test database/files and validation records. Do not push or publish; --publish-close intentionally omitted. Services 5217/8837 stopped with ownership evidence in tmp/folder-root-acceptance-20261118-071621/services-stopped.json. No real business data mutation.",
+      "closed_at": "2026-11-17T23:29:27.592510Z"
     }
   ],
-  "tasks": {
-    "TASK_LIBRARY_STATUS_HINTS_20261118": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-status-hints-20261118",
-      "branch": "codex/library-status-hints-20261118",
-      "resources": [],
-      "integrated_head": "92d49bb67471ab95cf948558d75967e2cd702b16",
-      "task": {
-        "task_id": "TASK_LIBRARY_STATUS_HINTS_20261118",
-        "summary": "Finish compact material-library browsing, selected-file and explicit Workbench copy-target guidance; correct boundary documentation.",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "UI status/guidance and boundary documents only. Preserve search, context authority and file protections. Isolated A/B regressions and connected-browser validation, audit symlink gaps. No Tools integration, restore/sync/backup expansion, legacy cleanup or real business data mutation. No push/publication.",
-        "scope_paths": [
-          "frontend/src/pages/ReferenceLibraryPage.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-          "frontend/src/pages/reference-library.css",
-          "frontend/src/features/material-receipts",
-          "docs/architecture/project_library.md",
-          "docs/architecture/material_receipt.md",
-          "docs/architecture/report_shortcuts_and_copy_context.md",
-          "docs/FRONTEND_GUIDE.md",
-          "tests/integration/test_material_receipt.py",
-          "tests/integration/test_report_shortcuts.py",
-          "tests/integration/test_library_search.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "b85da13b6210a5006a64d1c624b5059159a48d81",
-        "started_at": "2026-11-17T23:32:12.868922Z",
-        "updated_at": "2026-11-17T23:51:03.296558Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_LIBRARY_STATUS_HINTS_20261118",
-          "subject": "5484492210ecb56262dec8c1288981e27bff2c82",
-          "summary": "Compact library source/selection/explicit Workbench destination guidance; retained unavailable-location summary and distinct unassociated action; corrected current-vs-legacy boundaries. Search/backend context/file-protection rules unchanged. Local only; no real business data mutation.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/FRONTEND_GUIDE.md",
-            "docs/architecture/material_receipt.md",
-            "docs/architecture/project_library.md",
-            "docs/architecture/report_shortcuts_and_copy_context.md",
-            "frontend/src/features/material-receipts/CopyMaterials.test.tsx",
-            "frontend/src/features/material-receipts/MaterialFiles.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx",
-            "frontend/src/pages/reference-library.css"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "command": "Vitest ReferenceLibraryPage and material-receipts; final affected page rerun",
-              "result": "40 tests across6 files passed; final empty-location review correction reran12 page tests, all passed.41 unique tests total. RED3 initial UI failures and1 empty-state failure retained. No source behavior changed after final affected tests."
-            },
-            {
-              "status": "passed",
-              "command": "npm run build (final TS state)",
-              "result": "TypeScript and Vite production build passed; not a packaged release."
-            },
-            {
-              "status": "passed",
-              "command": "pytest test_material_receipt.py test_report_shortcuts.py test_library_search.py with isolated env/basetemp",
-              "result": "73 passed,4 skipped. Exact OS symlink nodes and file/directory probes recorded: WinError1314 before assertions. Four real OS guard paths remain unverified; no privilege changes."
-            },
-            {
-              "status": "passed",
-              "command": "connected_api_checks.py via Vite5228 -> Uvicorn8848 -> fresh isolated SQLite",
-              "result": "22 real HTTP calls passed: B browsing kept A target, supplementary copy and repeat skip, stale confirms/retries rejected after switch/clear, target-only request422, source edit rejected409, existing manual A and saved archive retained. Windows newline-only harness expectation fixed before successful rerun."
-            },
-            {
-              "status": "passed",
-              "command": "Actual connected browser, wide1280 and narrow595",
-              "result": "A Workbench to library, B source/A destination, actual checked+confirmed supplementary copy; missing/unassociated states distinct; Back to projects clears target; file open stays enabled with Copy disabled. No horizontal overflow in new path/status lines. Screenshots/browser-results.json retained."
-            },
-            {
-              "status": "passed",
-              "command": "Exact diff self-review, git diff --check, process ownership shutdown",
-              "result": "Sequential Standards0/Spec0 findings after bounded tooltip/refresh/empty-state corrections; not independent review.9 intended paths; no backend/search/Tools/recovery changes. Only5228/8848 fixture services stopped; data/evidence retained. Fresh explicit Received root used for final validation; first default-root diagnostic DB retained separately."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Single Astra work unit implemented UI-only bounded change with public-seam TDD and isolated fixtures."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Same agent, separate sequential exact-diff Standards and Spec review; not an independent reviewer.0 remaining findings each."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Same agent validation pass: affected matrix, final affected rerun/build, real connected browser/API, symlink skip audit and attributed service shutdown. Not independent QA."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "5484492210ecb56262dec8c1288981e27bff2c82",
-            "primary_before": "1f6850263456387406d369da46c2dd709944d4b9",
-            "integrated_head": "92d49bb67471ab95cf948558d75967e2cd702b16",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
