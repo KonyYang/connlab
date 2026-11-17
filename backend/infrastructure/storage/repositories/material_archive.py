@@ -86,6 +86,20 @@ class MaterialArchiveRepository:
         except Exception:
             self.session.rollback();raise
 
+    def rebind_directory(self, folder_id, expected_path, target, library_root):
+        """Relocate a verified copy without replacing its identity or relative search index."""
+        row = self.session.get(MaterialArchiveFolderModel, folder_id, populate_existing=True)
+        if row is None or normalized(row.folder_path) not in {normalized(expected_path), normalized(target)}:
+            raise ProjectLibraryConflict("The indexed directory changed before its location was saved.")
+        conflict = self.session.scalar(select(MaterialArchiveFolderModel).where(
+            MaterialArchiveFolderModel.normalized_path == normalized(target),
+            MaterialArchiveFolderModel.folder_id != folder_id))
+        if conflict is not None:
+            raise ProjectLibraryConflict("Another indexed directory already uses the new location.")
+        row.folder_path, row.normalized_path, row.library_root = str(target), normalized(target), str(library_root)
+        self.session.commit()
+        return self.folder(folder_id)
+
     def indexed_available(self,path):
         row=self.session.scalar(select(MaterialArchiveFolderModel).where(MaterialArchiveFolderModel.normalized_path==normalized(path)))
         return bool(row and row.indexed_available)

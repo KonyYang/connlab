@@ -1,16 +1,17 @@
+import {runtimeSessionStorage} from "../runtimeEnvironment";
 import { requestJson, requestBlobResponse, type MatrixEditorSessionSeed, type MatrixEditorSessionDraftSaveRequest,
   type MatrixEditorSessionDraftSaveResponse, type MatrixPreviewResponse, type MatrixImportCommitResponse,
   type FeeEvaluationDraft, type FeeFormImportRow, type FeeEvaluationEditedFileExportRequest, type MatrixMethodVersionSuggestionResponse, type MatrixEditorLiveXlsxExportRequest, type MatrixEditorLiveXlsxPublicationPreview } from './client';
 const KEY = 'connlab:tools-planning:v1';
 const post = (body: unknown): RequestInit => ({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 export function loadPlanningSeed(): MatrixEditorSessionSeed {
-  const raw=sessionStorage.getItem(KEY);
+  const raw=runtimeSessionStorage.getItem(KEY);
   if(raw) return JSON.parse(raw) as MatrixEditorSessionSeed;
   return {project_id:'', active_confirmed_matrix_id:null, active_confirmed_revision:null,active_source_import_id:null,
     active_source_snapshot_id:null,editor_draft:null,source_preview_payload:null,source_status:'not_required',source_unavailable_message:null,
     draft_status:'missing',editor_draft_id:null,saved_payload_signature:null} as MatrixEditorSessionSeed;
 }
-export function savePlanningSeed(seed: MatrixEditorSessionSeed) {sessionStorage.setItem(KEY,JSON.stringify(seed));}
+export function savePlanningSeed(seed: MatrixEditorSessionSeed) {runtimeSessionStorage.setItem(KEY,JSON.stringify(seed));}
 export async function savePlanningDraft(_id: string, value: MatrixEditorSessionDraftSaveRequest): Promise<MatrixEditorSessionDraftSaveResponse> {
   const seed=loadPlanningSeed();
   const signature=JSON.stringify(value);
@@ -25,7 +26,7 @@ export const planningExportApis = {
   preview: async (): Promise<MatrixEditorLiveXlsxPublicationPreview> => ({mode:'download',status:'ready',authority_status:'unconfirmed',existing_file:false,existing_modified_at:null,blockers:[],preview_token:'browser-export'}),
   publish: async () => {throw new Error('Tools exports download files only.');},
 };
-export function clearPlanningSession() {sessionStorage.removeItem(KEY);sessionStorage.removeItem('connlab:tools-fees:v1');}
+export function clearPlanningSession() {runtimeSessionStorage.removeItem(KEY);runtimeSessionStorage.removeItem('connlab:tools-fees:v1');}
 
 export const suggestPlanningMethods = (_: string, value: {rows: {row_id:string;method:string}[]}) =>
   requestJson<MatrixMethodVersionSuggestionResponse>('/api/tools/matrix/method-versions',post(value));
@@ -41,13 +42,13 @@ export type LegacyPlanningRecovery = {seed:MatrixEditorSessionSeed;fee_values:Fe
   retained_fee_values:FeeEvaluationEditedFileExportRequest|null;unmatched_fee_rows:string[]};
 export const fetchLegacyPlanningRecovery = (id:string) => requestJson<LegacyPlanningRecovery>(`/api/tools/matrix/legacy/${encodeURIComponent(id)}`);
 export function replacePlanningSession(seed:MatrixEditorSessionSeed, fee:unknown) {
-  const matrixBefore=sessionStorage.getItem(KEY), feeBefore=sessionStorage.getItem('connlab:tools-fees:v1');
+  const matrixBefore=runtimeSessionStorage.getItem(KEY), feeBefore=runtimeSessionStorage.getItem('connlab:tools-fees:v1');
   try {
     savePlanningSeed(seed);
-    if(fee) sessionStorage.setItem('connlab:tools-fees:v1',JSON.stringify(fee)); else sessionStorage.removeItem('connlab:tools-fees:v1');
+    if(fee) runtimeSessionStorage.setItem('connlab:tools-fees:v1',JSON.stringify(fee)); else runtimeSessionStorage.removeItem('connlab:tools-fees:v1');
   } catch(error) {
-    if(matrixBefore===null) sessionStorage.removeItem(KEY); else sessionStorage.setItem(KEY,matrixBefore);
-    if(feeBefore===null) sessionStorage.removeItem('connlab:tools-fees:v1'); else sessionStorage.setItem('connlab:tools-fees:v1',feeBefore);
+    if(matrixBefore===null) runtimeSessionStorage.removeItem(KEY); else runtimeSessionStorage.setItem(KEY,matrixBefore);
+    if(feeBefore===null) runtimeSessionStorage.removeItem('connlab:tools-fees:v1'); else runtimeSessionStorage.setItem('connlab:tools-fees:v1',feeBefore);
     throw error;
   }
 }

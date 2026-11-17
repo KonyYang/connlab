@@ -41,6 +41,15 @@ class ExternalResourceRepository:
         )
         return _to_domain(row) if row else None
 
+    def create_default_if_absent(self, resource: ExternalResource) -> ExternalResource:
+        """An unconfigured first use must not overwrite a concurrent operator choice."""
+        from sqlalchemy.dialects.sqlite import insert
+        model = _to_model(resource)
+        values = {column.name: getattr(model, column.name) for column in ExternalResourceModel.__table__.columns}
+        self._session.execute(insert(ExternalResourceModel).values(**values).on_conflict_do_nothing(index_elements=["resource_type"]))
+        self._session.flush()
+        return self.get_by_type(resource.resource_type)
+
     def upsert(self, resource: ExternalResource) -> ExternalResource:
         """Create or update a resource by resource type."""
         row = self._session.scalar(

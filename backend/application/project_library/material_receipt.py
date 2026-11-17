@@ -41,15 +41,19 @@ class MaterialReceiptService:
                 config = self.store.configure(str(root))
             return config
 
-    def runtime(self):
-        config = self._ensure_library_settings()
+    def runtime(self, ensure_default=False):
+        config = self._ensure_library_settings() if ensure_default else self.store.settings()
+        if not config["root_path"]:
+            return {**config, "root_path": str(self.files.default_root()), "configured": False, "available": False}
         return {**config, "configured": bool(config["root_path"]),
                 "available": bool(config["root_path"] and self.files.available(config["root_path"]))}
 
     def configure_root(self, path):
         with self.files.lock():
-            root = str(self.files.root(path))
-            self._check_receive_ownership(root)
+            current = self.store.settings()
+            is_new = not current["root_path"] or str(Path(current["root_path"])) != str(Path(path))
+            self._check_receive_ownership(str(Path(path).resolve()))
+            root = str(self.files.root(path, create=is_new))
             self.store.configure(root)
         return self.runtime()
 

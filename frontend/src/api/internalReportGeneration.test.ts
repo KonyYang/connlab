@@ -1,10 +1,11 @@
+import {runtimeResponse} from "./runtime.testHelpers";
 import {afterEach, expect, it, vi} from "vitest";
 import {downloadInternalReportDraft} from "./client";
 
 afterEach(() => vi.unstubAllGlobals());
 
 it("downloads the preview-bound draft using the server filename", async () => {
-  const fetchMock = vi.fn().mockResolvedValue(new Response("draft bytes", {headers: {
+  const fetchMock = vi.fn().mockResolvedValue(runtimeResponse("draft bytes", {headers: {
     "Content-Disposition": "attachment; filename*=UTF-8''Internal%20Report_Draft.docx",
   }}));
   vi.stubGlobal("fetch", fetchMock);
@@ -16,7 +17,7 @@ it("downloads the preview-bound draft using the server filename", async () => {
 });
 
 it("surfaces a changed preview instead of downloading an error", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({detail: "Preview generation again."}), {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(runtimeResponse(JSON.stringify({detail: "Preview generation again."}), {
     status: 409, headers: {"Content-Type": "application/json"},
   })));
   await expect(downloadInternalReportDraft("project-1", "a".repeat(64))).rejects.toThrow("Preview generation again.");

@@ -1,3 +1,5 @@
+import "../../api/runtime.testHelpers";
+import {runtimeLocalStorage} from "../../runtimeEnvironment";
 import { fireEvent, render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -106,8 +108,8 @@ it('keeps the unresolved section open while the user finishes colour and metadat
 });
 
 it('does not apply saved confirmations from another project or changed source', async () => {
-  localStorage.setItem('connlab.mechanical-folder.v1.DL-2026-09-032',JSON.stringify({project:'DL-2026-09-032',sections:{'abc:0':{rows:[{curve:'1.20',sample:'wrong'}]}}}));
-  localStorage.setItem('connlab.mechanical-folder.v1.DL-2026-09-031',JSON.stringify({project:'DL-2026-09-031',sections:{'older:0':{rows:[{curve:'1.20',sample:'old'}]}}}));
+  runtimeLocalStorage.setItem('connlab.mechanical-folder.v1.DL-2026-09-032',JSON.stringify({project:'DL-2026-09-032',sections:{'abc:0':{rows:[{curve:'1.20',sample:'wrong'}]}}}));
+  runtimeLocalStorage.setItem('connlab.mechanical-folder.v1.DL-2026-09-031',JSON.stringify({project:'DL-2026-09-031',sections:{'older:0':{rows:[{curve:'1.20',sample:'old'}]}}}));
   preview.mockResolvedValueOnce(analysis(''));
   render(<MechanicalSummaryTool/>);
   fireEvent.change(screen.getByLabelText('Select mechanical test folder'),{target:{files:[new File(['data'],'force.pdf')]}});

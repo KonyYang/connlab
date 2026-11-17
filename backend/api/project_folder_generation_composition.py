@@ -151,9 +151,12 @@ class ProjectFolderGenerationRunner:
         rebuilding = intent == "backup_rebuild"
         from backend.api.routes_official_project_workspace import _preview_response
         with self.sessions() as session:
-            workspace_service = deps.get_official_project_workspace_service(session)
+            workspace_service = deps.get_official_project_workspace_service(session, self.settings)
             preview = (workspace_service.preview_for_rebuild(project_id)
                        if rebuilding else workspace_service.preview(project_id))
+            # First-use directory initialization must outlive this short read session.
+            # No business output has been generated at this point.
+            session.commit()
             basic_information = deps.get_project_basic_information_service(session).get(project_id)
             basic_information_blocker = basic_information_generation_blocker(
                 status=basic_information.status,
@@ -378,7 +381,7 @@ class ProjectFolderGenerationRunner:
                         workspace.recover(deps.ProjectOfficialWorkspaceRepository(session))
                     else:
                         verify_initial_preview()
-                        deps.get_official_project_workspace_service(session).create(
+                        deps.get_official_project_workspace_service(session, self.settings).create(
                             project_id,
                             None if state["strategy"] == "update_in_place" else state["strategy"],
                             recovery=workspace,

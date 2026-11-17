@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../../runtimeEnvironment";
 import type { IntakePackageImport } from "../../api/client";
 
 const INTAKE_SESSION_STORAGE_KEY = "connlab:intake-session";
@@ -24,7 +25,7 @@ export const EMPTY_INTAKE_SESSION: IntakeSessionState = {
 
 export function loadIntakeSession(): IntakeSessionState {
   try {
-    const raw = window.sessionStorage.getItem(INTAKE_SESSION_STORAGE_KEY);
+    const raw = runtimeSessionStorage.getItem(INTAKE_SESSION_STORAGE_KEY);
     if (!raw) {
       return EMPTY_INTAKE_SESSION;
     }
@@ -37,10 +38,10 @@ export function loadIntakeSession(): IntakeSessionState {
 export function saveIntakeSession(session: IntakeSessionState): void {
   try {
     if (isEmptyIntakeSession(session)) {
-      window.sessionStorage.removeItem(INTAKE_SESSION_STORAGE_KEY);
+      runtimeSessionStorage.removeItem(INTAKE_SESSION_STORAGE_KEY);
       return;
     }
-    window.sessionStorage.setItem(INTAKE_SESSION_STORAGE_KEY, JSON.stringify(session));
+    runtimeSessionStorage.setItem(INTAKE_SESSION_STORAGE_KEY, JSON.stringify(session));
   } catch {
     return;
   }
@@ -48,7 +49,7 @@ export function saveIntakeSession(session: IntakeSessionState): void {
 
 export function clearIntakeSession(): void {
   try {
-    window.sessionStorage.removeItem(INTAKE_SESSION_STORAGE_KEY);
+    runtimeSessionStorage.removeItem(INTAKE_SESSION_STORAGE_KEY);
   } catch {
     return;
   }

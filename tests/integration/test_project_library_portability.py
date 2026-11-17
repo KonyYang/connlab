@@ -25,6 +25,7 @@ from backend.infrastructure.storage.repositories.project_library import ProjectL
 def app_at(root, *, managed=True, ltr_authority=None):
     settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root if managed else None)
     settings.ensure_directories()
+    settings.projects_dir.mkdir(parents=True)  # This fixture represents an existing configured destination.
     engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
     init_db(engine)
     app = FastAPI()
@@ -592,6 +593,18 @@ def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_p
         old = tmp_path / "A" / name
         if old.exists():
             old.rename(old.with_name(name + "-unavailable"))
+    # This second data instance must not consume the process's unrelated defaults.
+    from backend.shared import runtime_environment
+    ambient_output = tmp_path / "ambient-output"
+    ambient_database = tmp_path / "ambient-data/ambient.sqlite3"
+    monkeypatch.setitem(runtime_environment.OUTPUT_ROOTS, "development", ambient_output)
+    monkeypatch.setenv("CONNLAB_ENVIRONMENT", "development")
+    monkeypatch.delenv("CONNLAB_PROJECTS_DIR", raising=False)
+    monkeypatch.delenv("CONNLAB_LIBRARY_ROOT", raising=False)
+    monkeypatch.setenv("CONNLAB_DATA_DIR", str(ambient_database.parent))
+    monkeypatch.setenv("CONNLAB_DATABASE_PATH", str(ambient_database))
+    monkeypatch.setenv("CONNLAB_LOCAL_CONFIG_PATH", str(tmp_path / "ambient-config/local.toml"))
+    monkeypatch.setenv("CONNLAB_ADMIN_CONFIG_PATH", str(tmp_path / "ambient-config/admin.toml"))
     b, settings_b, engine_b = app_at(tmp_path / "B")
     try:
         plan = b.post("/api/project-library/restore-plan", json={"folder": str(travelling)}).json()
@@ -628,8 +641,29 @@ def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_p
             outputs = client.get("/api/projects/P1/output-records/status")
             assert outputs.status_code == 200, outputs.text
             assert any(item["output_kind"] == "test_record_form" for item in outputs.json()["items"])
+            from backend.infrastructure.project_library.ownership import capture
+            with Session(engine_b) as session:
+                before_preview = capture(session, "P1", validate_history=False)
             folder_preview = client.get("/api/projects/P1/project-folder/generation/preview?intent=create")
             assert folder_preview.status_code == 200, folder_preview.text
+            assert not any("outside" in message for message in folder_preview.json()["workspace_preview"]["blockers"])
+            from backend.domain import ExternalResourceType
+            from backend.infrastructure.storage.models import ExternalResourceModel
+            from sqlalchemy import delete
+            with Session(engine_b) as session:
+                assert capture(session, "P1", validate_history=False) == before_preview
+                resource = deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT)
+                assert resource is not None and resource.path == settings_b.projects_dir
+                session.execute(delete(ExternalResourceModel).where(ExternalResourceModel.resource_type == ExternalResourceType.PROJECT_OUTPUT_ROOT.value))
+                session.commit()
+            relocation = client.get("/api/projects/P1/official-workspace/relocation/preview")
+            assert relocation.status_code == 200, relocation.text
+            assert not any("outside" in message for message in relocation.json()["blockers"])
+            with Session(engine_b) as session:
+                assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT).path == settings_b.projects_dir
+                assert capture(session, "P1", validate_history=False) == before_preview
+            assert not (ambient_output / "Projects").exists()
+            assert not ambient_database.exists()
             check = client.get("/api/projects/P1/prechecks/latest")
             assert check.status_code == 200, check.text
             assert len(check.json()["issues"]) == 10
@@ -657,6 +691,18 @@ def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_p
             saved = client.put("/api/projects/P1/matrix-drafts/qa-working-matrix", json=data)
             assert saved.status_code == 200, saved.text
             assert saved.json()["rows"][1]["requirement"] == "Continue Matrix review on B"
+            offline_root = settings_b.projects_dir.with_name("Projects-offline-held")
+            settings_b.projects_dir.rename(offline_root)
+            try:
+                unavailable = client.get("/api/projects/P1/project-folder/generation/preview?intent=create")
+                assert unavailable.status_code == 200, unavailable.text
+                assert unavailable.json()["workspace_preview"]["status"] == "blocked"
+                assert not settings_b.projects_dir.exists()
+                with Session(engine_b) as session:
+                    assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT).path == settings_b.projects_dir
+                assert not (ambient_output / "Projects").exists() and not ambient_database.exists()
+            finally:
+                offline_root.rename(settings_b.projects_dir)
         finally:
             runner.pool.shutdown(wait=True)
             app.dependency_overrides.clear()

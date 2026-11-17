@@ -1,3 +1,4 @@
+import "../../api/runtime.testHelpers";
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, vi, expect, beforeEach } from 'vitest';
 import { LegacyPlanningBoundary } from './LegacyPlanningBoundary';

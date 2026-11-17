@@ -6,7 +6,7 @@ import os
 import json
 import tempfile
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 
@@ -87,10 +87,19 @@ class Settings:
     ltr_workbook: LtrWorkbookSettings = field(default_factory=LtrWorkbookSettings)
     test_record: TestRecordSettings = field(default_factory=TestRecordSettings)
     library_root: Path | None = None
+    environment: str = "development"
+    output_root: Path | None = None
+    projects_directory_explicit: bool = False
+
+    def output_path(self, purpose: str) -> Path:
+        from backend.shared.runtime_environment import output_path
+        return output_path(self.environment, purpose, root=self.output_root)
 
     @classmethod
     def load(cls, base_dir: Path | None = None) -> "Settings":
         """Load settings from the environment and ensure required folders exist."""
+        from backend.shared.runtime_environment import runtime_environment, output_path
+        environment = runtime_environment()
         root_dir = base_dir or Path(__file__).resolve().parents[2]
         local_config = _load_local_config(root_dir)
         paths_config = local_config.get("paths", {})
@@ -107,7 +116,7 @@ class Settings:
         mutable_root = library_root or root_dir
         data_default = mutable_root / ("Data" if library_root else "data")
         data_dir = _resolve_directory("CONNLAB_DATA_DIR", data_default, root_dir)
-        projects_dir = _resolve_directory("CONNLAB_PROJECTS_DIR", mutable_root / ("Projects" if library_root else "projects"), root_dir)
+        projects_dir = _resolve_configured_directory("CONNLAB_PROJECTS_DIR", paths_config.get("projects_dir"), library_root / "Projects" if library_root else output_path(environment, "Projects"), root_dir)
         database_path = _resolve_file_path("CONNLAB_DATABASE_PATH", data_default / "connlab.sqlite3", root_dir)
         if library_root and any(not path.resolve().is_relative_to(library_root) for path in (data_dir, projects_dir, database_path)):
             raise ValueError("Data, projects and database must remain inside the selected project library.")
@@ -125,6 +134,9 @@ class Settings:
         workbook_config = local_config.get("ltr_workbook", {})
         admin_workbook_config = admin_config.get("ltr_workbook", {})
         test_record_config = local_config.get("test_record", {})
+        workbook_settings = _load_ltr_workbook_settings(root_dir, workbook_config, admin_workbook_config)
+        if environment == "release" and not workbook_settings.modify_password:
+            workbook_settings = replace(workbook_settings, write_enabled=False)
         settings = cls(
             data_dir=data_dir,
             projects_dir=projects_dir,
@@ -136,6 +148,8 @@ class Settings:
             ),
             database_path=database_path,
             library_root=library_root,
+            environment=environment,
+            projects_directory_explicit=bool(paths_config.get("projects_dir") or (os.getenv("CONNLAB_PROJECTS_DIR") and os.getenv("CONNLAB_PROJECTS_DIR") != json.loads(os.getenv("CONNLAB_MANAGED_ENV_DEFAULTS", "{}" )).get("CONNLAB_PROJECTS_DIR"))),
             log_level=os.getenv("CONNLAB_LOG_LEVEL", DEFAULT_LOG_LEVEL).strip().upper()
             or DEFAULT_LOG_LEVEL,
             contact_measurement_plan_authority_enabled=(
@@ -143,11 +157,7 @@ class Settings:
                     os.getenv("CONNLAB_CONTACT_MEASUREMENT_PLAN_AUTHORITY_ENABLED")
                 )
             ),
-            ltr_workbook=_load_ltr_workbook_settings(
-                root_dir,
-                workbook_config,
-                admin_workbook_config,
-            ),
+            ltr_workbook=workbook_settings,
             test_record=_load_test_record_settings(root_dir, test_record_config),
         )
         settings.ensure_directories()
@@ -155,7 +165,8 @@ class Settings:
 
     def ensure_directories(self) -> None:
         """Create configured directories when they do not exist yet."""
-        for path in (self.data_dir, self.projects_dir, self.templates_dir):
+        # Business outputs and read-only template locations are resolved at first use.
+        for path in (self.data_dir,):
             path.mkdir(parents=True, exist_ok=True)
 
 
@@ -223,13 +234,26 @@ def _load_admin_config(base_dir: Path) -> dict:
     try:
         path.lstat()
     except FileNotFoundError:
+        from backend.shared.runtime_environment import runtime_environment
+        if runtime_environment() == "release":
+            return {}
         _bootstrap_admin_config(path)
     except OSError as exc:
+        from backend.shared.runtime_environment import runtime_environment
+        if runtime_environment() == "release":
+            import logging
+            logging.getLogger(__name__).warning("Administrator workbook configuration is unavailable; workbook writes require configured credentials.")
+            return {}
         raise _admin_config_error(path, "inspect", exc) from exc
     try:
         with path.open("rb") as handle:
             return tomllib.load(handle)
     except OSError as exc:
+        from backend.shared.runtime_environment import runtime_environment
+        if runtime_environment() == "release":
+            import logging
+            logging.getLogger(__name__).warning("Administrator workbook configuration is unavailable; workbook writes require configured credentials.")
+            return {}
         raise _admin_config_error(path, "read", exc) from exc
 
 

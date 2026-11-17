@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../../runtimeEnvironment";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
@@ -17,17 +18,17 @@ export function ProjectLibraryList(props: Props) {
 function ProjectLibraryResults({ onOpen, onOpenLinked, onBack, onImport, batchId = "", onViewAll }: Props) {
   // A new batch must not inherit filters that can hide the projects just received.
   const storageKey = batchId ? `connlab.projectLibrary.batch:${batchId}` : "connlab.projectLibrary";
-  const [search, setSearch] = useState(() => sessionStorage.getItem(`${storageKey}.search`) ?? "");
+  const [search, setSearch] = useState(() => runtimeSessionStorage.getItem(`${storageKey}.search`) ?? "");
   const query = useDeferredValue(search);
   const [rows, setRows] = useState<ProjectRow[]>([]);
-  const [page, setPage] = useState(() => Math.max(1, Number(sessionStorage.getItem(`${storageKey}.page`)) || 1));
+  const [page, setPage] = useState(() => Math.max(1, Number(runtimeSessionStorage.getItem(`${storageKey}.page`)) || 1));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const previous = useRef({ query, batchId });
   const topBar = useTopBarActionsRoot();
-  useEffect(() => { sessionStorage.setItem(`${storageKey}.search`, search); }, [storageKey, search]);
-  useEffect(() => { sessionStorage.setItem(`${storageKey}.page`, String(page)); }, [storageKey, page]);
+  useEffect(() => { runtimeSessionStorage.setItem(`${storageKey}.search`, search); }, [storageKey, search]);
+  useEffect(() => { runtimeSessionStorage.setItem(`${storageKey}.page`, String(page)); }, [storageKey, page]);
   useEffect(() => {
     const request = new AbortController();
     if (query !== previous.current.query || batchId !== previous.current.batchId) setPage(1);

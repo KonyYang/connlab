@@ -66,10 +66,7 @@ class MaterialReceiptFiles:
         return self.control.plan(plan_id, fingerprint, "material_receipt")
 
     def default_root(self):
-        documents = checked_path(user_documents_directory())
-        if not documents.is_dir():
-            raise ValueError("Documents is unavailable. Set the Materials library folder in Settings.")
-        return documents / "ConnLab" / "Materials"
+        return self.settings.output_path("Materials")
 
     def root(self, value, *, create=False):
         root = checked_path(value, must_exist=not create)
@@ -77,8 +74,8 @@ class MaterialReceiptFiles:
         if root.is_relative_to(data) or data.is_relative_to(root):
             raise ValueError("The materials library folder must be separate from ConnLab internal data.")
         if create:
-            root.mkdir(parents=True, exist_ok=True)
-            root = checked_path(root)
+            from backend.infrastructure.files.default_storage_directory import DefaultStorageDirectory
+            root = DefaultStorageDirectory().create(root)
         if not root.is_dir():
             raise ValueError("Choose an available Materials library folder.")
         return root

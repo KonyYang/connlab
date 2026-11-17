@@ -177,6 +177,17 @@ from backend.api.routes_contact_measurement_plan_draft_workbook import (
 
 
 app = FastAPI(title="ConnLab API")
+from backend.api.runtime_binding import install_runtime_binding, initialize_runtime_binding, RuntimeChanged
+install_runtime_binding(app, lambda: getattr(app.state, "runtime_binding", None))
+
+@app.get("/api/runtime-environment")
+def runtime_environment_metadata():
+    try:
+        return initialize_runtime_binding(app).metadata()
+    except RuntimeChanged as error:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"detail": str(error)}, status_code=503)
+
 app.include_router(local_identity_router)
 _request_logger = logging.getLogger("connlab.api.requests")
 

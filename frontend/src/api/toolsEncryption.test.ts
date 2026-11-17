@@ -1,29 +1,30 @@
+import {runtimeResponse} from "./runtime.testHelpers";
 import { afterEach, expect, it, vi } from "vitest";
 import { encryptStandaloneFolder, encryptLocalFolder, encryptLocalFile } from "./client";
 
 afterEach(() => vi.unstubAllGlobals());
 
 it("starts native single-file processing without upload or download", async () => {
-  const mock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ cancelled: true })));
+  const mock = vi.fn().mockResolvedValue(runtimeResponse(JSON.stringify({ cancelled: true })));
   vi.stubGlobal("fetch", mock);
   expect(await encryptLocalFile()).toEqual({ cancelled: true });
   expect(mock.mock.calls[0][0]).toContain("/api/tools/encrypt-local-file");
   expect(mock.mock.calls[0][1].body).toBeUndefined();
-  expect(mock.mock.calls[0][1].headers).toMatchObject({ "X-ConnLab-Local-Encryption": "1" });
+  expect(new Headers(mock.mock.calls[0][1].headers).get("X-ConnLab-Local-Encryption")).toBe("1");
 });
 
 it("starts native local-folder processing with no file body", async () => {
   const value = { cancelled: true };
-  const mock = vi.fn().mockResolvedValue(new Response(JSON.stringify(value)));
+  const mock = vi.fn().mockResolvedValue(runtimeResponse(JSON.stringify(value)));
   vi.stubGlobal("fetch", mock);
   expect(await encryptLocalFolder()).toEqual(value);
   expect(mock.mock.calls[0][0]).toContain("/api/tools/encrypt-local-folder");
   expect(mock.mock.calls[0][1].body).toBeUndefined();
-  expect(mock.mock.calls[0][1].headers).toMatchObject({ "X-ConnLab-Local-Encryption": "1" });
+  expect(new Headers(mock.mock.calls[0][1].headers).get("X-ConnLab-Local-Encryption")).toBe("1");
 });
 
 it("uploads files with recursive relative paths and reads the ZIP outcome counts", async () => {
-  const mock = vi.fn().mockResolvedValue(new Response("zip", { headers: {
+  const mock = vi.fn().mockResolvedValue(runtimeResponse("zip", { headers: {
     "Content-Disposition": "attachment; filename=Encrypted_Folder.zip",
     "X-Encryption-Summary": '{"succeeded":0,"failed":1,"skipped":0}',
   } }));
@@ -40,12 +41,12 @@ it("uploads files with recursive relative paths and reads the ZIP outcome counts
 
 it.each(["null", "invalid", '{"succeeded":1,"failed":-1,"skipped":0}', '{"succeeded":2,"failed":0,"skipped":0}'])(
   "does not download when batch verification metadata is invalid: %s", async header => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not verified", { headers: { "X-Encryption-Summary": header } })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(runtimeResponse("not verified", { headers: { "X-Encryption-Summary": header } })));
     await expect(encryptStandaloneFolder([new File(["original"], "report.docx")])).rejects.toThrow("feedback is unavailable");
   });
 
 it("surfaces server validation instead of treating it as a ZIP", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "Select one folder at a time." }), {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(runtimeResponse(JSON.stringify({ detail: "Select one folder at a time." }), {
     status: 422, headers: { "Content-Type": "application/json" },
   })));
   await expect(encryptStandaloneFolder([])).rejects.toThrow("Select one folder at a time");

@@ -30,6 +30,8 @@ CUSTOMER_REPORT_CHILD_FLAG = "--connlab-customer-report-child"
 def create_packaged_server_app(paths: PackagedRuntimePaths):
     """Create the FastAPI app after packaged environment defaults are active."""
     from backend.api.main import app
+    from backend.api.runtime_binding import initialize_runtime_binding
+    initialize_runtime_binding(app)
 
     mount_packaged_frontend(app, paths.frontend_dist)
     return app

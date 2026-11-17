@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../runtimeEnvironment";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../components/layout/TopBarActionsContext";
@@ -456,7 +457,7 @@ function loadProjectRegistryViewState(storageKey: string): ProjectRegistryViewSt
     currentPage: 1,
   };
   try {
-    const raw = window.sessionStorage.getItem(storageKey);
+    const raw = runtimeSessionStorage.getItem(storageKey);
     if (!raw) {
       return fallback;
     }
@@ -476,7 +477,7 @@ function loadProjectRegistryViewState(storageKey: string): ProjectRegistryViewSt
 
 function saveProjectRegistryViewState(storageKey: string, state: ProjectRegistryViewState): void {
   try {
-    window.sessionStorage.setItem(storageKey, JSON.stringify(state));
+    runtimeSessionStorage.setItem(storageKey, JSON.stringify(state));
   } catch {
     // View-state persistence is a convenience only; the table still works if storage is unavailable.
   }
@@ -636,7 +637,7 @@ const LAST_LTR_APPLY_RESULT_KEY = "connlab:last_ltr_apply_result";
 
 function readLastLtrApplyResult(): LastLtrApplyResult | null {
   try {
-    const raw = window.sessionStorage.getItem(LAST_LTR_APPLY_RESULT_KEY);
+    const raw = runtimeSessionStorage.getItem(LAST_LTR_APPLY_RESULT_KEY);
     if (!raw) {
       return null;
     }
@@ -652,7 +653,7 @@ function readLastLtrApplyResult(): LastLtrApplyResult | null {
 
 function clearLastLtrApplyResult(): void {
   try {
-    window.sessionStorage.removeItem(LAST_LTR_APPLY_RESULT_KEY);
+    runtimeSessionStorage.removeItem(LAST_LTR_APPLY_RESULT_KEY);
   } catch {
     // Ignore session-storage failures.
   }

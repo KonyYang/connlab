@@ -122,7 +122,7 @@ def _confirm_basic_information(session):
 
 @pytest.mark.parametrize("replaced", ["local_workspace_path", "official_folder_path", "source_book_path", None])
 @pytest.mark.parametrize("reuse_existing", [False, True])
-def test_later_step_refuses_replaced_workspace_directories_but_allows_new_output_contents(tmp_path, replaced, reuse_existing):
+def test_later_step_refuses_replaced_workspace_directories_but_allows_new_output_contents(tmp_path, replaced, reuse_existing, monkeypatch):
     settings = _settings(tmp_path)
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
     Base.metadata.create_all(engine)
@@ -144,6 +144,16 @@ def test_later_step_refuses_replaced_workspace_directories_but_allows_new_output
         _confirm_basic_information(session)
         session.commit()
     runner = ProjectFolderGenerationRunner(sessions, settings)
+    from functools import wraps
+    from inspect import signature
+    original_factory = deps.get_official_project_workspace_service
+    @wraps(original_factory)
+    def owned_workspace_factory(*args, **kwargs):
+        supplied = kwargs.get("settings", args[1] if len(args) > 1 else None)
+        assert supplied == runner.settings, "The worker must retain its runner's data-instance configuration."
+        return original_factory(*args, **kwargs)
+    owned_workspace_factory.__signature__ = signature(original_factory, eval_str=True)
+    monkeypatch.setattr(deps, "get_official_project_workspace_service", owned_workspace_factory)
     service = runner.service()
     service.dispatch = lambda callback: None
     try:

@@ -23,7 +23,7 @@ def run_desktop_shell(frontend_url: str = DEFAULT_FRONTEND_URL) -> None:
     picker = PyWebViewPathPicker(window_provider=lambda: window_holder.get("window"))
     api = DesktopPathPickerApi(picker=picker)
     window = webview.create_window(
-        "ConnLab",
+        "ConnLab Dev",
         frontend_url,
         js_api=api,
         width=1280,

@@ -13,7 +13,7 @@ class MaterialArchiveService:
         self.store,self.files,self.catalog=store,files,catalog
 
     def _runtime(self):
-        return MaterialReceiptService(self.store.receipts,self.files.configuration_files(),self.catalog).runtime()
+        return MaterialReceiptService(self.store.receipts,self.files.configuration_files(),self.catalog).runtime(ensure_default=True)
 
     def refresh(self):
         runtime=self._runtime(); root=runtime['root_path']

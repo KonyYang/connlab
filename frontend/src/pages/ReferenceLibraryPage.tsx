@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../runtimeEnvironment";
 import {refreshArchive,getArchiveJob,cancelArchiveJob,type WorkbenchCopyContext} from "../api/materialReceipts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { openReferenceFile, searchReferenceLibrary, type ReferenceProject, type BrowseFile } from "../api/referenceLibrary";
@@ -10,7 +11,7 @@ import "./reference-library.css";
 
 const kinds: Record<string,string> = { application: "Application", plan: "Test plan", record: "Test record", report: "Report", photo: "Photo", other: "Other" };
 const sources: Record<string,string> = { connlab: "ConnLab project", received: "Received materials", linked: "Linked folder" };
-const saved = () => { try { return JSON.parse(sessionStorage.getItem("reference-search") ?? "{}"); } catch { return {}; } };
+const saved = () => { try { return JSON.parse(runtimeSessionStorage.getItem("reference-search") ?? "{}"); } catch { return {}; } };
 const initialEntry = () => new URLSearchParams(window.location.search).get("entry") ?? saved().project ?? "";
 const matchesKey = (row: ReferenceProject, key: string) => row.key === key || Boolean(row.member_id && key === "member:" + row.member_id);
 export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenProject: (id:string) => void; copyContext?: WorkbenchCopyContext | null; onOpenMember?: (id:string) => void; onOpenLinked?: (id:string) => void }) {
@@ -35,7 +36,7 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
  const [copy,setCopy] = useState<{project:ReferenceProject;file:BrowseFile} | null>(null);
  useEffect(() => {
   let live=true; const controller=new AbortController(); setBusy(true); setError(""); setBrowseWarnings([]);
-  sessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));
+  runtimeSessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));
   void searchReferenceLibrary(search,source,kind,"",0,controller.signal).then(async result => {
    let rows=result.projects;
    if (!search && source === "all" && kind === "all" && selectedKey && !rows.some(row=>matchesKey(row,selectedKey))) {
@@ -50,7 +51,7 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
   return()=>{live=false;controller.abort();};
  },[search,source,kind,reload]);
  const selected=projects.find(row=>row.key===selectedKey) ?? null;
- useEffect(()=>{sessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));},[selectedKey,search,source,kind]);
+ useEffect(()=>{runtimeSessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));},[selectedKey,search,source,kind]);
  const issues=useMemo(()=>Array.from(new Set([...(error?[error]:[]),...scanWarnings,...warnings,...browseWarnings])),[error,scanWarnings,warnings,browseWarnings]);
  async function refreshIndex(){
   setScanning("working");setScanWarnings([]);

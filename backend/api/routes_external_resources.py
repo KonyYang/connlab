@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from backend.api.dependencies import (
     get_external_resource_service,
+    get_default_storage_locations, get_settings, get_session,
     get_ltr_workbook_local_config_service,
     get_local_path_picker_service,
 )
@@ -78,9 +79,15 @@ def upsert_external_resource(
     ltr_config: LtrWorkbookLocalConfigService = Depends(
         get_ltr_workbook_local_config_service
     ),
+    session=Depends(get_session), settings=Depends(get_settings),
 ) -> ExternalResourceResponse:
     """Register or update an external resource path."""
     try:
+        if request.active and resource_type in {ExternalResourceType.PROJECT_OUTPUT_ROOT, ExternalResourceType.TEMPORARY_MATERIALS_ROOT}:
+            defaults = get_default_storage_locations(session, settings)
+            existing = defaults.resources.get_by_type(resource_type)
+            if existing is None or existing.path != Path(request.path):
+                defaults.directories.create(Path(request.path))
         resource = service.upsert_resource(
             resource_type,
             Path(request.path),
@@ -90,7 +97,7 @@ def upsert_external_resource(
                 value=request.worksheet_name,
             ),
         )
-    except ExternalResourceWorksheetNameError as exc:
+    except (ExternalResourceWorksheetNameError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if resource_type is ExternalResourceType.LTR_WORKBOOK:
         ltr_config.sync_workbook_path(resource.path)

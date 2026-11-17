@@ -29,6 +29,7 @@ def library(tmp_path):
     root = tmp_path / "library"
     settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root)
     settings.ensure_directories()
+    settings.projects_dir.mkdir(parents=True)  # This fixture represents an existing configured destination.
     engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
     init_db(engine)
     app = FastAPI()
@@ -47,6 +48,7 @@ def authority_library(tmp_path):
     root = tmp_path / "library"
     settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root)
     settings.ensure_directories()
+    settings.projects_dir.mkdir(parents=True)  # This fixture represents an existing configured destination.
     engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
     init_db(engine)
 

@@ -1,3 +1,4 @@
+import {getRuntimeEnvironment, storageNamespace} from "./runtimeEnvironment";
 import { useWorkbenchCopyContext } from "./features/material-receipts/useWorkbenchCopyContext";
 import { LegacyPlanningBoundary } from './features/tools/LegacyPlanningBoundary';
 import { lazy, Suspense, useEffect, useRef, useState, type ReactElement } from "react";
@@ -182,7 +183,7 @@ function parseRoute(pathname: string): Route {
 }
 
 function navigate(path: string, state: Record<string, unknown> = {}): void {
-  window.history.pushState(state, "", path);
+  window.history.pushState({...state, connlabRuntimeScope:storageNamespace("history")}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
@@ -191,7 +192,7 @@ function parseCurrentRoute(): Route {
   if (route.name !== "projectBasicInformation") {
     return route;
   }
-  const entryMode = window.history.state?.basicInformationInitialValuesMode;
+  const entryMode = getRuntimeEnvironment() && window.history.state?.connlabRuntimeScope===storageNamespace("history") ? window.history.state?.basicInformationInitialValuesMode : undefined;
   return {
     ...route,
     initialValuesMode: entryMode === "draft" ? "draft" : "authoritative",
@@ -428,7 +429,7 @@ export default function App(): ReactElement {
             }
             // Only a successful autosave marks this history entry as refresh-recoverable.
             window.history.replaceState(
-              { ...window.history.state, basicInformationInitialValuesMode: "draft" },
+              { ...window.history.state, basicInformationInitialValuesMode: "draft", connlabRuntimeScope:storageNamespace("history") },
               "",
               window.location.href
             );

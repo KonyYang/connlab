@@ -10,14 +10,17 @@ class MaterialsGateway(Protocol):
 
 
 class IntakeMaterialsService:
-    def __init__(self, packages, assets, resources, copier: MaterialsGateway):
+    def __init__(self, packages, assets, resources, copier: MaterialsGateway, defaults=None):
         self.packages, self.assets, self.resources = packages, assets, resources
         self.copier = copier
+        self.defaults = defaults
 
     def _source(self, package_id):
         package = self.packages.get(package_id)
         if package is None:
             raise ValueError('The imported request is no longer available. Import it again.')
+        if self.defaults is not None:
+            self.defaults.ensure(ExternalResourceType.TEMPORARY_MATERIALS_ROOT)
         resource = self.resources.get_by_type(ExternalResourceType.TEMPORARY_MATERIALS_ROOT)
         if resource is None or not resource.active:
             raise ValueError('Set Temporary materials folder in Settings before saving.')

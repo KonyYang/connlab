@@ -1,24 +1,28 @@
+import {storageNamespace} from "../../runtimeEnvironment";
 import type { TemperatureWorkspaceDraft } from './temperatureWorkspace';
 
 // This database contains only the replaceable Tools draft, never project records or source paths.
 const DATABASE = 'connlab-temperature-workspace';
+let connectionScope: string | undefined;
 let connection: Promise<IDBDatabase> | undefined;
 let source: Pick<TemperatureWorkspaceDraft['tool'], 'file' | 'table'> | undefined;
 
 function openDatabase(): Promise<IDBDatabase> {
+  const namespace = storageNamespace(DATABASE);
+  if(connectionScope !== namespace){void connection?.then(database=>database.close());connection=undefined;source=undefined;connectionScope=namespace;}
   if (connection) return connection;
   connection = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE, 1);
+    const request = indexedDB.open(namespace, 1);
     request.onupgradeneeded = () => request.result.createObjectStore('workspace');
     request.onsuccess = () => {
       const database = request.result;
-      database.onversionchange = () => { database.close(); connection = undefined; source = undefined; };
+      database.onversionchange = () => { database.close(); if(connectionScope===namespace){connection = undefined; source = undefined;} };
       resolve(database);
     };
     request.onerror = () => reject(request.error);
     request.onblocked = () => reject(new Error('Workspace storage is busy.'));
   });
-  void connection.catch(() => { connection = undefined; });
+  void connection.catch(() => { if(connectionScope===namespace)connection = undefined; });
   return connection;
 }
 
@@ -31,22 +35,28 @@ function completed(transaction: IDBTransaction): Promise<void> {
 }
 
 export async function hasTemperatureWorkspace(): Promise<boolean> {
+  const expectedScope=storageNamespace(DATABASE);
   const database = await openDatabase();
+  if(storageNamespace(DATABASE)!==expectedScope)throw new Error("The data instance changed. Reload before restoring work.");
   const transaction = database.transaction('workspace', 'readonly');
   const done = completed(transaction);
   const count = transaction.objectStore('workspace').count('draft');
   await done;
+  if(storageNamespace(DATABASE)!==expectedScope)throw new Error("The data instance changed. Reload before restoring work.");
   return count.result > 0;
 }
 
 export async function readTemperatureWorkspace(): Promise<TemperatureWorkspaceDraft | null> {
+  const expectedScope=storageNamespace(DATABASE);
   const database = await openDatabase();
+  if(storageNamespace(DATABASE)!==expectedScope)throw new Error("The data instance changed. Reload before restoring work.");
   const transaction = database.transaction('workspace', 'readonly');
   const done = completed(transaction);
   const store = transaction.objectStore('workspace');
   const draft = store.get('draft');
   const original = store.get('source');
   await done;
+  if(storageNamespace(DATABASE)!==expectedScope)throw new Error("The data instance changed. Reload before restoring work.");
   if (!draft.result) return null;
   const tool = draft.result.tool;
   if (draft.result.version !== 1 || !tool || typeof tool.previewId !== 'string' || !draft.result.report || !original.result
@@ -66,7 +76,9 @@ export async function readTemperatureWorkspace(): Promise<TemperatureWorkspaceDr
 }
 
 export async function writeTemperatureWorkspace(value: TemperatureWorkspaceDraft): Promise<void> {
+  const expectedScope=storageNamespace(DATABASE);
   const database = await openDatabase();
+  if(storageNamespace(DATABASE)!==expectedScope)throw new Error("The data instance changed. Reload before restoring work.");
   const transaction = database.transaction('workspace', 'readwrite');
   const done = completed(transaction);
   const store = transaction.objectStore('workspace');
@@ -81,14 +93,18 @@ export async function writeTemperatureWorkspace(value: TemperatureWorkspaceDraft
     throw error;
   }
   await done;
+  if(storageNamespace(DATABASE)!==expectedScope)throw new Error("The data instance changed. Reload before restoring work.");
   if (changedSource) source = { file, table };
 }
 
 export async function clearTemperatureWorkspace(): Promise<void> {
+  const expectedScope=storageNamespace(DATABASE);
   const database = await openDatabase();
+  if(storageNamespace(DATABASE)!==expectedScope)throw new Error("The data instance changed. Reload before restoring work.");
   const transaction = database.transaction('workspace', 'readwrite');
   const done = completed(transaction);
   transaction.objectStore('workspace').clear();
   await done;
+  if(storageNamespace(DATABASE)!==expectedScope)throw new Error("The data instance changed. Reload before restoring work.");
   source = undefined;
 }

@@ -1,10 +1,11 @@
+import {runtimeResponse} from "./runtime.testHelpers";
 import { afterEach, expect, it, vi } from 'vitest';
 import { exportMechanicalReportPackage, type FolderReview } from './mechanicalSummary';
 
 afterEach(() => vi.unstubAllGlobals());
 
 it('exports mechanical sources with their relative names and reviewed identities, without binding a project', async () => {
-  const fetch = vi.fn().mockResolvedValue(new Response(new Blob(['zip']), {
+  const fetch = vi.fn().mockResolvedValue(runtimeResponse(new Blob(['zip']), {
     headers: { 'Content-Disposition': "attachment; filename*=UTF-8''Mechanical_ReportResults.zip" },
   }));
   vi.stubGlobal('fetch', fetch);

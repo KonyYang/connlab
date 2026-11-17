@@ -43,8 +43,11 @@ PyCharm Uvicorn module configuration, use these parameters from the repository r
 backend.api.development:create_app --factory --host 127.0.0.1 --port 8000 --reload
 ```
 
-Launching `backend.api.main:app` directly bypasses this development logging setup.
-The release launcher remains unchanged. Normal diagnostic stages and errors are
+Launching `backend.api.main:app` directly bypasses the explicit development entry.
+Use the supported entry for development path defaults, temporary-file isolation and logging.
+The release launchers explicitly select release; inherited managed development defaults are
+removed before release configuration is read. See [development storage](development_storage_migration.md)
+for default output locations, browser instance binding and the reviewed local relocation. Normal diagnostic stages and errors are
 recorded as they happen; Settings > Support diagnostics > Export diagnostic package
 exports existing logs, not a new recording session. This does not recover earlier
 unlogged events. Do not run multiple backend workers against the same rotating file.

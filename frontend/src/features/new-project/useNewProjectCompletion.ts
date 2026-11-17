@@ -1,3 +1,4 @@
+import {runtimeSessionStorage} from "../../runtimeEnvironment";
 import { useEffect, useState } from "react";
 
 import {
@@ -281,7 +282,7 @@ const LAST_LTR_APPLY_RESULT_KEY = "connlab:last_ltr_apply_result";
 
 function storeLastLtrApplyResult(payload: LastLtrApplyResult): void {
   try {
-    window.sessionStorage.setItem(LAST_LTR_APPLY_RESULT_KEY, JSON.stringify(payload));
+    runtimeSessionStorage.setItem(LAST_LTR_APPLY_RESULT_KEY, JSON.stringify(payload));
   } catch {
     // Ignore storage failures; completion flow should continue.
   }

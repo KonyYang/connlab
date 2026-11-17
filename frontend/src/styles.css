@@ -545,6 +545,9 @@ button {
 }
 
 .top-bar-title-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -889,3 +892,26 @@ input {
 @media(prefers-reduced-motion: reduce) { .sidebar .nav-item { transition: none; } }
 
 .sidebar .sidebar-nav { gap: 6px; }
+
+.runtime-dev-badge {flex:none; padding:2px 6px; border:1px solid #bfd7f2; border-radius:6px; background:#e7f0fb; color:#164aa3; font-size:11px; font-weight:700;}
+.runtime-connection {max-width:36rem; margin:3rem auto; padding:1rem;}
+
+
+@media (max-width: 480px) {
+  .top-bar-projects {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .top-bar-projects .register-toolbar {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .top-bar-projects .project-registry-areas {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+}

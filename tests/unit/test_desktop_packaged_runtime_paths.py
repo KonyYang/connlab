@@ -37,7 +37,7 @@ def test_packaged_paths_use_local_app_data_and_preserve_existing_config(
 
     assert paths.user_root == local_app_data / "ConnLab"
     assert paths.data_dir == local_app_data / "ConnLab" / "data"
-    assert paths.projects_dir == local_app_data / "ConnLab" / "projects"
+    assert paths.projects_dir == Path("D:/ConnLab/Projects")
     assert paths.templates_dir == local_app_data / "ConnLab" / "templates"
     assert paths.logs_dir == local_app_data / "ConnLab" / "logs"
     assert paths.config_dir == local_app_data / "ConnLab" / "config"
@@ -120,7 +120,7 @@ def test_packaged_environment_preserves_explicit_admin_config_path(
     assert explicit_path.parent.exists() is False
 
 
-def test_packaged_settings_bootstrap_only_the_programdata_admin_target(
+def test_packaged_settings_do_not_bootstrap_optional_admin_credentials(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -157,8 +157,9 @@ def test_packaged_settings_bootstrap_only_the_programdata_admin_target(
     apply_packaged_environment_defaults(paths)
     settings = Settings.load(base_dir=release_root)
 
-    assert settings.ltr_workbook.modify_password == "DGLAB"
-    assert admin_path.read_bytes() == b'[ltr_workbook]\nmodify_password = "DGLAB"\n'
+    assert settings.ltr_workbook.modify_password is None
+    assert not settings.ltr_workbook.write_enabled
+    assert not admin_path.exists()
     assert example_path.read_bytes() == example_bytes
     assert development_admin_path.read_bytes() == development_bytes
     assert paths.local_config_path.read_bytes() == local_bytes

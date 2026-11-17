@@ -1,3 +1,4 @@
+import {runtimeResponse} from "./runtime.testHelpers";
 import { afterEach, expect, it, vi } from 'vitest';
 import { downloadTemperatureWorkbook, exportTemperatureReportPackage, importTemperatureWorkbook, type TemperatureDownloadRequest } from './temperature';
 
@@ -5,7 +6,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('uploads manual recovery rows and sheet as multipart without changing the source file', async () => {
   const response = { table: { rows: [['Probe', 'Room', 'Supply'], [25, 20, 10]] }, selection: null, region_issue: 'Check rows.' };
-  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), { headers: { 'Content-Type': 'application/json' } }));
+  const fetch = vi.fn().mockResolvedValue(runtimeResponse(JSON.stringify(response), { headers: { 'Content-Type': 'application/json' } }));
   vi.stubGlobal('fetch', fetch);
   const file = new File(['original source'], 'scanner.xlsx');
   expect(await importTemperatureWorkbook(file, 'Data', { header_row: 1, start_row: 2, end_row: 5 })).toEqual(response);
@@ -20,7 +21,7 @@ it('uploads manual recovery rows and sheet as multipart without changing the sou
 });
 
 it('sends the Excel download request as JSON rather than text', async () => {
-  const fetch = vi.fn().mockResolvedValue(new Response(new Blob(['xlsx']), {
+  const fetch = vi.fn().mockResolvedValue(runtimeResponse(new Blob(['xlsx']), {
     headers: { 'Content-Disposition': "attachment; filename*=UTF-8''curves.xlsx" },
   }));
   vi.stubGlobal('fetch', fetch);
@@ -36,7 +37,7 @@ it('sends the Excel download request as JSON rather than text', async () => {
 });
 
 it('exports the original temperature file and reviewed settings as a portable report package', async () => {
-  const fetch = vi.fn().mockResolvedValue(new Response(new Blob(['zip']), {
+  const fetch = vi.fn().mockResolvedValue(runtimeResponse(new Blob(['zip']), {
     headers: { 'Content-Disposition': "attachment; filename*=UTF-8''scanner_ReportResults.zip" },
   }));
   vi.stubGlobal('fetch', fetch);

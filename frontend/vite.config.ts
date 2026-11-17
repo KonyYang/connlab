@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), {name:"connlab-development-entry",apply:"serve",transformIndexHtml(html){return html.replace('name="connlab-environment" content="release"', 'name="connlab-environment" content="development"');}}],
   test: {
     environment: "jsdom",
     globals: true,

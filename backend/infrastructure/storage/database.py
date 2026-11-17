@@ -92,8 +92,8 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
-def init_db(engine: Engine) -> None:
-    """Create all registered SQLAlchemy tables for the supplied engine."""
+def register_models() -> None:
+    """Register the supported ORM definitions without opening or changing a database."""
     from backend.infrastructure.storage import models  # noqa: F401
     from backend.infrastructure.storage import models_legacy_projects  # noqa: F401
     from backend.infrastructure.storage import models_project_library  # noqa: F401
@@ -106,6 +106,11 @@ def init_db(engine: Engine) -> None:
     from backend.infrastructure.storage import models_result_dataset  # noqa: F401
     from backend.infrastructure.storage import models_report_authoring  # noqa: F401
     from backend.infrastructure.storage import models_project_schedule  # noqa: F401
+
+
+def init_db(engine: Engine) -> None:
+    """Create all registered SQLAlchemy tables for the supplied engine."""
+    register_models()
     from backend.infrastructure.storage.matrix_duration_authority_schema import (
         MATRIX_DURATION_AUTHORITY_TABLES,
         bootstrap_matrix_duration_authority_schema,

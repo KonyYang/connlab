@@ -13,7 +13,13 @@ import uuid
 
 ROOT_SCHEMA = "connlab.pytest-artifacts.v1"
 RUN_SCHEMA = "connlab.pytest-run.v1"
-DEFAULT_ROOT = Path("D:/ConnLabTestArtifacts/pytest")
+import sys
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from backend.shared.runtime_environment import output_path
+
+DEFAULT_ROOT = output_path("development", "TestArtifacts") / "pytest"
 ROOT_ENV = "CONNLAB_PYTEST_ARTIFACT_ROOT"
 
 
