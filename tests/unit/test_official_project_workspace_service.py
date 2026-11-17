@@ -1610,7 +1610,7 @@ def test_completed_record_fails_closed_when_retained_path_is_redirected(
     assert "symbolic link or junction" in preview.blockers[0]
 
 
-def test_missing_recorded_official_folder_can_be_regenerated(
+def test_missing_recorded_official_folder_retains_registration_and_blocks_creation(
     tmp_path: Path,
 ) -> None:
     template = _make_template(tmp_path / "template")
@@ -1642,21 +1642,17 @@ def test_missing_recorded_official_folder_can_be_regenerated(
 
     preview = service.preview("project-1")
 
-    assert preview.status == "ready"
-    assert not preview.blockers
-    assert preview.official_folder_path == workspace / (
-        "DL-2025-11-074 Coolpower Qualification test"
-    )
+    assert preview.status == "inconsistent"
+    assert preview.blockers
+    assert preview.official_folder_path == old_missing_folder
     assert any("missing official project folder" in warning for warning in preview.warnings)
+    original_record = repository.saved
     with pytest.raises(OfficialWorkspaceCreateError, match="cannot be linked"):
         service.adopt_existing("project-1")
-
-    result = service.create("project-1")
-
-    assert result.official_folder_path == preview.official_folder_path
-    assert result.official_folder_path.is_dir()
-    assert repository.saved is not None
-    assert repository.saved.official_folder_path == preview.official_folder_path
+    with pytest.raises(OfficialWorkspaceCreateError):
+        service.create("project-1")
+    assert repository.saved == original_record
+    assert list(workspace.iterdir()) == [source_book]
 
 
 @pytest.mark.parametrize("foreign_manifest", [False, True])
@@ -2350,3 +2346,82 @@ def test_template_created_workspace_uses_registered_location_after_default_chang
     retained_files = list(original.record.local_workspace_path.rglob("operator.txt"))
     assert len(retained_files) == 1 and retained_files[0].read_bytes() == b"manual result"
     assert not (new_root / original.record.dl_number).exists()
+
+
+def test_registered_rebuild_ignores_unused_default_containing_valid_template(tmp_path):
+    future_default = tmp_path / "future-default"
+    template = _make_template(future_default / "template")
+    original_root = tmp_path / "original"
+    original_root.mkdir()
+    repository = _WorkspaceRepo()
+    original_service = _service(tmp_path, repository=repository,
+        settings=OfficialWorkspaceSettings(original_root, template, None))
+    original = original_service.create("project-1")
+    manual = original.official_folder_path / "operator.txt"
+    manual.write_bytes(b"retained operator content")
+    service = _service(tmp_path, repository=repository,
+        settings=OfficialWorkspaceSettings(future_default, template, None))
+
+    assert service.preview("project-1").status == "completed"
+    rebuilt = service.create("project-1", conflict_strategy="backup_and_recreate")
+
+    assert rebuilt.record.local_workspace_path == original.record.local_workspace_path
+    assert rebuilt.official_folder_path.is_dir()
+    retained = list(original.record.local_workspace_path.rglob("operator.txt"))
+    assert len(retained) == 1
+    assert retained[0].read_bytes() == b"retained operator content"
+    assert list(future_default.iterdir()) == [template]
+    assert (template / "Test results" / "Final Examination").is_dir()
+
+
+@pytest.mark.parametrize("change_default", [False, True])
+def test_missing_registered_child_and_manifest_never_replans(tmp_path, change_default):
+    template = _make_template(tmp_path / "template")
+    original_root = tmp_path / "original"
+    original_root.mkdir()
+    repository = _WorkspaceRepo()
+    service = _service(tmp_path, repository=repository,
+        settings=OfficialWorkspaceSettings(original_root, template, None))
+    original = service.create("project-1")
+    manual = original.official_folder_path / "operator.txt"
+    manual.write_bytes(b"retained operator content")
+    retained_folder = tmp_path / "retained-folder"
+    retained_manifest = tmp_path / "retained-manifest.json"
+    original.official_folder_path.rename(retained_folder)
+    original.record.manifest_path.rename(retained_manifest)
+    manifest_bytes = retained_manifest.read_bytes()
+    new_default = tmp_path / "new-default"
+    service = _service(tmp_path, repository=repository, settings=OfficialWorkspaceSettings(
+        new_default if change_default else original_root, template, None))
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "inconsistent"
+    assert preview.blockers
+    assert preview.local_workspace_path == original.record.local_workspace_path
+    assert preview.official_folder_path == original.official_folder_path
+    assert preview.manifest_path == original.record.manifest_path
+    for strategy in (None, "backup_and_recreate"):
+        with pytest.raises(OfficialWorkspaceCreateError):
+            service.create("project-1", conflict_strategy=strategy)
+    assert repository.saved == original.record
+    assert original.record.source_book_path.is_dir()
+    assert not original.official_folder_path.exists()
+    assert not original.record.manifest_path.exists()
+    assert not new_default.exists()
+    assert retained_manifest.read_bytes() == manifest_bytes
+    assert (retained_folder / "operator.txt").read_bytes() == b"retained operator content"
+
+
+def test_new_workspace_rejects_template_inside_its_effective_default_root(tmp_path):
+    root = tmp_path / "new-default"
+    template = _make_template(root / "template")
+    repository = _WorkspaceRepo()
+    service = _service(tmp_path, repository=repository,
+        settings=OfficialWorkspaceSettings(root, template, None))
+
+    with pytest.raises(OfficialWorkspaceCreateError, match="Template source cannot be inside"):
+        service.create("project-1")
+
+    assert repository.saved is None
+    assert list(root.iterdir()) == [template]

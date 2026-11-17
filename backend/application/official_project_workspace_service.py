@@ -499,11 +499,11 @@ class OfficialProjectWorkspaceService:
                         "Recorded official folder is missing; its manifest identity requires manual review."
                     )
                 else:
-                    status = "ready" if template_root is not None else "blocked"
-                    selected_folder = official_folder_path
-                    detail = template_blockers[0] if template_blockers else None
-                    record_warnings.append(
-                        "ConnLab can generate a new official folder from the standard template."
+                    status = "inconsistent"
+                    selected_folder = completed_record.official_folder_path
+                    detail = (
+                        f"{record_inconsistency}. Review the registered location before repair; "
+                        "a missing folder does not authorize creating a replacement."
                     )
                 return OfficialWorkspacePreview(
                     project_id=project_id,
@@ -807,7 +807,7 @@ class OfficialProjectWorkspaceService:
                 "Create will not modify operator-owned content."
             )
         template_root = self._template_root_for_generation(
-            preview.template_path, preview.local_workspace_path
+            preview.template_path, preview.local_workspace_path, preview.local_workspace_root
         )
         preview = replace(
             preview,
@@ -921,9 +921,11 @@ class OfficialProjectWorkspaceService:
         self,
         retained_template_path: Path | None,
         local_workspace_path: Path,
+        effective_workspace_root: Path | None,
     ) -> OfficialTemplateRoot:
         """Resolve a real template only for an operation that will generate files."""
-        workspace_roots = (local_workspace_path.parent, self._settings.local_workspace_root)
+        # Registered workspaces retain their own root; a new default is not their target.
+        workspace_roots = (local_workspace_path.parent, effective_workspace_root)
         candidates = [self._settings.template_path, retained_template_path]
         errors: list[str] = []
         for candidate in dict.fromkeys(path for path in candidates if path is not None):

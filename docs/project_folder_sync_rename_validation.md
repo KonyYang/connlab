@@ -133,3 +133,51 @@ independent Reviewer or QA pass. The current task remains high-risk; this side c
 prohibits subagents. Independent review/QA and primary integration remain outstanding.
 No real business data, active application settings, running services or packaged releases
 were modified. No push or publication is authorized by this follow-up.
+
+
+### Independent review corrections (2026-11-18)
+
+The current User-authorized continuation requests independent review and QA. The
+side-conversation restriction and 357 passed / 3 skipped results above describe the
+previous Developer checkpoint, not the independent evidence for this revision.
+
+Independent review of 553ff559 found two specification defects:
+
+- Explicit rebuild of a registered workspace still rejected an otherwise valid
+  template inside the newly configured, unused default root. Generation now checks
+  the preview's effective root together with the actual workspace parent. For new
+  workspaces that effective root is still the configured default; for registered
+  workspaces it remains the registered root. The operator-tree containment guard is
+  retained.
+- If the registered official child and manifest were both missing while the workspace
+  and Source Book remained, preview could offer new creation. This now reports an
+  inconsistent registration with a blocking reason and retains the recorded paths,
+  whether or not the default changed. Create, explicit rebuild and linking do not
+  authorize replacement of the missing registered folder. The historical test that
+  expected automatic regeneration was updated to the explicitly requested contract.
+
+Developer RED: four cases failed before the production correction: one valid-template
+rebuild was rejected and three missing-child cases returned ready instead of
+inconsistent (a historical synthetic registration and a real created workspace with
+its child/manifest retained elsewhere, with unchanged/changed defaults).
+
+Developer GREEN on the final source/test state: 19 selected cases passed in
+`tests/unit/test_official_project_workspace_service.py`, covering both findings,
+registered-root reuse for available/offline/unset defaults, new-target template
+containment, retained operator-tree rejection, missing/renamed/redirected locations,
+foreign identity and closed-project guards. A further two cases in
+`tests/unit/test_basic_project_workspace_service.py::test_resume_refuses_changed_registered_inputs`
+passed, preserving interrupted unregistered creation rejection after root/LTR changes.
+No complete matrix was rerun by Developer. `git diff --check` passed.
+
+All validation used isolated runtime/config paths under
+`D:/ConnLabDev/TestArtifacts/folder-root-review` and disposable short-path fixtures under
+`D:/ConnLabDev/TestArtifacts/frp`. No real business data, running services, localhost
+application APIs, primary integration or publication were touched. This correction
+changes only the official workspace service, its unit tests and this document, within
+the existing five-path follow-up scope.
+
+Developer self-review (Standards and Spec) has no unresolved findings. Independent
+Reviewer and QA will evaluate the immutable commit separately; their final results
+belong in board/evidence, not the historical Developer counts above. No broader public
+folder synchronization behavior is changed.
