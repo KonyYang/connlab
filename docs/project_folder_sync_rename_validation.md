@@ -7,7 +7,9 @@ Scope: local correction for TASK_FOLDER_SYNC_RENAME_20261117, based on master
 
 The supplied diagnostic archive reports release 649565375a8cfb419169917fcdfe860cc448eaa7.
 On November 17 it records public binding confirmation (200), Auto sync update (409),
-and sync preview (200), with no sync execute request. This does not establish a
+and sync preview (200), with no sync execute request. The preview ran from 13:43:54.177 to 13:44:01.861;
+the 409 Auto sync request ran from 13:43:59.680 to 13:43:59.718 within that preview.
+This does not establish a
 network copy failure. The same Workbench request code is present in development.
 A deferred-preview regression reproduces permanent sync busy state after Auto sync
 supersedes the preview request counter. Creating a binding is separate from copying;
@@ -50,7 +52,7 @@ these fixtures, never current development/release databases or business/public f
 - frontend-targeted.log: 42 hook/selector tests pass, including association continuation,
   deferred preview vs Auto sync in both orderings, explicit execution and navigation guards.
 - backend-red2.log: development and release description-rename cases both fail before fix.
-- backend-final-developer2.log: 21 API tests pass on final executable state. Six cases use
+- backend-final-developer2.log: 21 API tests passed on the first implementation candidate. Six cases use
   explicit development/release Settings and basic/public-context/official-preview as the
   first resolver. They verify Chinese nested file bytes copied to the isolated public
   target, folder opening via a stub OS launcher, durable asset path, preserved custom
@@ -63,3 +65,23 @@ not reach product behavior. Its log is retained separately. No full QA/build/bro
 claim is made here; independent review and QA follow on the committed state. An existing
 packaged executable is not changed by this source correction and requires a separately
 authorized future build to receive it.
+
+## Bounded independent-review corrections
+
+Independent review found two defects in candidate f1f1b8f2. Both were first converted
+into actual API/hook failing regressions (review-red-backend.log and
+review-red-frontend.log), then corrected:
+
+- A keep-custom recovery journal observed before taking the writer lock could be
+  replaced by a later explicit move. Ordinary lookup now reloads and classifies the
+  journal under the canonical lock, and the relocation lock checks that exact
+  keep-custom operation ID again before resume. It cannot automatically resume a
+  newer rename_to_confirmed operation or move the business directory.
+- A boolean request guard survived navigation and blocked a new project's actions.
+  The guard now belongs to an epoch/request pair, resets on project navigation, and
+  every binding/preview/toggle/execute finally releases only its own pair. A late old
+  response cannot release or replace the new project's operation.
+
+Final Developer feedback on this revision is retained in backend-reviewed-developer.log
+(22 API tests) and frontend-reviewed-developer.log (43 hook/selector tests). These are
+narrow affected checks; independent Reviewer/QA remain separate from this self-review.

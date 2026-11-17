@@ -514,6 +514,34 @@ describe("useProjectWorkbenchModel", () => {
     expect(result.current.publicFolderWorkflowPreviews.sync).toBeNull();
   });
 
+  it("allows the next project to preview while an old request is pending without releasing its new owner", async () => {
+    let finishOld!: (value: ReturnType<typeof publicFolderWorkflowPreview>) => void;
+    let finishNew!: (value: ReturnType<typeof publicFolderWorkflowPreview>) => void;
+    apiMocks.previewPublicFolderWorkflowSync
+      .mockReturnValueOnce(new Promise(resolve => { finishOld = resolve; }))
+      .mockReturnValueOnce(new Promise(resolve => { finishNew = resolve; }));
+    const { result, rerender } = renderHook(({id}) => useProjectWorkbenchModel(id), {initialProps:{id:"project-1"}});
+    await waitFor(() => expect(result.current.project).toBeTruthy());
+    let oldRequest!: Promise<void>;
+    act(() => { oldRequest = result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    await waitFor(() => expect(apiMocks.previewPublicFolderWorkflowSync).toHaveBeenCalledTimes(1));
+    apiMocks.getProject.mockResolvedValue({project_id:"project-2", product_name:"Second", requestor:"Lab", status:"active"});
+    apiMocks.previewPublicProjectFolderBinding.mockResolvedValue({project_id:"project-2",status:"bound",blockers:[]});
+    rerender({id:"project-2"});
+    await waitFor(() => expect(result.current.project?.project_id).toBe("project-2"));
+    let newRequest!: Promise<void>;
+    act(() => { newRequest = result.current.onPreviewPublicFolderWorkflowOperation("sync"); });
+    await waitFor(() => expect(apiMocks.previewPublicFolderWorkflowSync).toHaveBeenCalledTimes(2));
+    await act(async () => { finishOld(publicFolderWorkflowPreview("sync")); await oldRequest; });
+    await act(async () => { await result.current.onSetPublicFolderWorkflowAutoSync(true); });
+    expect(apiMocks.setPublicFolderWorkflowAutoSync).not.toHaveBeenCalled();
+    await act(async () => { finishNew(publicFolderWorkflowPreview("sync", {project_id:"project-2"})); await newRequest; });
+    expect(result.current.publicFolderWorkflowBusyOperation).toBeNull();
+    expect(result.current.publicFolderWorkflowConfirmingOperation).toBe("sync");
+    expect(result.current.publicFolderWorkflowPreviews.sync?.project_id).toBe("project-2");
+    expect(apiMocks.executePublicFolderWorkflowSync).not.toHaveBeenCalled();
+  });
+
   it("does not execute when a workflow preview reports conflicts", async () => {
     apiMocks.previewPublicFolderWorkflowSubmit.mockResolvedValueOnce(
       publicFolderWorkflowPreview("submit", {

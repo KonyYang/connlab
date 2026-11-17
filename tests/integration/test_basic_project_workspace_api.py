@@ -314,3 +314,48 @@ finally: engine.dispose()
         with sessions() as session:
             assert deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1").official_folder_path == renamed
         assert not original.exists() and renamed.is_dir()
+
+
+def test_lookup_does_not_resume_a_newer_explicit_rename_after_waiting_for_the_writer(tmp_path, monkeypatch):
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+    from backend.infrastructure.files.recoverable_output_publisher import file_identity
+    from backend.infrastructure.storage.repositories.official_workspace import ProjectOfficialWorkspaceRepository
+    with prepared(tmp_path) as (client, sessions, _, _):
+        original = Path(create(client)["official_project_folder_path"])
+        custom = original.with_name("DL-2026-09-002A retained custom description")
+        original.rename(custom)
+        settings = app.dependency_overrides[deps.get_settings]()
+        publish = ProjectOfficialWorkspaceRepository.publish_relocation
+        monkeypatch.setattr(ProjectOfficialWorkspaceRepository, "publish_relocation",
+            lambda *args, **kwargs: (_ for _ in ()).throw(OSError("interrupted index")))
+        assert client.get("/api/projects/P1/official-workspace/basic/preview").status_code == 409
+        monkeypatch.setattr(ProjectOfficialWorkspaceRepository, "publish_relocation", publish)
+        journal = GenerationJournal(settings.data_dir / "official_folder_relocation")
+        first = journal.read("P1")
+        assert first["strategy"] == "rebind_keep_custom" and first["status"] != "completed"
+        acquire = GenerationJournal.lock
+        injected = False
+        @contextmanager
+        def racing_lock(self, project_id):
+            nonlocal injected
+            if not injected and self.root == settings.data_dir / "project_folder_generation":
+                injected = True
+                with acquire(self, project_id):
+                    with sessions() as other:
+                        service = deps.get_official_folder_relocation_service(other, settings)
+                        service.apply(project_id, "resume", first["context"])
+                        current = ProjectOfficialWorkspaceRepository(other).get_by_project(project_id)
+                        # The competing writer persisted this explicit move but stopped before moving.
+                        pending = journal.create(project_id, "rename_to_confirmed", "new-explicit-move")
+                        pending["effects"]["relocation"] = {
+                            "source":str(custom), "target":str(original), "suggested":str(original),
+                            "directory_identity":file_identity(custom), "record":current}
+                        journal.save(pending)
+            with acquire(self, project_id):
+                yield
+        monkeypatch.setattr(GenerationJournal, "lock", racing_lock)
+        response = client.get("/api/projects/P1/official-workspace/basic/preview")
+        assert response.status_code in {200, 409}, response.text
+        assert custom.is_dir() and not original.exists()
+        retained = journal.read("P1")
+        assert retained["strategy"] == "rename_to_confirmed" and retained["status"] != "completed"
