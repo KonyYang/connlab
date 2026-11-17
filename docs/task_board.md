@@ -726,14 +726,14 @@
         ],
         "activation_head": "e2f5b19c6516b1ff934835da15a26f63ff856393",
         "started_at": "2026-11-16T23:40:47.594136Z",
-        "updated_at": "2026-11-17T01:45:23.021993Z",
+        "updated_at": "2026-11-17T02:44:52.021859Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_DEV_STORAGE_ISOLATION_20261117",
-          "stage": "qa",
+          "stage": "implementation",
           "status": "running",
-          "summary": "Final implementation25d9bb7c87df8940865cfb3e1f4673eecbb3b0ab clean in registered worktree; exact95-path scope. Independent Reviewer final Standards0/Spec0, focused4passed; initial545 core unchanged, follow-up only10 fixture/CSS files. First QA full Python partial936 reports=798pass132F6skip retained, not success; failure causes proven engine fixture setup cache and legacy existing-library fixture directories, not weakened runtime. Developer131prefix+6 real first-use/offline+159 legacy+53 frontend passed. QA real isolated dual backends/browser local/session/IndexedDB File/recovery/late-response/wrong-env, uploads/drafts/cookies/download, restart identity, shared lock and fixed360/640 hit tests passed; evidence D:/ConnLabDev/TestArtifacts/dev-storage-qa-545af2a/evidence. Final full nonOfficePython + fullfrontend/build now starting on25. Actual dev8000/release8765 remain running, no physical migration/backup/rebinding yet. Nine folders candidates, basic11-003 and7 release-root legacy refs held; old LTR journals retained. Browser downloads keep existing browser/user destinations as stated. No push/publication/package/Close.",
+          "summary": "25d9bb7 reviewed/frozen baseline95paths; finalfrontend1318pass1skip and tsc/Vite pass. Full Python clean detached QA checkout D:/PythonProject/connlab-worktrees/qa-dev-storage-25 running session19488 (no globalCONNLABpathoverrides); >1144 reports0F as of10:42. Earlier partial/harness runs retained honestly, not full successes. Real dualbackend/browser/upload/draft/cookie/restart/offline/sharedlock/narrow evidence sealed. New in-scope defect found via real-empty-default-root audit: D:/ConnLabDev/Projects empty parent created09:32:02, no child/business files, mainDB unchanged07:33. Same portability nonempty_graph case had2 guard-denied mkdir/open10:25;0F had masked blocked preview. Developer proved Runner.preview omitted supplied Settings at factory: sessionB but globalsettingsG, wrong B ProjectRoot; RED owner assertion, forwarding-only GREEN. Implementing3 minimal explicitsettings calls (composition preview+worker, dependencies relocation), plus real row/preview/no-global-write regressions; newsubject/review/affectedQA pending. Original25full immutable continues, not advertised as newSHAfull. QA plans test-only child audit hook with synthetic sentinel, no prod hook. Actual dev8000/release8765 running; no backup/copy/rebind/migration/Close yet. Nine source dirs retained; missing basic11-003+7 release-root devrefs held; downloads keep browser/user choices. No push/package/publication.",
           "requires_user": false
         },
         "report": null
