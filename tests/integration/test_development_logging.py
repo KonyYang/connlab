@@ -11,25 +11,35 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture(autouse=True)
-def restore_development_entry_state():
-    snapshot={key:value for key,value in os.environ.items() if key.startswith("CONNLAB_") or key in {"TMP","TEMP"}}
-    old_temp=tempfile.tempdir
-    yield
-    for key in list(os.environ):
-        if key.startswith("CONNLAB_") or key in {"TMP","TEMP"}:
-            os.environ.pop(key,None)
-    os.environ.update(snapshot)
-    tempfile.tempdir=old_temp
-    dependencies=sys.modules.get("backend.api.dependencies")
+def clear_development_runtime_state():
+    dependencies = sys.modules.get("backend.api.dependencies")
     if dependencies:
         if dependencies.get_engine.cache_info().currsize:
             dependencies.get_engine().dispose()
         dependencies.get_session_factory.cache_clear()
         dependencies.get_engine.cache_clear()
-    main=sys.modules.get("backend.api.main")
-    if main and hasattr(main.app.state,"runtime_binding"):
+    main = sys.modules.get("backend.api.main")
+    if main and hasattr(main.app.state, "runtime_binding"):
         del main.app.state.runtime_binding
+
+
+@pytest.fixture(autouse=True)
+def restore_development_entry_state():
+    snapshot = {key: value for key, value in os.environ.items()
+                if key.startswith("CONNLAB_") or key in {"TMP", "TEMP"}}
+    old_temp = tempfile.tempdir
+    # Other HTTP tests may have initialized the process pool before this fixture
+    # selects its isolated database. Startup tests own both ends of that lifetime.
+    clear_development_runtime_state()
+    try:
+        yield
+    finally:
+        clear_development_runtime_state()
+        for key in list(os.environ):
+            if key.startswith("CONNLAB_") or key in {"TMP", "TEMP"}:
+                os.environ.pop(key, None)
+        os.environ.update(snapshot)
+        tempfile.tempdir = old_temp
 
 
 @pytest.mark.parametrize("relative", [False, True])

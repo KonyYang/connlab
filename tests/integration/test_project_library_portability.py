@@ -25,6 +25,7 @@ from backend.infrastructure.storage.repositories.project_library import ProjectL
 def app_at(root, *, managed=True, ltr_authority=None):
     settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root if managed else None)
     settings.ensure_directories()
+    settings.projects_dir.mkdir(parents=True)  # This fixture represents an existing configured destination.
     engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
     init_db(engine)
     app = FastAPI()

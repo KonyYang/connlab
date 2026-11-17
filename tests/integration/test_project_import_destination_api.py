@@ -146,6 +146,7 @@ def test_changed_destination_invalidates_previous_import_confirmation(instance, 
 
 def test_managed_library_keeps_its_explicit_storage_binding(instance, tmp_path):
     client, settings, _ = instance
+    settings.projects_dir.mkdir()  # Existing explicit binding, not first-use initialization.
     client.app.dependency_overrides[get_settings] = lambda: replace(settings, library_root=tmp_path)
     runtime = client.get("/api/project-library/runtime").json()
     assert runtime["configured"] is True and runtime["destination_editable"] is False

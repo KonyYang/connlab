@@ -125,13 +125,17 @@ def test_basic_api_uses_same_canonical_lock_and_preserves_other_writer(tmp_path)
 
 
 
-def test_first_project_save_creates_isolated_default_even_when_materials_library_is_offline(tmp_path):
+@pytest.mark.parametrize("managed", [False, True])
+def test_first_project_save_creates_isolated_default_even_when_materials_library_is_offline(tmp_path, managed):
     from sqlalchemy import delete
     from backend.infrastructure.storage.models import ExternalResourceModel
     from backend.infrastructure.storage.repositories.material_receipt import MaterialReceiptRepository
     from backend.shared.config import Settings
     with prepared(tmp_path) as (client,sessions,_,_):
-        isolated=Settings(tmp_path/"data",tmp_path/"new-default/Projects",tmp_path/"templates",tmp_path/"connlab.sqlite3",output_root=tmp_path/"new-default")
+        project_root = tmp_path / "Projects" if managed else tmp_path / "new-default/Projects"
+        isolated = Settings(tmp_path / "data", project_root, tmp_path / "templates",
+            tmp_path / "connlab.sqlite3", output_root=tmp_path / "new-default",
+            library_root=tmp_path if managed else None)
         app.dependency_overrides[deps.get_settings]=lambda:isolated
         with sessions() as session:
             session.execute(delete(ExternalResourceModel).where(ExternalResourceModel.resource_type==ExternalResourceType.PROJECT_OUTPUT_ROOT.value))
@@ -145,3 +149,15 @@ def test_first_project_save_creates_isolated_default_even_when_materials_library
             assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT).path==isolated.projects_dir
             assert MaterialReceiptRepository(session).settings()["root_path"]==str(tmp_path/"offline-materials")
         assert not (tmp_path/"offline-materials").exists()
+
+        # A persisted binding that goes offline is not another first use.
+        retained=isolated.projects_dir.with_name("retained-offline-copy")
+        isolated.projects_dir.rename(retained)
+        unavailable=client.get("/api/projects/P1/official-workspace/basic/preview")
+        assert unavailable.status_code==200
+        assert unavailable.json()["status"]=="blocked" and not unavailable.json()["directory_available"]
+        rejected=client.post("/api/projects/P1/official-workspace/basic/create",json={"expected_context":unavailable.json()["expected_context"],"request_id":"offline-save"})
+        assert rejected.status_code==409
+        assert not isolated.projects_dir.exists() and retained.is_dir()
+        with sessions() as session:
+            assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT).path==isolated.projects_dir
