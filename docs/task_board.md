@@ -729,14 +729,14 @@
         ],
         "activation_head": "e2f5b19c6516b1ff934835da15a26f63ff856393",
         "started_at": "2026-11-16T23:40:47.594136Z",
-        "updated_at": "2026-11-17T05:37:06.147174Z",
+        "updated_at": "2026-11-17T05:46:57.342861Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_DEV_STORAGE_ISOLATION_20261117",
-          "stage": "qa",
+          "stage": "migration_preflight",
           "status": "running",
-          "summary": "Final914b5d291236840d1cf79ce215e4427af4e19228 clean, exact97paths; independent Reviewer914 Standards0/Spec0,2 ownercontracts pass/28.41s with0 real-root guard events, integrator cleanpreflight. Fix3 injectedSettings forwards+owned preview-session commit; persisted B root/preview+relocation/worker ownership/offline/no-domain-change/no-ambient-write regressions. Immutable25 complete nonOffice Python exit0:4839pass14skip29deselected, frontend1318pass1skip and tsc/Vite pass; dualbackend/browser/upload/drafts/cookie/restart/late-response/offline/sharedlock/narrow evidence sealed. Known25 portablecase only200 had masked globalRoot bug;2guardblocks and09:32 empty actualDProjects parent preserved/audited, no businessfiles touched; original mainDB still07:33. New independent affected QA16 targetfiles/nodes running session34673 in detached D:/PythonProject/connlab-worktrees/qa-dev-storage-914, test-only siteguard with synthetic nestedchild proof, HEAD/module origin assertions; no productCONNLABpath overrides. 25QA checkout preserved. Readonly live runtime endpoints confirm dev8000DB=primary/data, release8765DB=realCUserAppDataConnLab; original project/material cfg unchanged. No actual dev stop/backup/copy/rebind/migration yet. Nine directories candidates; missing11-003+7devrefsReleaseRoot held. Browser/user downloads preserved. No push/publication/package/Close.",
+          "summary": "Final23a951501cf2d107177cd544a34ff27e9e52e768 clean/exact98paths. Reviewer23 0findings2pass; independent finalQA23 12pass exit0 cold prepare/apply/verify no DDL, readonly noDML/source bytes+schema preserved,3child origins correct0guard events. Combined25 full4839pass14skip29deselect,914 affected298pass46child audited,frontend1318pass1pending/build/realdualbrowser all passed. First actualprepare914 failed before any evidence mkdir/backup/copy/DB mutation due cold missing model definitions; pure model registration fixed23, real sqlite_master RO coverage79 tables missingDefs0/unsupported0. First dev CTRL_C stop observed independently; helper had exit1/no final audit, never falsified. Old development service restored via primary run_backend PS10216 at11:27, actualoriginal roots/DB confirmed; release14344/frontend22768/unrelated Excel preserved. No business migration/backup yet. Unique run pointer primarytmp active-migration-run.json ->D:/ConnLabDev/MigrationBackups/20261117-111905-dev-storage-isolation still absent, reuse only after renewed quiescence. Live material/project/temporary config remains old,4+2+3 candidates/no targetchild conflicts; DDevProjects empty parent09:32 retained. Missing11-003+7release refs held; oldBackups/public/originals excluded. Proceed secondstop10216,consistentbackup/controlcopies,verified9copies/exactrebind/no olddelete,independentdata proof,solewriter finish,restartmain/postmerge. No push/package/publication/Close.",
           "requires_user": false
         },
         "report": null
