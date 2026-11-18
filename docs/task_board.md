@@ -647,7 +647,7 @@
   "tasks": {
     "TASK_ENCRYPTION_PICKER_20261118": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\encryption-picker-20261118",
       "branch": "codex/encryption-picker-20261118",
       "resources": [],
@@ -675,78 +675,17 @@
         "risk_reasons": [],
         "activation_head": "47c38fba032c74ba1777652b842a09b247092d8a",
         "started_at": "2026-11-18T10:32:54.583972Z",
-        "updated_at": "2026-11-18T10:39:53.165753Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
+        "updated_at": "2026-11-18T23:45:52.349975Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_ENCRYPTION_PICKER_20261118",
-          "subject": "489b06b0f45dd144ea5b8506af236d5525c0b015",
-          "summary": "Unified Tools encryption entry, shared native foreground Windows selector, and distinct picker-failure feedback. Source and existing copy protections retained.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/routes_tools_folder_encryption.py",
-            "backend/infrastructure/files/windows_dialog_layout.py",
-            "backend/infrastructure/files/windows_path_picker.py",
-            "backend/infrastructure/files/windows_project_folder_dialog.py",
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/features/tools/EncryptionTool.test.tsx",
-            "frontend/src/features/tools/EncryptionTool.tsx",
-            "frontend/src/pages/ToolsPage.test.tsx",
-            "frontend/src/tools.css",
-            "tests/integration/test_tools_local_folder_encryption_api.py",
-            "tests/unit/test_windows_dialog_layout.py",
-            "tests/unit/test_windows_project_folder_dialog.py"
-          ],
-          "validation": [
-            {
-              "name": "Affected backend matrix",
-              "status": "passed",
-              "summary": "92 passed.",
-              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-picker/backend-qa.log"
-            },
-            {
-              "name": "Affected frontend matrix",
-              "status": "passed",
-              "summary": "46 passed.",
-              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-picker/frontend-qa.log"
-            },
-            {
-              "name": "Frontend build",
-              "status": "passed",
-              "summary": "TypeScript and Vite passed sequentially after Vitest.",
-              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-picker/build-qa.log"
-            },
-            {
-              "name": "Real isolated Word encryption",
-              "status": "passed",
-              "summary": "Single and folder API each saved a protected copy; five source/prior hashes unchanged; no sibling/subfolder expansion outside mode.",
-              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-picker/actual-docx-smoke.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Regression tests confirmed the legacy picker and separate entry state, then passed after correction."
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Distinct same-agent focused review; verified resource cleanup, route guard, compatibility, source protection and UI/request flow."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Affected matrix and build on clean fixed subject plus real isolated Word encryption."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "489b06b0f45dd144ea5b8506af236d5525c0b015",
-            "primary_before": "49ef8210e26194b6dcbed98aaef8e9e905818924",
-            "integrated_head": "a9623eda5d9b00e8240c04e8bd1815f1194c0800",
-            "recovered": false
-          }
-        }
+          "stage": "revision",
+          "status": "running",
+          "summary": "User approved implementing revised encryption preview: one split button, anchored choice menu, no default settings control, remember last confirmed mode in runtime-scoped browser preference; cancel preserves it. Local UI revision only.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
