@@ -638,11 +638,11 @@
   "tasks": {
     "TASK_TOOLS_WRENCH_ICON_20261118": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\tools-wrench-icon-20261118",
       "branch": "codex/tools-wrench-icon-20261118",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "4fc57a740d47c4ac1c9cae9837d7ac11bd69435e",
       "task": {
         "task_id": "TASK_TOOLS_WRENCH_ICON_20261118",
         "summary": "Use an outlined wrench for the Tools icon.",
@@ -655,9 +655,45 @@
         "risk_reasons": [],
         "activation_head": "2579981d2ccefb24b617797da36c58db55debc95",
         "started_at": "2026-11-18T10:01:35.497769Z",
-        "updated_at": "2026-11-18T10:01:35.497769Z",
+        "updated_at": "2026-11-18T10:02:48.253531Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_WRENCH_ICON_20261118",
+          "subject": "9842e14eaeef29405420517e4bf322bd67ed2333",
+          "summary": "Replaced the shared Tools glyph with a single outlined wrench using the existing SVG dimensions, stroke and color.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/components/common/UiIcon.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Existing Sidebar tests",
+              "summary": "9 passed; existing Tools navigation test checks selected state and navigation."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff self-review",
+              "summary": "Only the Tools glyph path changed; diff check passed."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Implemented, self-reviewed and ran targeted tests."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "9842e14eaeef29405420517e4bf322bd67ed2333",
+            "primary_before": "5b9a173822232665842a7a530559f47a97d59a0c",
+            "integrated_head": "4fc57a740d47c4ac1c9cae9837d7ac11bd69435e",
+            "recovered": false
+          }
+        }
       }
     }
   }
