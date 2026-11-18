@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LIBRARY_STATUS_HINTS_20261118",
+    "task_id": "TASK_STEP_REPORT_EVIDENCE_20261118",
     "tier": "standard",
-    "subject": "5484492210ecb56262dec8c1288981e27bff2c82",
-    "summary": "Finish compact material-library browsing, selected-file and explicit Workbench copy-target guidance; correct boundary documentation.",
+    "subject": "432255a19702962481c94a92a090dabf6a66d7ef",
+    "summary": "Show current report evidence for the exact selected Matrix step in Workbench and open its read-only source detail in Report Workspace.",
     "disposition": "completed",
-    "decision_ref": "User accepted and requested completed local Close. Verified only isolated acceptance services on 5238/8858 stopped. Preserve local commits, worktree, acceptance database, sample files and validation evidence. No push or publication; --publish-close intentionally omitted. No real business data operation.",
-    "closed_at": "2026-11-17T23:58:15.759335Z"
+    "decision_ref": "User accepted the step report evidence feature and requested local close only; retain local commits, no push.",
+    "closed_at": "2026-11-18T09:52:03.957237Z"
   },
   "retained_history": [
     {
@@ -624,95 +624,18 @@
       "disposition": "completed",
       "decision_ref": "User accepted all three directory rules and explicitly requested local Close on 2026-11-18. Stop only isolated acceptance services; retain local commits, branch/worktree, test database/files and validation records. Do not push or publish; --publish-close intentionally omitted. Services 5217/8837 stopped with ownership evidence in tmp/folder-root-acceptance-20261118-071621/services-stopped.json. No real business data mutation.",
       "closed_at": "2026-11-17T23:29:27.592510Z"
+    },
+    {
+      "task_id": "TASK_LIBRARY_STATUS_HINTS_20261118",
+      "tier": "standard",
+      "subject": "5484492210ecb56262dec8c1288981e27bff2c82",
+      "summary": "Finish compact material-library browsing, selected-file and explicit Workbench copy-target guidance; correct boundary documentation.",
+      "disposition": "completed",
+      "decision_ref": "User accepted and requested completed local Close. Verified only isolated acceptance services on 5238/8858 stopped. Preserve local commits, worktree, acceptance database, sample files and validation evidence. No push or publication; --publish-close intentionally omitted. No real business data operation.",
+      "closed_at": "2026-11-17T23:58:15.759335Z"
     }
   ],
-  "tasks": {
-    "TASK_STEP_REPORT_EVIDENCE_20261118": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\Documents\\Codex\\connlab-step-report-evidence",
-      "branch": "codex/step-report-evidence-20261118",
-      "resources": [],
-      "integrated_head": "cab27c6f344be3c70efa5f87c75e7708632f295c",
-      "task": {
-        "task_id": "TASK_STEP_REPORT_EVIDENCE_20261118",
-        "summary": "Show current report evidence for the exact selected Matrix step in Workbench and open its read-only source detail in Report Workspace.",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Read-only step evidence projection and exact navigation; no execution record, judgement or publication changes.",
-        "scope_paths": [
-          "backend/application/confirmed_matrix_test_record_preview_service.py",
-          "backend/api/routes_confirmed_matrix_test_record_preview.py",
-          "frontend/src/api/client.ts",
-          "frontend/src/features/project-workbench",
-          "frontend/src/features/report-workspace",
-          "frontend/src/pages/ProjectReportWorkspacePage.tsx",
-          "tests/integration/test_confirmed_matrix_test_record_preview_api.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "aa33860ac2b15e8fa5ed3951b43f13fd432d3fe8",
-        "started_at": "2026-11-18T05:04:35.302317Z",
-        "updated_at": "2026-11-18T05:15:18.063097Z",
-        "checkpoint": null,
-        "report": {
-          "validation": [
-            {
-              "status": "passed",
-              "name": "21 backend API and unit tests"
-            },
-            {
-              "status": "passed",
-              "name": "450 frontend regression tests and production build"
-            },
-            {
-              "status": "passed",
-              "name": "Isolated Edge smoke: Workbench pending CR -> exact Report step -> Isolated-CR.csv / Initial Data"
-            }
-          ],
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/routes_confirmed_matrix_test_record_preview.py",
-            "backend/application/confirmed_matrix_test_record_preview_service.py",
-            "frontend/src/api/client.ts",
-            "frontend/src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
-            "frontend/src/features/project-workbench/projectWorkbenchMatrixProjectionSelectors.ts",
-            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-            "frontend/src/features/report-workspace/StepReportEvidence.test.tsx",
-            "frontend/src/features/report-workspace/StepReportEvidence.tsx",
-            "frontend/src/pages/ProjectReportWorkspacePage.tsx",
-            "tests/integration/test_confirmed_matrix_test_record_preview_api.py"
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "432255a19702962481c94a92a090dabf6a66d7ef",
-            "primary_before": "64062babddf7f04feb54d223a0210b76b2a0274b",
-            "integrated_head": "cab27c6f344be3c70efa5f87c75e7708632f295c",
-            "recovered": false
-          },
-          "summary": "Workbench links exact confirmed Matrix step to report coverage, reasons, usage and source detail. Read only; no execution state or report publication.",
-          "subject": "432255a19702962481c94a92a090dabf6a66d7ef",
-          "schema": "connlab.sol-task-report",
-          "task_id": "TASK_STEP_REPORT_EVIDENCE_20261118",
-          "roles": {
-            "reviewer": {
-              "summary": "Same-agent focused scope, identity, read-only and stale response review",
-              "status": "passed"
-            },
-            "qa": {
-              "summary": "Same-agent regression, build and real browser smoke with disposable project",
-              "status": "passed"
-            },
-            "developer": {
-              "summary": "Isolated TDD and implementation",
-              "status": "passed"
-            }
-          },
-          "version": 1
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
