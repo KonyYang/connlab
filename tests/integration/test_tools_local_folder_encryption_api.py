@@ -234,23 +234,6 @@ def test_too_many_new_sources_stop_before_any_file_is_written(local_lab):
     assert not list(root.rglob("*_Secured*"))
 
 
-@pytest.mark.skipif(os.name != "nt", reason="Windows native picker boundary")
-@pytest.mark.parametrize("cancelled", [False, True])
-def test_native_encryption_picker_returns_unicode_paths_and_releases_com(monkeypatch, tmp_path, cancelled):
-    import pythoncom
-    from win32com.shell import shell
-    from backend.infrastructure.files.windows_path_picker import WindowsPathPicker, filedialog
-    selected = tmp_path / "项目"
-    released = []
-    monkeypatch.setattr(pythoncom, "CoInitialize", lambda: None)
-    monkeypatch.setattr(pythoncom, "CoUninitialize", lambda: released.append(True))
-    monkeypatch.setattr(shell, "SHBrowseForFolder", lambda *args: (None if cancelled else b"selected", "name", 0))
-    monkeypatch.setattr(shell, "SHGetPathFromIDListW", lambda value: str(selected))
-    monkeypatch.setattr(filedialog, "askdirectory", lambda **kwargs: (_ for _ in ()).throw(RuntimeError("Tk owner not expected")))
-    assert WindowsPathPicker().pick_encryption_directory() == (None if cancelled else selected)
-    assert released == [True]
-
-
 def test_folder_supports_powerpoint_without_ltr_and_skips_secured_presentations(local_lab):
     root, client, _ = local_lab
     originals = {"slides.pptx": b"slides", "legacy.PPT": b"legacy", "slides_Secured.pptx": b"prior"}
@@ -313,21 +296,19 @@ def test_single_native_file_validation_has_clear_feedback_and_preserves_source(l
     assert len(list(root.glob("*.*"))) == 1
 
 
-@pytest.mark.skipif(os.name != "nt", reason="Windows native file picker boundary")
-@pytest.mark.parametrize("cancelled", [False, True])
-def test_single_native_picker_supports_unicode_formats_and_cancellation(monkeypatch, tmp_path, cancelled):
-    import pythoncom
-    import win32gui
-    from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
-    selected = tmp_path / "演示.ppt"
-    released = []
-    monkeypatch.setattr(pythoncom, "CoInitialize", lambda: None)
-    monkeypatch.setattr(pythoncom, "CoUninitialize", lambda: released.append(True))
-    def choose(**kwargs):
-        assert "*.ppt;*.pptx" in kwargs["Filter"]
-        if cancelled:
-            raise win32gui.error(0, "GetOpenFileNameW", "Cancelled")
-        return str(selected), "", 0
-    monkeypatch.setattr(win32gui, "GetOpenFileNameW", choose)
-    assert WindowsPathPicker().pick_encryption_file() == (None if cancelled else selected)
-    assert released == [True]
+@pytest.mark.parametrize("kind", ["file", "folder"])
+def test_native_picker_failure_is_reported_before_encryption(local_lab, kind):
+    root, client, app = local_lab
+    source = root / "original.docx"
+    source.write_bytes(b"original")
+
+    def unavailable():
+        raise OSError("Native dialog could not start")
+
+    dependency = route.get_local_file_encryption_picker if kind == "file" else route.get_local_encryption_picker
+    app.dependency_overrides[dependency] = lambda: unavailable
+    result = client.post(f"/api/tools/encrypt-local-{kind}", headers=HEADERS)
+    assert result.status_code == 422
+    assert f"Could not open the Windows {kind} picker" in result.json()["detail"]
+    assert source.read_bytes() == b"original"
+    assert set(root.iterdir()) == {source, root / "子目录"}

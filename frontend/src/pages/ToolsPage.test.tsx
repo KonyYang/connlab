@@ -38,7 +38,7 @@ describe("ToolsPage", () => {
     render(<ToolsPage />);
     expect(screen.getAllByRole("button").map(button => button.textContent?.trim())).toEqual([
       "Matrix and Fee planning", "Updated Report Equipments", "Mechanical Summary", "Drawing T-rise",
-      "Generate Customer Report", "Encrypt File", "Batch Encrypt Files",
+      "Generate Customer Report", "Encrypt Files",
     ]);
     fireEvent.change(screen.getByLabelText("Select mechanical test folder"), {
       target: { files: [new File(["source"], "review.pdf", { type: "application/pdf" })] },
@@ -145,19 +145,21 @@ describe("ToolsPage", () => {
   it("selects a local Office file and reports the saved sibling without downloading", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
-    await user.click(screen.getByRole("button", { name: "Encrypt File" }));
+    await user.click(screen.getByRole("button", { name: "Encrypt Files" }));
+    await user.click(screen.getByRole("button", { name: "Choose File" }));
     expect(encryptCopyMock).toHaveBeenCalledWith();
     expect((await screen.findByRole("status", { name: "Saved Encrypted File" })).textContent).toContain("sample_Secured.docx");
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
 
-  it("shows file and batch encryption actions without a redundant heading and leaves cancellation idle", async () => {
+  it("expands both encryption choices and leaves cancellation idle", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
     expect(screen.queryByRole("heading", { name: "Select Office File or Folder" })).toBeNull();
-    const action = screen.getByRole("button", { name: "Encrypt File" });
-    expect(screen.getByRole("button", { name: "Batch Encrypt Files" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Encrypt Files" }));
+    const action = screen.getByRole("button", { name: "Choose File" });
+    expect(screen.getByRole("button", { name: "Choose Folder" })).toBeTruthy();
     expect(screen.queryByLabelText("Select Office File")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Encrypt a Copy" })).toBeNull();
     await user.click(action);
@@ -170,7 +172,8 @@ describe("ToolsPage", () => {
     encryptCopyMock.mockRejectedValueOnce(new Error("Close the Office file and try again."));
     const user = userEvent.setup();
     render(<ToolsPage />);
-    const action = screen.getByRole("button", { name: "Encrypt File" });
+    await user.click(screen.getByRole("button", { name: "Encrypt Files" }));
+    const action = screen.getByRole("button", { name: "Choose File" });
     await user.click(action);
     expect((await screen.findByRole("alert")).textContent).toContain("Close the Office file");
     encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
@@ -188,7 +191,8 @@ describe("ToolsPage", () => {
     encryptCopyMock.mockReturnValueOnce(new Promise(done => { complete = done; }));
     const user = userEvent.setup();
     const rendered = render(<ToolsPage />);
-    await user.click(screen.getByRole("button", { name: "Encrypt File" }));
+    await user.click(screen.getByRole("button", { name: "Encrypt Files" }));
+    await user.click(screen.getByRole("button", { name: "Choose File" }));
     const pending = screen.getByRole("button", { name: "Working..." }) as HTMLButtonElement;
     expect(pending.disabled).toBe(true);
     await user.click(pending);

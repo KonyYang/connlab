@@ -1,4 +1,4 @@
-"""Bound only this thread's project folder dialog before its first activation."""
+"""Position only this thread's native selection dialog before its first activation."""
 from contextlib import contextmanager
 import ctypes
 from ctypes import wintypes
@@ -29,7 +29,7 @@ def _hook_api():
 
 
 @contextmanager
-def compact_folder_dialog():
+def compact_folder_dialog(title: str, *, topmost: bool = False):
     import win32api
     import win32con
     import win32gui
@@ -42,26 +42,28 @@ def compact_folder_dialog():
     @callback_type
     def before_activate(code, hwnd, parameter):
         nonlocal positioned
-        # WH_CBT / HCBT_ACTIVATE. Ignore every window except our exact folder dialog.
+        # WH_CBT / HCBT_ACTIVATE. Ignore every window except our exact selection dialog.
         if code == 5 and not positioned:
             try:
                 if (win32gui.GetClassName(hwnd) == "#32770"
-                        and win32gui.GetWindowText(hwnd) == "Import Projects — choose one project folder"):
+                        and win32gui.GetWindowText(hwnd) == title):
                     positioned = True
                     monitor = win32api.MonitorFromWindow(hwnd, win32con.MONITOR_DEFAULTTONEAREST)
                     bounds = compact_dialog_bounds(win32api.GetMonitorInfo(monitor)["Work"])
-                    win32gui.SetWindowPos(hwnd, 0, *bounds, win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
+                    insert_after = win32con.HWND_TOPMOST if topmost else 0
+                    flags = win32con.SWP_NOACTIVATE if topmost else win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE
+                    win32gui.SetWindowPos(hwnd, insert_after, *bounds, flags)
             except (OSError, win32gui.error):
                 # Sizing is cosmetic: retain the usable Windows dialog if positioning fails.
-                logger.warning("Could not apply compact folder dialog geometry", exc_info=True)
+                logger.warning("Could not apply compact selection dialog geometry", exc_info=True)
         return api.CallNextHookEx(hook, code, hwnd, parameter)
 
     # A nonzero thread ID keeps the hook local; no DLL injection or global input hook.
     hook = api.SetWindowsHookExW(5, before_activate, None, thread_id)
     if not hook:
-        logger.warning("Could not attach folder dialog layout hook: %s", ctypes.get_last_error())
+        logger.warning("Could not attach selection dialog layout hook: %s", ctypes.get_last_error())
     try:
         yield
     finally:
         if hook and not api.UnhookWindowsHookEx(hook):
-            logger.warning("Could not detach folder dialog layout hook: %s", ctypes.get_last_error())
+            logger.warning("Could not detach selection dialog layout hook: %s", ctypes.get_last_error())
