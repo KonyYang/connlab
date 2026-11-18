@@ -171,9 +171,11 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Standalone Tools folder encryption
 
-- `Encrypt Files` expands explicit `Choose File` and `Choose Folder` actions. Both open the modern
-  Windows Common Item Dialog in front of the current window. File selection saves only the selected file;
-  folder selection processes only direct files, excluding subfolders. Both process `.doc`,
+- The encryption split button opens the most recent accepted source mode directly, starting with
+  `Encrypt File`. Its arrow opens two actions beside it. A completed non-cancelled request remembers
+  the mode for the current browser and data instance. The two modes open the Windows Common Item
+  Dialog. File selection saves only the selected file. Folder selection processes only direct files,
+  excluding subfolders. Both process `.doc`,
   `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` without file uploads or browser downloads.
   Each verified `_Secured` copy is saved beside its
   source; existing names receive ` (1)`, ` (2)`, etc. Original and previous output files are never
