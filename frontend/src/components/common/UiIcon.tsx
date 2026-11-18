@@ -238,13 +238,7 @@ const PATHS: Record<UiIconName, ReactElement> = {
     </>
   ),
   tools: (
-    <>
-      <path d="M4 9h16v11H4z" />
-      <path d="M7 9V6h10v3" />
-      <path d="m9 15 3-3 3 3" />
-      <path d="m12 12 3 3" />
-      <path d="M17 16h.01" />
-    </>
+    <path d="M14 6l4-4a6 6 0 0 0-7.3 7.3l-7.8 7.8a2.8 2.8 0 0 0 4 4l7.8-7.8A6 6 0 0 0 22 6l-4 4z" />
   ),
   library: (
     <>
