@@ -647,11 +647,11 @@
   "tasks": {
     "TASK_ENCRYPTION_PICKER_20261118": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\encryption-picker-20261118",
       "branch": "codex/encryption-picker-20261118",
       "resources": [],
-      "integrated_head": "a9623eda5d9b00e8240c04e8bd1815f1194c0800",
+      "integrated_head": "0bc665330199074e258c73abc20ebf287cdff4f0",
       "task": {
         "task_id": "TASK_ENCRYPTION_PICKER_20261118",
         "summary": "Combine Tools encryption actions and use foreground Windows file/folder selection.",
@@ -675,7 +675,7 @@
         "risk_reasons": [],
         "activation_head": "47c38fba032c74ba1777652b842a09b247092d8a",
         "started_at": "2026-11-18T10:32:54.583972Z",
-        "updated_at": "2026-11-18T23:45:52.349975Z",
+        "updated_at": "2026-11-18T23:53:17.106146Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -685,7 +685,63 @@
           "summary": "User approved implementing revised encryption preview: one split button, anchored choice menu, no default settings control, remember last confirmed mode in runtime-scoped browser preference; cancel preserves it. Local UI revision only.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_ENCRYPTION_PICKER_20261118",
+          "subject": "dc6595e87f97ad461c047686f10acf3948ed82d1",
+          "summary": "Revised encryption to a split button with anchored file/folder menu. Remember the last completed non-cancelled mode per runtime-scoped browser preference. The existing Windows pickers and encryption APIs are reused.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/tools/EncryptionTool.test.tsx",
+            "frontend/src/features/tools/EncryptionTool.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/tools.css"
+          ],
+          "validation": [
+            {
+              "name": "Affected frontend test matrix",
+              "status": "passed",
+              "summary": "47 passed including cancellation, data-scope separation, keyboard and duplicate-request protection.",
+              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-split-button/frontend-qa.log"
+            },
+            {
+              "name": "Frontend build",
+              "status": "passed",
+              "summary": "TypeScript and Vite passed after tests.",
+              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-split-button/build-qa.log"
+            },
+            {
+              "name": "Isolated Chrome narrow-screen check",
+              "status": "passed",
+              "summary": "360 and 640px: correct positioning, no layout shift, clickable menu, Escape focus and remembered mode after reload; intercepted all APIs and made zero real native requests.",
+              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-split-button/browser-qa.log"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Regression on old UI failed and passed after implementing the split action."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Same-agent focused review of exact five-path revision; checked menu dismissal and geometry, scope-specific fallback, source preservation and API compatibility."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Affected tests, build and isolated browser QA on the clean fixed revision."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "dc6595e87f97ad461c047686f10acf3948ed82d1",
+            "primary_before": "e96b42b59d9f53dd5255fad7155fa8c475f1378b",
+            "integrated_head": "0bc665330199074e258c73abc20ebf287cdff4f0",
+            "recovered": false
+          }
+        }
       }
     }
   }
