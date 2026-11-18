@@ -40,6 +40,7 @@ import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
 import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDialog";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import { ReportAuthoringPanel } from "./ReportAuthoringPanel";
+import { StepReportEvidence, type StepLink } from './StepReportEvidence';
 import { getReportAuthoring, adoptCurrentReportWorkingCopy, updateWorkingCopyLlcr, updateWorkingCopyEquipment,
   downloadReportArtifact, type ReportAuthoringState } from "../../api/reportAuthoring";
 import {
@@ -53,6 +54,7 @@ import {
 } from "./reportWorkspaceModel";
 
 type ReportWorkspaceProps = {
+  evidenceStep?: StepLink | null;
   projectId: string;
   onBack: () => void;
   identityLabel?: string;
@@ -68,7 +70,7 @@ type CustomerRegenerationApproval = {
   returnFocusTarget: HTMLButtonElement;
 };
 
-export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector Project" }: ReportWorkspaceProps): ReactElement {
+export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector Project", evidenceStep }: ReportWorkspaceProps): ReactElement {
   const topBarRoot = useTopBarActionsRoot();
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
   const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
@@ -695,6 +697,9 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       {!state && busyAction === "load" && !error ? <div className="panel" role="status">Loading Report Workspace...</div> : null}
       {error ? <ErrorMessage message={error} /> : null}
       {message ? <p className="report-workspace-message" role="status">{message}</p> : null}
+      {evidenceStep && authoringState?.project_id === projectId && <section className="report-workspace-card">
+        <StepReportEvidence projectId={projectId} step={evidenceStep} report={authoringState} />
+      </section>}
 
       {state && authoringReadFailed && <div role="alert" className="report-workspace-blocker">
         <p>Unable to check the selected working copy. Report changes are paused; the official report has not been changed.</p>

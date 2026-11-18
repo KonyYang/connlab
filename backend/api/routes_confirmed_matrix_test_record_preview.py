@@ -22,6 +22,9 @@ router = APIRouter(tags=["confirmed-matrix-test-record-preview"])
 
 
 class ConfirmedMatrixTestRecordPreviewStepResponse(BaseModel):
+    confirmed_group_id: str | None
+    confirmed_row_id: str | None
+    report_step_token: str
     sequence: int
     raw_token: str
     test_item: str
@@ -107,6 +110,9 @@ def _to_step_response(
     step: ConfirmedMatrixTestRecordPreviewStep,
 ) -> ConfirmedMatrixTestRecordPreviewStepResponse:
     return ConfirmedMatrixTestRecordPreviewStepResponse(
+        confirmed_group_id=step.confirmed_group_id,
+        confirmed_row_id=step.confirmed_row_id,
+        report_step_token=f"{step.sequence}{step.suffix_note or ''}",
         sequence=step.sequence,
         raw_token=_display_step_token(step.raw_token, step.suffix_note),
         test_item=step.test_item,

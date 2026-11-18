@@ -25,6 +25,7 @@ export type MatrixProjectionGroupColumn = {
 };
 
 export type MatrixProjectionTokenCell = {
+  evidenceStep?: import('../report-workspace/StepReportEvidence').StepLink;
   tokenReference: string;
   groupKey: string;
   groupLabel: string;
@@ -87,13 +88,17 @@ export function toVisibleMatrixProjectionStatusTone(
 }
 
 function buildTokenCell(
+  preview: ConfirmedMatrixTestRecordPreview,
   rowKey: string,
   group: ConfirmedMatrixTestRecordPreviewGroup,
   step: ConfirmedMatrixTestRecordPreviewStep
 ): MatrixProjectionTokenCell {
   const visibleToken = `${step.sequence}`;
   return {
-    tokenReference: `${rowKey}:${group.group_key}:${step.sequence}:${step.raw_token}`,
+    tokenReference: `${step.confirmed_row_id ?? rowKey}:${group.group_key}:${step.sequence}:${step.raw_token}`,
+    evidenceStep: step.confirmed_group_id && step.confirmed_row_id && step.report_step_token
+      ? {projectId: preview.project_id, matrix: preview.confirmed_matrix_id, group: step.confirmed_group_id,
+         row: step.confirmed_row_id, token: step.report_step_token} : undefined,
     groupKey: group.group_key,
     groupLabel: group.group_label,
     rawToken: visibleToken,
@@ -136,7 +141,7 @@ export function buildMatrixProjectionViewModel(
         cellsByGroupKey: {},
       };
       row.sequence = Math.min(row.sequence, step.sequence);
-      const cell = buildTokenCell(rowKey, group, step);
+      const cell = buildTokenCell(preview, rowKey, group, step);
       row.cellsByGroupKey[group.group_key] = [
         ...(row.cellsByGroupKey[group.group_key] ?? []),
         cell,

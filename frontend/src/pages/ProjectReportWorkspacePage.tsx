@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactElement } from "react";
 import { getProject, getProjectBasicInformation, listProjectLtrs } from "../api/client";
 import { buildProjectIdentityLine } from "../features/projectIdentity";
 import { ReportWorkspace } from "../features/report-workspace/ReportWorkspace";
+import { readStepLink } from "../features/report-workspace/StepReportEvidence";
 import "../workbench.css";
 
 type ProjectReportWorkspacePageProps = {
@@ -46,6 +47,7 @@ export function ProjectReportWorkspacePage({
   }, [projectId]);
 
   return <ReportWorkspace
+    evidenceStep={readStepLink(projectId, window.location.search)}
     identityLabel={identity?.projectId === projectId ? identity.label : "Connector Project"}
     onBack={onBackToWorkbench}
     projectId={projectId}
