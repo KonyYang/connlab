@@ -36,9 +36,9 @@ const savedEncryption = { cancelled: false as const, folder: "D:/Lab", summary: 
 describe("ToolsPage", () => {
   it("orders the tool actions by the laboratory workflow", async () => {
     render(<ToolsPage />);
-    expect(screen.getAllByRole("button").map(button => button.textContent?.trim())).toEqual([
+    expect(screen.getAllByRole("button").map(button => button.getAttribute("aria-label") ?? button.textContent?.trim())).toEqual([
       "Matrix and Fee planning", "Updated Report Equipments", "Mechanical Summary", "Drawing T-rise",
-      "Generate Customer Report", "Encrypt Files",
+      "Generate Customer Report", "Encrypt File", "Encryption options",
     ]);
     fireEvent.change(screen.getByLabelText("Select mechanical test folder"), {
       target: { files: [new File(["source"], "review.pdf", { type: "application/pdf" })] },
@@ -145,8 +145,7 @@ describe("ToolsPage", () => {
   it("selects a local Office file and reports the saved sibling without downloading", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
-    await user.click(screen.getByRole("button", { name: "Encrypt Files" }));
-    await user.click(screen.getByRole("button", { name: "Choose File" }));
+    await user.click(screen.getByRole("button", { name: "Encrypt File", exact: true }));
     expect(encryptCopyMock).toHaveBeenCalledWith();
     expect((await screen.findByRole("status", { name: "Saved Encrypted File" })).textContent).toContain("sample_Secured.docx");
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
@@ -157,13 +156,15 @@ describe("ToolsPage", () => {
     render(<ToolsPage />);
     encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
     expect(screen.queryByRole("heading", { name: "Select Office File or Folder" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Encrypt Files" }));
-    const action = screen.getByRole("button", { name: "Choose File" });
-    expect(screen.getByRole("button", { name: "Choose Folder" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Encryption options" }));
+    const action = screen.getByRole("menuitem", { name: /Encrypt one file/ });
+    expect(screen.getByRole("menuitem", { name: /Encrypt a folder/ })).toBeTruthy();
     expect(screen.queryByLabelText("Select Office File")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Encrypt a Copy" })).toBeNull();
     await user.click(action);
     expect(encryptCopyMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByRole("button", { name: "Encrypt File", exact: true })).toBeTruthy();
     expect(screen.queryByRole("status", { name: "Saved Encrypted File" })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
@@ -172,8 +173,7 @@ describe("ToolsPage", () => {
     encryptCopyMock.mockRejectedValueOnce(new Error("Close the Office file and try again."));
     const user = userEvent.setup();
     render(<ToolsPage />);
-    await user.click(screen.getByRole("button", { name: "Encrypt Files" }));
-    const action = screen.getByRole("button", { name: "Choose File" });
+    const action = screen.getByRole("button", { name: "Encrypt File", exact: true });
     await user.click(action);
     expect((await screen.findByRole("alert")).textContent).toContain("Close the Office file");
     encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
@@ -191,8 +191,7 @@ describe("ToolsPage", () => {
     encryptCopyMock.mockReturnValueOnce(new Promise(done => { complete = done; }));
     const user = userEvent.setup();
     const rendered = render(<ToolsPage />);
-    await user.click(screen.getByRole("button", { name: "Encrypt Files" }));
-    await user.click(screen.getByRole("button", { name: "Choose File" }));
+    await user.click(screen.getByRole("button", { name: "Encrypt File", exact: true }));
     const pending = screen.getByRole("button", { name: "Working..." }) as HTMLButtonElement;
     expect(pending.disabled).toBe(true);
     await user.click(pending);
