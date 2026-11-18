@@ -626,7 +626,38 @@
       "closed_at": "2026-11-17T23:29:27.592510Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_STEP_REPORT_EVIDENCE_20261118": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\Documents\\Codex\\connlab-step-report-evidence",
+      "branch": "codex/step-report-evidence-20261118",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_STEP_REPORT_EVIDENCE_20261118",
+        "summary": "Show current report evidence for the exact selected Matrix step in Workbench and open its read-only source detail in Report Workspace.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Read-only step evidence projection and exact navigation; no execution record, judgement or publication changes.",
+        "scope_paths": [
+          "backend/application/confirmed_matrix_test_record_preview_service.py",
+          "backend/api/routes_confirmed_matrix_test_record_preview.py",
+          "frontend/src/api/client.ts",
+          "frontend/src/features/project-workbench",
+          "frontend/src/features/report-workspace",
+          "frontend/src/pages/ProjectReportWorkspacePage.tsx",
+          "tests/integration/test_confirmed_matrix_test_record_preview_api.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "aa33860ac2b15e8fa5ed3951b43f13fd432d3fe8",
+        "started_at": "2026-11-18T05:04:35.302317Z",
+        "updated_at": "2026-11-18T05:04:35.302317Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
