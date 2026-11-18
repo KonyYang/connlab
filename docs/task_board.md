@@ -644,7 +644,43 @@
       "closed_at": "2026-11-18T09:52:03.957237Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_ENCRYPTION_PICKER_20261118": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\encryption-picker-20261118",
+      "branch": "codex/encryption-picker-20261118",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_ENCRYPTION_PICKER_20261118",
+        "summary": "Combine Tools encryption actions and use foreground Windows file/folder selection.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "One Tools entry plus explicit single-file/folder choices. Reuse the existing native Windows common dialog and encryption APIs; preserve current file protection and output policy. Local isolated validation.",
+        "scope_paths": [
+          "backend/infrastructure/files/windows_path_picker.py",
+          "backend/infrastructure/files/windows_project_folder_dialog.py",
+          "backend/infrastructure/files/windows_dialog_layout.py",
+          "backend/api/routes_tools_folder_encryption.py",
+          "frontend/src/features/tools/EncryptionTool.tsx",
+          "frontend/src/features/tools/EncryptionTool.test.tsx",
+          "frontend/src/pages/ToolsPage.test.tsx",
+          "frontend/src/tools.css",
+          "tests/unit/test_windows_project_folder_dialog.py",
+          "tests/unit/test_windows_dialog_layout.py",
+          "tests/integration/test_tools_local_folder_encryption_api.py",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "47c38fba032c74ba1777652b842a09b247092d8a",
+        "started_at": "2026-11-18T10:32:54.583972Z",
+        "updated_at": "2026-11-18T10:32:54.583972Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
