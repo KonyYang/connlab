@@ -629,11 +629,11 @@
   "tasks": {
     "TASK_STEP_REPORT_EVIDENCE_20261118": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\Documents\\Codex\\connlab-step-report-evidence",
       "branch": "codex/step-report-evidence-20261118",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "cab27c6f344be3c70efa5f87c75e7708632f295c",
       "task": {
         "task_id": "TASK_STEP_REPORT_EVIDENCE_20261118",
         "summary": "Show current report evidence for the exact selected Matrix step in Workbench and open its read-only source detail in Report Workspace.",
@@ -652,9 +652,64 @@
         "risk_reasons": [],
         "activation_head": "aa33860ac2b15e8fa5ed3951b43f13fd432d3fe8",
         "started_at": "2026-11-18T05:04:35.302317Z",
-        "updated_at": "2026-11-18T05:04:35.302317Z",
+        "updated_at": "2026-11-18T05:15:18.063097Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "validation": [
+            {
+              "status": "passed",
+              "name": "21 backend API and unit tests"
+            },
+            {
+              "status": "passed",
+              "name": "450 frontend regression tests and production build"
+            },
+            {
+              "status": "passed",
+              "name": "Isolated Edge smoke: Workbench pending CR -> exact Report step -> Isolated-CR.csv / Initial Data"
+            }
+          ],
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/routes_confirmed_matrix_test_record_preview.py",
+            "backend/application/confirmed_matrix_test_record_preview_service.py",
+            "frontend/src/api/client.ts",
+            "frontend/src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
+            "frontend/src/features/project-workbench/projectWorkbenchMatrixProjectionSelectors.ts",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/features/report-workspace/StepReportEvidence.test.tsx",
+            "frontend/src/features/report-workspace/StepReportEvidence.tsx",
+            "frontend/src/pages/ProjectReportWorkspacePage.tsx",
+            "tests/integration/test_confirmed_matrix_test_record_preview_api.py"
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "432255a19702962481c94a92a090dabf6a66d7ef",
+            "primary_before": "64062babddf7f04feb54d223a0210b76b2a0274b",
+            "integrated_head": "cab27c6f344be3c70efa5f87c75e7708632f295c",
+            "recovered": false
+          },
+          "summary": "Workbench links exact confirmed Matrix step to report coverage, reasons, usage and source detail. Read only; no execution state or report publication.",
+          "subject": "432255a19702962481c94a92a090dabf6a66d7ef",
+          "schema": "connlab.sol-task-report",
+          "task_id": "TASK_STEP_REPORT_EVIDENCE_20261118",
+          "roles": {
+            "reviewer": {
+              "summary": "Same-agent focused scope, identity, read-only and stale response review",
+              "status": "passed"
+            },
+            "qa": {
+              "summary": "Same-agent regression, build and real browser smoke with disposable project",
+              "status": "passed"
+            },
+            "developer": {
+              "summary": "Isolated TDD and implementation",
+              "status": "passed"
+            }
+          },
+          "version": 1
+        }
       }
     }
   }
