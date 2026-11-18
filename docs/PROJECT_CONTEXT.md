@@ -162,8 +162,7 @@ Do not use a dated snapshot as a substitute for the code.
 ### Standalone Tools layout
 
 - Tools presents one compact action area, in workflow order: equipment update, mechanical summary,
-  temperature rise, customer report, then single-file and folder batch encryption. Action groups keep
-  their existing feature state without separate card surfaces. `ToolsFeedback` only places feature
+  temperature rise, customer report, then encryption. Action groups keep their existing feature state without separate card surfaces. `ToolsFeedback` only places feature
   feedback in the page's shared region below all actions, keeping visual and keyboard order aligned;
   it owns no business data. Standalone feature rendering keeps feedback inline.
 - Mechanical Summary opens a multiple-file picker; selecting files reveals the existing review and
@@ -172,8 +171,9 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Standalone Tools folder encryption
 
-- `Encrypt File` opens the native Office file picker and saves only the selected file;
-  `Batch Encrypt Files` opens the native directory picker and processes only direct files, excluding subfolders. Both process `.doc`,
+- `Encrypt Files` expands explicit `Choose File` and `Choose Folder` actions. Both open the modern
+  Windows Common Item Dialog in front of the current window. File selection saves only the selected file;
+  folder selection processes only direct files, excluding subfolders. Both process `.doc`,
   `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` without file uploads or browser downloads.
   Each verified `_Secured` copy is saved beside its
   source; existing names receive ` (1)`, ` (2)`, etc. Original and previous output files are never

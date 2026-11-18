@@ -14,45 +14,15 @@ class WindowsPathPicker:
 
     def pick_encryption_file(self) -> Path | None:
         """Select one original Office file for a separate encrypted sibling."""
-        import pythoncom
-        import win32con
-        import win32gui
+        from backend.infrastructure.files.windows_project_folder_dialog import pick_encryption_source
 
-        pythoncom.CoInitialize()
-        try:
-            selected, _, _ = win32gui.GetOpenFileNameW(
-                Title="Select Office file: save encrypted copy beside original",
-                Filter="Office files\0*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx\0All files\0*.*\0",
-                Flags=win32con.OFN_EXPLORER | win32con.OFN_FILEMUSTEXIST
-                    | win32con.OFN_PATHMUSTEXIST | win32con.OFN_NOCHANGEDIR,
-            )
-            return Path(selected) if selected else None
-        except win32gui.error as exc:
-            if exc.winerror == 0:
-                return None
-            raise RuntimeError("Could not open the Office file picker.") from exc
-        finally:
-            pythoncom.CoUninitialize()
+        return pick_encryption_source(folder=False)
 
     def pick_encryption_directory(self) -> Path | None:
         """Choose where separate encrypted siblings will be saved."""
-        import pythoncom
-        from win32com.shell import shell, shellcon
+        from backend.infrastructure.files.windows_project_folder_dialog import pick_encryption_source
 
-        # API handlers run on worker threads; own the native picker COM lifetime
-        # and avoid an invisible Tk owner window for this local write operation.
-        pythoncom.CoInitialize()
-        try:
-            selection = shell.SHBrowseForFolder(0, None,
-                "Choose folder: encrypted copies will be saved beside originals",
-                # BIF_NEWDIALOGSTYLE is absent from some bundled pywin32 constants.
-                shellcon.BIF_RETURNONLYFSDIRS | 0x0040 | shellcon.BIF_EDITBOX,
-                None, None)
-            if not selection or not selection[0]:
-                return None
-            return Path(shell.SHGetPathFromIDListW(selection[0]))
-        finally:
-            pythoncom.CoUninitialize()
+        return pick_encryption_source(folder=True)
 
     def pick_legacy_project_directory(self) -> Path | None:
         """Choose one existing project in the foreground Windows folder dialog."""

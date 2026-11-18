@@ -1,4 +1,4 @@
-"""Windows Common Item Dialog for a single existing project directory.
+"""Windows Common Item Dialog for existing local files and folders.
 
 Use the native IFileOpenDialog folder mode instead of SHBrowseForFolder's old tree.
 The vtable slots below follow the Windows SDK IFileDialog and IShellItem ABI.
@@ -11,6 +11,14 @@ from pathlib import Path
 from uuid import UUID
 
 from backend.infrastructure.files.windows_dialog_layout import compact_folder_dialog
+
+
+_PROJECT_TITLE = "Import Projects — choose one project folder"
+_OFFICE_FILTER = "*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx"
+
+
+class _FilterSpec(ctypes.Structure):
+    _fields_ = [("name", wintypes.LPCWSTR), ("pattern", wintypes.LPCWSTR)]
 
 
 class _Guid(ctypes.Structure):
@@ -40,6 +48,21 @@ def _check(result):
 
 
 def pick_project_folder() -> Path | None:
+    return _pick_existing_path(_PROJECT_TITLE, "Select folder", folder=True)
+
+
+def pick_encryption_source(*, folder: bool) -> Path | None:
+    """Choose an Office source in front of the window that launched the picker."""
+    import pywintypes
+
+    title = "Select folder to encrypt files" if folder else "Select Office file to encrypt"
+    try:
+        return _pick_existing_path(title, "Select folder" if folder else "Select file", folder=folder, topmost=True)
+    except (pywintypes.com_error, pywintypes.error) as exc:
+        raise OSError("Could not open the Windows encryption picker.") from exc
+
+
+def _pick_existing_path(title: str, button: str, *, folder: bool, topmost: bool = False) -> Path | None:
     import pythoncom
     import win32gui
 
@@ -55,12 +78,17 @@ def pick_project_folder() -> Path | None:
         _check(library.CoCreateInstance(ctypes.byref(clsid), None, 1, ctypes.byref(iid), ctypes.byref(dialog)))
         options = wintypes.DWORD()
         _check(_call(dialog, 10, wintypes.LONG, (ctypes.POINTER(wintypes.DWORD),), ctypes.byref(options)))
-        # PICKFOLDERS | FORCEFILESYSTEM | PATHMUSTEXIST | NOCHANGEDIR | DONTADDTORECENT
-        flags = (options.value | 0x20 | 0x40 | 0x800 | 0x8 | 0x02000000) & ~0x200
+        # FORCEFILESYSTEM | PATHMUSTEXIST | NOCHANGEDIR | DONTADDTORECENT,
+        # then choose exactly one existing file or directory.
+        flags = (options.value | 0x40 | 0x800 | 0x8 | 0x02000000) & ~(0x200 | 0x20 | 0x1000)
+        flags |= 0x20 if folder else 0x1000  # PICKFOLDERS or FILEMUSTEXIST
         _check(_call(dialog, 9, wintypes.LONG, (wintypes.DWORD,), flags))
-        _check(_call(dialog, 17, wintypes.LONG, (wintypes.LPCWSTR,), "Import Projects — choose one project folder"))
-        _check(_call(dialog, 18, wintypes.LONG, (wintypes.LPCWSTR,), "Select folder"))
-        with compact_folder_dialog():
+        if not folder:
+            filters = (_FilterSpec * 1)(_FilterSpec("Word, Excel and PowerPoint files", _OFFICE_FILTER))
+            _check(_call(dialog, 4, wintypes.LONG, (wintypes.UINT, ctypes.POINTER(_FilterSpec)), len(filters), filters))
+        _check(_call(dialog, 17, wintypes.LONG, (wintypes.LPCWSTR,), title))
+        _check(_call(dialog, 18, wintypes.LONG, (wintypes.LPCWSTR,), button))
+        with compact_folder_dialog(title, topmost=topmost):
             result = _call(dialog, 3, wintypes.LONG, (wintypes.HWND,), owner)
         if result & 0xFFFFFFFF == 0x800704C7:
             return None

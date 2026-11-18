@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { encryptLocalFile, encryptLocalFolder, type LocalFolderEncryptionResult } from "../../api/client";
 import { ToolsFeedback } from "./ToolsFeedback";
 
 export function EncryptionTool() {
   const active = useRef(false);
   const generation = useRef(0);
-  const [busy, setBusy] = useState<"file" | "folder" | null>(null);
+  const choicesId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Extract<LocalFolderEncryptionResult, { cancelled: false }> | null>(null);
   const [resultMode, setResultMode] = useState<"file" | "folder" | null>(null);
@@ -16,7 +18,7 @@ export function EncryptionTool() {
     if (active.current) return;
     active.current = true;
     const token = ++generation.current;
-    setBusy(mode);
+    setBusy(true);
     try {
       const response = await (mode === "file" ? encryptLocalFile() : encryptLocalFolder());
       if (generation.current === token && !response.cancelled) {
@@ -28,18 +30,23 @@ export function EncryptionTool() {
         setResult(null);
       }
     } finally {
-      if (generation.current === token) { active.current = false; setBusy(null); }
+      if (generation.current === token) { active.current = false; setBusy(false); }
     }
   }
 
   const saved = result?.entries.find(entry => entry.status === "Encrypted");
-  return <article className="tools-action-group" aria-label="Encrypt a Copy" aria-busy={Boolean(busy)}>
-    <div className="tools-encryption-actions">
-      <button className="primary-action tools-picker-action" type="button" title="Select a Word, Excel or PowerPoint file. Save a _Secured copy beside the original." disabled={Boolean(busy)} onClick={() => void run("file")}>
-        {busy === "file" ? "Working..." : "Encrypt File"}
+  return <article className="tools-action-group" aria-label="Encrypt a Copy" aria-busy={busy}>
+    <button className="primary-action tools-picker-action" type="button" aria-expanded={expanded}
+      aria-controls={choicesId} disabled={busy} onClick={() => setExpanded(!expanded)}>
+      {busy ? "Working..." : "Encrypt Files"}
+    </button>
+    <div id={choicesId} className="tools-encryption-actions" hidden={!expanded}>
+      <p className="tools-card-hint">Encrypted copies are saved beside the originals. Folder selection excludes subfolders.</p>
+      <button className="secondary-action" type="button" disabled={busy} onClick={() => void run("file")}>
+        Choose File
       </button>
-      <button className="secondary-action" type="button" title="Encrypt Word, Excel and PowerPoint files directly in the selected folder. Save _Secured copies beside originals. Subfolders are excluded." disabled={Boolean(busy)} onClick={() => void run("folder")}>
-        {busy === "folder" ? "Working..." : "Batch Encrypt Files"}
+      <button className="secondary-action" type="button" disabled={busy} onClick={() => void run("folder")}>
+        Choose Folder
       </button>
     </div>
     {(error || result) && <ToolsFeedback><div className="tools-action-feedback">

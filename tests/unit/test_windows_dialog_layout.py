@@ -18,12 +18,14 @@ def test_small_work_area_keeps_dialog_within_screen():
     assert x + width < 800 and y + height < 560
 
 
-def test_native_layout_hook_is_local_one_shot_and_released(monkeypatch):
+@pytest.mark.parametrize("topmost", [True, False])
+def test_native_layout_hook_is_local_one_shot_and_released(monkeypatch, topmost):
     import sys
     if sys.platform != "win32":
         pytest.skip("Windows layout adapter")
     from types import SimpleNamespace
     import win32gui
+    import win32con
     import win32api
     from backend.infrastructure.files import windows_dialog_layout as layout
     events = []
@@ -37,16 +39,20 @@ def test_native_layout_hook_is_local_one_shot_and_released(monkeypatch):
         UnhookWindowsHookEx=lambda handle: events.append(("unhook", handle)) or 1)
     monkeypatch.setattr(layout, "_hook_api", lambda: (api, 1234))
     monkeypatch.setattr(win32gui, "GetClassName", lambda hwnd: "#32770")
-    monkeypatch.setattr(win32gui, "GetWindowText", lambda hwnd: "Import Projects — choose one project folder" if hwnd == 321 else "Other dialog")
+    title = "Select Office file to encrypt" if topmost else "Import Projects — choose one project folder"
+    monkeypatch.setattr(win32gui, "GetWindowText", lambda hwnd: title if hwnd == 321 else "Other dialog")
     monkeypatch.setattr(win32api, "MonitorFromWindow", lambda hwnd, flags: 1)
     monkeypatch.setattr(win32api, "GetMonitorInfo", lambda monitor: {"Work": (0, 0, 1920, 1040)})
     monkeypatch.setattr(win32gui, "SetWindowPos", lambda *args: events.append(("position", args)))
     with pytest.raises(RuntimeError, match="show failed"):
-        with layout.compact_folder_dialog():
+        with layout.compact_folder_dialog(title, topmost=topmost):
             callbacks[0](-1, 321, 0)
             callbacks[0](5, 999, 0)
             callbacks[0](5, 321, 0)
             callbacks[0](5, 321, 0)
             raise RuntimeError("show failed")
-    assert len([item for item in events if item[0] == "position"]) == 1
+    positions = [args for event, args in events if event == "position"]
+    assert len(positions) == 1
+    assert positions[0][1] == (win32con.HWND_TOPMOST if topmost else 0)
+    assert bool(positions[0][-1] & win32con.SWP_NOZORDER) is (not topmost)
     assert events[-1] == ("unhook", 55)

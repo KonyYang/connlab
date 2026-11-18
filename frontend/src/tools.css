@@ -28,9 +28,18 @@
   border-radius: 16px;
 }
 
-.tools-action-group, .tools-encryption-actions {
+.tools-action-group {
   display: contents;
 }
+
+.tools-encryption-actions:not([hidden]) {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tools-encryption-actions > p { grid-column: 1 / -1; }
 
 .tools-action-feedback {
   display: grid;

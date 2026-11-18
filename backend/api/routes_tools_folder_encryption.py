@@ -1,7 +1,9 @@
 """Native-selected local files/folders and the compatible isolated-upload endpoint."""
 import json
+import logging
 import shutil
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -17,6 +19,7 @@ from backend.infrastructure.files.tools_local_folder_gateway import ToolsLocalFo
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.shared.config import Settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 MAX_FILE_BYTES = 100 * 1024 * 1024
 MAX_TOTAL_BYTES = 500 * 1024 * 1024
@@ -40,14 +43,24 @@ def _require_local_encryption_request(request: Request) -> None:
         raise HTTPException(403, "Choose the file or folder from ConnLab on this computer.")
 
 
+def _choose_source(picker: Callable[[], Path | None], kind: str) -> Path | None:
+    try:
+        return picker()
+    except (OSError, RuntimeError) as exc:
+        logger.warning("Windows encryption %s picker failed", kind, exc_info=True)
+        raise HTTPException(
+            422, f"Could not open the Windows {kind} picker. Return to ConnLab and try again.",
+        ) from exc
+
+
 @router.post("/encrypt-local-file")
 def encrypt_local_file(request: Request, picker=Depends(get_local_file_encryption_picker),
                        tools: ToolsService = Depends(get_tools_service)):
     _require_local_encryption_request(request)
+    source = _choose_source(picker, "file")
+    if source is None:
+        return {"cancelled": True}
     try:
-        source = picker()
-        if source is None:
-            return {"cancelled": True}
         source = Path(source)
         return ToolsLocalFolderEncryptionService(tools=tools,
             files=ToolsLocalFolderGateway(source.parent)).encrypt_file(source)
@@ -60,10 +73,10 @@ def encrypt_local_file(request: Request, picker=Depends(get_local_file_encryptio
 def encrypt_local_folder(request: Request, picker=Depends(get_local_encryption_picker),
                          tools: ToolsService = Depends(get_tools_service)):
     _require_local_encryption_request(request)
+    folder = _choose_source(picker, "folder")
+    if folder is None:
+        return {"cancelled": True}
     try:
-        folder = picker()
-        if folder is None:
-            return {"cancelled": True}
         return ToolsLocalFolderEncryptionService(tools=tools, files=ToolsLocalFolderGateway(folder)).encrypt()
     except (ToolsError, OSError, RuntimeError) as exc:
         message = str(exc) if isinstance(exc, ToolsError) else "Could not read the selected folder. Check folder access and try again."
