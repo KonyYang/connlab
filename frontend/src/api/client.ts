@@ -2669,6 +2669,9 @@ export type RuntimeProjectionSnapshotRequest = {
 export type ConfirmedMatrixTestRecordPreviewStatus = "ready" | "empty";
 
 export type ConfirmedMatrixTestRecordPreviewStep = {
+  confirmed_group_id?: string | null;
+  confirmed_row_id?: string | null;
+  report_step_token?: string;
   sequence: number;
   raw_token: string;
   test_item: string;

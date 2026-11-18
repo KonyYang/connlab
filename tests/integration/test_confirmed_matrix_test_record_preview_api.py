@@ -72,6 +72,13 @@ def test_confirmed_matrix_test_record_preview_api_happy_path(tmp_path: Path) -> 
         assert payload["groups"][0]["steps"][0]["method"] == ""
         assert payload["groups"][0]["steps"][0]["condition"] == ""
         assert payload["groups"][0]["steps"][0]["requirement"] == ""
+        coverage = client.get("/api/projects/P1/report-workspace/authoring/coverage")
+        assert coverage.status_code == 200
+        assert coverage.json()["matrix_id"] == confirmed_id
+        assert sorted(
+            (step["confirmed_group_id"], step["confirmed_row_id"], step["report_step_token"])
+            for group in payload["groups"] for step in group["steps"]
+        ) == sorted((row["group_id"], row["row_id"], row["step_token"]) for row in coverage.json()["rows"])
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

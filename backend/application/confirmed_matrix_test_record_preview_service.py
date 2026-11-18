@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import re
 from typing import Protocol
 
@@ -55,6 +55,8 @@ class ConfirmedMatrixTestRecordPreviewStep:
     quantity: ConfirmedMatrixTestRecordStepQuantity | None = None
     description: str | None = None
     requirement_is_override: bool = False
+    confirmed_group_id: str | None = None
+    confirmed_row_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +170,8 @@ def _build_group_steps(
                 ConfirmedMatrixTestRecordPreviewStep(
                     sequence=token.sequence,
                     raw_token=token.raw_token,
+                    confirmed_group_id=group.confirmed_group_id,
+                    confirmed_row_id=row.confirmed_row_id,
                     suffix_note=token.suffix_note,
                     test_item=_normalize_text(row.test_item),
                     section=_normalize_text(row.source_section),
@@ -203,31 +207,11 @@ def _apply_llcr_step_requirement_mapping(steps: list[ConfirmedMatrixTestRecordPr
     if initial_value:
         first_index = llcr_indexes[0]
         first_step = steps[first_index]
-        steps[first_index] = ConfirmedMatrixTestRecordPreviewStep(
-            sequence=first_step.sequence,
-            raw_token=first_step.raw_token,
-            suffix_note=first_step.suffix_note,
-            test_item=first_step.test_item,
-            section=first_step.section,
-            method=first_step.method,
-            condition=first_step.condition,
-            requirement=initial_value,
-            quantity=first_step.quantity,
-        )
+        steps[first_index] = replace(first_step, requirement=initial_value)
     if delta_value:
         for index in llcr_indexes[1:]:
             step = steps[index]
-            steps[index] = ConfirmedMatrixTestRecordPreviewStep(
-                sequence=step.sequence,
-                raw_token=step.raw_token,
-                suffix_note=step.suffix_note,
-                test_item=step.test_item,
-                section=step.section,
-                method=step.method,
-                condition=step.condition,
-                requirement=delta_value,
-                quantity=step.quantity,
-            )
+            steps[index] = replace(step, requirement=delta_value)
 
 
 def is_llcr_test_item(test_item: str) -> bool:

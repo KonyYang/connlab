@@ -3,19 +3,7 @@ import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixP
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
-type StepLifecycleStatus = "FAILED" | "IN PROGRESS" | "PASS" | "NOT STARTED";
-
-const STEP_STATUS_BY_TONE: Record<
-  MatrixProjectionTokenCell["statusTone"],
-  StepLifecycleStatus
-> = {
-  not_started: "NOT STARTED",
-  in_progress: "IN PROGRESS",
-  passed: "PASS",
-  failed: "FAILED",
-  review: "IN PROGRESS",
-  retest: "IN PROGRESS",
-};
+import { StepReportEvidence } from '../report-workspace/StepReportEvidence';
 
 export function ProjectWorkbenchExecutionConsole({
   projectId,
@@ -37,7 +25,7 @@ export function ProjectWorkbenchExecutionConsole({
   const selectedGroupLabel =
     selectedProjectionToken?.groupLabel ?? selectedWorkspace?.group_label ?? null;
   const selectedStepToken =
-    selectedProjectionToken?.rawToken ?? selectedWorkspaceToken?.raw_token ?? null;
+    selectedProjectionToken?.evidenceStep?.token ?? selectedProjectionToken?.rawToken ?? selectedWorkspaceToken?.raw_token ?? null;
   const selectedStepItemLabel =
     selectedProjectionToken?.testItem ?? selectedWorkspaceToken?.test_item_label ?? null;
   const stepContextLine =
@@ -47,13 +35,6 @@ export function ProjectWorkbenchExecutionConsole({
     selectedStepItemLabel
       ? `${normalizeStepWorkspaceGroupLabel(selectedGroupLabel)} Step ${selectedStepToken}: ${selectedStepItemLabel}`
       : "Select a Matrix step from the Matrix table";
-  const displayLifecycleStatus = selectedProjectionToken
-    ? STEP_STATUS_BY_TONE[selectedProjectionToken.statusTone]
-    : normalizeLifecycleStatus(selectedWorkspaceToken?.lifecycle_projection);
-  const lifecycleStatusClassSuffix = displayLifecycleStatus
-    .toLowerCase()
-    .replace(/\s+/g, "-");
-
   return (
     <section className="runtime-console-workspace">
       <div className="runtime-console-main">
@@ -72,22 +53,8 @@ export function ProjectWorkbenchExecutionConsole({
             </div>
           </header>
 
-          <section className="runtime-console-step-status-card runtime-console-step-status-compact">
-            <div>
-              <span>Lifecycle status</span>
-              {hasSelectedStep ? (
-                <strong
-                  className={`runtime-console-step-status-${lifecycleStatusClassSuffix}`}
-                >
-                  {displayLifecycleStatus}
-                </strong>
-              ) : (
-                <strong className="runtime-console-step-status-empty">
-                  Select a Matrix step
-                </strong>
-              )}
-            </div>
-          </section>
+          {selectedProjectionToken?.evidenceStep ? <StepReportEvidence projectId={projectId} step={selectedProjectionToken.evidenceStep} />
+            : hasSelectedStep && <p>Report evidence unavailable without a confirmed step identity.</p>}
 
           {selectedProjectionToken ? (
             <StepExecutionContent
@@ -105,14 +72,7 @@ export function ProjectWorkbenchExecutionConsole({
             <StepExecutionEmptyState />
           )}
 
-          <p className="runtime-console-step-supporting">
-            Data import and image evidence will be available after step records are implemented.
-          </p>
 
-          <label className="runtime-console-note-box">
-            Result judgement
-            <textarea readOnly disabled value="Result judgement is not available yet." />
-          </label>
         </aside>
         {sideColumnAfter}
       </div>
@@ -144,19 +104,7 @@ function StepExecutionContent({
           <dt>Requirement</dt>
           <dd>{requirement}</dd>
         </div>
-        <div>
-          <dt>Estimated completion</dt>
-          <dd>Not scheduled</dd>
-        </div>
-        <div>
-          <dt>Actual completion</dt>
-          <dd>Pending execution data</dd>
-        </div>
       </dl>
-      <p className="runtime-console-step-supporting">
-        Execution evidence, charts, and attachments will be managed after step
-        records are implemented.
-      </p>
     </>
   );
 }
@@ -168,27 +116,6 @@ function StepExecutionEmptyState(): ReactElement {
       context.
     </p>
   );
-}
-
-function normalizeLifecycleStatus(
-  lifecycle: string | null | undefined
-): StepLifecycleStatus {
-  const normalized = (lifecycle ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (normalized === "failed" || normalized === "fail") {
-    return "FAILED";
-  }
-  if (normalized === "pass" || normalized === "passed") {
-    return "PASS";
-  }
-  if (
-    normalized === "in_progress" ||
-    normalized === "progress" ||
-    normalized === "review" ||
-    normalized === "retest"
-  ) {
-    return "IN PROGRESS";
-  }
-  return "NOT STARTED";
 }
 
 function normalizeStepWorkspaceGroupLabel(groupLabel: string): string {
