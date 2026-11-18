@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_STEP_REPORT_EVIDENCE_20261118",
-    "tier": "standard",
-    "subject": "432255a19702962481c94a92a090dabf6a66d7ef",
-    "summary": "Show current report evidence for the exact selected Matrix step in Workbench and open its read-only source detail in Report Workspace.",
+    "task_id": "TASK_TOOLS_WRENCH_ICON_20261118",
+    "tier": "micro",
+    "subject": "9842e14eaeef29405420517e4bf322bd67ed2333",
+    "summary": "Use an outlined wrench for the Tools icon.",
     "disposition": "completed",
-    "decision_ref": "User accepted the step report evidence feature and requested local close only; retain local commits, no push.",
-    "closed_at": "2026-11-18T09:52:03.957237Z"
+    "decision_ref": "User requested Close. Local task closure under the established no-push workflow.",
+    "closed_at": "2026-11-18T10:17:03.342458Z"
   },
   "retained_history": [
     {
@@ -633,70 +633,18 @@
       "disposition": "completed",
       "decision_ref": "User accepted and requested completed local Close. Verified only isolated acceptance services on 5238/8858 stopped. Preserve local commits, worktree, acceptance database, sample files and validation evidence. No push or publication; --publish-close intentionally omitted. No real business data operation.",
       "closed_at": "2026-11-17T23:58:15.759335Z"
+    },
+    {
+      "task_id": "TASK_STEP_REPORT_EVIDENCE_20261118",
+      "tier": "standard",
+      "subject": "432255a19702962481c94a92a090dabf6a66d7ef",
+      "summary": "Show current report evidence for the exact selected Matrix step in Workbench and open its read-only source detail in Report Workspace.",
+      "disposition": "completed",
+      "decision_ref": "User accepted the step report evidence feature and requested local close only; retain local commits, no push.",
+      "closed_at": "2026-11-18T09:52:03.957237Z"
     }
   ],
-  "tasks": {
-    "TASK_TOOLS_WRENCH_ICON_20261118": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\tools-wrench-icon-20261118",
-      "branch": "codex/tools-wrench-icon-20261118",
-      "resources": [],
-      "integrated_head": "4fc57a740d47c4ac1c9cae9837d7ac11bd69435e",
-      "task": {
-        "task_id": "TASK_TOOLS_WRENCH_ICON_20261118",
-        "summary": "Use an outlined wrench for the Tools icon.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Update the existing shared Tools SVG glyph, retaining the current navigation and icon styling. Local validation and integration only.",
-        "scope_paths": [
-          "frontend/src/components/common/UiIcon.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "2579981d2ccefb24b617797da36c58db55debc95",
-        "started_at": "2026-11-18T10:01:35.497769Z",
-        "updated_at": "2026-11-18T10:02:48.253531Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_WRENCH_ICON_20261118",
-          "subject": "9842e14eaeef29405420517e4bf322bd67ed2333",
-          "summary": "Replaced the shared Tools glyph with a single outlined wrench using the existing SVG dimensions, stroke and color.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/components/common/UiIcon.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Existing Sidebar tests",
-              "summary": "9 passed; existing Tools navigation test checks selected state and navigation."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff self-review",
-              "summary": "Only the Tools glyph path changed; diff check passed."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Implemented, self-reviewed and ran targeted tests."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "9842e14eaeef29405420517e4bf322bd67ed2333",
-            "primary_before": "5b9a173822232665842a7a530559f47a97d59a0c",
-            "integrated_head": "4fc57a740d47c4ac1c9cae9837d7ac11bd69435e",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
