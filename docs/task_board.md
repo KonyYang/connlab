@@ -692,11 +692,11 @@
   "tasks": {
     "TASK_BROWSER_RELEASE_README_PATHS_20261120": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\release-readme-20261120",
       "branch": "codex/release-readme-20261120",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "c0b8b333eaf443c342f6123d93d3aae06250a2eb",
       "task": {
         "task_id": "TASK_BROWSER_RELEASE_README_PATHS_20261120",
         "summary": "Correct browser release README storage paths and verify the rebuilt portable package locally.",
@@ -709,9 +709,53 @@
         "risk_reasons": [],
         "activation_head": "a75d1218427d8b26e7d10ae4f74609fb883e7e43",
         "started_at": "2026-11-19T23:10:44.102490Z",
-        "updated_at": "2026-11-19T23:10:44.102490Z",
+        "updated_at": "2026-11-19T23:15:05.158594Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_BROWSER_RELEASE_README_PATHS_20261120",
+          "subject": "490d69faaa90fe0c3a7cf241e778b538fa29f409",
+          "summary": "Correct the browser operator README to distinguish the default project folder and per-user configuration/database paths. Rebuilt as a local portable package and verified the unmodified default-port launcher against isolated data.",
+          "scope_ok": true,
+          "changed_paths": [
+            "packaging/README_FOR_BROWSER_OPERATOR.md"
+          ],
+          "validation": [
+            {
+              "name": "README and supported build",
+              "status": "passed",
+              "summary": "Only the browser README changed. Built version 0.1.0 from the exact source commit using the original packaging script; 164 focused tests, TypeScript/Vite and PyInstaller passed.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/release-readme-20261120/build.log"
+            },
+            {
+              "name": "Packaged documentation and full-copy integrity",
+              "status": "passed",
+              "summary": "Packaged README equals tracked source bytes and lists the three requested absolute paths. All 1,323 files of the isolated copy matched; manifest and executable checksum verified.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/release-readme-20261120/install-verification.json"
+            },
+            {
+              "name": "Unmodified Start_ConnLab.bat and isolated restart",
+              "status": "passed",
+              "summary": "Actual batch launch on 127.0.0.1:8765 passed with browser handoff and release defaults. Chrome application and exported diagnostic checks passed; test configuration and project persisted across restart. Owned server ports closed.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/release-readme-20261120/install-verification.json"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Self-reviewed the one-file exact diff and completed the isolated official package and acceptance checks."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "490d69faaa90fe0c3a7cf241e778b538fa29f409",
+            "primary_before": "e06371789a19097fd3df5bbceb30adf50b858368",
+            "integrated_head": "c0b8b333eaf443c342f6123d93d3aae06250a2eb",
+            "recovered": false
+          }
+        }
       }
     }
   }
