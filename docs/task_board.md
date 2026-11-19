@@ -745,11 +745,11 @@
     },
     "TASK_PROJECT_FOLDER_ACTIONS_20261119": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\project-folder-actions-20261119",
       "branch": "codex/project-folder-actions-20261119",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "d189f1fcf319cb17829dd061f8a6f522b605519e",
       "task": {
         "task_id": "TASK_PROJECT_FOLDER_ACTIONS_20261119",
         "summary": "Move the project-folder button out of the sidebar and onto the four project subpage headers.",
@@ -770,9 +770,61 @@
         "risk_reasons": [],
         "activation_head": "64180b75525088eaa0680ce2e06bf29424c2143e",
         "started_at": "2026-11-19T00:11:52.150210Z",
-        "updated_at": "2026-11-19T00:11:52.150210Z",
+        "updated_at": "2026-11-19T00:20:17.882688Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_PROJECT_FOLDER_ACTIONS_20261119",
+          "subject": "427807f12a89582d064fffa8ab7d4cf372cb3014",
+          "summary": "Move folder opening out of global navigation to the Matrix Editor, Fee Evaluation, Basic Information and Report title bars. Use the route project, retain availability checks and preserve Workbench folder actions.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/components/layout/AppShell.tsx",
+            "frontend/src/components/layout/ProjectFolderAction.tsx",
+            "frontend/src/components/layout/Sidebar.test.tsx",
+            "frontend/src/components/layout/Sidebar.tsx",
+            "frontend/src/components/layout/TopBar.test.tsx",
+            "frontend/src/components/layout/TopBar.tsx",
+            "frontend/src/styles.css"
+          ],
+          "validation": [
+            {
+              "name": "App and layout tests",
+              "status": "passed",
+              "summary": "38 passed; covers four project routes, availability changes, stale project checks, clipboard fallback and normal navigation. Successful test code unchanged in final CSS-only refinement.",
+              "evidence": "D:/PythonProject/connlab-worktrees/project-folder-actions-20261119/tmp/project-folder-actions/frontend.log"
+            },
+            {
+              "name": "Frontend build",
+              "status": "passed",
+              "summary": "TypeScript and Vite build passed on final source.",
+              "evidence": "D:/PythonProject/connlab-worktrees/project-folder-actions-20261119/tmp/project-folder-actions/build.log"
+            },
+            {
+              "name": "Isolated Chrome subpage checks",
+              "status": "passed",
+              "summary": "Four actual project routes at 360 and 640px use correct mock open targets. No titles or folder controls clipped; missing folder disabled, Workbench header and global sidebar do not duplicate it. API fixtures intentionally omit unrelated page data; zero real folder opens.",
+              "evidence": "D:/PythonProject/connlab-worktrees/project-folder-actions-20261119/tmp/project-folder-actions/browser-qa-final.log"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Built and self-reviewed the scoped move. Observed failure against old sidebar and verified the new shared control."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "427807f12a89582d064fffa8ab7d4cf372cb3014",
+            "primary_before": "7b6853aa77d9f40cc062b17bc99418624d8c9172",
+            "integrated_head": "d189f1fcf319cb17829dd061f8a6f522b605519e",
+            "recovered": false
+          }
+        }
       }
     }
   }
