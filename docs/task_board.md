@@ -760,6 +760,38 @@
           }
         }
       }
+    },
+    "TASK_LTR_OWNER_DISPLAY_20261119": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\ltr-owner-display-20261119",
+      "branch": "codex/ltr-owner-display-20261119",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LTR_OWNER_DISPLAY_20261119",
+        "summary": "Display formal LTR numbers only for current owners and label transferred numbers in project details.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Read-only registry and Workbench identity display. Keep project states, stored LTR history, and business operations. Local integration and isolated validation only.",
+        "scope_paths": [
+          "backend/application/project_registry_summary_service.py",
+          "backend/api/routes_project.py",
+          "frontend/src/api/client.ts",
+          "frontend/src/features/projectIdentity.ts",
+          "frontend/src/features/projects-registry/projectRegistryLifecycleViews.ts",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+          "frontend/src/pages/ProjectListPage.test.tsx",
+          "tests/integration/test_project_registry_summary_api.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "a44b0b7f542eb2b5285de35521a93e129e9f445b",
+        "started_at": "2026-11-19T12:36:21.242522Z",
+        "updated_at": "2026-11-19T12:36:21.242522Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
