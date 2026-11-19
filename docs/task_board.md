@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LTR_OWNER_DISPLAY_20261119",
-    "tier": "micro",
-    "subject": "b87cdfc11b127b3c743ff2d73ea333f08fa8b761",
-    "summary": "Display formal LTR numbers only for current owners and label transferred numbers in project details.",
+    "task_id": "TASK_ENCRYPTION_PICKER_20261118",
+    "tier": "standard",
+    "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
+    "summary": "Combine Tools encryption actions and use foreground Windows file/folder selection.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local-only close of the LTR duplicate display fix. Retain implementation b87cdfc1, validation evidence in 94b1f778, and the task worktree and test artifacts. No push, publication or packaging.",
-    "closed_at": "2026-11-19T12:44:22.694152Z"
+    "decision_ref": "User authorized local-only close after completed validation was verified. Final implementation 00b7ac2a and integration a7886919 are retained in master. Final validation record 64180b75 and initial validation record 91395a54, task worktree, logs, screenshots and isolated encryption evidence are retained. No push, publication or packaging.",
+    "closed_at": "2026-11-19T12:46:02.406517Z"
   },
   "retained_history": [
     {
@@ -669,108 +669,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local-only closure of the two retired entry points, retaining implementation and verification evidence.",
       "closed_at": "2026-11-19T12:17:39.909041Z"
+    },
+    {
+      "task_id": "TASK_LTR_OWNER_DISPLAY_20261119",
+      "tier": "micro",
+      "subject": "b87cdfc11b127b3c743ff2d73ea333f08fa8b761",
+      "summary": "Display formal LTR numbers only for current owners and label transferred numbers in project details.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local-only close of the LTR duplicate display fix. Retain implementation b87cdfc1, validation evidence in 94b1f778, and the task worktree and test artifacts. No push, publication or packaging.",
+      "closed_at": "2026-11-19T12:44:22.694152Z"
     }
   ],
-  "tasks": {
-    "TASK_ENCRYPTION_PICKER_20261118": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\encryption-picker-20261118",
-      "branch": "codex/encryption-picker-20261118",
-      "resources": [],
-      "integrated_head": "a7886919695ea11c76659455530fc8cf15e04299",
-      "task": {
-        "task_id": "TASK_ENCRYPTION_PICKER_20261118",
-        "summary": "Combine Tools encryption actions and use foreground Windows file/folder selection.",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "One Tools entry plus explicit single-file/folder choices. Reuse the existing native Windows common dialog and encryption APIs; preserve current file protection and output policy. Local isolated validation.",
-        "scope_paths": [
-          "backend/infrastructure/files/windows_path_picker.py",
-          "backend/infrastructure/files/windows_project_folder_dialog.py",
-          "backend/infrastructure/files/windows_dialog_layout.py",
-          "backend/api/routes_tools_folder_encryption.py",
-          "frontend/src/features/tools/EncryptionTool.tsx",
-          "frontend/src/features/tools/EncryptionTool.test.tsx",
-          "frontend/src/pages/ToolsPage.test.tsx",
-          "frontend/src/tools.css",
-          "tests/unit/test_windows_project_folder_dialog.py",
-          "tests/unit/test_windows_dialog_layout.py",
-          "tests/integration/test_tools_local_folder_encryption_api.py",
-          "docs/PROJECT_CONTEXT.md"
-        ],
-        "risk_reasons": [],
-        "activation_head": "47c38fba032c74ba1777652b842a09b247092d8a",
-        "started_at": "2026-11-18T10:32:54.583972Z",
-        "updated_at": "2026-11-19T00:03:53.793577Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_ENCRYPTION_PICKER_20261118",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User clarified that the main encryption button should display the exact currently selected menu action, explicitly distinguishing one file from files inside a folder. Local copy revision.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_ENCRYPTION_PICKER_20261118",
-          "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
-          "summary": "The main button now uses the selected menu action label, explicitly distinguishing one file from the files in a folder. The existing behavior for opening selectors, cancelling and remembering the mode stays in force.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/features/tools/EncryptionTool.test.tsx",
-            "frontend/src/features/tools/EncryptionTool.tsx",
-            "frontend/src/pages/ToolsPage.test.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Relevant frontend tests",
-              "status": "passed",
-              "summary": "25 passed: Tools page and encryption actions.",
-              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-action-copy/frontend.log"
-            },
-            {
-              "name": "Frontend build",
-              "status": "passed",
-              "summary": "TypeScript and Vite succeeded after the tests.",
-              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-action-copy/build.log"
-            },
-            {
-              "name": "Isolated Chrome",
-              "status": "passed",
-              "summary": "320 and 540px: full folder label fits, menu fits, refresh remembers the label, mock endpoints only.",
-              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-action-copy/browser-qa.log"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Shared the labels between the main button and the menu and updated the existing acceptance checks."
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Same-agent focused review of exact diff: copy only, existing selection and native API behavior preserved."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "25 existing behavior checks, build and browser at 320 and 540 pixels passed."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
-            "primary_before": "bb6f27288afcb93ca66b72e0a8c5701ff4e3dc64",
-            "integrated_head": "a7886919695ea11c76659455530fc8cf15e04299",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
