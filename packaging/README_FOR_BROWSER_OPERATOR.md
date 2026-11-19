@@ -21,13 +21,15 @@ If the browser does not open automatically, type that address into Microsoft Edg
 
 ## Important Data Rule
 
-ConnLab keeps your local database, logs, project files, and path settings under:
+The default location for project files is `D:\ConnLab\Projects`. ConnLab uses
+your configured project save location if you choose a different default in Settings.
 
-```text
-%LOCALAPPDATA%\ConnLab
-```
+ConnLab stores the local database, configuration, and logs under `%LOCALAPPDATA%\ConnLab`.
 
-Do not delete this folder unless support explicitly tells you to do so. Installing or copying a newer ConnLab release folder should not remove your existing settings or work data.
+- Database file at `%LOCALAPPDATA%\ConnLab\data\connlab.sqlite3`
+- Local configuration file at `%LOCALAPPDATA%\ConnLab\config\connlab.local.toml`
+
+Keep your project folder and `%LOCALAPPDATA%\ConnLab` when replacing the release folder.
 
 ## First Run
 
