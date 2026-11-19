@@ -141,10 +141,10 @@ it("keeps the old direct folder-linking URL accessible without exposing it in th
 });
 
 vi.mock("./components/layout/AppShell", () => ({
-  AppShell: ({ children, onNavigate, activeRoute, projectId }: { children: ReactNode; onNavigate: (path: string) => void; activeRoute: string; projectId?: string | null }) => (
+  AppShell: ({ children, onNavigate, activeRoute, projectFolderId }: { children: ReactNode; onNavigate: (path: string) => void; activeRoute: string; projectFolderId?: string }) => (
     <>
       <output data-testid="active-area">{activeRoute}</output>
-      <output data-testid="sidebar-project">{projectId ?? "none"}</output>
+      <output data-testid="folder-project">{projectFolderId ?? "none"}</output>
       <nav aria-label="Test sidebar">
         <button type="button" onClick={() => onNavigate("/settings")}>Settings</button>
         <button type="button" onClick={() => onNavigate("/reference")}>Library</button>
@@ -168,16 +168,31 @@ vi.mock("./pages/ProjectWorkbenchPage", () => ({
   ),
 }));
 
-it("passes the open project to the sidebar across page changes and clears it on close", async () => {
+vi.mock("./pages/ProjectFeeEvaluationPage", () => ({ ProjectFeeEvaluationPage: () => <section aria-label="Fee Evaluation" /> }));
+vi.mock("./pages/ProjectReportWorkspacePage", () => ({ ProjectReportWorkspacePage: () => <section aria-label="Report" /> }));
+
+it.each(["matrix-editor", "fee-evaluation", "basic-information", "report-workspace"])(
+  "scopes the folder button to the project on the %s page", async suffix => {
+    window.history.replaceState({}, "", `/projects/P2/${suffix}`);
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByTestId("folder-project").textContent).toBe("P2");
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByTestId("folder-project").textContent).toBe("none");
+    await user.click(within(screen.getByRole("navigation", { name: "Test sidebar" })).getByRole("button", { name: "Projects" }));
+    expect(window.location.pathname).toBe(`/projects/P2/${suffix}`);
+    expect(screen.getByTestId("folder-project").textContent).toBe("P2");
+  }
+);
+
+it("uses Workbench's existing folder controls and returns to the list on close", async () => {
   window.history.replaceState({}, "", "/projects/P1");
   const user = userEvent.setup();
   render(<App />);
-  expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
-  await user.click(screen.getByRole("button", { name: "Settings" }));
-  expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
-  await user.click(within(screen.getByRole("navigation", { name: "Test sidebar" })).getByRole("button", { name: "Projects" }));
+  expect(screen.getByTestId("folder-project").textContent).toBe("none");
   await user.click(await screen.findByRole("button", { name: "Close project" }));
-  expect(screen.getByTestId("sidebar-project").textContent).toBe("none");
+  expect(window.location.pathname).toBe("/projects");
+  expect(screen.getByTestId("folder-project").textContent).toBe("none");
 });
 
 vi.mock("./pages/ProjectBasicInformationPage", () => ({
@@ -342,8 +357,10 @@ it("keeps copy intent separate from sidebar last-project navigation memory",asyn
  expect(receipts.updateCopyContext).toHaveBeenCalledTimes(count);
  await user.click(screen.getByRole("button",{name:"Settings",exact:true}));
  await waitFor(()=>expect(receipts.updateCopyContext).toHaveBeenLastCalledWith("test-browser",2,null));
- expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
+ expect(screen.getByTestId("folder-project").textContent).toBe("none");
  await user.click(screen.getByRole("button",{name:"Library",exact:true}));
  await waitFor(()=>expect(receipts.updateCopyContext).toHaveBeenLastCalledWith("test-browser",3,null));
- expect(screen.getByTestId("sidebar-project").textContent).toBe("P1");
+ expect(screen.getByTestId("folder-project").textContent).toBe("none");
+ await user.click(within(screen.getByRole("navigation", {name:"Test sidebar"})).getByRole("button",{name:"Projects"}));
+ expect(window.location.pathname).toBe("/projects/P1");
 });
