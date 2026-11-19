@@ -754,11 +754,11 @@
     },
     "TASK_RETIRE_LEGACY_ENTRY_20261119": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\retire-legacy-entry-20261119",
       "branch": "codex/retire-legacy-entry-20261119",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "36d24b3ac53bda16565a250685ca021ad6fa8860",
       "task": {
         "task_id": "TASK_RETIRE_LEGACY_ENTRY_20261119",
         "summary": "Retire legacy folder linking and Continue Testing entry points",
@@ -787,9 +787,81 @@
         "risk_reasons": [],
         "activation_head": "8064b324aeaa25ad45fc5165b6bcd47594b31c15",
         "started_at": "2026-11-19T11:34:58.415591Z",
-        "updated_at": "2026-11-19T11:39:09.230558Z",
+        "updated_at": "2026-11-19T11:47:36.140056Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_RETIRE_LEGACY_ENTRY_20261119",
+          "subject": "bb22b161175517a760372929404a62fc7b837050",
+          "summary": "Retire Link Existing Folders and Continue Testing at the UI and HTTP boundaries. Existing projects and materials remain accessible. Scoped tests pass; a broader portable-project output-root assertion fails identically on the unmodified baseline.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/project_library_schemas.py",
+            "backend/api/routes_project_library.py",
+            "backend/api/routes_tools_legacy_projects.py",
+            "backend/application/project_library/service.py",
+            "backend/infrastructure/project_library/portability.py",
+            "docs/architecture/project_library.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/api/legacyProjects.ts",
+            "frontend/src/api/projectLibrary.ts",
+            "frontend/src/features/legacy-projects/LegacyProjectPreview.test.tsx",
+            "frontend/src/features/legacy-projects/LegacyProjectPreview.tsx",
+            "frontend/src/features/project-library/ProjectLibraryMember.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryMember.tsx",
+            "tests/integration/test_legacy_project_registration_api.py",
+            "tests/integration/test_project_library_portability.py",
+            "tests/integration/test_tools_legacy_projects_api.py"
+          ],
+          "validation": [
+            {
+              "name": "Backend regression checks",
+              "status": "passed",
+              "summary": "15 passed, including retired endpoints, historical access, shared picker, batch intake and portable restore.",
+              "evidence": "D:/PythonProject/connlab-worktrees/retire-legacy-entry-20261119/tmp/retire-legacy-entry/backend-focused.log"
+            },
+            {
+              "name": "Frontend regression checks",
+              "status": "passed",
+              "summary": "124 passed across 14 files.",
+              "evidence": "D:/PythonProject/connlab-worktrees/retire-legacy-entry-20261119/tmp/retire-legacy-entry/frontend.log"
+            },
+            {
+              "name": "Frontend build",
+              "status": "passed",
+              "summary": "TypeScript and Vite production build passed.",
+              "evidence": "D:/PythonProject/connlab-worktrees/retire-legacy-entry-20261119/tmp/retire-legacy-entry/build.log"
+            },
+            {
+              "name": "Isolated Chrome",
+              "status": "passed",
+              "summary": "Four navigation and detail smoke cases at 540 and 1280px passed with mocked APIs.",
+              "evidence": "D:/PythonProject/connlab-worktrees/retire-legacy-entry-20261119/tmp/retire-legacy-entry/browser.log"
+            },
+            {
+              "name": "Broader backend baseline comparison",
+              "status": "passed",
+              "summary": "271 passed, 3 skipped, 1 failed in the broader suite (backend.log). The complete snapshot graph's project output-root assertion failed identically on baseline and task when tested alone (snapshot-graph-task.log).",
+              "evidence": "D:/PythonProject/connlab-worktrees/retire-legacy-entry-20261119/tmp/retire-legacy-entry/snapshot-graph-base.log"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Same-agent review of standards and scope. RED checks showed the retired routes and actions before implementation; verified preservation of public read/open, batch and restore surfaces."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "bb22b161175517a760372929404a62fc7b837050",
+            "primary_before": "6a7acc9a73345fda9b71062d5b65ec27bab8b22a",
+            "integrated_head": "36d24b3ac53bda16565a250685ca021ad6fa8860",
+            "recovered": false
+          }
+        }
       }
     }
   }
