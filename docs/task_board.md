@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_TOOLS_WRENCH_ICON_20261118",
+    "task_id": "TASK_PROJECT_FOLDER_ACTIONS_20261119",
     "tier": "micro",
-    "subject": "9842e14eaeef29405420517e4bf322bd67ed2333",
-    "summary": "Use an outlined wrench for the Tools icon.",
+    "subject": "427807f12a89582d064fffa8ab7d4cf372cb3014",
+    "summary": "Move the project-folder button out of the sidebar and onto the four project subpage headers.",
     "disposition": "completed",
-    "decision_ref": "User requested Close. Local task closure under the established no-push workflow.",
-    "closed_at": "2026-11-18T10:17:03.342458Z"
+    "decision_ref": "User asked to close the just-delivered project-folder action task. Local closure under the standing no-push workflow; preserve the separate encryption task and evidence.",
+    "closed_at": "2026-11-19T11:10:42.083993Z"
   },
   "retained_history": [
     {
@@ -642,6 +642,15 @@
       "disposition": "completed",
       "decision_ref": "User accepted the step report evidence feature and requested local close only; retain local commits, no push.",
       "closed_at": "2026-11-18T09:52:03.957237Z"
+    },
+    {
+      "task_id": "TASK_TOOLS_WRENCH_ICON_20261118",
+      "tier": "micro",
+      "subject": "9842e14eaeef29405420517e4bf322bd67ed2333",
+      "summary": "Use an outlined wrench for the Tools icon.",
+      "disposition": "completed",
+      "decision_ref": "User requested Close. Local task closure under the established no-push workflow.",
+      "closed_at": "2026-11-18T10:17:03.342458Z"
     }
   ],
   "tasks": {
@@ -738,90 +747,6 @@
             "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
             "primary_before": "bb6f27288afcb93ca66b72e0a8c5701ff4e3dc64",
             "integrated_head": "a7886919695ea11c76659455530fc8cf15e04299",
-            "recovered": false
-          }
-        }
-      }
-    },
-    "TASK_PROJECT_FOLDER_ACTIONS_20261119": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\project-folder-actions-20261119",
-      "branch": "codex/project-folder-actions-20261119",
-      "resources": [],
-      "integrated_head": "d189f1fcf319cb17829dd061f8a6f522b605519e",
-      "task": {
-        "task_id": "TASK_PROJECT_FOLDER_ACTIONS_20261119",
-        "summary": "Move the project-folder button out of the sidebar and onto the four project subpage headers.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Move the existing guarded local-folder-open action to Matrix Editor, Fee Evaluation, Basic Information and Report. Preserve project identity, availability and existing Workbench Folder Actions. Local test and integration only.",
-        "scope_paths": [
-          "frontend/src/App.tsx",
-          "frontend/src/App.test.tsx",
-          "frontend/src/components/layout/AppShell.tsx",
-          "frontend/src/components/layout/TopBar.tsx",
-          "frontend/src/components/layout/TopBar.test.tsx",
-          "frontend/src/components/layout/Sidebar.tsx",
-          "frontend/src/components/layout/Sidebar.test.tsx",
-          "frontend/src/components/layout/ProjectFolderAction.tsx",
-          "frontend/src/styles.css"
-        ],
-        "risk_reasons": [],
-        "activation_head": "64180b75525088eaa0680ce2e06bf29424c2143e",
-        "started_at": "2026-11-19T00:11:52.150210Z",
-        "updated_at": "2026-11-19T00:20:17.882688Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_FOLDER_ACTIONS_20261119",
-          "subject": "427807f12a89582d064fffa8ab7d4cf372cb3014",
-          "summary": "Move folder opening out of global navigation to the Matrix Editor, Fee Evaluation, Basic Information and Report title bars. Use the route project, retain availability checks and preserve Workbench folder actions.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/App.test.tsx",
-            "frontend/src/App.tsx",
-            "frontend/src/components/layout/AppShell.tsx",
-            "frontend/src/components/layout/ProjectFolderAction.tsx",
-            "frontend/src/components/layout/Sidebar.test.tsx",
-            "frontend/src/components/layout/Sidebar.tsx",
-            "frontend/src/components/layout/TopBar.test.tsx",
-            "frontend/src/components/layout/TopBar.tsx",
-            "frontend/src/styles.css"
-          ],
-          "validation": [
-            {
-              "name": "App and layout tests",
-              "status": "passed",
-              "summary": "38 passed; covers four project routes, availability changes, stale project checks, clipboard fallback and normal navigation. Successful test code unchanged in final CSS-only refinement.",
-              "evidence": "D:/PythonProject/connlab-worktrees/project-folder-actions-20261119/tmp/project-folder-actions/frontend.log"
-            },
-            {
-              "name": "Frontend build",
-              "status": "passed",
-              "summary": "TypeScript and Vite build passed on final source.",
-              "evidence": "D:/PythonProject/connlab-worktrees/project-folder-actions-20261119/tmp/project-folder-actions/build.log"
-            },
-            {
-              "name": "Isolated Chrome subpage checks",
-              "status": "passed",
-              "summary": "Four actual project routes at 360 and 640px use correct mock open targets. No titles or folder controls clipped; missing folder disabled, Workbench header and global sidebar do not duplicate it. API fixtures intentionally omit unrelated page data; zero real folder opens.",
-              "evidence": "D:/PythonProject/connlab-worktrees/project-folder-actions-20261119/tmp/project-folder-actions/browser-qa-final.log"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Built and self-reviewed the scoped move. Observed failure against old sidebar and verified the new shared control."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "427807f12a89582d064fffa8ab7d4cf372cb3014",
-            "primary_before": "7b6853aa77d9f40cc062b17bc99418624d8c9172",
-            "integrated_head": "d189f1fcf319cb17829dd061f8a6f522b605519e",
             "recovered": false
           }
         }
