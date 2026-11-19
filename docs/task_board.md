@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119",
+    "task_id": "TASK_BROWSER_RELEASE_README_PATHS_20261120",
     "tier": "micro",
-    "subject": "26fe46960c0d796bfbc7738859b4a9c8ecf1d2af",
-    "summary": "Align portable project recovery tests with registered workspace and offline protection rules.",
+    "subject": "490d69faaa90fe0c3a7cf241e778b538fa29f409",
+    "summary": "Correct browser release README storage paths and verify the rebuilt portable package locally.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local-only close. Preserve implementation 26fe4696, the full regression board record 8b7570b8, task checkout and complete isolated validation evidence at D:/ConnLabDev/TestArtifacts/r1912307/verification.json. No push, publication or packaging.",
-    "closed_at": "2026-11-19T14:57:26.609353Z"
+    "decision_ref": "User explicitly requested local-only close. Preserve README fix 490d69fa, validation record c7bdd6db, rebuilt ConnLab_Web_202611200711_v0.1.0 in the task checkout, and isolated build and startup evidence at D:/ConnLabDev/TestArtifacts/release-readme-20261120/install-verification.json. No push, publication or artifact upload.",
+    "closed_at": "2026-11-19T23:28:35.644141Z"
   },
   "retained_history": [
     {
@@ -687,78 +687,18 @@
       "disposition": "completed",
       "decision_ref": "User authorized local-only close after completed validation was verified. Final implementation 00b7ac2a and integration a7886919 are retained in master. Final validation record 64180b75 and initial validation record 91395a54, task worktree, logs, screenshots and isolated encryption evidence are retained. No push, publication or packaging.",
       "closed_at": "2026-11-19T12:46:02.406517Z"
+    },
+    {
+      "task_id": "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119",
+      "tier": "micro",
+      "subject": "26fe46960c0d796bfbc7738859b4a9c8ecf1d2af",
+      "summary": "Align portable project recovery tests with registered workspace and offline protection rules.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local-only close. Preserve implementation 26fe4696, the full regression board record 8b7570b8, task checkout and complete isolated validation evidence at D:/ConnLabDev/TestArtifacts/r1912307/verification.json. No push, publication or packaging.",
+      "closed_at": "2026-11-19T14:57:26.609353Z"
     }
   ],
-  "tasks": {
-    "TASK_BROWSER_RELEASE_README_PATHS_20261120": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\release-readme-20261120",
-      "branch": "codex/release-readme-20261120",
-      "resources": [],
-      "integrated_head": "c0b8b333eaf443c342f6123d93d3aae06250a2eb",
-      "task": {
-        "task_id": "TASK_BROWSER_RELEASE_README_PATHS_20261120",
-        "summary": "Correct browser release README storage paths and verify the rebuilt portable package locally.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Browser operator README only. Document the default D:/ConnLab/Projects and the per-user configuration and SQLite data paths. Rebuild the browser release and check its stock launcher with isolated data; no publishing or upload.",
-        "scope_paths": [
-          "packaging/README_FOR_BROWSER_OPERATOR.md"
-        ],
-        "risk_reasons": [],
-        "activation_head": "a75d1218427d8b26e7d10ae4f74609fb883e7e43",
-        "started_at": "2026-11-19T23:10:44.102490Z",
-        "updated_at": "2026-11-19T23:15:05.158594Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_BROWSER_RELEASE_README_PATHS_20261120",
-          "subject": "490d69faaa90fe0c3a7cf241e778b538fa29f409",
-          "summary": "Correct the browser operator README to distinguish the default project folder and per-user configuration/database paths. Rebuilt as a local portable package and verified the unmodified default-port launcher against isolated data.",
-          "scope_ok": true,
-          "changed_paths": [
-            "packaging/README_FOR_BROWSER_OPERATOR.md"
-          ],
-          "validation": [
-            {
-              "name": "README and supported build",
-              "status": "passed",
-              "summary": "Only the browser README changed. Built version 0.1.0 from the exact source commit using the original packaging script; 164 focused tests, TypeScript/Vite and PyInstaller passed.",
-              "evidence": "D:/ConnLabDev/TestArtifacts/release-readme-20261120/build.log"
-            },
-            {
-              "name": "Packaged documentation and full-copy integrity",
-              "status": "passed",
-              "summary": "Packaged README equals tracked source bytes and lists the three requested absolute paths. All 1,323 files of the isolated copy matched; manifest and executable checksum verified.",
-              "evidence": "D:/ConnLabDev/TestArtifacts/release-readme-20261120/install-verification.json"
-            },
-            {
-              "name": "Unmodified Start_ConnLab.bat and isolated restart",
-              "status": "passed",
-              "summary": "Actual batch launch on 127.0.0.1:8765 passed with browser handoff and release defaults. Chrome application and exported diagnostic checks passed; test configuration and project persisted across restart. Owned server ports closed.",
-              "evidence": "D:/ConnLabDev/TestArtifacts/release-readme-20261120/install-verification.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Self-reviewed the one-file exact diff and completed the isolated official package and acceptance checks."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "490d69faaa90fe0c3a7cf241e778b538fa29f409",
-            "primary_before": "e06371789a19097fd3df5bbceb30adf50b858368",
-            "integrated_head": "c0b8b333eaf443c342f6123d93d3aae06250a2eb",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
