@@ -197,19 +197,3 @@ class RestoreResponse(BaseModel):
     backup_member_id: str | None = None
     member: MemberResponse
     warnings: list[str]
-
-
-class TakeoverPlanResponse(ConfirmRequest):
-    project_id: str | None
-    ltr_number: str | None
-    title: str
-    status: Literal["ready", "needs_information", "already_managed", "conflict"]
-    missing: list[str]
-    warnings: list[str]
-    blockers: list[str]
-
-
-class TakeoverResponse(BaseModel):
-    member: MemberResponse
-    project_id: str
-    warnings: list[str]

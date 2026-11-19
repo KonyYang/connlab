@@ -8,7 +8,7 @@ from backend.api.project_library_schemas import (
     RestoreFolderRequest, RestoreConfirmRequest, RuntimeResponse, MembersResponse, MemberResponse, RootsRequest, ScanResponse,
     IntakeRequest, IntakePlanResponse, BatchRequest, BatchResponse, TitleRequest,
     FolderRequest, ChangePlanResponse, ConfirmRequest, FilesResponse, FingerprintRequest,
-    PortableInfoResponse, RestorePlanResponse, RestoreResponse, TakeoverPlanResponse, TakeoverResponse,
+    PortableInfoResponse, RestorePlanResponse, RestoreResponse,
 )
 from backend.domain.project_library import ProjectLibraryError, ProjectLibraryConflict
 from backend.application.project_library.service import ProjectLibraryService
@@ -193,13 +193,3 @@ def restore_plan(request: RestoreFolderRequest, service=Depends(get_project_libr
 @router.post("/restore", response_model=RestoreResponse)
 def restore(request: RestoreConfirmRequest, service=Depends(get_project_library_service)):
     return checked(lambda: service.restore(request.plan_id, request.fingerprint, request.resolution))
-
-
-@router.get("/members/{member_id}/takeover-plan", response_model=TakeoverPlanResponse)
-def takeover_plan(member_id: str, service=Depends(get_project_library_service)):
-    return checked(lambda: service.takeover_plan(member_id))
-
-
-@router.post("/members/{member_id}/takeover", response_model=TakeoverResponse)
-def takeover(member_id: str, request: ConfirmRequest, service=Depends(get_project_library_service)):
-    return checked(lambda: service.takeover(member_id, request.plan_id, request.fingerprint))

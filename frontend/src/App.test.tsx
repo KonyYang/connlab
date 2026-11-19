@@ -65,10 +65,11 @@ it("closing archive confirmation retains the ordinary library", async () => {
   expect(window.location.search).toBe("");
 });
 
-it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project-library"])("retires the old receiving page at %s safely",async(path)=>{
+it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project-library", "/projects/import/link", "/tools/legacy-projects"])("retires the old receiving page at %s safely",async(path)=>{
  window.history.replaceState({},"",path);render(<App/>);
  expect(await screen.findByRole("region",{name:"Project materials library"})).toBeTruthy();
  expect(screen.queryByRole("heading",{name:"Import Projects"})).toBeNull();
+ expect(screen.queryByRole("heading",{name:"Link Existing Folders"})).toBeNull();
  expect(screen.queryByRole("region",{name:"Project Workbench"})).toBeNull();
 });
 
@@ -127,17 +128,6 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
   expect(window.location.pathname).toBe("/reference");
   expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();
-});
-
-it("keeps the old direct folder-linking URL accessible without exposing it in the common import flow", async () => {
-  window.history.replaceState({}, "", "/tools/legacy-projects");
-  render(<App />);
-  expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
-  await userEvent.setup().click(screen.getByRole("button", { name: "Back to Import Projects" }));
-  expect(window.location.pathname).toBe("/projects/import");
-  expect(await screen.findByRole("region", { name: "Project materials library" })).toBeTruthy();
-  expect(screen.queryByText("More Options")).toBeNull();
-  expect(screen.queryByRole("button", { name: "Link Folders Without Copying" })).toBeNull();
 });
 
 vi.mock("./components/layout/AppShell", () => ({

@@ -19,7 +19,6 @@ export type LibraryFiles = { items: { name: string; relative_path: string; is_di
 export type PortableInfo = { status: "missing" | "current" | "stale" | "unavailable"; fingerprint: string; created_at: string | null; format_version: number; record_counts: Record<string, number>; file_count: number; warnings: string[]; blockers: string[] };
 export type PortableResolution = "replace_working_copy" | "keep_as_history";
 export type PortableRestorePlan = LibraryPlanToken & { existing_member_id?: string | null; differences?: string[]; project_id: string; ltr_number: string | null; title: string; source_path: string; target_path: string; resolution_options: PortableResolution[]; resolution: PortableResolution | null; source_signature: string | null; target_revision: number | null; backup_path: string | null; status: "ready" | "already_added" | "conflict" | "unavailable"; created_at: string | null; record_counts: Record<string, number>; file_count: number; warnings: string[]; blockers: string[]; projects_root?: string | null };
-export type LibraryTakeoverPlan = LibraryPlanToken & { project_id: string | null; ltr_number: string | null; title: string; status: "ready" | "needs_information" | "already_managed" | "conflict"; missing: string[]; warnings: string[]; blockers: string[] };
 
 export const getLibraryRuntime = (signal?: AbortSignal) => requestJson<LibraryRuntime>(`${BASE}/runtime`, { signal });
 export const saveLibraryDestination = (folder: string) => post<LibraryRuntime>(`${BASE}/destination`, { folder });
@@ -44,8 +43,6 @@ export const inspectPortableProject = (folder: string, signal?: AbortSignal) => 
 export const planPortableRestore = (folder: string, resolution?: PortableResolution, signal?: AbortSignal) => post<PortableRestorePlan>(`${BASE}/restore-plan`, { folder, ...(resolution ? { resolution } : {}) }, signal);
 export type PortableRestoreResult = { status: "restored" | "already_added" | "history_kept"; member: LibraryMember; warnings: string[]; backup_member_id?: string | null };
 export const restorePortableProject = (plan: LibraryPlanToken & { resolution?: PortableResolution }) => post<PortableRestoreResult>(`${BASE}/restore`, plan);
-export const planLibraryTakeover = (id: string, signal?: AbortSignal) => requestJson<LibraryTakeoverPlan>(`${memberPath(id)}/takeover-plan`, { signal });
-export const takeoverLibraryProject = (id: string, plan: LibraryPlanToken) => post<{ member: LibraryMember; project_id: string; warnings: string[] }>(`${memberPath(id)}/takeover`, plan);
 export async function pickLibraryFolder(): Promise<string | null> {
   return (await requestJson<{ path: string | null }>("/api/tools/legacy-projects/pick-directory", { method: "POST" })).path;
 }

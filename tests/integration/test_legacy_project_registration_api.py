@@ -30,22 +30,22 @@ def api(tmp_path):
     def services(session=Depends(get_session)):
         return LegacyProjectRegistrationService(LegacyProjectRepository(session), LegacyProjectPreviewGateway(), LocalFolderOpenGateway(launcher=launched.append))
     app.dependency_overrides[get_legacy_registration_service] = services
-    yield TestClient(app), launched
+    def seed_history(path):
+        with Session(engine) as session:
+            service = services(session)
+            row = service.plan([str(path)])["projects"][0]
+            choices = [{"folder": str(path), "fingerprint": row["fingerprint"]}]
+            assert service.register([str(path)], choices)["counts"]["added"] == 1
+    yield TestClient(app), launched, seed_history
     engine.dispose()
 
 
-def test_explicit_registration_then_search_browse_and_reconnect(api, tmp_path):
-    client, launched = api
+def test_existing_history_can_be_searched_opened_and_reconnected(api, tmp_path):
+    client, launched, seed_history = api
     path = tmp_path / "Old manual project"
     path.mkdir()
     (path / "report.pdf").write_bytes(b"untouched")
-    plan = client.post("/api/tools/legacy-projects/registration-plan", json={"folders": [str(path)]}).json()
-    assert "source_id" not in plan["projects"][0]
-    assert "identity" not in plan["projects"][0]
-    selected = [{"folder": str(path), "fingerprint": plan["projects"][0]["fingerprint"]}]
-    result = client.post("/api/tools/legacy-projects/import", json={"folders": [str(path)], "selected": selected})
-    assert result.status_code == 200
-    assert result.json()["counts"]["added"] == 1
+    seed_history(path)
     rows = client.get("/api/legacy-projects", params={"q": "manual"}).json()
     record_id = rows[0]["record_id"]
     assert rows[0]["name"] == "Old manual project"
@@ -53,7 +53,6 @@ def test_explicit_registration_then_search_browse_and_reconnect(api, tmp_path):
     assert client.get(f"/api/legacy-projects/{record_id}").status_code == 200
     assert client.post(f"/api/legacy-projects/{record_id}/open-folder").json()["status"] == "opened"
     assert launched == [str(path)]
-    assert client.post("/api/tools/legacy-projects/import", json={"folders": [str(path)], "selected": selected}).json()["counts"]["already_added"] == 1
     target = tmp_path / "Moved"
     target.mkdir()
     assert client.post(f"/api/legacy-projects/{record_id}/location", json={"folder": str(target), "expected_revision": 1}).json()["revision"] == 2
@@ -61,3 +60,18 @@ def test_explicit_registration_then_search_browse_and_reconnect(api, tmp_path):
     assert client.get("/api/legacy-projects/business-project-id").status_code == 404
     assert client.post("/api/legacy-projects/business-project-id/location", json={"folder": str(path), "expected_revision": 1}).status_code == 404
     assert (path / "report.pdf").read_bytes() == b"untouched"
+
+
+def test_retired_tools_routes_cannot_register_an_external_folder(api, tmp_path):
+    client, _, _ = api
+    path = str(tmp_path)
+    folders = {"folders": [path]}
+    calls = [
+        ("preview", {"roots": [path]}),
+        ("registration-plan", folders),
+        ("import", {**folders, "selected": [{"folder": path, "fingerprint": "0" * 64}]}),
+    ]
+    for route, payload in calls:
+        response = client.post(f"/api/tools/legacy-projects/{route}", json=payload)
+        assert response.status_code == 404, (route, response.text)
+    assert client.get("/api/legacy-projects").json() == []
