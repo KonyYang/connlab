@@ -763,11 +763,11 @@
     },
     "TASK_LTR_OWNER_DISPLAY_20261119": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\ltr-owner-display-20261119",
       "branch": "codex/ltr-owner-display-20261119",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "e2b9a7c512d2029b91107e00534c7feea1ea996e",
       "task": {
         "task_id": "TASK_LTR_OWNER_DISPLAY_20261119",
         "summary": "Display formal LTR numbers only for current owners and label transferred numbers in project details.",
@@ -788,9 +788,63 @@
         "risk_reasons": [],
         "activation_head": "a44b0b7f542eb2b5285de35521a93e129e9f445b",
         "started_at": "2026-11-19T12:36:21.242522Z",
-        "updated_at": "2026-11-19T12:36:21.242522Z",
+        "updated_at": "2026-11-19T12:42:21.504577Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_LTR_OWNER_DISPLAY_20261119",
+          "subject": "b87cdfc11b127b3c743ff2d73ea333f08fa8b761",
+          "summary": "Projects shows formal LTR numbers for current owners; prior projects remain accessible and show transferred numbers in Workbench details.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/application/project_registry_summary_service.py",
+            "backend/api/routes_project.py",
+            "frontend/src/api/client.ts",
+            "frontend/src/features/projectIdentity.ts",
+            "frontend/src/features/projects-registry/projectRegistryLifecycleViews.ts",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "tests/integration/test_project_registry_summary_api.py"
+          ],
+          "validation": [
+            {
+              "name": "RED reproduced duplicate registry entries and two frontend display regressions",
+              "status": "passed"
+            },
+            {
+              "name": "Python registry, projects, LTR and library coverage: 32 passed, 1 fixture symlink test skipped by Windows",
+              "status": "passed"
+            },
+            {
+              "name": "Vitest projects, Workbench and App: 141 passed",
+              "status": "passed"
+            },
+            {
+              "name": "TypeScript and Vite build",
+              "status": "passed"
+            },
+            {
+              "name": "Read-only Dev database API: 008 and 009 each appear once, 3 former projects and their former LTR numbers are retained",
+              "status": "passed"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Implemented; reviewed standards and request fit separately against the exact diff; no blocking findings."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "b87cdfc11b127b3c743ff2d73ea333f08fa8b761",
+            "primary_before": "98c28239ef8150d40e16f8dec28df09137f9b20d",
+            "integrated_head": "e2b9a7c512d2029b91107e00534c7feea1ea996e",
+            "recovered": false
+          }
+        }
       }
     }
   }
