@@ -85,6 +85,66 @@ def test_project_registry_api_returns_summary_rows_and_project_identity_fields(
         engine.dispose()
 
 
+def test_transferred_ltr_is_displayed_only_for_its_current_owner(tmp_path: Path) -> None:
+    client, engine, session_factory = _client(tmp_path)
+    transferred_projects = {
+        "DL-2026-07-008": ("coolpower",),
+        "DL-2026-07-009": ("pwrblade", "ek500"),
+    }
+    try:
+        with session_factory() as session:
+            projects = ProjectRepository(session)
+            ltrs = LtrRecordRepository(session)
+            for number, former_ids in transferred_projects.items():
+                owner_id = f"owner-{number[-3:]}"
+                for project_id in (*former_ids, owner_id):
+                    projects.create(Project(
+                        project_id=project_id,
+                        project_no=number,
+                        product_name=project_id,
+                        requestor="Lab",
+                        status=ProjectStatus.LTR_REGISTERED,
+                    ))
+                    ltrs.create(LtrRecord(
+                        ltr_id=f"ltr-{project_id}",
+                        project_id=project_id,
+                        ltr_number=number,
+                        status=LtrStatus.REGISTERED,
+                        registered_on=date(2026, 7, 5),
+                        is_current_owner=project_id == owner_id,
+                        superseded_at=None if project_id == owner_id else "2026-07-05T06:22:32Z",
+                    ))
+            session.commit()
+
+        registry = client.get("/api/projects/registry")
+        assert registry.status_code == 200
+        rows = {row["project_id"]: row for row in registry.json()}
+        assert len(rows) == 5
+        for number, former_ids in transferred_projects.items():
+            matching = [row for row in rows.values() if row["display_project_id"] == number]
+            assert [row["project_id"] for row in matching] == [f"owner-{number[-3:]}"]
+            assert matching[0]["registered_ltr_number"] == number
+            owner_detail = client.get(f"/api/projects/owner-{number[-3:]}")
+            assert owner_detail.json()["former_ltr_numbers"] == []
+            for project_id in former_ids:
+                row = rows[project_id]
+                assert row["display_project_id_kind"] == "transferred"
+                assert row["ltr_number"] is None
+                assert row["registered_ltr_number"] is None
+                assert row["has_registered_ltr"] is False
+                detail = client.get(f"/api/projects/{project_id}")
+                assert detail.status_code == 200
+                assert detail.json()["former_ltr_numbers"] == [number]
+                assert detail.json()["display_project_id"] == row["display_project_id"]
+                assert detail.json()["is_legacy_temporary"] is False
+                history = client.get(f"/api/projects/{project_id}/ltr")
+                assert history.status_code == 200
+                assert [record["ltr_number"] for record in history.json()] == [number]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_project_registry_api_prefers_confirmed_basic_information_identity(
     tmp_path: Path,
 ) -> None:

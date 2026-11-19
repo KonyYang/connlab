@@ -125,6 +125,8 @@ class ProjectResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     project_id: str
+    display_project_id: str | None = None
+    former_ltr_numbers: list[str] = Field(default_factory=list)
     library_member_id: str | None = None
     project_no: str | None = None
     product_name: str
@@ -630,6 +632,8 @@ def _to_response(
     return ProjectResponse(
         is_legacy_temporary=bool(registry_row and registry_row.display_project_id_kind == "temporary"),
         project_id=project.project_id,
+        display_project_id=registry_row.display_project_id if registry_row else None,
+        former_ltr_numbers=list(registry_row.former_ltr_numbers) if registry_row else [],
         library_member_id=registry_row.library_member_id if registry_row else None,
         registry_state=project.registry_state,
         registry_revision=project.registry_revision,

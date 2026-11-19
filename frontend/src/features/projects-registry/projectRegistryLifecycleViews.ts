@@ -207,6 +207,7 @@ function operationalNextStepLabel(row: ProjectRegistryRow): string {
 function hasFormalProjectIdentity(row: ProjectRegistryRow): boolean {
   return (
     row.display_project_id_kind === "registered" ||
+    row.display_project_id_kind === "transferred" ||
     row.has_registered_ltr ||
     hasDisplayText(row.ltr_number) ||
     hasDisplayText(row.registered_ltr_number)

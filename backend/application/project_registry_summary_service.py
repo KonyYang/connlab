@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from backend.application.project_basic_information_service import (
@@ -13,7 +13,7 @@ from backend.application.project_identity import (
     resolve_project_identity,
     with_imported_project_identity,
 )
-from backend.domain import LtrRecord, Project, ProjectTemporaryContext
+from backend.domain import LtrRecord, LtrStatus, Project, ProjectTemporaryContext
 
 
 class ProjectRegistryProjectStore(Protocol):
@@ -76,6 +76,7 @@ class ProjectRegistryRow:
     estimated_completion_date: str | None = None
     group_completion_details: tuple[dict, ...] = ()
     library_member_id: str | None = None
+    former_ltr_numbers: tuple[str, ...] = ()
 
 
 class ProjectRegistryMatrixStore(Protocol):
@@ -131,12 +132,31 @@ class ProjectRegistrySummaryService:
             identity_override = display_identity_override_from_values(
                 basic_information.values if basic_information else None
             )
+            registered_ltrs = [
+                record for record in self._ltrs.list_by_project(project.project_id)
+                if record.status is LtrStatus.REGISTERED
+            ]
+            current_ltrs = [record for record in registered_ltrs if record.is_current_owner]
+            former_ltrs = [record for record in registered_ltrs if not record.is_current_owner]
+            former_numbers = {record.ltr_number for record in former_ltrs}
+            current_numbers = {record.ltr_number for record in current_ltrs}
             identity = resolve_project_identity(
-                project,
-                self._ltrs.list_by_project(project.project_id),
-                identity_override=identity_override,
+                project, current_ltrs or former_ltrs, identity_override=identity_override
             )
-            identity = with_imported_project_identity(identity, imported.get(project.project_id, {}).get("ltr_number"))
+            if former_ltrs and not current_ltrs:
+                # Keep the old setup metadata available without presenting its LTR as current.
+                identity = replace(
+                    identity,
+                    ltr_number=None,
+                    display_project_id=f"Project {project.project_id[:8].upper()}",
+                    display_project_id_kind="transferred",
+                    has_registered_ltr=False,
+                    registered_ltr_number=None,
+                )
+            else:
+                identity = with_imported_project_identity(
+                    identity, imported.get(project.project_id, {}).get("ltr_number")
+                )
             temporary_context = (
                 self._temporary_contexts.get_by_project(project.project_id)
                 if self._temporary_contexts is not None
@@ -177,6 +197,7 @@ class ProjectRegistrySummaryService:
                     has_registered_ltr=identity.has_registered_ltr,
                     temporary_project_id=identity.temporary_project_id,
                     registered_ltr_number=identity.registered_ltr_number,
+                    former_ltr_numbers=tuple(sorted(former_numbers - current_numbers)),
                     temporary_source_asset_ids=(
                         temporary_context.source_asset_ids if temporary_context else ()
                     ),

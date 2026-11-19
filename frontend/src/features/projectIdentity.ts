@@ -15,11 +15,16 @@ export function buildProjectIdentityLine({
   productFallback,
   testItemFallback,
 }: ProjectIdentityInput): string {
-  const projectReference = deriveProjectReference({
-    latestLtr,
-    projectNo: project?.project_no,
-    projectId: project?.project_id ?? projectId,
-  });
+  const transferredProjectReference = project?.former_ltr_numbers?.length
+    ? cleanText(project.display_project_id)
+    : "";
+  const projectReference =
+    transferredProjectReference ||
+    deriveProjectReference({
+      latestLtr,
+      projectNo: project?.project_no,
+      projectId: project?.project_id ?? projectId,
+    });
   const projectLabel =
     cleanText(project?.sample_description) ||
     cleanText(project?.product_name) ||

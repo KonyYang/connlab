@@ -23,6 +23,19 @@ import { AppShell } from "../../components/layout/AppShell";
 import { ProjectWorkbenchLayout } from "./ProjectWorkbenchLayout";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
+it("labels a transferred LTR as former in the project details", () => {
+  const number = "DL-2026-07-009";
+  renderWorkbench({ latestLtr: number }, {
+    project_no: number,
+    display_project_id: "Project 2CD4B0E7",
+    former_ltr_numbers: [number],
+  });
+
+  expect(screen.getByRole("heading", { name: /^Project 2CD4B0E7/ }).textContent).not.toContain(number);
+  expect(screen.getByText(`Former LTR (transferred) — ${number}`)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Matrix Editor", exact: true })).toBeTruthy();
+});
+
 function basicDirectory(overrides: Partial<NonNullable<ProjectRuntimeConsoleModel["basicWorkspace"]>> = {}): NonNullable<ProjectRuntimeConsoleModel["basicWorkspace"]> {
  return {projectId:project.project_id, preview:{project_id:project.project_id,status:"ready" as const,directory_available:false,official_project_folder_path:"D:/isolated/basic",target_identity:null,blockers:[],operation_id:null,expected_context:"basic"},result:null,error:null,loading:false,busy:false,directoryAvailable:false,folderPath:"D:/isolated/basic",refresh:vi.fn().mockResolvedValue(undefined),create:vi.fn().mockResolvedValue(undefined),...overrides};
 }

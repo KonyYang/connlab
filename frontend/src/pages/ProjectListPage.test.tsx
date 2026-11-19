@@ -32,6 +32,30 @@ const listProjectRegistryRowsMock = vi.mocked(listProjectRegistryRows);
 const getProjectLifecycleMock = vi.mocked(getProjectLifecycle);
 
 describe("ProjectListPage lifecycle registry views", () => {
+  it("shows the current number once and keeps transferred projects openable", async () => {
+    const number = "DL-2026-07-009";
+    const onOpenProject = vi.fn();
+    mockRows([
+      registryRow({ project_id: "owner", display_project_id: number, ltr_number: number, registered_ltr_number: number }),
+      registryRow({
+        project_id: "former", display_project_id: "Project FORMER", display_project_id_kind: "transferred",
+        sample_description: "Former workspace", ltr_number: null, registered_ltr_number: null,
+        has_registered_ltr: false, has_confirmed_matrix: true,
+      }),
+    ]);
+    mockLifecycle({
+      owner: lifecycle({ project_id: "owner" }),
+      former: lifecycle({ project_id: "former" }),
+    });
+
+    render(<ProjectListPage onOpenProject={onOpenProject} />);
+    expect(await screen.findAllByText(number, { exact: true })).toHaveLength(1);
+    expect(screen.getByText("Former workspace")).toBeTruthy();
+    expect(screen.queryByText("Temporary Planning")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /Open Workbench for Project FORMER/ }));
+    expect(onOpenProject).toHaveBeenCalledWith("former");
+  });
+
   it("shows an imported project once with its historical LTR and normal workspace and recycle actions", async () => {
     const number = "DL-2026-09-032A1", onOpenProject = vi.fn();
     mockRows([registryRow({ project_id: "imported-id", display_project_id: number, ltr_number: number,
