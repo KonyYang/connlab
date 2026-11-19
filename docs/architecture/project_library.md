@@ -17,6 +17,10 @@ Neither this entry nor its More actions offer database/Matrix/portable recovery,
 synchronization, automatic backup, or Tools integration. Retained restoration code is isolated
 compatibility, not a feature or acceptance goal for this surface.
 
+The old Link Existing Folders URLs now open the materials library. New legacy folder
+registration and Continue Testing takeover are retired. Existing historical links remain
+browsable, and already linked ConnLab projects can still open their working views.
+
 The file header identifies the **browsed source** and managed location; the selected-file line
 identifies the root-relative file. Only an explicit live Workbench supplies the **copy target**.
 Browsing another project does not switch it. No selection means select a file; no target means

@@ -1,4 +1,4 @@
-"""User-facing project intake and takeover orchestration through explicit adapters."""
+"""User-facing project library orchestration through explicit adapters."""
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -657,70 +657,3 @@ class ProjectLibraryService:
         self._require_configured()
         result = self.portability.restore(plan_id, fingerprint, resolution)
         return {**result, "member": self._public(result["member"])}
-
-    def _takeover_metadata_problem(self, member):
-        if not self.files.has_portable(member["folder_path"]):
-            return None
-        if not member["project_id"]:
-            return "This folder carries test-data metadata. Inspect and restore the portable project before continuing; an empty planning project would lose its history."
-        if not self.portability or self.portability.status(member)["status"] == "unavailable":
-            return "The carried test-data metadata is unavailable. Inspect and restore a verified project before continuing."
-        return None
-
-    def takeover_plan(self, member_id):
-        member = self.store.member(member_id)
-        warnings, blockers, missing = [], [], []
-        if member.get("is_history"):
-            blockers.append("This retained history is read-only. Resolve its project ownership before resuming tests.")
-        metadata_problem = self._takeover_metadata_problem(member)
-        if metadata_problem:
-            blockers.append(metadata_problem)
-        if not self.files.member_folder_available(member)[0]:
-            blockers.append("Reconnect the project folder before taking it over.")
-        existing_project = member.get("source_project_id") if self.store.project_exists(member.get("source_project_id")) else None
-        if existing_project and any(row["member_id"] != member_id and row["project_id"] == existing_project for row in self.store.members()):
-            blockers.append("Another library entry already manages this project. Reconnect that entry instead of creating a second working copy.")
-        elif existing_project and not member["project_id"]:
-            warnings.append("Confirming takeover switches the existing project to this received working copy. The original source is retained.")
-        if not member["project_id"] and not existing_project:
-            missing.extend(["Confirm Basic Information", "Review and confirm the test Matrix"])
-            if member["ltr_number"]:
-                warnings.append("The old LTR is retained as evidence; no public workbook is changed or number registered automatically.")
-        existing_context = self.store.project_context(existing_project) if existing_project else None
-        if existing_context and existing_context["registry_state"] != "active":
-            blockers.append("The existing project is retained history or in Trash. Resolve its registry state before takeover.")
-        payload = {"member_id": member_id, "revision": member["revision"], "project_id": member["project_id"], "existing_project_id": existing_project, "existing_context": self.files.digest(existing_context), "blockers": blockers}
-        plan = self.files.save_plan("takeover", payload)
-        return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"], "project_id": member["project_id"],
-                "ltr_number": member["ltr_number"], "title": member["title"],
-                "status": "conflict" if blockers else "already_managed" if member["project_id"] else "needs_information" if missing else "ready",
-                "missing": missing, "warnings": warnings, "blockers": blockers}
-
-    def takeover(self, member_id, plan_id, fingerprint):
-        with self.files.lock():
-            payload = self.files.plan(plan_id, fingerprint, "takeover")
-            with self.files.project_lock(payload.get("existing_project_id") or payload.get("project_id")):
-                member = self.store.member(member_id)
-                if payload["member_id"] != member_id or payload["revision"] != member["revision"]:
-                    raise ProjectLibraryConflict("The project changed. Review takeover again.")
-                if not self.files.member_folder_available(member)[0]:
-                    raise ProjectLibraryConflict("Reconnect the project folder before taking it over.")
-                if payload.get("blockers"):
-                    raise ProjectLibraryConflict(" ".join(payload["blockers"]))
-                metadata_problem = self._takeover_metadata_problem(member)
-                if metadata_problem:
-                    raise ProjectLibraryConflict(metadata_problem)
-                if not member["project_id"]:
-                    existing = payload.get("existing_project_id")
-                    if existing and self.files.digest(self.store.project_context(existing)) != payload.get("existing_context"):
-                        raise ProjectLibraryConflict("The existing project changed after review. Review takeover again.")
-                    if existing:
-                        self.files.locate_context(member, member["folder_path"], self.store.workspace(existing))
-                        self.store.link_existing_project(member, existing)
-                    else:
-                        self.store.create_planning_project(member)
-                    member = self.store.member(member_id)
-                self.files.publish_workspace_metadata(member["folder_path"], self.store.workspace(member["project_id"]))
-                self.files.write_marker(member)
-                return {"member": self._public(member), "project_id": member["project_id"],
-                        "warnings": ["Review missing project information before confirming test authority."] if not payload["project_id"] else []}

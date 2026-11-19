@@ -8,7 +8,7 @@ import * as api from "../../api/projectLibrary";
 vi.mock("../../api/projectLibrary", () => ({
   getLibraryMember: vi.fn(), getLibraryFiles: vi.fn(), openLibraryFolder: vi.fn(), getPortableInfo: vi.fn(),
   planLibraryTitle: vi.fn(), updateLibraryTitle: vi.fn(), planLibraryLocation: vi.fn(), updateLibraryLocation: vi.fn(),
-  preparePortableProject: vi.fn(), planLibraryTakeover: vi.fn(), takeoverLibraryProject: vi.fn(), pickLibraryFolder: vi.fn(),
+  preparePortableProject: vi.fn(), pickLibraryFolder: vi.fn(),
   inspectPortableProject: vi.fn(), planPortableRestore: vi.fn(), restorePortableProject: vi.fn(),
 }));
 const member: api.LibraryMember = { member_id: "member-1", project_id: null, ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/library/DL-2026-09-032 CPI-450", revision: 1, batch_id: "batch-1", snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: false };
@@ -50,13 +50,18 @@ describe("Library project management", () => {
     expect(screen.getByRole("button", { name: "Refresh Files" })).toBeTruthy();
   });
 
-  it("requires takeover before opening test workspaces when a project identity is not yet usable", async () => {
-    vi.mocked(api.getLibraryMember).mockResolvedValue({ ...member, project_id: "identity-hint", can_continue: false });
+  it.each([null, "identity-hint"])("opens files without offering takeover for an unclaimed or unusable project (%s)", async projectId => {
+    const user = userEvent.setup();
     const openProject = vi.fn();
+    vi.mocked(api.getLibraryMember).mockResolvedValue({ ...member, project_id: projectId });
+    vi.mocked(api.openLibraryFolder).mockResolvedValue({ status: "opened", message: "Folder opened" });
     render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={openProject} />);
-    expect(await screen.findByRole("button", { name: "Continue Testing" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Matrix" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Report" })).toBeNull();
+    await user.click(await screen.findByRole("button", { name: "Open Folder" }));
+    expect(await screen.findByText("Folder opened")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Test results" })).toBeTruthy();
+    for (const name of ["Continue Testing", "Project Workbench", "Matrix", "Report"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
     expect(openProject).not.toHaveBeenCalled();
   });
 
@@ -92,24 +97,6 @@ describe("Library project management", () => {
     await user.click(screen.getByRole("button", { name: "Confirm Snapshot" }));
     expect(await screen.findByText("Ready to Take")).toBeTruthy();
     expect(api.preparePortableProject).toHaveBeenCalledWith("member-1", "data-now");
-  });
-
-  it("refreshes snapshot eligibility and files immediately after takeover", async () => {
-    const user = userEvent.setup();
-    const blocker = "Take over this project before preparing test-data portability.";
-    vi.mocked(api.getPortableInfo).mockResolvedValueOnce({ ...portable, status: "unavailable", created_at: null, blockers: [blocker], record_counts: {}, file_count: 0 }).mockResolvedValue({ ...portable, status: "missing", created_at: null, fingerprint: "after-takeover", blockers: [], warnings: [] });
-    vi.mocked(api.planLibraryTakeover).mockResolvedValue({ plan_id: "take-1", fingerprint: "take-proof", project_id: null, ltr_number: member.ltr_number, title: member.title, status: "needs_information", missing: ["Confirm sample information"], warnings: [], blockers: [] });
-    vi.mocked(api.takeoverLibraryProject).mockResolvedValue({ member: { ...member, project_id: "project-1", can_continue: true }, project_id: "project-1", warnings: [] });
-    render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={vi.fn()} />);
-    expect(await screen.findByText(blocker)).toBeTruthy();
-    vi.mocked(api.getLibraryFiles).mockResolvedValue({ items: [{ name: "Project data", relative_path: "Project data", is_directory: true, size_bytes: null }], warnings: [] });
-    await user.click(screen.getByRole("button", { name: "Continue Testing" }));
-    await user.click(await screen.findByRole("button", { name: "Confirm Takeover" }));
-    expect(await screen.findByText("No Snapshot")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Prepare to Take" })).toHaveProperty("disabled", false);
-    expect(screen.queryByText(blocker)).toBeNull();
-    expect(screen.getByText("Project data")).toBeTruthy();
-    expect(screen.getByText(/Data to Prepare/)).toBeTruthy();
   });
 
   it("keeps saved coverage separate from new files until the latest snapshot is prepared", async () => {
@@ -155,39 +142,14 @@ describe("Library project management", () => {
     expect(screen.getByText("Updated files")).toBeTruthy();
   });
 
-  it("ignores snapshot and file refreshes from a takeover after navigation to another member", async () => {
-    const user = userEvent.setup();
-    let resolveSnapshot!: (value: api.PortableInfo) => void;
-    let resolveFiles!: (value: api.LibraryFiles) => void;
-    vi.mocked(api.getLibraryMember).mockResolvedValueOnce(member).mockResolvedValueOnce({ ...member, member_id: "member-2", title: "Other project" });
-    vi.mocked(api.getPortableInfo).mockResolvedValueOnce(portable).mockImplementationOnce(() => new Promise(resolve => { resolveSnapshot = resolve; })).mockResolvedValue({ ...portable, status: "current", file_count: 20, warnings: [] });
-    vi.mocked(api.getLibraryFiles).mockResolvedValueOnce({ items: [], warnings: [] }).mockImplementationOnce(() => new Promise(resolve => { resolveFiles = resolve; })).mockResolvedValue({ items: [], warnings: [] });
-    vi.mocked(api.planLibraryTakeover).mockResolvedValue({ plan_id: "take-1", fingerprint: "take-proof", project_id: null, ltr_number: member.ltr_number, title: member.title, status: "ready", missing: [], warnings: [], blockers: [] });
-    vi.mocked(api.takeoverLibraryProject).mockResolvedValue({ member: { ...member, project_id: "project-1", can_continue: true }, project_id: "project-1", warnings: [] });
-    const view = render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Continue Testing" }));
-    await user.click(await screen.findByRole("button", { name: "Confirm Takeover" }));
-    await screen.findByRole("button", { name: "Matrix" });
-    view.rerender(<ProjectLibraryMember memberId="member-2" onBack={vi.fn()} onOpenProject={vi.fn()} />);
-    await screen.findByRole("heading", { name: "Other project" });
-    await act(async () => { resolveSnapshot({ ...portable, warnings: ["Old project warning"] }); resolveFiles({ items: [{ name: "Old project file", relative_path: "old", is_directory: false, size_bytes: 1 }], warnings: [] }); });
-    expect(screen.queryByText("Old project warning")).toBeNull();
-    expect(screen.queryByText("Old project file")).toBeNull();
-    expect(screen.getByText(/Saved Snapshot Data.*20 files/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Edit Title" })).toHaveProperty("disabled", false);
-  });
-
-  it("shows missing facts before takeover and then uses the existing Matrix and Report routes", async () => {
+  it("opens Workbench, Matrix and Report for an already linked project", async () => {
     const user = userEvent.setup();
     const onOpenProject = vi.fn();
-    vi.mocked(api.planLibraryTakeover).mockResolvedValue({ plan_id: "take-1", fingerprint: "take-proof", project_id: null, ltr_number: member.ltr_number, title: member.title, status: "needs_information", missing: ["Confirm sample information"], warnings: ["Existing LTR is a hint until checked."], blockers: [] });
-    vi.mocked(api.takeoverLibraryProject).mockResolvedValue({ member: { ...member, project_id: "project-1", can_continue: true }, project_id: "project-1", warnings: [] });
+    vi.mocked(api.getLibraryMember).mockResolvedValue({ ...member, project_id: "project-1", can_continue: true });
     render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={onOpenProject} />);
-    await user.click(await screen.findByRole("button", { name: "Continue Testing" }));
-    expect(await screen.findByText("Confirm sample information")).toBeTruthy();
-    expect(api.takeoverLibraryProject).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Confirm Takeover" }));
-    await user.click(await screen.findByRole("button", { name: "Matrix" }));
+    await user.click(await screen.findByRole("button", { name: "Project Workbench" }));
+    expect(onOpenProject).toHaveBeenCalledWith("project-1", "workbench");
+    await user.click(screen.getByRole("button", { name: "Matrix" }));
     expect(onOpenProject).toHaveBeenCalledWith("project-1", "matrix");
     await user.click(screen.getByRole("button", { name: "Report" }));
     expect(onOpenProject).toHaveBeenCalledWith("project-1", "report");

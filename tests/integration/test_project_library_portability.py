@@ -243,9 +243,9 @@ def test_project_travels_without_source_database_and_preserves_report_evidence(t
     plan = a.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
     batch = a.post("/api/project-library/batches", json={**{k: plan[k] for k in ("plan_id", "fingerprint")}, "selected": [str(source)]}).json()
     member_id = batch["items"][0]["member_id"]
-    take_plan = a.get(f"/api/project-library/members/{member_id}/takeover-plan").json()
-    managed = confirm(a, f"/api/project-library/members/{member_id}/takeover", take_plan)
-    project_id = managed["project_id"]
+    member = a.get(f"/api/project-library/members/{member_id}").json()
+    project_id = member["project_id"]
+    assert member["can_continue"] is True
     content = b"evidence from computer A"
     content_hash = sha256(content).hexdigest()
     evidence = settings_a.data_dir / "report_authoring_assets" / sha256(project_id.encode()).hexdigest() / (content_hash + ".txt")
@@ -299,8 +299,8 @@ def prepared_manual_project(client, root, ltr="DL-2026-09-032"):
     plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
     batch = client.post("/api/project-library/batches", json={**{k: plan[k] for k in ("plan_id", "fingerprint")}, "selected": [str(source)]}).json()
     member_id = batch["items"][0]["member_id"]
-    plan = client.get(f"/api/project-library/members/{member_id}/takeover-plan").json()
-    member = confirm(client, f"/api/project-library/members/{member_id}/takeover", plan)["member"]
+    member = client.get(f"/api/project-library/members/{member_id}").json()
+    assert member["can_continue"] is True
     info = client.get(f"/api/project-library/members/{member_id}/portable").json()
     response = client.post(f"/api/project-library/members/{member_id}/prepare", json={"fingerprint": info["fingerprint"]})
     assert response.status_code == 200, response.text
@@ -552,7 +552,6 @@ def test_same_ltr_different_identity_can_be_retained_as_read_only_history(tmp_pa
     assert result["status"] == "history_kept"
     assert result["member"]["is_history"] is True
     assert result["member"]["can_continue"] is False
-    assert b.get(f"/api/project-library/members/{result['member']['member_id']}/takeover-plan").json()["blockers"]
     assert b.get("/api/project-library/members", params={"q":"History"}).json()["items"]
     with Session(eb) as session:
         assert session.get(LtrRecordModel, "target-ltr").is_current_owner is True
@@ -855,7 +854,7 @@ def test_self_consistent_portable_package_never_grants_target_public_write_permi
     engine.dispose()
 
 
-def test_carried_test_data_cannot_be_bypassed_by_plain_intake_or_empty_takeover(tmp_path):
+def test_carried_test_data_cannot_be_bypassed_by_plain_intake(tmp_path):
     a, _, ea = app_at(tmp_path/"A")
     b, _, eb = app_at(tmp_path/"B")
     source=prepared_manual_project(a,tmp_path/"old")
@@ -868,20 +867,9 @@ def test_carried_test_data_cannot_be_bypassed_by_plain_intake_or_empty_takeover(
         assert "restore" in " ".join(plan["items"][0]["warnings"]).lower()
         result=b.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[source["folder_path"]],"keep_separate":[source["folder_path"]]}).json()
         assert result["counts"]["added"]==0,result
-    raw=tmp_path/"Raw old project"
-    raw.mkdir()
-    (raw/"note.txt").write_text("raw note",encoding="utf-8")
-    plan=b.post("/api/project-library/intake-plan",json={"sources":[str(raw)]}).json()
-    result=b.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[str(raw)]}).json()
-    member=b.get("/api/project-library/members/"+result["items"][0]["member_id"]).json()
-    packet=Path(member["folder_path"])/".connlab/portable/snapshot.json"
-    packet.parent.mkdir(parents=True)
-    packet.write_text("{}",encoding="utf-8")
-    review=b.get(f"/api/project-library/members/{member['member_id']}/takeover-plan").json()
-    assert review["blockers"]
-    assert b.post(f"/api/project-library/members/{member['member_id']}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")}).status_code==409
+    assert b.get("/api/project-library/members").json()["items"] == []
     with Session(eb) as session:
-        assert list(session.scalars(select(ProjectModel.project_id))) == [member["project_id"]]
+        assert list(session.scalars(select(ProjectModel.project_id))) == []
     ea.dispose();eb.dispose()
 
 
@@ -1228,7 +1216,7 @@ with Session(engine) as session:
     ea.dispose();eb.dispose()
 
 
-def test_link_existing_project_takeover_honors_writer_slot_and_stale_review(tmp_path):
+def test_retired_takeover_keeps_existing_project_and_unclaimed_material_separate(tmp_path):
     from backend.infrastructure.storage.models import ProjectFolderRecordModel
     from datetime import date
     client,settings,engine=app_at(tmp_path/"library")
@@ -1252,28 +1240,16 @@ def test_link_existing_project_takeover_honors_writer_slot_and_stale_review(tmp_
             "created_at":"2026-11-01T00:00:00Z", "snapshot_fingerprint":None})
     LibraryFiles(settings).write_marker(member)
     member_id=member["member_id"]
-    review=client.get(f"/api/project-library/members/{member_id}/takeover-plan").json()
-    with LibraryFiles(settings).project_lock("existing-P1"):
-        response=client.post(f"/api/project-library/members/{member_id}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")})
-        assert response.status_code==409,response.text
-        with Session(engine) as session:
-            assert session.get(ProjectFolderRecordModel,"existing-folder").folder_path==str(source)
+    url = f"/api/project-library/members/{member_id}"
+    assert client.get(f"{url}/takeover-plan").status_code == 404
+    assert client.post(f"{url}/takeover", json={"plan_id": "prior-review", "fingerprint": "0" * 64}).status_code == 404
+    assert client.get(url).json()["project_id"] is None
+    assert client.get(f"{url}/files").status_code == 200
+    assert client.post(f"{url}/open-folder").status_code == 200
+    assert (received_root / "result.txt").read_text(encoding="utf-8") == "existing evidence"
     with Session(engine) as session:
-        session.get(ProjectModel,"existing-P1").registry_revision+=1
-        session.commit()
-    assert client.post(f"/api/project-library/members/{member_id}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")}).status_code==409
-    review=client.get(f"/api/project-library/members/{member_id}/takeover-plan").json()
-    received=client.get("/api/project-library/members/"+member_id).json()
-    manifest=Path(received["folder_path"])/".connlab/manifest.json"
-    manifest.write_text(json.dumps({"project_id":"foreign-project","dl_number":"DL-2026-09-032"}),encoding="utf-8")
-    assert client.post(f"/api/project-library/members/{member_id}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")}).status_code==409
-    with Session(engine) as session:
-        assert session.get(ProjectFolderRecordModel,"existing-folder").folder_path==str(source)
-    manifest.write_text(json.dumps({"project_id":"existing-P1","dl_number":"DL-2026-09-032"}),encoding="utf-8")
-    changed=confirm(client,f"/api/project-library/members/{member_id}/takeover",review)["member"]
-    assert changed["project_id"]=="existing-P1"
-    with Session(engine) as session:
-        assert session.get(ProjectFolderRecordModel,"existing-folder").folder_path==changed["folder_path"]
+        assert list(session.scalars(select(ProjectModel.project_id))) == ["existing-P1"]
+        assert session.get(ProjectFolderRecordModel, "existing-folder").folder_path == str(source)
     engine.dispose()
 
 

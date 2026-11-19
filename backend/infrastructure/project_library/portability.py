@@ -129,7 +129,7 @@ class ProjectPortability:
 
     def _capture(self, member):
         if not member["project_id"]:
-            raise ProjectLibraryError("Take over this project before preparing test-data portability.")
+            raise ProjectLibraryError("Portable snapshots require a linked ConnLab project.")
         root = checked_path(member["folder_path"])
         journal_history = []
         from backend.infrastructure.files.project_file_generation_journal import ProjectFileGenerationJournal

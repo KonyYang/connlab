@@ -13,27 +13,10 @@ def client():
     return TestClient(app)
 
 
-def test_preview_reads_a_selected_folder_without_registration_or_writes(tmp_path):
-    folder = tmp_path / "DL-2021-01-030UC Old project"
-    folder.mkdir()
-    source = folder / "report.docx"
-    source.write_bytes(b"original")
+def test_cancelled_picker_returns_no_folder():
     api = client()
-    response = api.post("/api/tools/legacy-projects/preview", json={"roots": [str(tmp_path)]})
-    assert response.status_code == 200
-    assert response.json()["read_only"] is True
-    assert response.json()["projects"][0]["number"] == "DL-2021-01-030UC"
-    assert source.read_bytes() == b"original"
-    assert sorted(p.name for p in folder.iterdir()) == ["report.docx"]
-
-
-def test_invalid_batches_and_picker_cancel_are_non_writing(tmp_path):
-    api = client()
-    assert api.post("/api/tools/legacy-projects/preview", json={"roots": []}).status_code == 422
-    assert api.post("/api/tools/legacy-projects/preview", json={"roots": ["x"] * 21}).status_code == 422
     api.app.dependency_overrides[get_directory_picker] = lambda: lambda: None
     assert api.post("/api/tools/legacy-projects/pick-directory").json() == {"path": None}
-    assert list(tmp_path.iterdir()) == []
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows native picker boundary")
@@ -63,22 +46,21 @@ def test_project_picker_uses_compact_windows_folder_browser(monkeypatch, tmp_pat
     assert calls == [True]
 
 
-def test_registered_application_preview_never_requests_database_or_settings(tmp_path):
+def test_registered_application_picker_never_requests_database_or_settings(tmp_path):
     from backend.api.main import app
     from backend.api.dependencies import get_session, get_settings
     original = app.dependency_overrides.copy()
 
     def forbidden():
-        raise AssertionError("Read-only preview must not initialize or commit the business store")
+        raise AssertionError("The shared folder picker must not initialize the business store")
 
     app.dependency_overrides[get_session] = forbidden
     app.dependency_overrides[get_settings] = forbidden
-    folder = tmp_path / "DL-2021-01-030UC"
-    folder.mkdir()
+    app.dependency_overrides[get_directory_picker] = lambda: lambda: tmp_path
     try:
-        response = TestClient(app).post("/api/tools/legacy-projects/preview", json={"roots": [str(folder)]})
+        response = TestClient(app).post("/api/tools/legacy-projects/pick-directory")
         assert response.status_code == 200
-        assert response.json()["projects"][0]["number"] == "DL-2021-01-030UC"
+        assert response.json() == {"path": str(tmp_path)}
     finally:
         app.dependency_overrides.clear()
         app.dependency_overrides.update(original)
