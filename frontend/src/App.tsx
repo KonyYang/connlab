@@ -313,15 +313,14 @@ export default function App(): ReactElement {
   const importPath = `/projects/import${importSuffix}`;
   const returnProjectId = new URLSearchParams(window.location.search).get("project");
   const fromReference = new URLSearchParams(window.location.search).get("from") === "reference";
-  const currentProjectRoute = isProjectWorkspaceRoute(route) ? route : lastProjectRoute ? parseRoute(lastProjectRoute) : null;
-  const openProjectId = currentProjectRoute && isProjectWorkspaceRoute(currentProjectRoute) && "projectId" in currentProjectRoute ? currentProjectRoute.projectId : null;
+  const projectFolderId = route.name !== "projectDetail" && isProjectWorkspaceRoute(route) && "projectId" in route ? route.projectId : undefined;
 
   return (
     <>
       <FrontendDiagnosticsReporter />
       <AppShell
       activeRoute={activeRoute}
-      projectId={openProjectId}
+      projectFolderId={projectFolderId}
       interactionLocked={Boolean(intakeInteractionLockReason)}
       interactionLockedReason={intakeInteractionLockReason ?? undefined}
       topBarTitle={topBarTitle}
