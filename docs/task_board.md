@@ -689,7 +689,32 @@
       "closed_at": "2026-11-19T12:46:02.406517Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_BROWSER_RELEASE_README_PATHS_20261120": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\release-readme-20261120",
+      "branch": "codex/release-readme-20261120",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_BROWSER_RELEASE_README_PATHS_20261120",
+        "summary": "Correct browser release README storage paths and verify the rebuilt portable package locally.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Browser operator README only. Document the default D:/ConnLab/Projects and the per-user configuration and SQLite data paths. Rebuild the browser release and check its stock launcher with isolated data; no publishing or upload.",
+        "scope_paths": [
+          "packaging/README_FOR_BROWSER_OPERATOR.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "a75d1218427d8b26e7d10ae4f74609fb883e7e43",
+        "started_at": "2026-11-19T23:10:44.102490Z",
+        "updated_at": "2026-11-19T23:10:44.102490Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
