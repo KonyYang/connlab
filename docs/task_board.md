@@ -647,11 +647,11 @@
   "tasks": {
     "TASK_ENCRYPTION_PICKER_20261118": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\encryption-picker-20261118",
       "branch": "codex/encryption-picker-20261118",
       "resources": [],
-      "integrated_head": "0bc665330199074e258c73abc20ebf287cdff4f0",
+      "integrated_head": "a7886919695ea11c76659455530fc8cf15e04299",
       "task": {
         "task_id": "TASK_ENCRYPTION_PICKER_20261118",
         "summary": "Combine Tools encryption actions and use foreground Windows file/folder selection.",
@@ -675,7 +675,7 @@
         "risk_reasons": [],
         "activation_head": "47c38fba032c74ba1777652b842a09b247092d8a",
         "started_at": "2026-11-18T10:32:54.583972Z",
-        "updated_at": "2026-11-19T00:01:30.443848Z",
+        "updated_at": "2026-11-19T00:03:53.793577Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -685,7 +685,62 @@
           "summary": "User clarified that the main encryption button should display the exact currently selected menu action, explicitly distinguishing one file from files inside a folder. Local copy revision.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_ENCRYPTION_PICKER_20261118",
+          "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
+          "summary": "The main button now uses the selected menu action label, explicitly distinguishing one file from the files in a folder. The existing behavior for opening selectors, cancelling and remembering the mode stays in force.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/tools/EncryptionTool.test.tsx",
+            "frontend/src/features/tools/EncryptionTool.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx"
+          ],
+          "validation": [
+            {
+              "name": "Relevant frontend tests",
+              "status": "passed",
+              "summary": "25 passed: Tools page and encryption actions.",
+              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-action-copy/frontend.log"
+            },
+            {
+              "name": "Frontend build",
+              "status": "passed",
+              "summary": "TypeScript and Vite succeeded after the tests.",
+              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-action-copy/build.log"
+            },
+            {
+              "name": "Isolated Chrome",
+              "status": "passed",
+              "summary": "320 and 540px: full folder label fits, menu fits, refresh remembers the label, mock endpoints only.",
+              "evidence": "D:/PythonProject/connlab-worktrees/encryption-picker-20261118/tmp/encryption-action-copy/browser-qa.log"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Shared the labels between the main button and the menu and updated the existing acceptance checks."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Same-agent focused review of exact diff: copy only, existing selection and native API behavior preserved."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "25 existing behavior checks, build and browser at 320 and 540 pixels passed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
+            "primary_before": "bb6f27288afcb93ca66b72e0a8c5701ff4e3dc64",
+            "integrated_head": "a7886919695ea11c76659455530fc8cf15e04299",
+            "recovered": false
+          }
+        }
       }
     }
   }
