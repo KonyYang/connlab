@@ -29,7 +29,7 @@ async function showChoices() {
 it("chooses a local folder and reports saved siblings without uploads or downloads", async () => {
   render(<EncryptionTool />);
   await showChoices();
-  await userEvent.click(screen.getByRole("menuitem", { name: /Encrypt a folder/ }));
+  await userEvent.click(screen.getByRole("menuitem", { name: /Encrypt files in a folder/ }));
   expect(await screen.findByText(/1 encrypted.*1 failed.*2 skipped/)).toBeTruthy();
   expect(screen.getByText("D:/Lab")).toBeTruthy();
   expect(screen.queryByLabelText("Select Office Folder")).toBeNull();
@@ -41,9 +41,9 @@ it("chooses a local folder and reports saved siblings without uploads or downloa
 it("keeps previous feedback on picker cancellation and allows retry after errors", async () => {
   render(<EncryptionTool />);
   await showChoices();
-  await userEvent.click(screen.getByRole("menuitem", { name: /Encrypt a folder/ }));
+  await userEvent.click(screen.getByRole("menuitem", { name: /Encrypt files in a folder/ }));
   await screen.findByText("D:/Lab");
-  const button = screen.getByRole("button", { name: "Encrypt Folder", exact: true });
+  const button = screen.getByRole("button", { name: "Encrypt files in a folder…", exact: true });
   vi.mocked(encryptLocalFolder).mockResolvedValueOnce({ cancelled: true });
   await userEvent.click(button);
   expect(screen.getByText("D:/Lab")).toBeTruthy();
@@ -59,7 +59,7 @@ it("prevents concurrent operations and ignores late feedback after leaving", asy
   vi.mocked(encryptLocalFolder).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
   const mounted = render(<EncryptionTool />);
   await showChoices();
-  await userEvent.click(screen.getByRole("menuitem", { name: /Encrypt a folder/ }));
+  await userEvent.click(screen.getByRole("menuitem", { name: /Encrypt files in a folder/ }));
   expect(screen.queryByRole("menu")).toBeNull();
   expect(screen.getByRole("button", { name: "Working..." })).toHaveProperty("disabled", true);
   const options = screen.getByRole("button", { name: "Encryption options" });
@@ -75,7 +75,7 @@ it("clearly reports zero successful files", async () => {
   vi.mocked(encryptLocalFolder).mockResolvedValue({ ...completed, summary: { succeeded: 0, failed: 1, skipped: 0 } });
   render(<EncryptionTool />);
   await showChoices();
-  await userEvent.click(screen.getByRole("menuitem", { name: /Encrypt a folder/ }));
+  await userEvent.click(screen.getByRole("menuitem", { name: /Encrypt files in a folder/ }));
   expect(await screen.findByText(/No files were encrypted/)).toBeTruthy();
 });
 
@@ -83,7 +83,7 @@ it.each([".ppt", ".pptx"])("saves a single %s presentation beside the source wit
   vi.mocked(encryptLocalFile).mockResolvedValue({ cancelled: false, folder: "D:/Lab", summary: { succeeded: 1, failed: 0, skipped: 0 },
     entries: [{ file: `slides${suffix}`, status: "Encrypted", reason: "", output: `slides_Secured${suffix}` }] });
   render(<EncryptionTool />);
-  await userEvent.click(screen.getByRole("button", { name: "Encrypt File", exact: true }));
+  await userEvent.click(screen.getByRole("button", { name: "Encrypt one file…", exact: true }));
   expect((await screen.findByRole("status", { name: "Saved Encrypted File" })).textContent).toContain(`slides_Secured${suffix}`);
   expect(screen.queryByLabelText("Select Office File")).toBeNull();
   expect(URL.createObjectURL).not.toHaveBeenCalled();
@@ -99,7 +99,7 @@ it("opens the two-action menu with the keyboard and restores focus on Escape", a
   entry.focus();
   await user.keyboard("{ArrowDown}");
   const file = screen.getByRole("menuitem", { name: /Encrypt one file/ });
-  const folder = screen.getByRole("menuitem", { name: /Encrypt a folder/ });
+  const folder = screen.getByRole("menuitem", { name: /Encrypt files in a folder/ });
   expect(entry.getAttribute("aria-expanded")).toBe("true");
   expect(document.activeElement).toBe(file);
   await user.keyboard("{ArrowDown}");
@@ -118,27 +118,27 @@ it("remembers a confirmed mode and keeps release storage separate", async () => 
   const user = userEvent.setup();
   vi.mocked(encryptLocalFile).mockResolvedValue({ cancelled: true });
   const first = render(<EncryptionTool />);
-  await user.click(screen.getByRole("button", { name: "Encrypt File", exact: true }));
+  await user.click(screen.getByRole("button", { name: "Encrypt one file…", exact: true }));
   expect(encryptLocalFile).toHaveBeenCalledTimes(1);
   expect(encryptLocalFolder).not.toHaveBeenCalled();
   await user.click(screen.getByRole("button", { name: "Encryption options" }));
-  const folderChoice = screen.getByRole("menuitem", { name: /Encrypt a folder/ });
+  const folderChoice = screen.getByRole("menuitem", { name: /Encrypt files in a folder/ });
   vi.mocked(encryptLocalFolder).mockResolvedValueOnce({ cancelled: true });
   await user.click(folderChoice);
-  expect(screen.getByRole("button", { name: "Encrypt File", exact: true })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Encrypt one file…", exact: true })).toBeTruthy();
   expect(screen.queryByRole("menu")).toBeNull();
   await user.click(screen.getByRole("button", { name: "Encryption options" }));
-  await user.click(screen.getByRole("menuitem", { name: /Encrypt a folder/ }));
-  await screen.findByRole("button", { name: "Encrypt Folder", exact: true });
+  await user.click(screen.getByRole("menuitem", { name: /Encrypt files in a folder/ }));
+  await screen.findByRole("button", { name: "Encrypt files in a folder…", exact: true });
   first.unmount();
 
   const release = { ...devRuntime, environment: "release" as const, instance_id: "release-encryption" };
   bindRuntime(release);
   const separate = render(<EncryptionTool />);
-  expect(screen.getByRole("button", { name: "Encrypt File", exact: true })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Encrypt one file…", exact: true })).toBeTruthy();
   separate.unmount();
   bindRuntime(devRuntime);
   render(<EncryptionTool />);
-  await user.click(screen.getByRole("button", { name: "Encrypt Folder", exact: true }));
+  await user.click(screen.getByRole("button", { name: "Encrypt files in a folder…", exact: true }));
   expect(encryptLocalFolder).toHaveBeenCalledTimes(3);
 });

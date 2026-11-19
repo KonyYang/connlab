@@ -172,7 +172,8 @@ Do not use a dated snapshot as a substitute for the code.
 ### Standalone Tools folder encryption
 
 - The encryption split button opens the most recent accepted source mode directly, starting with
-  `Encrypt File`. Its arrow opens two actions beside it. A completed non-cancelled request remembers
+  `Encrypt one file…`. The main button uses the selected menu action as its label. Its arrow opens
+  two actions beside it. A completed non-cancelled request remembers
   the mode for the current browser and data instance. The two modes open the Windows Common Item
   Dialog. File selection saves only the selected file. Folder selection processes only direct files,
   excluding subfolders. Both process `.doc`,

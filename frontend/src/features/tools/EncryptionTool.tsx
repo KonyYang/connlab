@@ -6,6 +6,10 @@ import { runtimeLocalStorage } from "../../runtimeEnvironment";
 import { ToolsFeedback } from "./ToolsFeedback";
 
 type EncryptionMode = "file" | "folder";
+const modeLabels: Record<EncryptionMode, string> = {
+  file: "Encrypt one file…",
+  folder: "Encrypt files in a folder…",
+};
 const recentModeKey = "tools.encryption.recent-mode";
 
 function readRecentMode(): EncryptionMode {
@@ -80,10 +84,10 @@ function EncryptionOptions({ id, anchor, trigger, onClose, onChoose }: {
   return createPortal(<div id={id} ref={menuRef} role="menu" aria-label="Encryption options"
     className="tools-encryption-menu" onKeyDown={handleMenuKey}>
     <button type="button" role="menuitem" tabIndex={-1} onClick={() => onChoose("file")}>
-      <UiIcon name="file" /><span>Encrypt one file…</span>
+      <UiIcon name="file" /><span>{modeLabels.file}</span>
     </button>
     <button type="button" role="menuitem" tabIndex={-1} onClick={() => onChoose("folder")}>
-      <UiIcon name="folder" /><span>Encrypt a folder…<small>Excludes subfolders</small></span>
+      <UiIcon name="folder" /><span>{modeLabels.folder}<small>Excludes subfolders</small></span>
     </button>
   </div>, document.body);
 }
@@ -148,7 +152,7 @@ export function EncryptionTool() {
       <button ref={mainButton} className="primary-action tools-picker-action" type="button" disabled={busy}
         title="Encrypted copies are saved beside the originals."
         onClick={() => void run(recentMode, mainButton.current)}>
-        {busy ? "Working..." : recentMode === "file" ? "Encrypt File" : "Encrypt Folder"}
+        {busy ? "Working..." : modeLabels[recentMode]}
       </button>
       <button ref={optionsButton} className="primary-action tools-encryption-toggle" type="button" disabled={busy}
         aria-label="Encryption options" aria-haspopup="menu" aria-expanded={expanded}
