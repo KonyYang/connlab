@@ -680,7 +680,32 @@
       "closed_at": "2026-11-19T12:44:22.694152Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\portable-output-root-test-20261119",
+      "branch": "codex/portable-output-root-test-20261119",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119",
+        "summary": "Align portable project recovery tests with registered workspace and offline protection rules.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Update only the portable recovery integration test assertions. Preserve production directory behavior. Run the full local regression on isolated fixtures and assess readiness without publishing.",
+        "scope_paths": [
+          "tests/integration/test_project_library_portability.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "f51380821cf740b6b2aa0b1f739aa53bd466b3d0",
+        "started_at": "2026-11-19T14:29:43.189012Z",
+        "updated_at": "2026-11-19T14:29:43.189012Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
