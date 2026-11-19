@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_ENCRYPTION_PICKER_20261118",
-    "tier": "standard",
-    "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
-    "summary": "Combine Tools encryption actions and use foreground Windows file/folder selection.",
+    "task_id": "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119",
+    "tier": "micro",
+    "subject": "26fe46960c0d796bfbc7738859b4a9c8ecf1d2af",
+    "summary": "Align portable project recovery tests with registered workspace and offline protection rules.",
     "disposition": "completed",
-    "decision_ref": "User authorized local-only close after completed validation was verified. Final implementation 00b7ac2a and integration a7886919 are retained in master. Final validation record 64180b75 and initial validation record 91395a54, task worktree, logs, screenshots and isolated encryption evidence are retained. No push, publication or packaging.",
-    "closed_at": "2026-11-19T12:46:02.406517Z"
+    "decision_ref": "User explicitly requested local-only close. Preserve implementation 26fe4696, the full regression board record 8b7570b8, task checkout and complete isolated validation evidence at D:/ConnLabDev/TestArtifacts/r1912307/verification.json. No push, publication or packaging.",
+    "closed_at": "2026-11-19T14:57:26.609353Z"
   },
   "retained_history": [
     {
@@ -678,78 +678,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local-only close of the LTR duplicate display fix. Retain implementation b87cdfc1, validation evidence in 94b1f778, and the task worktree and test artifacts. No push, publication or packaging.",
       "closed_at": "2026-11-19T12:44:22.694152Z"
+    },
+    {
+      "task_id": "TASK_ENCRYPTION_PICKER_20261118",
+      "tier": "standard",
+      "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
+      "summary": "Combine Tools encryption actions and use foreground Windows file/folder selection.",
+      "disposition": "completed",
+      "decision_ref": "User authorized local-only close after completed validation was verified. Final implementation 00b7ac2a and integration a7886919 are retained in master. Final validation record 64180b75 and initial validation record 91395a54, task worktree, logs, screenshots and isolated encryption evidence are retained. No push, publication or packaging.",
+      "closed_at": "2026-11-19T12:46:02.406517Z"
     }
   ],
-  "tasks": {
-    "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\portable-output-root-test-20261119",
-      "branch": "codex/portable-output-root-test-20261119",
-      "resources": [],
-      "integrated_head": "27cb904362ed6f40decdfd6e98f7563986b864e3",
-      "task": {
-        "task_id": "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119",
-        "summary": "Align portable project recovery tests with registered workspace and offline protection rules.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Update only the portable recovery integration test assertions. Preserve production directory behavior. Run the full local regression on isolated fixtures and assess readiness without publishing.",
-        "scope_paths": [
-          "tests/integration/test_project_library_portability.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "f51380821cf740b6b2aa0b1f739aa53bd466b3d0",
-        "started_at": "2026-11-19T14:29:43.189012Z",
-        "updated_at": "2026-11-19T14:52:05.982929Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119",
-          "subject": "26fe46960c0d796bfbc7738859b4a9c8ecf1d2af",
-          "summary": "Portable restore tests now verify registered generation and relocation paths, retained offline registration, and no creation of a global output root. No production code changes. Complete isolated local regression passed.",
-          "scope_ok": true,
-          "changed_paths": [
-            "tests/integration/test_project_library_portability.py"
-          ],
-          "validation": [
-            {
-              "name": "Original failing assertion and focused regression",
-              "status": "passed",
-              "summary": "Previous master reproduced stale global-root assertion. Updated test passed and checks both registered previews, blocked offline generation, retained directory registration and no substitute destination.",
-              "evidence": "D:/ConnLabDev/TestArtifacts/r1912307/focus/python.log"
-            },
-            {
-              "name": "Complete standard non-Office Python suite",
-              "status": "passed",
-              "summary": "4895 unique test cases across four isolated processes, 4881 passed, 14 skipped, 29 Office tests deselected. Historical MSG fixtures used local parsing.",
-              "evidence": "D:/ConnLabDev/TestArtifacts/r1912307/verification.json"
-            },
-            {
-              "name": "Full frontend and TypeScript/Vite build",
-              "status": "passed",
-              "summary": "1337 passed, 1 skipped; TypeScript and Vite build passed. Original frontend snapshot omitted the shared test fixture and a Fee test recorded a React act warning; initial log retained, complete standalone rerun passed after restoring the fixture.",
-              "evidence": "D:/ConnLabDev/TestArtifacts/r1912307/fe-serial/vitest.log"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Exact diff reviewed for repo standards and requested behavior. One existing test only; UI, API and production directory behavior unchanged."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "26fe46960c0d796bfbc7738859b4a9c8ecf1d2af",
-            "primary_before": "abc59c8d11651c344c3fbb36a41f9f02b291fffc",
-            "integrated_head": "27cb904362ed6f40decdfd6e98f7563986b864e3",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
