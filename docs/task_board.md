@@ -683,11 +683,11 @@
   "tasks": {
     "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\portable-output-root-test-20261119",
       "branch": "codex/portable-output-root-test-20261119",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "27cb904362ed6f40decdfd6e98f7563986b864e3",
       "task": {
         "task_id": "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119",
         "summary": "Align portable project recovery tests with registered workspace and offline protection rules.",
@@ -700,9 +700,53 @@
         "risk_reasons": [],
         "activation_head": "f51380821cf740b6b2aa0b1f739aa53bd466b3d0",
         "started_at": "2026-11-19T14:29:43.189012Z",
-        "updated_at": "2026-11-19T14:29:43.189012Z",
+        "updated_at": "2026-11-19T14:52:05.982929Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_PORTABLE_OUTPUT_ROOT_TEST_20261119",
+          "subject": "26fe46960c0d796bfbc7738859b4a9c8ecf1d2af",
+          "summary": "Portable restore tests now verify registered generation and relocation paths, retained offline registration, and no creation of a global output root. No production code changes. Complete isolated local regression passed.",
+          "scope_ok": true,
+          "changed_paths": [
+            "tests/integration/test_project_library_portability.py"
+          ],
+          "validation": [
+            {
+              "name": "Original failing assertion and focused regression",
+              "status": "passed",
+              "summary": "Previous master reproduced stale global-root assertion. Updated test passed and checks both registered previews, blocked offline generation, retained directory registration and no substitute destination.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/r1912307/focus/python.log"
+            },
+            {
+              "name": "Complete standard non-Office Python suite",
+              "status": "passed",
+              "summary": "4895 unique test cases across four isolated processes, 4881 passed, 14 skipped, 29 Office tests deselected. Historical MSG fixtures used local parsing.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/r1912307/verification.json"
+            },
+            {
+              "name": "Full frontend and TypeScript/Vite build",
+              "status": "passed",
+              "summary": "1337 passed, 1 skipped; TypeScript and Vite build passed. Original frontend snapshot omitted the shared test fixture and a Fee test recorded a React act warning; initial log retained, complete standalone rerun passed after restoring the fixture.",
+              "evidence": "D:/ConnLabDev/TestArtifacts/r1912307/fe-serial/vitest.log"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Exact diff reviewed for repo standards and requested behavior. One existing test only; UI, API and production directory behavior unchanged."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "26fe46960c0d796bfbc7738859b4a9c8ecf1d2af",
+            "primary_before": "abc59c8d11651c344c3fbb36a41f9f02b291fffc",
+            "integrated_head": "27cb904362ed6f40decdfd6e98f7563986b864e3",
+            "recovered": false
+          }
+        }
       }
     }
   }
