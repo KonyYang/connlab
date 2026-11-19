@@ -742,6 +742,38 @@
           }
         }
       }
+    },
+    "TASK_PROJECT_FOLDER_ACTIONS_20261119": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\project-folder-actions-20261119",
+      "branch": "codex/project-folder-actions-20261119",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PROJECT_FOLDER_ACTIONS_20261119",
+        "summary": "Move the project-folder button out of the sidebar and onto the four project subpage headers.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Move the existing guarded local-folder-open action to Matrix Editor, Fee Evaluation, Basic Information and Report. Preserve project identity, availability and existing Workbench Folder Actions. Local test and integration only.",
+        "scope_paths": [
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/components/layout/AppShell.tsx",
+          "frontend/src/components/layout/TopBar.tsx",
+          "frontend/src/components/layout/TopBar.test.tsx",
+          "frontend/src/components/layout/Sidebar.tsx",
+          "frontend/src/components/layout/Sidebar.test.tsx",
+          "frontend/src/components/layout/ProjectFolderAction.tsx",
+          "frontend/src/styles.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "64180b75525088eaa0680ce2e06bf29424c2143e",
+        "started_at": "2026-11-19T00:11:52.150210Z",
+        "updated_at": "2026-11-19T00:11:52.150210Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
