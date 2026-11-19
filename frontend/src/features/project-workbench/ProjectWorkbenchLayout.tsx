@@ -515,6 +515,11 @@ export function ProjectWorkbenchLayout({
           void basicWorkspace?.refresh();
         }} /> : null}
       {topBarActionsRoot ? createPortal(runtimeConsoleTopbar, topBarActionsRoot) : runtimeConsoleTopbar}
+      {project.former_ltr_numbers?.length ? (
+        <div className="runtime-console-workflow-alert">
+          <span>Former LTR (transferred) — {project.former_ltr_numbers.join(", ")}</span>
+        </div>
+      ) : null}
 
       {checkingRecoveryPreview ? (
         <div className="runtime-console-workflow-alert" role="status" aria-busy="true">
