@@ -562,6 +562,7 @@ def test_same_ltr_different_identity_can_be_retained_as_read_only_history(tmp_pa
 
 def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_path, monkeypatch):
     from tests.fixtures.project_library.full_graph import seed_full_graph
+    from backend.domain import ExternalResourceType
     from backend.infrastructure.project_library.ownership import TABLES
     from sqlalchemy import text
     with seed_full_graph(tmp_path / "A") as graph:
@@ -613,8 +614,9 @@ def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_p
         assert member_b["snapshot_status"] == "current", member_b
         assert member_b["can_continue"] is True
         manifest = json.loads((Path(member_b["folder_path"]) / ".connlab/manifest.json").read_text(encoding="utf-8"))
-        assert Path(manifest["official_project_folder_path"]).is_relative_to(settings_b.projects_dir)
-        assert Path(manifest["official_project_folder_path"]).is_dir()
+        registered_folder = Path(manifest["official_project_folder_path"])
+        assert registered_folder.is_relative_to(settings_b.projects_dir)
+        assert registered_folder.is_dir()
         with Session(engine_b) as session:
             for name in TABLES:
                 count = session.execute(text('SELECT COUNT(*) FROM "' + name + '"')).scalar_one()
@@ -645,21 +647,20 @@ def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_p
                 before_preview = capture(session, "P1", validate_history=False)
             folder_preview = client.get("/api/projects/P1/project-folder/generation/preview?intent=create")
             assert folder_preview.status_code == 200, folder_preview.text
-            assert not any("outside" in message for message in folder_preview.json()["workspace_preview"]["blockers"])
-            from backend.domain import ExternalResourceType
-            from backend.infrastructure.storage.models import ExternalResourceModel
-            from sqlalchemy import delete
+            workspace_preview = folder_preview.json()["workspace_preview"]
+            assert workspace_preview["official_project_folder_path"] == str(registered_folder)
+            assert not any("outside" in message for message in workspace_preview["blockers"])
             with Session(engine_b) as session:
                 assert capture(session, "P1", validate_history=False) == before_preview
-                resource = deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT)
-                assert resource is not None and resource.path == settings_b.projects_dir
-                session.execute(delete(ExternalResourceModel).where(ExternalResourceModel.resource_type == ExternalResourceType.PROJECT_OUTPUT_ROOT.value))
-                session.commit()
+                assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT) is None
+
             relocation = client.get("/api/projects/P1/official-workspace/relocation/preview")
             assert relocation.status_code == 200, relocation.text
-            assert not any("outside" in message for message in relocation.json()["blockers"])
+            relocation_preview = relocation.json()
+            assert relocation_preview["current_path"] == str(registered_folder)
+            assert not any("outside" in message for message in relocation_preview["blockers"])
             with Session(engine_b) as session:
-                assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT).path == settings_b.projects_dir
+                assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT) is None
                 assert capture(session, "P1", validate_history=False) == before_preview
             assert not (ambient_output / "Projects").exists()
             assert not ambient_database.exists()
@@ -695,10 +696,16 @@ def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_p
             try:
                 unavailable = client.get("/api/projects/P1/project-folder/generation/preview?intent=create")
                 assert unavailable.status_code == 200, unavailable.text
-                assert unavailable.json()["workspace_preview"]["status"] == "blocked"
+                offline_preview = unavailable.json()["workspace_preview"]
+                assert offline_preview["status"] == "blocked"
+                assert offline_preview["official_project_folder_path"] == str(registered_folder)
+                assert any(str(registered_folder.parent) in blocker for blocker in offline_preview["blockers"])
                 assert not settings_b.projects_dir.exists()
+                assert (offline_root / registered_folder.relative_to(settings_b.projects_dir)).is_dir()
                 with Session(engine_b) as session:
-                    assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT).path == settings_b.projects_dir
+                    workspace_record = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+                    assert workspace_record is not None and workspace_record.official_folder_path == registered_folder
+                    assert deps.ExternalResourceRepository(session).get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT) is None
                 assert not (ambient_output / "Projects").exists() and not ambient_database.exists()
             finally:
                 offline_root.rename(settings_b.projects_dir)
