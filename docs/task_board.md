@@ -751,6 +751,45 @@
           }
         }
       }
+    },
+    "TASK_RETIRE_LEGACY_ENTRY_20261119": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\retire-legacy-entry-20261119",
+      "branch": "codex/retire-legacy-entry-20261119",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_RETIRE_LEGACY_ENTRY_20261119",
+        "summary": "Retire legacy folder linking and Continue Testing entry points",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Disable the two retired UI and HTTP workflows while preserving existing project and material access, batch receive, and portable snapshot restore.",
+        "scope_paths": [
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/api/legacyProjects.ts",
+          "frontend/src/api/projectLibrary.ts",
+          "frontend/src/features/legacy-projects/LegacyProjectPreview.tsx",
+          "frontend/src/features/legacy-projects/LegacyProjectPreview.test.tsx",
+          "frontend/src/features/project-library/ProjectLibraryMember.tsx",
+          "frontend/src/features/project-library/ProjectLibraryMember.test.tsx",
+          "backend/api/routes_tools_legacy_projects.py",
+          "backend/api/routes_project_library.py",
+          "backend/api/project_library_schemas.py",
+          "backend/application/project_library/service.py",
+          "tests/integration/test_tools_legacy_projects_api.py",
+          "tests/integration/test_legacy_project_registration_api.py",
+          "tests/integration/test_project_library_api.py",
+          "tests/integration/test_project_library_portability.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "8064b324aeaa25ad45fc5165b6bcd47594b31c15",
+        "started_at": "2026-11-19T11:34:58.415591Z",
+        "updated_at": "2026-11-19T11:34:58.415591Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
