@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_RETIRE_LEGACY_ENTRY_20261119",
+    "task_id": "TASK_LTR_OWNER_DISPLAY_20261119",
     "tier": "micro",
-    "subject": "bb22b161175517a760372929404a62fc7b837050",
-    "summary": "Retire legacy folder linking and Continue Testing entry points",
+    "subject": "b87cdfc11b127b3c743ff2d73ea333f08fa8b761",
+    "summary": "Display formal LTR numbers only for current owners and label transferred numbers in project details.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local-only closure of the two retired entry points, retaining implementation and verification evidence.",
-    "closed_at": "2026-11-19T12:17:39.909041Z"
+    "decision_ref": "User explicitly requested local-only close of the LTR duplicate display fix. Retain implementation b87cdfc1, validation evidence in 94b1f778, and the task worktree and test artifacts. No push, publication or packaging.",
+    "closed_at": "2026-11-19T12:44:22.694152Z"
   },
   "retained_history": [
     {
@@ -660,6 +660,15 @@
       "disposition": "completed",
       "decision_ref": "User asked to close the just-delivered project-folder action task. Local closure under the standing no-push workflow; preserve the separate encryption task and evidence.",
       "closed_at": "2026-11-19T11:10:42.083993Z"
+    },
+    {
+      "task_id": "TASK_RETIRE_LEGACY_ENTRY_20261119",
+      "tier": "micro",
+      "subject": "bb22b161175517a760372929404a62fc7b837050",
+      "summary": "Retire legacy folder linking and Continue Testing entry points",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local-only closure of the two retired entry points, retaining implementation and verification evidence.",
+      "closed_at": "2026-11-19T12:17:39.909041Z"
     }
   ],
   "tasks": {
@@ -756,92 +765,6 @@
             "subject": "00b7ac2a8cca1211ea82dbf0085607b08bbe75ae",
             "primary_before": "bb6f27288afcb93ca66b72e0a8c5701ff4e3dc64",
             "integrated_head": "a7886919695ea11c76659455530fc8cf15e04299",
-            "recovered": false
-          }
-        }
-      }
-    },
-    "TASK_LTR_OWNER_DISPLAY_20261119": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\ltr-owner-display-20261119",
-      "branch": "codex/ltr-owner-display-20261119",
-      "resources": [],
-      "integrated_head": "e2b9a7c512d2029b91107e00534c7feea1ea996e",
-      "task": {
-        "task_id": "TASK_LTR_OWNER_DISPLAY_20261119",
-        "summary": "Display formal LTR numbers only for current owners and label transferred numbers in project details.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Read-only registry and Workbench identity display. Keep project states, stored LTR history, and business operations. Local integration and isolated validation only.",
-        "scope_paths": [
-          "backend/application/project_registry_summary_service.py",
-          "backend/api/routes_project.py",
-          "frontend/src/api/client.ts",
-          "frontend/src/features/projectIdentity.ts",
-          "frontend/src/features/projects-registry/projectRegistryLifecycleViews.ts",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-          "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-          "frontend/src/pages/ProjectListPage.test.tsx",
-          "tests/integration/test_project_registry_summary_api.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "a44b0b7f542eb2b5285de35521a93e129e9f445b",
-        "started_at": "2026-11-19T12:36:21.242522Z",
-        "updated_at": "2026-11-19T12:42:21.504577Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_LTR_OWNER_DISPLAY_20261119",
-          "subject": "b87cdfc11b127b3c743ff2d73ea333f08fa8b761",
-          "summary": "Projects shows formal LTR numbers for current owners; prior projects remain accessible and show transferred numbers in Workbench details.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/application/project_registry_summary_service.py",
-            "backend/api/routes_project.py",
-            "frontend/src/api/client.ts",
-            "frontend/src/features/projectIdentity.ts",
-            "frontend/src/features/projects-registry/projectRegistryLifecycleViews.ts",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "tests/integration/test_project_registry_summary_api.py"
-          ],
-          "validation": [
-            {
-              "name": "RED reproduced duplicate registry entries and two frontend display regressions",
-              "status": "passed"
-            },
-            {
-              "name": "Python registry, projects, LTR and library coverage: 32 passed, 1 fixture symlink test skipped by Windows",
-              "status": "passed"
-            },
-            {
-              "name": "Vitest projects, Workbench and App: 141 passed",
-              "status": "passed"
-            },
-            {
-              "name": "TypeScript and Vite build",
-              "status": "passed"
-            },
-            {
-              "name": "Read-only Dev database API: 008 and 009 each appear once, 3 former projects and their former LTR numbers are retained",
-              "status": "passed"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Implemented; reviewed standards and request fit separately against the exact diff; no blocking findings."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "b87cdfc11b127b3c743ff2d73ea333f08fa8b761",
-            "primary_before": "98c28239ef8150d40e16f8dec28df09137f9b20d",
-            "integrated_head": "e2b9a7c512d2029b91107e00534c7feea1ea996e",
             "recovered": false
           }
         }
