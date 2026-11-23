@@ -719,11 +719,11 @@
   "tasks": {
     "TASK_RELEASE_EQUIPMENT_UPDATE_20261123": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
       "branch": "codex/release-equipment-update-20261123",
       "resources": [],
-      "integrated_head": "174fe88091af82a6825ec73f748165bcf2afb656",
+      "integrated_head": "39289db0144536ef05e5a4651b64dfa389926f20",
       "task": {
         "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
         "summary": "Fix release equipment update failures with long report paths and clarify calibration access failures.",
@@ -749,7 +749,7 @@
         "risk_reasons": [],
         "activation_head": "b98731b8243e1673d7495a2b15d9bc5d6e9fbf96",
         "started_at": "2026-11-23T12:47:52.460329Z",
-        "updated_at": "2026-11-23T13:20:53.554584Z",
+        "updated_at": "2026-11-23T13:23:01.447069Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -759,7 +759,72 @@
           "summary": "User requested actionable explanations for equipment selection, workbook Settings, and report read/write failures.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "validation": [
+            {
+              "command": "pytest (12 affected modules)",
+              "result": "212 tests passed in isolated Windows scratch. Five targeted tests demonstrated the old missing guidance before changes.",
+              "status": "passed"
+            },
+            {
+              "command": "Vitest ToolsPage, ReportWorkspace and ReportWorkingCopy",
+              "result": "80 tests passed in 3 files.",
+              "status": "passed"
+            },
+            {
+              "command": "Isolated release-mode project report API",
+              "result": "Verified actionable errors for the missing workbook, wrong workbook layout, empty EquipmentID and missing Section 7. A valid workbook retry filled both manufacturers and preserved the original in History/Report.",
+              "status": "passed"
+            },
+            {
+              "command": "git diff --check",
+              "result": "No whitespace errors. Earlier release and recovery evidence remains at 8db16dea and e11cd3fc.",
+              "status": "passed"
+            }
+          ],
+          "changed_paths": [
+            "backend/api/routes_report_workspace.py",
+            "backend/api/routes_tools.py",
+            "backend/application/equipment_report_update_service.py",
+            "backend/application/external_excel_read_service.py",
+            "backend/application/tools_equipment_report_service.py",
+            "backend/infrastructure/office/equipment_id_document_reader.py",
+            "backend/infrastructure/office/test_report_document_gateway.py",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/features/tools/EquipmentListTool.tsx",
+            "tests/integration/test_tools_equipment_report_api.py",
+            "tests/unit/test_equipment_id_document_reader.py",
+            "tests/unit/test_equipment_report_update_service.py"
+          ],
+          "roles": {
+            "developer": {
+              "result": "Implemented specific messages and verified concrete workflow steps against the current Settings and report UIs.",
+              "status": "passed"
+            },
+            "reviewer": {
+              "result": "Focused self-review checked the error source, the contextual next steps, and existing file and backup protection.",
+              "status": "passed"
+            },
+            "qa": {
+              "result": "Ran the final isolated Python, frontend and release-mode checks in the current context.",
+              "status": "passed"
+            }
+          },
+          "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
+          "version": 1,
+          "summary": "Provide cause-specific actions in Tools and Report Workspace for equipment IDs, calibration workbook paths or layouts, and report access. Known failures show the file, expected format or folder and next action. Unknown failures direct users to diagnostics.",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "7ce090211d6ad3cfe2cedc9979fc7be868265171",
+            "primary_before": "6a1247768791e73dbcc145d5338675f0cdfd87ca",
+            "integrated_head": "39289db0144536ef05e5a4651b64dfa389926f20",
+            "recovered": false
+          },
+          "subject": "7ce090211d6ad3cfe2cedc9979fc7be868265171",
+          "scope_ok": true,
+          "schema": "connlab.sol-task-report"
+        }
       }
     }
   }
