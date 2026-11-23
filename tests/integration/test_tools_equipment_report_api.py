@@ -3,6 +3,8 @@ from hashlib import sha256
 from io import BytesIO
 import json
 from pathlib import Path
+from types import SimpleNamespace
+from urllib.parse import unquote
 from zipfile import ZipFile
 
 from docx import Document
@@ -13,7 +15,11 @@ import pytest
 
 from backend.api import dependencies as deps
 from backend.api.main import app
-from backend.application.external_excel_read_service import EquipmentCalibrationReadResult, EquipmentCalibrationRow
+from backend.application.external_excel_read_service import (
+    EquipmentCalibrationReadResult,
+    EquipmentCalibrationRow,
+    ExternalExcelReadService,
+)
 from backend.application.tools_equipment_report_service import ToolsEquipmentReportService
 from backend.infrastructure.office.equipment_id_document_reader import EquipmentIdDocumentReader
 from backend.infrastructure.office.test_report_document_gateway import TestReportDocumentGateway
@@ -99,6 +105,51 @@ def test_equipment_upload_can_share_report_filename_without_overwriting_it(clien
     })
     assert response.status_code == 200, response.text
     assert Document(BytesIO(response.content)).tables[0].cell(1, 2).text == "DG-L-0002"
+    assert list(data.iterdir()) == []
+
+
+def test_long_report_name_is_preserved_in_download_without_breaking_staging(client):
+    test_client, data = client
+    stem = "Long report " + "x" * 193
+    response = test_client.post(
+        "/api/tools/equipment-list",
+        files={"file": (f"{stem}.docx", report_bytes())},
+        data={"references_text": "L-0002"},
+    )
+    assert response.status_code == 200, response.text
+    assert f"{stem}_EquipmentUpdated.docx" in unquote(response.headers["content-disposition"])
+    assert Document(BytesIO(response.content)).tables[0].cell(1, 2).text == "DG-L-0002"
+    assert list(data.iterdir()) == []
+
+
+def test_tools_equipment_update_explains_that_this_computer_cannot_find_the_workbook(client):
+    test_client, data = client
+    path = data.parent / "missing.xlsx"
+    store = SimpleNamespace(get_by_type=lambda _: SimpleNamespace(active=True, path=path))
+    app.dependency_overrides[deps.get_tools_equipment_report_service] = lambda: ToolsEquipmentReportService(
+        source_reader=EquipmentIdDocumentReader(),
+        catalog_reader=ExternalExcelReadService(store),
+        report_writer=TestReportDocumentGateway(),
+    )
+    response = test_client.post(
+        "/api/tools/equipment-list",
+        files={"file": ("Report.docx", report_bytes())},
+        data={"references_text": "L-0002"},
+    )
+    assert response.status_code == 422
+    assert "This computer cannot find the configured equipment calibration workbook" in response.json()["detail"]
+    assert "Settings" in response.json()["detail"]
+    assert list(data.iterdir()) == []
+
+
+@pytest.mark.parametrize("field", ["file", "equipment_file"])
+def test_equipment_upload_rejects_invalid_extensions_even_for_valid_word_content(client, field):
+    test_client, data = client
+    files = {"file": ("Report.docx", report_bytes()), "equipment_file": ("EquipmentID.docx", report_bytes())}
+    files[field] = ("document.txt", files[field][1])
+    response = test_client.post("/api/tools/equipment-list", files=files)
+    assert response.status_code == 422
+    assert ".docx" in response.json()["detail"]
     assert list(data.iterdir()) == []
 
 

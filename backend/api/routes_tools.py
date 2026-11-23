@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import shutil
 import tempfile
@@ -36,6 +37,7 @@ from backend.api.routes_tools_folder_encryption import router as folder_encrypti
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 router.include_router(folder_encryption_router)
+logger = logging.getLogger(__name__)
 
 
 class CustomerReportJobResponse(BaseModel):
@@ -186,29 +188,43 @@ def update_equipment_list(
     settings: Settings = Depends(get_settings),
 ) -> FileResponse:
     """Update a downloaded copy; uploads cannot address project or server paths."""
-    root = Path(tempfile.mkdtemp(prefix="tools-equipment-list-", dir=settings.data_dir))
-    source = root / "report" / _safe_upload_name(file.filename, fallback="Internal Report.docx")
-    output = root / "output" / f"{source.stem}_EquipmentUpdated.docx"
-    equipment = None
+    report_name = Path(_safe_upload_name(file.filename, fallback="Internal Report.docx"))
+    if report_name.suffix.lower() != ".docx":
+        raise HTTPException(422, detail="Select an Internal Report .docx with an Equipment List table.")
+    if equipment_file is not None:
+        equipment_name = Path(_safe_upload_name(equipment_file.filename, fallback="EquipmentID.docx"))
+        if equipment_name.suffix.lower() != ".docx":
+            raise HTTPException(422, detail="Choose an EquipmentID .docx document.")
+    root = None
     try:
+        root = Path(tempfile.mkdtemp(prefix="equipment-", dir=settings.data_dir))
+        source = root / "report.docx"
+        output = root / "updated.docx"
+        equipment = None
         _save_upload(file, source)
         if equipment_file is not None:
-            equipment = root / "selection" / _safe_upload_name(equipment_file.filename, fallback="EquipmentID.docx")
+            equipment = root / "EquipmentID.docx"
             _save_upload(equipment_file, equipment)
         result = service.update(source_path=source, output_path=output,
                                 equipment_path=equipment, references_text=references_text)
         review = _equipment_review_header(result.statistics)
     except (LookupError, OSError, RuntimeError, ValueError) as exc:
-        shutil.rmtree(root, ignore_errors=True)
-        detail = str(exc) if isinstance(exc, ValueError) else (
-            "The report could not be updated. Check the selected documents and calibration workbook in Settings."
-        )
+        if root is not None:
+            shutil.rmtree(root, ignore_errors=True)
+        logger.warning("Standalone Equipment List update failed: %s", exc, exc_info=not isinstance(exc, ValueError))
+        if isinstance(exc, ValueError):
+            detail = str(exc)
+        elif isinstance(exc, OSError):
+            detail = "ConnLab could not access a temporary file for the report. Check access to the local ConnLab data folder and retry."
+        else:
+            detail = "ConnLab could not prepare the report copy. Check the selected Word files and try again."
         raise HTTPException(status_code=422, detail=detail) from exc
     except Exception:
-        shutil.rmtree(root, ignore_errors=True)
+        if root is not None:
+            shutil.rmtree(root, ignore_errors=True)
         raise
     return FileResponse(
-        result.output_path, filename=output.name,
+        result.output_path, filename=f"{report_name.stem}_EquipmentUpdated.docx",
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"X-Equipment-Review": review,
                  "Access-Control-Expose-Headers": "Content-Disposition, X-Equipment-Review"},

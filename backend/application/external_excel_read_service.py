@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from pathlib import Path
+from stat import S_ISREG
 from typing import Protocol
 
 from backend.domain import ExternalResource, ExternalResourceType
@@ -14,7 +16,16 @@ from backend.application.external_resource_service import (
     effective_standard_worksheet_name,
     legacy_equipment_excel_layout,
 )
+from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
+    LegacyExcelComUnavailableError,
+    LegacyExcelReadOnlyOpenError,
+)
 from backend.infrastructure.office.excel_tabular_layout import ExcelTabularLayout
+from backend.infrastructure.office.excel_workbook_gateway import UnreadableLtrWorkbookError
+
+
+logger = logging.getLogger(__name__)
+_EQUIPMENT_SETTINGS = "In Settings, check Equipment calibration Excel."
 
 
 class ExternalExcelReadError(ValueError):
@@ -132,10 +143,60 @@ class ExternalExcelReadService:
         query: str | None = None,
     ) -> EquipmentCalibrationReadResult:
         """Read configured equipment calibration Excel rows with optional query filter."""
-        resource = self._require_resource(ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL)
+        path = self._equipment_workbook_path()
+        try:
+            return self._read_equipment_rows(path, query)
+        except (
+            OSError, RuntimeError, UnreadableLtrWorkbookError,
+            LegacyExcelReadOnlyOpenError, LegacyExcelComUnavailableError,
+        ) as exc:
+            logger.warning("Could not read the equipment calibration workbook: %s", exc, exc_info=True)
+            raise ExternalExcelReadError(
+                f"This computer could not read the equipment calibration workbook. {_EQUIPMENT_SETTINGS} "
+                "Verify that the file opens and that you have read access."
+            ) from exc
+        except ValueError as exc:
+            logger.warning("Could not use the configured equipment calibration workbook: %s", exc, exc_info=True)
+            raise ExternalExcelReadError(
+                f"The configured workbook could not be read as a supported equipment table. {_EQUIPMENT_SETTINGS} "
+                "Validate the file or select the lab's equipment calibration workbook."
+            ) from exc
+
+    def _equipment_workbook_path(self) -> Path:
+        resource = self._resources.get_by_type(ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL)
+        if resource is None:
+            raise ExternalExcelReadNotFoundError(
+                "No equipment calibration workbook is configured. In Settings, select Equipment calibration Excel."
+            )
+        if not resource.active:
+            raise ExternalExcelReadError(
+                "The equipment calibration workbook is inactive. In Settings, enable Equipment calibration Excel."
+            )
+        path = Path(resource.path)
+        try:
+            mode = path.stat().st_mode
+        except FileNotFoundError as exc:
+            logger.warning("Configured equipment calibration workbook was not found: %s", exc)
+            raise ExternalExcelReadError(
+                "This computer cannot find the configured equipment calibration workbook. "
+                "In Settings, select a workbook this computer can access."
+            ) from exc
+        except OSError as exc:
+            logger.warning("Configured equipment calibration workbook could not be accessed: %s", exc)
+            raise ExternalExcelReadError(
+                f"This computer cannot access the equipment calibration workbook. {_EQUIPMENT_SETTINGS} "
+                "Check the network connection or file permissions."
+            ) from exc
+        if not S_ISREG(mode) or path.suffix.lower() not in {".xls", ".xlsx"}:
+            raise ExternalExcelReadError(
+                "In Settings, select an .xls or .xlsx file for Equipment calibration Excel."
+            )
+        return path
+
+    def _read_equipment_rows(self, path: Path, query: str | None) -> EquipmentCalibrationReadResult:
         try:
             table = self._office.read_excel_tabular_rows(
-                resource.path,
+                path,
                 expected_headers=(
                     "Equipment ID",
                     "Equipment Name",
@@ -156,7 +217,7 @@ class ExternalExcelReadService:
         except ValueError:
             try:
                 table = self._office.read_excel_tabular_rows(
-                    resource.path,
+                    path,
                     expected_headers=(
                         "Equipment ID",
                         "Equipment Name",
@@ -174,7 +235,7 @@ class ExternalExcelReadService:
                 }
             except ValueError:
                 table = self._office.read_excel_tabular_rows(
-                    resource.path,
+                    path,
                     expected_headers=LEGACY_EQUIPMENT_HEADERS,
                     expected_sheet_names=LEGACY_EQUIPMENT_SHEET_NAMES,
                     layout=legacy_equipment_excel_layout(),
@@ -216,7 +277,7 @@ class ExternalExcelReadService:
             ):
                 rows.append(mapped)
         return EquipmentCalibrationReadResult(
-            resource_path=str(resource.path),
+            resource_path=str(path),
             matched_sheets=table.matched_sheet_names,
             rows=tuple(rows),
         )
