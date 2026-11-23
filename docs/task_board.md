@@ -728,7 +728,7 @@
   "tasks": {
     "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
       "branch": "codex/release-project-folder-relink-20261123",
       "resources": [
@@ -736,7 +736,7 @@
         "release-db:c:/users/white/appdata/local/connlab/data/connlab.sqlite3",
         "release-project:4c2191f3419c4f29b14d734938091442"
       ],
-      "integrated_head": null,
+      "integrated_head": "662915c781e046cd438ca03c3f36c088da4508ff",
       "task": {
         "task_id": "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123",
         "summary": "Recover the local release folder binding for DL-2026-09-001.",
@@ -753,9 +753,59 @@
         ],
         "activation_head": "1fffea7308281c572b67fdb874fda0a8f11cd769",
         "started_at": "2026-11-23T14:29:10.044555Z",
-        "updated_at": "2026-11-23T14:29:10.044555Z",
+        "updated_at": "2026-11-23T14:35:33.472988Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "scope_ok": true,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "1fffea7308281c572b67fdb874fda0a8f11cd769",
+            "primary_before": "662915c781e046cd438ca03c3f36c088da4508ff",
+            "integrated_head": "662915c781e046cd438ca03c3f36c088da4508ff",
+            "recovered": false
+          },
+          "validation": [
+            {
+              "command": "SHA-pinned isolated rehearsal and independent SQLite audit",
+              "status": "passed",
+              "result": "Only four workspace fields and five appended, verified output links changed. Both SQLite snapshots passed checks. Existing output and request material history was preserved."
+            },
+            {
+              "command": "Independent live post-repair database, files and application checks",
+              "status": "passed",
+              "result": "Installed release on port 8765 returned available with no blockers. All five output fingerprints and 51 candidate file/directory entries verified. Foreign manifest unchanged. Evidence and database and manifest backups retained at D:/ConnLabCleanupBackups/DL-2026-09-001-relink-20261123-223410."
+            }
+          ],
+          "version": 1,
+          "summary": "Reconnected the local release project DL-2026-09-001 to its identity-verified timestamped workspace. Only its workspace binding, target identity manifest, and five verified live output links changed. No product code changed.",
+          "task_id": "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123",
+          "roles": {
+            "integrator": {
+              "result": "Verified exact active release binding, applied only the reviewed local artifact, and saved live available status. No source diff.",
+              "status": "passed"
+            },
+            "developer": {
+              "result": "Created the local SHA-pinned repair with application repository and lock reuse. Exact script retained in the audit directory.",
+              "status": "passed"
+            },
+            "reviewer": {
+              "result": "Independently reviewed exact repair script and found no blocker after isolated rehearsal.",
+              "status": "passed"
+            },
+            "qa": {
+              "result": "Independent rehearsal and live all-table/physical verification passed.",
+              "status": "passed"
+            },
+            "planner": {
+              "result": "Independently established target ownership and verified that public relink flows do not support this existing project.",
+              "status": "passed"
+            }
+          },
+          "schema": "connlab.sol-task-report",
+          "subject": "1fffea7308281c572b67fdb874fda0a8f11cd769",
+          "changed_paths": []
+        }
       }
     }
   }
