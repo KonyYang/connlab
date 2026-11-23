@@ -716,7 +716,40 @@
       "closed_at": "2026-11-23T11:39:38.818328Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_RELEASE_EQUIPMENT_UPDATE_20261123": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
+      "branch": "codex/release-equipment-update-20261123",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
+        "summary": "Fix release equipment update failures with long report paths and clarify calibration access failures.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Shorten internal equipment report staging paths, preserve download names, and expose actionable calibration workbook failures and operator diagnostics in both report entry points.",
+        "scope_paths": [
+          "backend/api/routes_tools.py",
+          "backend/api/routes_report_workspace.py",
+          "backend/application/external_excel_read_service.py",
+          "backend/application/tools_equipment_report_service.py",
+          "backend/application/equipment_report_update_service.py",
+          "backend/infrastructure/office/test_report_document_gateway.py",
+          "tests/integration/test_tools_equipment_report_api.py",
+          "tests/integration/test_report_workspace_api.py",
+          "tests/unit/test_external_excel_read_service.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "b98731b8243e1673d7495a2b15d9bc5d6e9fbf96",
+        "started_at": "2026-11-23T12:47:52.460329Z",
+        "updated_at": "2026-11-23T12:47:52.460329Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
