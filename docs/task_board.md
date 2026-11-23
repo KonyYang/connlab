@@ -719,11 +719,11 @@
   "tasks": {
     "TASK_RELEASE_EQUIPMENT_UPDATE_20261123": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
       "branch": "codex/release-equipment-update-20261123",
       "resources": [],
-      "integrated_head": "67ddefe94488256905123fe6680ae4bc46e4ab2e",
+      "integrated_head": "174fe88091af82a6825ec73f748165bcf2afb656",
       "task": {
         "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
         "summary": "Fix release equipment update failures with long report paths and clarify calibration access failures.",
@@ -744,7 +744,7 @@
         "risk_reasons": [],
         "activation_head": "b98731b8243e1673d7495a2b15d9bc5d6e9fbf96",
         "started_at": "2026-11-23T12:47:52.460329Z",
-        "updated_at": "2026-11-23T13:08:35.136526Z",
+        "updated_at": "2026-11-23T13:08:36.599535Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -754,7 +754,49 @@
           "summary": "User requested resolving the morning project report failure first. Verify recovery on the exact morning binary and the already fixed source.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "subject": "acd001b2f52e47565765f3921d0c34b70aecb74a",
+          "version": 1,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "acd001b2f52e47565765f3921d0c34b70aecb74a",
+            "primary_before": "174fe88091af82a6825ec73f748165bcf2afb656",
+            "integrated_head": "174fe88091af82a6825ec73f748165bcf2afb656",
+            "recovered": false
+          },
+          "scope_ok": true,
+          "roles": {
+            "qa": {
+              "status": "passed",
+              "result": "Compared the frozen baseline and fixed source against both failure cases and the successful retry."
+            },
+            "developer": {
+              "status": "passed",
+              "result": "Used the actual morning binary checksum to verify the actionable recovery workflow. No further code change was needed to restore the operation with a readable compatible workbook."
+            },
+            "reviewer": {
+              "status": "passed",
+              "result": "Self-reviewed the isolation, recovery assertions, and limits of the old diagnostic bundle."
+            }
+          },
+          "schema": "connlab.sol-task-report",
+          "validation": [
+            {
+              "command": "Isolated morning frozen release and fixed-source project Equipment List update",
+              "result": "In both runs, an inaccessible workbook and a wrong-layout workbook returned 409 without changing the report, archive, or EquipmentID. With a valid workbook selected and validated, retry returned 200, wrote both manufacturers, and archived the byte-identical original. Fixed source distinguished the two failure causes. Business inputs and live settings stayed read-only.",
+              "status": "passed"
+            },
+            {
+              "command": "Prior exact-subject regression and release Tools check",
+              "result": "Existing evidence at 8db16dea. 193 tests passed and the long report filename worked in release mode. Implementation bytes unchanged.",
+              "status": "passed"
+            }
+          ],
+          "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
+          "summary": "Verified the morning project report recovery on exact frozen release aa33860a (executable hash matched the diagnostic bundle) and fixed source acd001b2. Both worked after reselecting a readable calibration workbook. Either inaccessible path or invalid layout reproduces the old error, so the old log cannot distinguish them.",
+          "changed_paths": []
+        }
       }
     }
   }
