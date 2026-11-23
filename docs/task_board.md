@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_EQUIPMENT_REVIEW_WORDING_20261123",
+    "task_id": "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123",
     "tier": "micro",
-    "subject": "8806317aa3be27ca7fe259ef38b766783b4c7819",
-    "summary": "Explain when equipment IDs are missing from the calibration workbook.",
+    "subject": "7f4092b31cfeb35fb5238377343a57c90a755c6f",
+    "summary": "Show the standard equipment ID format in report update guidance.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local-only close. Preserve implementation commit 8806317a and validation record 58fcf14d with 75 passing tests. No push, publication or packaging.",
-    "closed_at": "2026-11-23T11:39:38.818328Z"
+    "decision_ref": "User explicitly requested local-only close. Preserve implementation commit 7f4092b3 and validation record a1206d41 with 75 passing tests. No push, publication or packaging.",
+    "closed_at": "2026-11-23T11:46:42.773691Z"
   },
   "retained_history": [
     {
@@ -705,76 +705,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local-only close. Preserve README fix 490d69fa, validation record c7bdd6db, rebuilt ConnLab_Web_202611200711_v0.1.0 in the task checkout, and isolated build and startup evidence at D:/ConnLabDev/TestArtifacts/release-readme-20261120/install-verification.json. No push, publication or artifact upload.",
       "closed_at": "2026-11-19T23:28:35.644141Z"
+    },
+    {
+      "task_id": "TASK_EQUIPMENT_REVIEW_WORDING_20261123",
+      "tier": "micro",
+      "subject": "8806317aa3be27ca7fe259ef38b766783b4c7819",
+      "summary": "Explain when equipment IDs are missing from the calibration workbook.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local-only close. Preserve implementation commit 8806317a and validation record 58fcf14d with 75 passing tests. No push, publication or packaging.",
+      "closed_at": "2026-11-23T11:39:38.818328Z"
     }
   ],
-  "tasks": {
-    "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
-      "branch": "codex/equipment-id-format-hint-20261123",
-      "resources": [],
-      "integrated_head": "1fa1b0bff9e89fc006c0c18036341daa3ea0e4d9",
-      "task": {
-        "task_id": "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123",
-        "summary": "Show the standard equipment ID format in report update guidance.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Add DG-Q-XXXX and DG-L-XXXX four-digit formats to the existing missing-ID notice in Tools and Report Workspace. Update their existing tests.",
-        "scope_paths": [
-          "frontend/src/features/tools/EquipmentListTool.tsx",
-          "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-          "frontend/src/pages/ToolsPage.test.tsx",
-          "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "6fc0968226e77db8f4561c2a90826c18aa59e849",
-        "started_at": "2026-11-23T11:42:42.038866Z",
-        "updated_at": "2026-11-23T11:43:42.905598Z",
-        "checkpoint": null,
-        "report": {
-          "changed_paths": [
-            "frontend/src/features/tools/EquipmentListTool.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-            "frontend/src/pages/ToolsPage.test.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
-          ],
-          "scope_ok": true,
-          "version": 1,
-          "task_id": "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123",
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "result": "Self-reviewed the exact change and verified consistent guidance in both entry points."
-            }
-          },
-          "schema": "connlab.sol-task-report",
-          "summary": "The missing-ID notice in both report entry points shows DG-Q-XXXX and DG-L-XXXX, gives DG-Q-0913 as a four-digit example, and explains when to add an ID.",
-          "validation": [
-            {
-              "result": "75 tests passed in 2 files.",
-              "command": "npm test -- --reporter=dot src/pages/ToolsPage.test.tsx src/features/report-workspace/ReportWorkspace.test.tsx",
-              "status": "passed"
-            },
-            {
-              "result": "No whitespace errors.",
-              "command": "git diff --check",
-              "status": "passed"
-            }
-          ],
-          "subject": "7f4092b31cfeb35fb5238377343a57c90a755c6f",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "7f4092b31cfeb35fb5238377343a57c90a755c6f",
-            "primary_before": "6d0d5b0546be3cc56375039f3b5baa3d9160a437",
-            "integrated_head": "1fa1b0bff9e89fc006c0c18036341daa3ea0e4d9",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
