@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123",
-    "tier": "micro",
-    "subject": "7f4092b31cfeb35fb5238377343a57c90a755c6f",
-    "summary": "Show the standard equipment ID format in report update guidance.",
+    "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
+    "tier": "standard",
+    "subject": "7ce090211d6ad3cfe2cedc9979fc7be868265171",
+    "summary": "Fix release equipment update failures with long report paths and clarify calibration access failures.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local-only close. Preserve implementation commit 7f4092b3 and validation record a1206d41 with 75 passing tests. No push, publication or packaging.",
-    "closed_at": "2026-11-23T11:46:42.773691Z"
+    "decision_ref": "User explicitly requested final close. Preserve fixes acd001b2 and 7ce09021, the 212 Python and 80 frontend tests, and isolated release recovery evidence. Follow the ordinary fast-forward close gate.",
+    "closed_at": "2026-11-23T13:29:56.257162Z"
   },
   "retained_history": [
     {
@@ -714,120 +714,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local-only close. Preserve implementation commit 8806317a and validation record 58fcf14d with 75 passing tests. No push, publication or packaging.",
       "closed_at": "2026-11-23T11:39:38.818328Z"
+    },
+    {
+      "task_id": "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123",
+      "tier": "micro",
+      "subject": "7f4092b31cfeb35fb5238377343a57c90a755c6f",
+      "summary": "Show the standard equipment ID format in report update guidance.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local-only close. Preserve implementation commit 7f4092b3 and validation record a1206d41 with 75 passing tests. No push, publication or packaging.",
+      "closed_at": "2026-11-23T11:46:42.773691Z"
     }
   ],
-  "tasks": {
-    "TASK_RELEASE_EQUIPMENT_UPDATE_20261123": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
-      "branch": "codex/release-equipment-update-20261123",
-      "resources": [],
-      "integrated_head": "39289db0144536ef05e5a4651b64dfa389926f20",
-      "task": {
-        "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
-        "summary": "Fix release equipment update failures with long report paths and clarify calibration access failures.",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Shorten internal equipment report staging paths, preserve download names, and expose actionable calibration workbook failures and operator diagnostics in both report entry points.",
-        "scope_paths": [
-          "backend/api/routes_report_workspace.py",
-          "backend/api/routes_tools.py",
-          "backend/application/equipment_report_update_service.py",
-          "backend/application/external_excel_read_service.py",
-          "backend/application/tools_equipment_report_service.py",
-          "backend/infrastructure/office/equipment_id_document_reader.py",
-          "backend/infrastructure/office/test_report_document_gateway.py",
-          "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-          "frontend/src/features/tools/EquipmentListTool.tsx",
-          "tests/integration/test_report_workspace_api.py",
-          "tests/integration/test_tools_equipment_report_api.py",
-          "tests/unit/test_equipment_id_document_reader.py",
-          "tests/unit/test_equipment_report_update_service.py",
-          "tests/unit/test_external_excel_read_service.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "b98731b8243e1673d7495a2b15d9bc5d6e9fbf96",
-        "started_at": "2026-11-23T12:47:52.460329Z",
-        "updated_at": "2026-11-23T13:23:01.447069Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User requested actionable explanations for equipment selection, workbook Settings, and report read/write failures.",
-          "requires_user": false
-        },
-        "report": {
-          "validation": [
-            {
-              "command": "pytest (12 affected modules)",
-              "result": "212 tests passed in isolated Windows scratch. Five targeted tests demonstrated the old missing guidance before changes.",
-              "status": "passed"
-            },
-            {
-              "command": "Vitest ToolsPage, ReportWorkspace and ReportWorkingCopy",
-              "result": "80 tests passed in 3 files.",
-              "status": "passed"
-            },
-            {
-              "command": "Isolated release-mode project report API",
-              "result": "Verified actionable errors for the missing workbook, wrong workbook layout, empty EquipmentID and missing Section 7. A valid workbook retry filled both manufacturers and preserved the original in History/Report.",
-              "status": "passed"
-            },
-            {
-              "command": "git diff --check",
-              "result": "No whitespace errors. Earlier release and recovery evidence remains at 8db16dea and e11cd3fc.",
-              "status": "passed"
-            }
-          ],
-          "changed_paths": [
-            "backend/api/routes_report_workspace.py",
-            "backend/api/routes_tools.py",
-            "backend/application/equipment_report_update_service.py",
-            "backend/application/external_excel_read_service.py",
-            "backend/application/tools_equipment_report_service.py",
-            "backend/infrastructure/office/equipment_id_document_reader.py",
-            "backend/infrastructure/office/test_report_document_gateway.py",
-            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-            "frontend/src/features/tools/EquipmentListTool.tsx",
-            "tests/integration/test_tools_equipment_report_api.py",
-            "tests/unit/test_equipment_id_document_reader.py",
-            "tests/unit/test_equipment_report_update_service.py"
-          ],
-          "roles": {
-            "developer": {
-              "result": "Implemented specific messages and verified concrete workflow steps against the current Settings and report UIs.",
-              "status": "passed"
-            },
-            "reviewer": {
-              "result": "Focused self-review checked the error source, the contextual next steps, and existing file and backup protection.",
-              "status": "passed"
-            },
-            "qa": {
-              "result": "Ran the final isolated Python, frontend and release-mode checks in the current context.",
-              "status": "passed"
-            }
-          },
-          "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
-          "version": 1,
-          "summary": "Provide cause-specific actions in Tools and Report Workspace for equipment IDs, calibration workbook paths or layouts, and report access. Known failures show the file, expected format or folder and next action. Unknown failures direct users to diagnostics.",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "7ce090211d6ad3cfe2cedc9979fc7be868265171",
-            "primary_before": "6a1247768791e73dbcc145d5338675f0cdfd87ca",
-            "integrated_head": "39289db0144536ef05e5a4651b64dfa389926f20",
-            "recovered": false
-          },
-          "subject": "7ce090211d6ad3cfe2cedc9979fc7be868265171",
-          "scope_ok": true,
-          "schema": "connlab.sol-task-report"
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
