@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_BROWSER_RELEASE_README_PATHS_20261120",
+    "task_id": "TASK_EQUIPMENT_REVIEW_WORDING_20261123",
     "tier": "micro",
-    "subject": "490d69faaa90fe0c3a7cf241e778b538fa29f409",
-    "summary": "Correct browser release README storage paths and verify the rebuilt portable package locally.",
+    "subject": "8806317aa3be27ca7fe259ef38b766783b4c7819",
+    "summary": "Explain when equipment IDs are missing from the calibration workbook.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local-only close. Preserve README fix 490d69fa, validation record c7bdd6db, rebuilt ConnLab_Web_202611200711_v0.1.0 in the task checkout, and isolated build and startup evidence at D:/ConnLabDev/TestArtifacts/release-readme-20261120/install-verification.json. No push, publication or artifact upload.",
-    "closed_at": "2026-11-19T23:28:35.644141Z"
+    "decision_ref": "User explicitly requested local-only close. Preserve implementation commit 8806317a and validation record 58fcf14d with 75 passing tests. No push, publication or packaging.",
+    "closed_at": "2026-11-23T11:39:38.818328Z"
   },
   "retained_history": [
     {
@@ -696,76 +696,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local-only close. Preserve implementation 26fe4696, the full regression board record 8b7570b8, task checkout and complete isolated validation evidence at D:/ConnLabDev/TestArtifacts/r1912307/verification.json. No push, publication or packaging.",
       "closed_at": "2026-11-19T14:57:26.609353Z"
+    },
+    {
+      "task_id": "TASK_BROWSER_RELEASE_README_PATHS_20261120",
+      "tier": "micro",
+      "subject": "490d69faaa90fe0c3a7cf241e778b538fa29f409",
+      "summary": "Correct browser release README storage paths and verify the rebuilt portable package locally.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local-only close. Preserve README fix 490d69fa, validation record c7bdd6db, rebuilt ConnLab_Web_202611200711_v0.1.0 in the task checkout, and isolated build and startup evidence at D:/ConnLabDev/TestArtifacts/release-readme-20261120/install-verification.json. No push, publication or artifact upload.",
+      "closed_at": "2026-11-19T23:28:35.644141Z"
     }
   ],
-  "tasks": {
-    "TASK_EQUIPMENT_REVIEW_WORDING_20261123": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
-      "branch": "codex/equipment-review-wording-20261123",
-      "resources": [],
-      "integrated_head": "7b58036d24a5f2ffef659197aef77e279774b2a3",
-      "task": {
-        "task_id": "TASK_EQUIPMENT_REVIEW_WORDING_20261123",
-        "summary": "Explain when equipment IDs are missing from the calibration workbook.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Use direct guidance in Tools and Report Workspace to verify IDs and register missing ones. Update the existing UI checks.",
-        "scope_paths": [
-          "frontend/src/features/tools/EquipmentListTool.tsx",
-          "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-          "frontend/src/pages/ToolsPage.test.tsx",
-          "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "fefb152ac4ddbdb7e490ebaca319e51c01ff5ca4",
-        "started_at": "2026-11-23T11:35:20.858190Z",
-        "updated_at": "2026-11-23T11:37:16.025503Z",
-        "checkpoint": null,
-        "report": {
-          "scope_ok": true,
-          "subject": "8806317aa3be27ca7fe259ef38b766783b4c7819",
-          "summary": "Tools and Report Workspace name the missing equipment IDs, identify the calibration workbook, and tell users to verify and add the IDs.",
-          "schema": "connlab.sol-task-report",
-          "task_id": "TASK_EQUIPMENT_REVIEW_WORDING_20261123",
-          "validation": [
-            {
-              "command": "npm test -- --reporter=dot src/pages/ToolsPage.test.tsx src/features/report-workspace/ReportWorkspace.test.tsx",
-              "result": "75 tests passed in 2 files.",
-              "status": "passed"
-            },
-            {
-              "command": "git diff --check",
-              "result": "No whitespace errors.",
-              "status": "passed"
-            }
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "8806317aa3be27ca7fe259ef38b766783b4c7819",
-            "primary_before": "e6f97dd37f8c5734642d38ce345d80a9127de047",
-            "integrated_head": "7b58036d24a5f2ffef659197aef77e279774b2a3",
-            "recovered": false
-          },
-          "changed_paths": [
-            "frontend/src/features/tools/EquipmentListTool.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-            "frontend/src/pages/ToolsPage.test.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "result": "Implemented and self-reviewed the exact copy and existing tests in both views."
-            }
-          },
-          "version": 1
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
