@@ -698,7 +698,35 @@
       "closed_at": "2026-11-19T14:57:26.609353Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_EQUIPMENT_REVIEW_WORDING_20261123": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
+      "branch": "codex/equipment-review-wording-20261123",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_EQUIPMENT_REVIEW_WORDING_20261123",
+        "summary": "Explain when equipment IDs are missing from the calibration workbook.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Use direct guidance in Tools and Report Workspace to verify IDs and register missing ones. Update the existing UI checks.",
+        "scope_paths": [
+          "frontend/src/features/tools/EquipmentListTool.tsx",
+          "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+          "frontend/src/pages/ToolsPage.test.tsx",
+          "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "fefb152ac4ddbdb7e490ebaca319e51c01ff5ca4",
+        "started_at": "2026-11-23T11:35:20.858190Z",
+        "updated_at": "2026-11-23T11:35:20.858190Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
