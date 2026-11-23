@@ -701,11 +701,11 @@
   "tasks": {
     "TASK_EQUIPMENT_REVIEW_WORDING_20261123": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
       "branch": "codex/equipment-review-wording-20261123",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "7b58036d24a5f2ffef659197aef77e279774b2a3",
       "task": {
         "task_id": "TASK_EQUIPMENT_REVIEW_WORDING_20261123",
         "summary": "Explain when equipment IDs are missing from the calibration workbook.",
@@ -721,9 +721,48 @@
         "risk_reasons": [],
         "activation_head": "fefb152ac4ddbdb7e490ebaca319e51c01ff5ca4",
         "started_at": "2026-11-23T11:35:20.858190Z",
-        "updated_at": "2026-11-23T11:35:20.858190Z",
+        "updated_at": "2026-11-23T11:37:16.025503Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "scope_ok": true,
+          "subject": "8806317aa3be27ca7fe259ef38b766783b4c7819",
+          "summary": "Tools and Report Workspace name the missing equipment IDs, identify the calibration workbook, and tell users to verify and add the IDs.",
+          "schema": "connlab.sol-task-report",
+          "task_id": "TASK_EQUIPMENT_REVIEW_WORDING_20261123",
+          "validation": [
+            {
+              "command": "npm test -- --reporter=dot src/pages/ToolsPage.test.tsx src/features/report-workspace/ReportWorkspace.test.tsx",
+              "result": "75 tests passed in 2 files.",
+              "status": "passed"
+            },
+            {
+              "command": "git diff --check",
+              "result": "No whitespace errors.",
+              "status": "passed"
+            }
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "8806317aa3be27ca7fe259ef38b766783b4c7819",
+            "primary_before": "e6f97dd37f8c5734642d38ce345d80a9127de047",
+            "integrated_head": "7b58036d24a5f2ffef659197aef77e279774b2a3",
+            "recovered": false
+          },
+          "changed_paths": [
+            "frontend/src/features/tools/EquipmentListTool.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "result": "Implemented and self-reviewed the exact copy and existing tests in both views."
+            }
+          },
+          "version": 1
+        }
       }
     }
   }
