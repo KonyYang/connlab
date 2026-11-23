@@ -78,7 +78,7 @@ export function EquipmentListTool(): ReactElement {
 
 function EquipmentReviewFeedback({ review }: { review: EquipmentReview }): ReactElement | null {
   const categories = [
-    ["unmatched", "Equipment IDs not found in the calibration workbook", "Check the IDs. If correct, add them to the workbook."],
+    ["unmatched", "Equipment IDs not found in the calibration workbook", "Use DG-Q-XXXX or DG-L-XXXX with four digits (e.g., DG-Q-0913). If an ID is correct but missing, add it to the workbook."],
     ["incomplete", "Missing Information", "Complete the equipment information in the calibration workbook."],
     ["expired", "Expired Calibration", "Confirm calibration validity before using the report."],
   ] as const;

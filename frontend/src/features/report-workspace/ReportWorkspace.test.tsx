@@ -842,7 +842,7 @@ describe("ReportWorkspace", () => {
     await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
     const dialog = await screen.findByRole("dialog", { name: "Equipment List Needs Review" });
     expect(within(dialog).getByText(/DG-Q-9999/).textContent).toBe(
-      "Equipment IDs not found in the calibration workbook: DG-Q-9999. Check the IDs. If correct, add them to the workbook.",
+      "Equipment IDs not found in the calibration workbook: DG-Q-9999. Use DG-Q-XXXX or DG-L-XXXX with four digits (e.g., DG-Q-0913). If an ID is correct but missing, add it to the workbook.",
     );
     expect(within(dialog).getByText(/DG-Q-0022/).textContent).toContain("Complete equipment details");
     expect(within(dialog).queryByText(/Expired Calibration/)).toBeNull();
