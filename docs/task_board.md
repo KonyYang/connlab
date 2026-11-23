@@ -719,11 +719,11 @@
   "tasks": {
     "TASK_RELEASE_EQUIPMENT_UPDATE_20261123": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
       "branch": "codex/release-equipment-update-20261123",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "67ddefe94488256905123fe6680ae4bc46e4ab2e",
       "task": {
         "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
         "summary": "Fix release equipment update failures with long report paths and clarify calibration access failures.",
@@ -744,9 +744,66 @@
         "risk_reasons": [],
         "activation_head": "b98731b8243e1673d7495a2b15d9bc5d6e9fbf96",
         "started_at": "2026-11-23T12:47:52.460329Z",
-        "updated_at": "2026-11-23T12:47:52.460329Z",
+        "updated_at": "2026-11-23T12:55:57.180436Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "subject": "acd001b2f52e47565765f3921d0c34b70aecb74a",
+          "validation": [
+            {
+              "command": "pytest (10 equipment, report, and workbook unit and integration modules)",
+              "status": "passed",
+              "result": "193 tests passed in isolated Windows scratch. Three targeted cases reproduced the original failures before changes."
+            },
+            {
+              "command": "Isolated release entry point and equipment API verification",
+              "status": "passed",
+              "result": "Compared the original frozen b98731b8 package with fixed source in release mode. A copy of the supplied report and calibration workbook produced a readable DOCX at a 210-character upload filename with names and manufacturers filled. Confirmed missing registration and offline path guidance."
+            },
+            {
+              "command": "git diff --check",
+              "status": "passed",
+              "result": "No whitespace errors."
+            }
+          ],
+          "schema": "connlab.sol-task-report",
+          "summary": "Use short internal equipment report names and return actionable calibration workbook errors. The 19:49 release reproduced the generic Tools error with a 210-character filename, and the fixed source passed the same case in release mode. The affected computer supplied only an older diagnostics bundle.",
+          "changed_paths": [
+            "backend/api/routes_tools.py",
+            "backend/api/routes_report_workspace.py",
+            "backend/application/external_excel_read_service.py",
+            "backend/application/tools_equipment_report_service.py",
+            "backend/application/equipment_report_update_service.py",
+            "backend/infrastructure/office/test_report_document_gateway.py",
+            "tests/integration/test_tools_equipment_report_api.py",
+            "tests/integration/test_report_workspace_api.py",
+            "tests/unit/test_external_excel_read_service.py"
+          ],
+          "scope_ok": true,
+          "version": 1,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "acd001b2f52e47565765f3921d0c34b70aecb74a",
+            "primary_before": "d230106f2d5c2dbb616f60186938e62d554117e5",
+            "integrated_head": "67ddefe94488256905123fe6680ae4bc46e4ab2e",
+            "recovered": false
+          },
+          "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "result": "Focused self-review checked short staging, upload extensions, operator filename, both read error paths, and report protection. No separate reviewer context."
+            },
+            "developer": {
+              "status": "passed",
+              "result": "Reproduced the failure before editing, then implemented and verified the targeted fixes."
+            },
+            "qa": {
+              "status": "passed",
+              "result": "Ran the final 193-test matrix and release-mode API check in the current context using isolated data."
+            }
+          }
+        }
       }
     }
   }
