@@ -725,7 +725,40 @@
       "closed_at": "2026-11-23T11:46:42.773691Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
+      "branch": "codex/release-project-folder-relink-20261123",
+      "resources": [
+        "folder:d:/connlabprojects/dl-2026-09-001 20260908220340",
+        "release-db:c:/users/white/appdata/local/connlab/data/connlab.sqlite3",
+        "release-project:4c2191f3419c4f29b14d734938091442"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123",
+        "summary": "Recover the local release folder binding for DL-2026-09-001.",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Reconnect only the verified timestamped project workspace and its verified current output paths. Back up the release database and affected manifest. Preserve project files and historical references. Repository paths reserve the adapters used by this data-only operation.",
+        "scope_paths": [
+          "backend/infrastructure/storage/repositories/official_workspace.py",
+          "backend/infrastructure/storage/repositories/project_output_record.py",
+          "backend/infrastructure/project_library/files.py"
+        ],
+        "risk_reasons": [
+          "Authoritative local release database and project identity manifest will be updated."
+        ],
+        "activation_head": "1fffea7308281c572b67fdb874fda0a8f11cd769",
+        "started_at": "2026-11-23T14:29:10.044555Z",
+        "updated_at": "2026-11-23T14:29:10.044555Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
