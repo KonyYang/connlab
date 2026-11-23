@@ -1058,7 +1058,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       {equipmentResult ? (
         <EquipmentDialog title="Equipment List Needs Review" busy={false} compact
           returnFocusTarget={equipmentTrigger.current} onClose={() => setEquipmentResult(null)}>
-          {equipmentResult.statistics.unmatched.length ? <p>Equipment IDs not found in the calibration workbook: {equipmentResult.statistics.unmatched.join(", ")}. Check the IDs. If correct, add them to the workbook.</p> : null}
+          {equipmentResult.statistics.unmatched.length ? <p>Equipment IDs not found in the calibration workbook: {equipmentResult.statistics.unmatched.join(", ")}. Use DG-Q-XXXX or DG-L-XXXX with four digits (e.g., DG-Q-0913). If an ID is correct but missing, add it to the workbook.</p> : null}
           {equipmentResult.statistics.incomplete.length ? <p>Incomplete Information: {equipmentResult.statistics.incomplete.join(", ")}. Complete equipment details and calibration dates.</p> : null}
           {equipmentResult.statistics.expired.length ? <p>Expired Calibration: {equipmentResult.statistics.expired.join(", ")}. Confirm calibration status before using these instruments. Calibration due dates are red in the report.</p> : null}
           <div className="report-workspace-action-row"><button type="button" onClick={() => setEquipmentResult(null)}>Close</button></div>
