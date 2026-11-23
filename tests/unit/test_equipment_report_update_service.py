@@ -525,7 +525,7 @@ def test_one_click_missing_source_requests_input_without_writing_report(tmp_path
 def test_one_click_unreadable_existing_selection_does_not_offer_import(tmp_path: Path) -> None:
     from backend.infrastructure.office.equipment_id_document_reader import EquipmentIdDocumentReader
     service, updates = _service(tmp_path, ("DG-Q-0033",), tuple(), source_reader=EquipmentIdDocumentReader())
-    with pytest.raises(EquipmentReportUpdateError, match="cannot be read"):
+    with pytest.raises(EquipmentReportUpdateError, match="cannot be read.*Save the corrected EquipmentID.docx in the project folder"):
         service.update_one_click(project_id="P1", updated_by="Operator")
     assert updates.commands == []
     assert (tmp_path / "EquipmentID.docx").read_bytes() == b"equipment-source"
@@ -533,13 +533,12 @@ def test_one_click_unreadable_existing_selection_does_not_offer_import(tmp_path:
 
 def test_one_click_saves_missing_selection_and_preserves_it_if_report_update_fails(tmp_path: Path) -> None:
     from backend.infrastructure.office.equipment_id_document_reader import EquipmentIdDocumentReader
-    from backend.application.current_report_update_service import CurrentReportUpdateError
     service, updates = _service(tmp_path, ("DG-Q-0033",), tuple(), source_reader=EquipmentIdDocumentReader())
     (tmp_path / "EquipmentID.docx").unlink()
     def failed(_command):
-        raise CurrentReportUpdateError("Report is locked")
+        raise PermissionError("Report is locked")
     updates.update_equipment_list = failed
-    with pytest.raises(EquipmentReportUpdateError, match="locked"):
+    with pytest.raises(EquipmentReportUpdateError, match="Close the report in Word.*History/Report"):
         service.update_one_click(project_id="P1", updated_by="Operator", references_text="DG-Q-0033")
     assert EquipmentIdDocumentReader().read(tmp_path / "EquipmentID.docx").references == ("DG-Q-0033",)
 

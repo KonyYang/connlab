@@ -25,7 +25,9 @@ from backend.infrastructure.office.excel_workbook_gateway import UnreadableLtrWo
 
 
 logger = logging.getLogger(__name__)
-_EQUIPMENT_SETTINGS = "In Settings, check Equipment calibration Excel."
+_SELECT_EQUIPMENT_WORKBOOK = (
+    "In Settings > Equipment calibration Excel, enter the full path to the lab's .xls or .xlsx register and press Enter."
+)
 
 
 class ExternalExcelReadError(ValueError):
@@ -152,25 +154,27 @@ class ExternalExcelReadService:
         ) as exc:
             logger.warning("Could not read the equipment calibration workbook: %s", exc, exc_info=True)
             raise ExternalExcelReadError(
-                f"This computer could not read the equipment calibration workbook. {_EQUIPMENT_SETTINGS} "
-                "Verify that the file opens and that you have read access."
+                "This computer could not read the equipment calibration workbook. Open the path shown under "
+                "Settings > Equipment calibration Excel in Excel on this computer. If Excel cannot open it, "
+                "restore the shared drive connection or ask the file owner for read access."
             ) from exc
         except ValueError as exc:
             logger.warning("Could not use the configured equipment calibration workbook: %s", exc, exc_info=True)
             raise ExternalExcelReadError(
-                f"The configured workbook could not be read as a supported equipment table. {_EQUIPMENT_SETTINGS} "
-                "Validate the file or select the lab's equipment calibration workbook."
+                "The configured workbook could not be read as a supported equipment table. "
+                f"{_SELECT_EQUIPMENT_WORKBOOK} The register needs equipment IDs, names, and calibration information. "
+                "For the All Equip. layout, row 4 needs Item (Equipment Name), Manufacturer, ID Number, Last Cal., and Cal. Due."
             ) from exc
 
     def _equipment_workbook_path(self) -> Path:
         resource = self._resources.get_by_type(ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL)
         if resource is None:
             raise ExternalExcelReadNotFoundError(
-                "No equipment calibration workbook is configured. In Settings, select Equipment calibration Excel."
+                f"No equipment calibration workbook is configured. {_SELECT_EQUIPMENT_WORKBOOK}"
             )
         if not resource.active:
             raise ExternalExcelReadError(
-                "The equipment calibration workbook is inactive. In Settings, enable Equipment calibration Excel."
+                f"The equipment calibration workbook is inactive. {_SELECT_EQUIPMENT_WORKBOOK}"
             )
         path = Path(resource.path)
         try:
@@ -178,18 +182,18 @@ class ExternalExcelReadService:
         except FileNotFoundError as exc:
             logger.warning("Configured equipment calibration workbook was not found: %s", exc)
             raise ExternalExcelReadError(
-                "This computer cannot find the configured equipment calibration workbook. "
-                "In Settings, select a workbook this computer can access."
+                "This computer cannot find the configured equipment calibration workbook. Open the path in File Explorer "
+                f"to confirm the file is there. {_SELECT_EQUIPMENT_WORKBOOK}"
             ) from exc
         except OSError as exc:
             logger.warning("Configured equipment calibration workbook could not be accessed: %s", exc)
             raise ExternalExcelReadError(
-                f"This computer cannot access the equipment calibration workbook. {_EQUIPMENT_SETTINGS} "
-                "Check the network connection or file permissions."
+                "This computer cannot access the equipment calibration workbook. Open the path shown under "
+                "Settings > Equipment calibration Excel in File Explorer. Reconnect the shared drive or ask the file owner for read access."
             ) from exc
         if not S_ISREG(mode) or path.suffix.lower() not in {".xls", ".xlsx"}:
             raise ExternalExcelReadError(
-                "In Settings, select an .xls or .xlsx file for Equipment calibration Excel."
+                f"The equipment calibration path must point to an Excel file. {_SELECT_EQUIPMENT_WORKBOOK}"
             )
         return path
 

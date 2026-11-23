@@ -531,7 +531,7 @@ async def update_equipment_list_one_click(
     content = None
     if file is not None:
         if not (file.filename or "").casefold().endswith(".docx"):
-            raise HTTPException(422, detail="Choose an EquipmentID .docx document.")
+            raise HTTPException(422, detail="EquipmentID must be a Word Document (.docx). Open the source in Word, use Save As > Word Document (.docx), then select it.")
         content = await file.read(20 * 1024 * 1024 + 1)
         if len(content) > 20 * 1024 * 1024:
             raise HTTPException(413, detail="Equipment selection document exceeds the 20 MB limit.")
@@ -541,11 +541,11 @@ async def update_equipment_list_one_click(
         outcome = await run_in_threadpool(service.update_one_click, project_id=project_id,
             updated_by=updated_by, content=content, references_text=references_text)
     except (EquipmentReportUpdateError, CurrentReportFileConflictError) as exc:
-        logger.warning("Equipment List update failed for project %s: %s", project_id, exc)
+        logger.warning("Equipment List update failed for project %s: %s", project_id, exc, exc_info=exc.__cause__ is not None)
         raise HTTPException(409, detail=str(exc)) from exc
     except (ValueError, OSError, RuntimeError) as exc:
         logger.warning("Equipment List update failed for project %s: %s", project_id, exc, exc_info=True)
-        raise HTTPException(409, detail="Equipment List could not be updated. Check access to the project report and EquipmentID.docx, then retry.") from exc
+        raise HTTPException(409, detail="ConnLab could not complete the Equipment List update. In Settings, choose Export diagnostic package and send the ZIP for support.") from exc
     if outcome.status == "source_required":
         return {"status": "source_required", "project_id": project_id}
     result = outcome.update

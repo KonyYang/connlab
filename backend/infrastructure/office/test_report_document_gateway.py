@@ -25,6 +25,7 @@ from docx.enum.table import (
     WD_TABLE_ALIGNMENT,
 )
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.opc.exceptions import PackageNotFoundError
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt
@@ -46,6 +47,7 @@ from backend.infrastructure.office.equipment_report_table import (
     replace_equipment_rows as _replace_equipment_table_rows,
 )
 from backend.infrastructure.office.office_protected_document_gateway import (
+    OfficeProtectedDocumentError,
     ProtectedWordPackageGateway,
 )
 
@@ -263,14 +265,19 @@ class TestReportDocumentGateway:
         )
         temporary = target.with_name(f".{uuid4().hex}.tmp.docx")
         try:
-            protection_state = self._protected_package_gateway.stage_editable_copy(
-                source,
-                temporary,
-            )
+            try:
+                protection_state = self._protected_package_gateway.stage_editable_copy(source, temporary)
+            except OfficeProtectedDocumentError as exc:
+                raise ValueError(
+                    "ConnLab could not open the protected Internal Report. Ask the report owner for a Word copy you can open."
+                ) from exc
             try:
                 document = Document(temporary)
-            except (BadZipFile, KeyError, ValueError, XMLSyntaxError) as exc:
-                raise ValueError("The Internal Report cannot be read. Select a valid .docx report.") from exc
+            except (BadZipFile, PackageNotFoundError, KeyError, ValueError, XMLSyntaxError) as exc:
+                raise ValueError(
+                    "The Internal Report cannot be read as a Word document. Open the original in Word and use "
+                    "Save As > Word Document (.docx). If Word cannot open it, use a readable copy of the report."
+                ) from exc
             body_before = document.element.body.xml
             equipment = _find_equipment_table(document)
             _replace_equipment_table_rows(equipment, expected)

@@ -5,20 +5,34 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 import hashlib
+import logging
 from pathlib import Path
 import re
 from typing import Callable, Protocol
 
 from backend.application.current_report_update_service import (
     CurrentReportArtifact,
+    CurrentReportFileConflictError,
     CurrentReportUpdateError,
     UpdateCurrentEquipmentListReportCommand,
 )
 from backend.application.external_excel_read_service import ExternalExcelReadError, ExternalExcelReadNotFoundError
 
 
+logger = logging.getLogger(__name__)
+EQUIPMENT_IDS_HELP = "Enter one ID per line as editable text, using four digits, for example DG-Q-0913 or DG-L-0002."
+_REPORT_SAVE_ACCESS = (
+    "ConnLab could not save the updated report or its backup. Close the report in Word, then retry. "
+    "If it still fails, ask the folder owner for write access to the report folder and History/Report."
+)
+
+
 class EquipmentReportUpdateError(ValueError):
     """Raised when an equipment-list update cannot be performed safely."""
+
+
+class EquipmentSelectionError(ValueError):
+    """A selection file needs to be corrected or replaced before retrying."""
 
 
 class WorkspaceStore(Protocol):
@@ -124,23 +138,19 @@ class EquipmentReportUpdateService:
         workspace = self._workspaces.get_by_project(project_id)
         if workspace is None:
             raise EquipmentReportUpdateError("Create the official project folder before updating Equipment List.")
-        report = self._reports.get_current_report(project_id)
+        try:
+            report = self._reports.get_current_report(project_id)
+        except OSError as exc:
+            raise EquipmentReportUpdateError(
+                "ConnLab could not read the current Internal Report. Open it from the project folder in Word. "
+                "If Word cannot open it, restore the folder connection or ask the folder owner for read access."
+            ) from exc
         if blockers := _report_blockers(report):
             raise EquipmentReportUpdateError(" ".join(blockers))
         root = Path(workspace.local_workspace_path)
         source_path = root / "EquipmentID.docx"
-        validate_path = getattr(self._source_reader, "validate_path", None)
-        if validate_path:
-            validate_path(source_path)
-        try:
-            source_path.lstat()
-        except FileNotFoundError:
-            if content is None and references_text is None:
-                return EquipmentListOneClickResult("source_required")
-            self._source_reader.save_missing(source_path, content=content, references_text=references_text)
-        else:
-            if content is not None or references_text is not None:
-                raise EquipmentReportUpdateError("EquipmentID.docx now exists. Retry the update without importing.")
+        if not self._prepare_selection(source_path, content=content, references_text=references_text):
+            return EquipmentListOneClickResult("source_required")
         preview = self.preview(project_id=project_id)
         if preview.blockers:
             raise EquipmentReportUpdateError(" ".join(preview.blockers))
@@ -161,9 +171,63 @@ class EquipmentReportUpdateService:
                 expected_report_sha256=preview.current_report.file_sha256 or "",
                 rows=preview.rows, updated_by=updated_by, revalidate_sources=revalidate,
             ))
-        except CurrentReportUpdateError as exc:
+        except PermissionError as exc:
+            raise EquipmentReportUpdateError(_REPORT_SAVE_ACCESS) from exc
+        except CurrentReportFileConflictError as exc:
+            if isinstance(exc.__cause__, PermissionError):
+                raise EquipmentReportUpdateError(_REPORT_SAVE_ACCESS) from exc
+            raise
+        except OSError as exc:
+            raise EquipmentReportUpdateError(
+                "ConnLab could not save the report or create its History/Report backup. "
+                "Open the project folder in File Explorer and confirm there is space to save a Word copy there."
+            ) from exc
+        except ValueError as exc:
             raise EquipmentReportUpdateError(str(exc)) from exc
         return EquipmentListOneClickResult("completed", result, preview.rows)
+
+    def _prepare_selection(self, source_path: Path, *, content: bytes | None, references_text: str | None) -> bool:
+        supplied = content is not None or references_text is not None
+        existing_selection = (
+            "EquipmentID.docx already exists in the project folder. Click Update Equipment List again to use it."
+        )
+        try:
+            validate_path = getattr(self._source_reader, "validate_path", None)
+            if validate_path:
+                validate_path(source_path)
+            source_path.lstat()
+        except FileNotFoundError:
+            if not source_path.parent.is_dir():
+                raise EquipmentReportUpdateError(
+                    "The registered project folder is unavailable. Open it in File Explorer or restore its drive connection."
+                ) from None
+            if not supplied:
+                return False
+        except OSError as exc:
+            raise EquipmentReportUpdateError(
+                "ConnLab could not access EquipmentID.docx in the project folder. "
+                "Open it in Word and confirm it is a regular .docx file stored directly in that folder."
+            ) from exc
+        else:
+            if supplied:
+                raise EquipmentReportUpdateError(existing_selection)
+            return True
+
+        try:
+            self._source_reader.save_missing(source_path, content=content, references_text=references_text)
+        except FileExistsError as exc:
+            raise EquipmentReportUpdateError(existing_selection) from exc
+        except OSError as exc:
+            raise EquipmentReportUpdateError(
+                "ConnLab could not save EquipmentID.docx. Ask the folder owner for write access to the project folder, then retry."
+            ) from exc
+        except EquipmentSelectionError as exc:
+            raise EquipmentReportUpdateError(
+                f"{exc} Click Update Equipment List again, then select the corrected file in Provide equipment IDs."
+            ) from exc
+        except ValueError as exc:
+            raise EquipmentReportUpdateError(str(exc)) from exc
+        return True
 
     def preview(
         self,
@@ -201,8 +265,18 @@ class EquipmentReportUpdateService:
                     "EquipmentID.docx was not found in the project folder."
                 )
                 source = None
-            except (OSError, RuntimeError, ValueError) as exc:
-                blockers.append(f"EquipmentID.docx cannot be read. {exc}")
+            except EquipmentSelectionError as exc:
+                blockers.append(f"{exc} Save the corrected EquipmentID.docx in the project folder, then retry.")
+                source = None
+            except ValueError as exc:
+                blockers.append(str(exc))
+                source = None
+            except (OSError, RuntimeError) as exc:
+                logger.warning("Could not read the project equipment selection: %s", exc, exc_info=True)
+                blockers.append(
+                    "ConnLab could not read EquipmentID.docx. Open it in Word from the project folder. "
+                    "If it cannot open, restore the file or ask the folder owner for read access."
+                )
                 source = None
 
             try:
@@ -222,15 +296,15 @@ class EquipmentReportUpdateService:
                 catalog = None
             except (LookupError, OSError, RuntimeError, ValueError):
                 blockers.append(
-                    "Equipment calibration Excel is unavailable or does not match a supported "
-                    "Equipment layout. Check the active path in Settings."
+                    "ConnLab could not read the calibration workbook during the update. Open the file shown in "
+                    "Settings > Equipment calibration Excel in Excel on this computer, then retry."
                 )
                 catalog = None
 
             if source is not None and catalog is not None:
                 if not source.references:
                     blockers.append(
-                        "EquipmentID.docx does not contain any equipment references."
+                        f"EquipmentID.docx does not contain any equipment IDs. {EQUIPMENT_IDS_HELP}"
                     )
                 else:
                     rows, row_warnings = resolve_equipment_rows(
@@ -421,8 +495,8 @@ def _report_blockers(report: CurrentReportArtifact) -> tuple[str, ...]:
     if report.status == "ready":
         return tuple()
     if report.status == "ambiguous":
-        return ("Keep exactly one current internal report before updating Equipment List.",)
-    return ("Generate or publish the current internal report before updating Equipment List.",)
+        return ("Multiple Internal Reports were found. Open the project folder and keep one current report before updating Equipment List.",)
+    return ("No current Internal Report was found. Generate the Internal Report or publish the managed draft before updating Equipment List.",)
 
 
 def _unresolved_row(reference: str, status: str) -> EquipmentListReportRow:

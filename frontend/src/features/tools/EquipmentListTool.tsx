@@ -48,7 +48,7 @@ export function EquipmentListTool(): ReactElement {
       setReview(result.review);
       setDialogOpen(false);
     } catch (caught) {
-      if (current === token.current) setError(caught instanceof Error ? caught.message : "The report could not be updated.");
+      if (current === token.current) setError(caught instanceof Error ? caught.message : "ConnLab could not complete the report copy. In Settings, choose Export diagnostic package and send the ZIP for support.");
     } finally {
       if (current === token.current) { running.current = false; setBusy(false); }
     }

@@ -10,7 +10,8 @@ from pathlib import Path
 
 from backend.application.current_report_update_service import EquipmentReportWriter
 from backend.application.equipment_report_update_service import (
-    EquipmentCatalogReader, EquipmentSourceReader, resolve_equipment_rows,
+    EQUIPMENT_IDS_HELP, EquipmentCatalogReader, EquipmentSelectionError, EquipmentSourceReader,
+    resolve_equipment_rows,
 )
 from backend.application.external_excel_read_service import ExternalExcelReadError, ExternalExcelReadNotFoundError
 from backend.application.tools_service import ToolsError
@@ -45,8 +46,10 @@ class ToolsEquipmentReportService:
         if output.suffix.lower() != ".docx" or output.resolve() == source.resolve() or output.exists():
             raise ToolsError("The updated report must be a new .docx copy.")
         has_text = bool(references_text and references_text.strip())
-        if bool(equipment_path) == has_text:
+        if equipment_path and has_text:
             raise ToolsError("Choose EquipmentID.docx or enter equipment IDs, not both.")
+        if not equipment_path and not has_text:
+            raise ToolsError(f"Choose EquipmentID.docx or enter equipment IDs. {EQUIPMENT_IDS_HELP}")
         output.parent.mkdir(parents=True, exist_ok=True)
         if equipment_path is None:
             # The API supplies a per-request output directory, never a project folder.
@@ -54,10 +57,18 @@ class ToolsEquipmentReportService:
             self._source_reader.save_missing(equipment_path, references_text=references_text)
         if output.resolve() == Path(equipment_path).resolve():
             raise ToolsError("The updated report must not replace the equipment selection.")
-        tracked = {source: _sha256(source), Path(equipment_path): _sha256(Path(equipment_path))}
-        selection = self._source_reader.read(equipment_path)
+        tracked = {source: _sha256(source)}
+        try:
+            tracked[Path(equipment_path)] = _sha256(Path(equipment_path))
+            selection = self._source_reader.read(equipment_path)
+        except EquipmentSelectionError as exc:
+            raise ToolsError(f"{exc} Choose the corrected document and retry the update.") from exc
+        except OSError as exc:
+            raise ToolsError(
+                "ConnLab could not read EquipmentID.docx. Open the original in Word, save a local .docx copy, and select it again."
+            ) from exc
         if not selection.references:
-            raise ToolsError("The equipment selection contains no equipment IDs.")
+            raise ToolsError(f"EquipmentID.docx contains no equipment IDs. Open it in Word. {EQUIPMENT_IDS_HELP}")
         try:
             catalog = self._catalog_reader.read_equipment_calibrations()
             catalog_path = Path(catalog.resource_path)
@@ -68,7 +79,10 @@ class ToolsEquipmentReportService:
         except (ExternalExcelReadError, ExternalExcelReadNotFoundError) as exc:
             raise ToolsError(str(exc)) from exc
         except (LookupError, OSError, RuntimeError, ValueError) as exc:
-            raise ToolsError("Equipment calibration workbook is unavailable. Check its path and layout in Settings.") from exc
+            raise ToolsError(
+                "ConnLab could not read the calibration workbook during the update. Open the file shown in "
+                "Settings > Equipment calibration Excel in Excel on this computer, then retry."
+            ) from exc
         rows, _warnings = resolve_equipment_rows(selection.references, catalog.rows, today=self._today())
         _require_unchanged(tracked)
         try:

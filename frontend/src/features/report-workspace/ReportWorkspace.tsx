@@ -649,7 +649,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     } catch (reason) {
       if (isCurrent()) {
         if (input) setEquipmentSourceOpen(false);
-        setError(errorMessage(reason, "Unable to update Equipment List. Check the selection file, calibration workbook and report access, then retry."));
+        setError(errorMessage(reason, "ConnLab could not complete the Equipment List update. In Settings, choose Export diagnostic package and send the ZIP for support."));
       }
     } finally {
       if (isCurrent()) { equipmentRequest.current = false; setBusyAction(null); }
