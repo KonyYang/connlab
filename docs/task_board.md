@@ -710,11 +710,11 @@
   "tasks": {
     "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
       "branch": "codex/equipment-id-format-hint-20261123",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "1fa1b0bff9e89fc006c0c18036341daa3ea0e4d9",
       "task": {
         "task_id": "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123",
         "summary": "Show the standard equipment ID format in report update guidance.",
@@ -730,9 +730,48 @@
         "risk_reasons": [],
         "activation_head": "6fc0968226e77db8f4561c2a90826c18aa59e849",
         "started_at": "2026-11-23T11:42:42.038866Z",
-        "updated_at": "2026-11-23T11:42:42.038866Z",
+        "updated_at": "2026-11-23T11:43:42.905598Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "changed_paths": [
+            "frontend/src/features/tools/EquipmentListTool.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
+          ],
+          "scope_ok": true,
+          "version": 1,
+          "task_id": "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123",
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "result": "Self-reviewed the exact change and verified consistent guidance in both entry points."
+            }
+          },
+          "schema": "connlab.sol-task-report",
+          "summary": "The missing-ID notice in both report entry points shows DG-Q-XXXX and DG-L-XXXX, gives DG-Q-0913 as a four-digit example, and explains when to add an ID.",
+          "validation": [
+            {
+              "result": "75 tests passed in 2 files.",
+              "command": "npm test -- --reporter=dot src/pages/ToolsPage.test.tsx src/features/report-workspace/ReportWorkspace.test.tsx",
+              "status": "passed"
+            },
+            {
+              "result": "No whitespace errors.",
+              "command": "git diff --check",
+              "status": "passed"
+            }
+          ],
+          "subject": "7f4092b31cfeb35fb5238377343a57c90a755c6f",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "7f4092b31cfeb35fb5238377343a57c90a755c6f",
+            "primary_before": "6d0d5b0546be3cc56375039f3b5baa3d9160a437",
+            "integrated_head": "1fa1b0bff9e89fc006c0c18036341daa3ea0e4d9",
+            "recovered": false
+          }
+        }
       }
     }
   }
