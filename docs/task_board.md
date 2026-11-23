@@ -707,7 +707,35 @@
       "closed_at": "2026-11-19T23:28:35.644141Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
+      "branch": "codex/equipment-id-format-hint-20261123",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_EQUIPMENT_ID_FORMAT_HINT_20261123",
+        "summary": "Show the standard equipment ID format in report update guidance.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Add DG-Q-XXXX and DG-L-XXXX four-digit formats to the existing missing-ID notice in Tools and Report Workspace. Update their existing tests.",
+        "scope_paths": [
+          "frontend/src/features/tools/EquipmentListTool.tsx",
+          "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+          "frontend/src/pages/ToolsPage.test.tsx",
+          "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "6fc0968226e77db8f4561c2a90826c18aa59e849",
+        "started_at": "2026-11-23T11:42:42.038866Z",
+        "updated_at": "2026-11-23T11:42:42.038866Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
