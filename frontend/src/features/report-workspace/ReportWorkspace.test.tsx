@@ -841,7 +841,9 @@ describe("ReportWorkspace", () => {
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
     const dialog = await screen.findByRole("dialog", { name: "Equipment List Needs Review" });
-    expect(within(dialog).getByText(/DG-Q-9999/).textContent).toContain("Check registration");
+    expect(within(dialog).getByText(/DG-Q-9999/).textContent).toBe(
+      "Equipment IDs not found in the calibration workbook: DG-Q-9999. Check the IDs. If correct, add them to the workbook.",
+    );
     expect(within(dialog).getByText(/DG-Q-0022/).textContent).toContain("Complete equipment details");
     expect(within(dialog).queryByText(/Expired Calibration/)).toBeNull();
     expect(within(dialog).queryByText(/Equipment rows filled|History\/Report|Report_Rev_A/)).toBeNull();
@@ -882,7 +884,7 @@ describe("ReportWorkspace", () => {
     await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
     const dialog = await screen.findByRole("dialog", { name: "Equipment List Needs Review" });
     expect(within(dialog).getByText(/Expired Calibration.*DG-Q-0033/)).toBeTruthy();
-    expect(within(dialog).queryByText(/Not Registered|Incomplete Information/)).toBeNull();
+    expect(within(dialog).queryByText(/Equipment IDs not found|Incomplete Information/)).toBeNull();
     expect(api.updateEquipmentListOneClick).toHaveBeenCalledWith("project-1", undefined);
     expect(api.previewCurrentReportEquipmentList).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("I reviewed the expired calibration warning")).toBeNull();

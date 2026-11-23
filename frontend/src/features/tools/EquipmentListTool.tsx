@@ -78,7 +78,7 @@ export function EquipmentListTool(): ReactElement {
 
 function EquipmentReviewFeedback({ review }: { review: EquipmentReview }): ReactElement | null {
   const categories = [
-    ["unmatched", "Not Registered", "Check registration in the calibration workbook."],
+    ["unmatched", "Equipment IDs not found in the calibration workbook", "Check the IDs. If correct, add them to the workbook."],
     ["incomplete", "Missing Information", "Complete the equipment information in the calibration workbook."],
     ["expired", "Expired Calibration", "Confirm calibration validity before using the report."],
   ] as const;
