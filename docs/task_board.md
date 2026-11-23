@@ -738,6 +738,8 @@
           "backend/application/tools_equipment_report_service.py",
           "backend/infrastructure/office/equipment_id_document_reader.py",
           "backend/infrastructure/office/test_report_document_gateway.py",
+          "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+          "frontend/src/features/tools/EquipmentListTool.tsx",
           "tests/integration/test_report_workspace_api.py",
           "tests/integration/test_tools_equipment_report_api.py",
           "tests/unit/test_equipment_id_document_reader.py",
@@ -747,7 +749,7 @@
         "risk_reasons": [],
         "activation_head": "b98731b8243e1673d7495a2b15d9bc5d6e9fbf96",
         "started_at": "2026-11-23T12:47:52.460329Z",
-        "updated_at": "2026-11-23T13:12:37.586967Z",
+        "updated_at": "2026-11-23T13:20:53.554584Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
