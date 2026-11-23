@@ -287,7 +287,9 @@ describe("ToolsPage", () => {
     fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "Q-0033, Q-9999" } });
     fireEvent.click(within(sourceDialog).getByRole("button", { name: "Update" }));
     expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("Internal_EquipmentUpdated.docx");
-    expect(screen.getByText(/Not Registered: DG-Q-9999/)).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Equipment IDs not found in the calibration workbook: DG-Q-9999. Check the IDs. If correct, add them to the workbook.",
+    );
     expect(screen.queryByText(/Missing Information:/)).toBeNull();
     expect(updateStandaloneEquipmentList).toHaveBeenCalledWith(report, { referencesText: "Q-0033, Q-9999" });
     expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
