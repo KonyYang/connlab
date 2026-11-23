@@ -190,11 +190,11 @@ def update_equipment_list(
     """Update a downloaded copy; uploads cannot address project or server paths."""
     report_name = Path(_safe_upload_name(file.filename, fallback="Internal Report.docx"))
     if report_name.suffix.lower() != ".docx":
-        raise HTTPException(422, detail="Select an Internal Report .docx with an Equipment List table.")
+        raise HTTPException(422, detail="Select the Internal Report saved as a Word Document (.docx). It must contain the Section 7 Equipment List table.")
     if equipment_file is not None:
         equipment_name = Path(_safe_upload_name(equipment_file.filename, fallback="EquipmentID.docx"))
         if equipment_name.suffix.lower() != ".docx":
-            raise HTTPException(422, detail="Choose an EquipmentID .docx document.")
+            raise HTTPException(422, detail="EquipmentID must be a Word Document (.docx). Open the source in Word, use Save As > Word Document (.docx), then select it.")
     root = None
     try:
         root = Path(tempfile.mkdtemp(prefix="equipment-", dir=settings.data_dir))
@@ -211,13 +211,13 @@ def update_equipment_list(
     except (LookupError, OSError, RuntimeError, ValueError) as exc:
         if root is not None:
             shutil.rmtree(root, ignore_errors=True)
-        logger.warning("Standalone Equipment List update failed: %s", exc, exc_info=not isinstance(exc, ValueError))
+        logger.warning("Standalone Equipment List update failed: %s", exc, exc_info=exc.__cause__ is not None or not isinstance(exc, ValueError))
         if isinstance(exc, ValueError):
             detail = str(exc)
         elif isinstance(exc, OSError):
-            detail = "ConnLab could not access a temporary file for the report. Check access to the local ConnLab data folder and retry."
+            detail = "ConnLab could not write the temporary report copy. Ask your administrator to verify write access and free disk space for the local ConnLab data folder."
         else:
-            detail = "ConnLab could not prepare the report copy. Check the selected Word files and try again."
+            detail = "ConnLab could not complete the report copy. In Settings, choose Export diagnostic package and send the ZIP for support."
         raise HTTPException(status_code=422, detail=detail) from exc
     except Exception:
         if root is not None:

@@ -17,8 +17,13 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from lxml.etree import XMLSyntaxError
 
-from backend.application.equipment_report_update_service import equipment_reference_key
+from backend.application.equipment_report_update_service import (
+    EQUIPMENT_IDS_HELP,
+    EquipmentSelectionError,
+    equipment_reference_key,
+)
 from backend.infrastructure.office.office_protected_document_gateway import (
+    OfficeProtectedDocumentError,
     ProtectedWordPackageGateway,
 )
 
@@ -42,20 +47,27 @@ class EquipmentIdDocumentReader:
         self.validate_path(path)
         if path.suffix.casefold() != ".docx" or not path.is_file():
             raise FileNotFoundError(f"EquipmentID.docx does not exist: {path}")
-        with self._protected_package_gateway.readable_copy(path) as readable_path:
-            try:
+        try:
+            with self._protected_package_gateway.readable_copy(path) as readable_path:
                 document = Document(readable_path)
-            except (BadZipFile, PackageNotFoundError, KeyError, ValueError, XMLSyntaxError) as exc:
-                raise ValueError("Equipment selection document cannot be read. Choose a valid .docx.") from exc
-            candidates: list[str] = []
-            for block in document.element.body:
-                if block.tag == qn("w:p"):
-                    candidates.append(Paragraph(block, document).text)
-                elif block.tag == qn("w:tbl"):
-                    candidates.extend(cell.text for row in Table(block, document).rows for cell in row.cells)
+                candidates: list[str] = []
+                for block in document.element.body:
+                    if block.tag == qn("w:p"):
+                        candidates.append(Paragraph(block, document).text)
+                    elif block.tag == qn("w:tbl"):
+                        candidates.extend(cell.text for row in Table(block, document).rows for cell in row.cells)
+        except (BadZipFile, PackageNotFoundError, KeyError, ValueError, XMLSyntaxError) as exc:
+            raise EquipmentSelectionError(
+                "EquipmentID.docx cannot be read as a Word document. Open the original in Word and use "
+                "Save As > Word Document (.docx). If Word cannot open it, ask the file owner for a readable copy."
+            ) from exc
+        except OfficeProtectedDocumentError as exc:
+            raise EquipmentSelectionError(
+                "ConnLab could not open the protected EquipmentID.docx. Ask the file owner for a Word copy you can open."
+            ) from exc
         references = _unique_references(candidates)
         if not references:
-            raise ValueError("EquipmentID.docx does not contain equipment references.")
+            raise EquipmentSelectionError(f"EquipmentID.docx contains no equipment IDs. Open it in Word. {EQUIPMENT_IDS_HELP}")
         return EquipmentIdDocumentReadResult(path, references)
 
     def validate_path(self, path: Path) -> None:
@@ -93,17 +105,14 @@ class EquipmentIdDocumentReader:
                 else:
                     references = _unique_references((references_text or "",))
                     if not references:
-                        raise ValueError("Enter at least one equipment ID.")
+                        raise ValueError(f"No equipment IDs were entered. {EQUIPMENT_IDS_HELP}")
                     document = Document()
                     for reference in references:
                         document.add_paragraph(reference)
                     document.save(stream)
                 stream.flush()
                 os.fsync(stream.fileno())
-            try:
-                selection = self.read(staged)
-            except Exception as exc:
-                raise ValueError("Equipment selection document cannot be read. Choose a valid .docx.") from exc
+            selection = self.read(staged)
             if _checked_parent_identity(path.parent) != parent_identity:
                 raise OSError("The project folder changed during equipment selection import.")
             # A hard link exposes the already-complete package atomically and fails on collision.

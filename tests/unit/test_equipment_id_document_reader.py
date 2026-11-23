@@ -32,16 +32,19 @@ def test_reads_paragraphs_and_table_cells_in_order_and_deduplicates(tmp_path: Pa
     )
 
 
-def test_rejects_an_empty_equipment_id_document(tmp_path: Path) -> None:
-    source = tmp_path / "EquipmentID.docx"
+@pytest.mark.parametrize("select_existing", [False, True], ids=["upload", "existing-file"])
+def test_tells_users_how_to_fill_an_empty_equipment_id_document(tmp_path: Path, select_existing: bool) -> None:
+    source = tmp_path / ("EquipmentID.docx" if select_existing else "uploaded.docx")
     Document().save(source)
 
-    try:
-        EquipmentIdDocumentReader().read(source)
-    except ValueError as exc:
-        assert "does not contain equipment references" in str(exc)
-    else:
-        raise AssertionError("Expected an empty EquipmentID.docx to be rejected")
+    reader = EquipmentIdDocumentReader()
+    with pytest.raises(ValueError, match="one ID per line.*DG-Q-0913.*DG-L-0002"):
+        if select_existing:
+            reader.read(source)
+        else:
+            reader.save_missing(tmp_path / "EquipmentID.docx", content=source.read_bytes())
+    if not select_existing:
+        assert not (tmp_path / "EquipmentID.docx").exists()
 
 
 def test_reads_a_password_protected_equipment_document_through_readable_copy(

@@ -138,7 +138,8 @@ def test_tools_equipment_update_explains_that_this_computer_cannot_find_the_work
     )
     assert response.status_code == 422
     assert "This computer cannot find the configured equipment calibration workbook" in response.json()["detail"]
-    assert "Settings" in response.json()["detail"]
+    assert "Settings > Equipment calibration Excel" in response.json()["detail"]
+    assert "press Enter" in response.json()["detail"]
     assert list(data.iterdir()) == []
 
 
@@ -153,15 +154,16 @@ def test_equipment_upload_rejects_invalid_extensions_even_for_valid_word_content
     assert list(data.iterdir()) == []
 
 
-@pytest.mark.parametrize("report,selection,expected", [
-    (b"not a report", {"references_text": "Q-0033"}, 422),
-    (report_bytes(), {}, 422),
+@pytest.mark.parametrize("report,selection,action", [
+    (b"not a report", {"references_text": "Q-0033"}, "Save As > Word Document (.docx)"),
+    (report_bytes(), {}, "Choose EquipmentID.docx or enter equipment IDs"),
 ], ids=["invalid-docx", "missing-selection"])
-def test_invalid_inputs_do_not_download_and_cleanup_uploads(client, report, selection, expected):
+def test_invalid_inputs_do_not_download_and_cleanup_uploads(client, report, selection, action):
     test_client, data = client
     response = test_client.post("/api/tools/equipment-list",
         files={"file": ("report.docx", report)}, data=selection)
-    assert response.status_code == expected, response.text
+    assert response.status_code == 422, response.text
+    assert action in response.json()["detail"]
     assert "content-disposition" not in response.headers
     assert list(data.iterdir()) == []
 
@@ -172,7 +174,23 @@ def test_invalid_equipment_upload_returns_actionable_error_and_no_download(clien
         "file": ("report.docx", report_bytes()), "equipment_file": ("EquipmentID.docx", b"bad file"),
     })
     assert response.status_code == 422
-    assert "valid .docx" in response.json()["detail"]
+    assert "Save As" in response.json()["detail"]
+    assert "Word Document (.docx)" in response.json()["detail"]
+    assert list(data.iterdir()) == []
+
+
+def test_tools_tells_users_how_to_fill_an_empty_equipment_id_document(client):
+    test_client, data = client
+    selection = BytesIO()
+    Document().save(selection)
+    response = test_client.post("/api/tools/equipment-list", files={
+        "file": ("report.docx", report_bytes()), "equipment_file": ("EquipmentID.docx", selection.getvalue()),
+    })
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "one ID per line" in detail
+    assert "DG-Q-0913" in detail and "DG-L-0002" in detail
+    assert "Choose the corrected document" in detail
     assert list(data.iterdir()) == []
 
 
