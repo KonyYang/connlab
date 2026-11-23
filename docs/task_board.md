@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
-    "tier": "standard",
-    "subject": "7ce090211d6ad3cfe2cedc9979fc7be868265171",
-    "summary": "Fix release equipment update failures with long report paths and clarify calibration access failures.",
+    "task_id": "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123",
+    "tier": "high_risk",
+    "subject": "1fffea7308281c572b67fdb874fda0a8f11cd769",
+    "summary": "Recover the local release folder binding for DL-2026-09-001.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested final close. Preserve fixes acd001b2 and 7ce09021, the 212 Python and 80 frontend tests, and isolated release recovery evidence. Follow the ordinary fast-forward close gate.",
-    "closed_at": "2026-11-23T13:29:56.257162Z"
+    "decision_ref": "User explicitly requested final close. Preserve the local database and manifest backup and verified release status. The task only changed local project data and the board. Use the ordinary fast-forward close gate for the board.",
+    "closed_at": "2026-11-23T14:50:50.112235Z"
   },
   "retained_history": [
     {
@@ -723,92 +723,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local-only close. Preserve implementation commit 7f4092b3 and validation record a1206d41 with 75 passing tests. No push, publication or packaging.",
       "closed_at": "2026-11-23T11:46:42.773691Z"
+    },
+    {
+      "task_id": "TASK_RELEASE_EQUIPMENT_UPDATE_20261123",
+      "tier": "standard",
+      "subject": "7ce090211d6ad3cfe2cedc9979fc7be868265171",
+      "summary": "Fix release equipment update failures with long report paths and clarify calibration access failures.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested final close. Preserve fixes acd001b2 and 7ce09021, the 212 Python and 80 frontend tests, and isolated release recovery evidence. Follow the ordinary fast-forward close gate.",
+      "closed_at": "2026-11-23T13:29:56.257162Z"
     }
   ],
-  "tasks": {
-    "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
-      "branch": "codex/release-project-folder-relink-20261123",
-      "resources": [
-        "folder:d:/connlabprojects/dl-2026-09-001 20260908220340",
-        "release-db:c:/users/white/appdata/local/connlab/data/connlab.sqlite3",
-        "release-project:4c2191f3419c4f29b14d734938091442"
-      ],
-      "integrated_head": "662915c781e046cd438ca03c3f36c088da4508ff",
-      "task": {
-        "task_id": "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123",
-        "summary": "Recover the local release folder binding for DL-2026-09-001.",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Reconnect only the verified timestamped project workspace and its verified current output paths. Back up the release database and affected manifest. Preserve project files and historical references. Repository paths reserve the adapters used by this data-only operation.",
-        "scope_paths": [
-          "backend/infrastructure/storage/repositories/official_workspace.py",
-          "backend/infrastructure/storage/repositories/project_output_record.py",
-          "backend/infrastructure/project_library/files.py"
-        ],
-        "risk_reasons": [
-          "Authoritative local release database and project identity manifest will be updated."
-        ],
-        "activation_head": "1fffea7308281c572b67fdb874fda0a8f11cd769",
-        "started_at": "2026-11-23T14:29:10.044555Z",
-        "updated_at": "2026-11-23T14:35:33.472988Z",
-        "checkpoint": null,
-        "report": {
-          "scope_ok": true,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "1fffea7308281c572b67fdb874fda0a8f11cd769",
-            "primary_before": "662915c781e046cd438ca03c3f36c088da4508ff",
-            "integrated_head": "662915c781e046cd438ca03c3f36c088da4508ff",
-            "recovered": false
-          },
-          "validation": [
-            {
-              "command": "SHA-pinned isolated rehearsal and independent SQLite audit",
-              "status": "passed",
-              "result": "Only four workspace fields and five appended, verified output links changed. Both SQLite snapshots passed checks. Existing output and request material history was preserved."
-            },
-            {
-              "command": "Independent live post-repair database, files and application checks",
-              "status": "passed",
-              "result": "Installed release on port 8765 returned available with no blockers. All five output fingerprints and 51 candidate file/directory entries verified. Foreign manifest unchanged. Evidence and database and manifest backups retained at D:/ConnLabCleanupBackups/DL-2026-09-001-relink-20261123-223410."
-            }
-          ],
-          "version": 1,
-          "summary": "Reconnected the local release project DL-2026-09-001 to its identity-verified timestamped workspace. Only its workspace binding, target identity manifest, and five verified live output links changed. No product code changed.",
-          "task_id": "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123",
-          "roles": {
-            "integrator": {
-              "result": "Verified exact active release binding, applied only the reviewed local artifact, and saved live available status. No source diff.",
-              "status": "passed"
-            },
-            "developer": {
-              "result": "Created the local SHA-pinned repair with application repository and lock reuse. Exact script retained in the audit directory.",
-              "status": "passed"
-            },
-            "reviewer": {
-              "result": "Independently reviewed exact repair script and found no blocker after isolated rehearsal.",
-              "status": "passed"
-            },
-            "qa": {
-              "result": "Independent rehearsal and live all-table/physical verification passed.",
-              "status": "passed"
-            },
-            "planner": {
-              "result": "Independently established target ownership and verified that public relink flows do not support this existing project.",
-              "status": "passed"
-            }
-          },
-          "schema": "connlab.sol-task-report",
-          "subject": "1fffea7308281c572b67fdb874fda0a8f11cd769",
-          "changed_paths": []
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
