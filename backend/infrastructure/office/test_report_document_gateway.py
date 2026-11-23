@@ -261,7 +261,7 @@ class TestReportDocumentGateway:
             )
             for row in rows
         )
-        temporary = target.with_name(f".{target.stem}.{uuid4().hex}.tmp{target.suffix}")
+        temporary = target.with_name(f".{uuid4().hex}.tmp.docx")
         try:
             protection_state = self._protected_package_gateway.stage_editable_copy(
                 source,
@@ -295,7 +295,7 @@ def _save_updated_report_body(document, path: Path) -> None:
     These text/table-only operations create no external relationships. Saving the
     entire python-docx package would reserialize unrelated Word-authored parts.
     """
-    replacement = path.with_name(f".{path.stem}.{uuid4().hex}.package.docx")
+    replacement = path.with_name(f".{uuid4().hex}.package.docx")
     try:
         with ZipFile(path) as source, ZipFile(replacement, "w") as target:
             target.comment = source.comment

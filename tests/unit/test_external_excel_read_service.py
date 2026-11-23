@@ -89,6 +89,21 @@ def test_read_equipment_rows_returns_structured_rows(tmp_path: Path) -> None:
     assert result.rows[0].calibration_due_date == "2026-08-10"
 
 
+@pytest.mark.parametrize("unreadable", [True, False], ids=["unreadable", "wrong-table"])
+def test_equipment_workbook_read_distinguishes_unreadable_file_from_wrong_table(tmp_path, unreadable):
+    path = tmp_path / "equipment.xlsx"
+    if unreadable:
+        path.write_bytes(b"Not an Excel workbook")
+        expected = "This computer could not read the equipment calibration workbook"
+    else:
+        _write_minimal_xlsx(path, sheet_name="Unrelated", rows=[["Inventory"], ["Sample"]])
+        expected = "could not be read as a supported equipment table"
+    service = ExternalExcelReadService(_Store([_resource(ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL, path)]))
+
+    with pytest.raises(ExternalExcelReadError, match=expected):
+        service.read_equipment_calibrations()
+
+
 @pytest.mark.parametrize("legacy_layout", [False, True])
 @pytest.mark.parametrize("use_1904", [False, True])
 def test_read_equipment_rows_decodes_styled_dates_through_real_xlsx_gateway(

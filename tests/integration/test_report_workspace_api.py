@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 
+from docx import Document
 from fastapi.testclient import TestClient
 import pytest
 
@@ -34,13 +36,16 @@ from backend.application.equipment_report_update_service import (
     EquipmentListPreview,
     EquipmentListReportRow,
     EquipmentListOneClickResult,
+    EquipmentReportUpdateService,
 )
+from backend.application.external_excel_read_service import ExternalExcelReadService
 from backend.domain import ExternalResource, ExternalResourceType, ExternalResourceValidationStatus
 from backend.domain.result_dataset_models import LlcrImportPreview, ReportDraftRevision
 from backend.shared.config import Settings
 from tests.unit.test_result_dataset_repository import _dataset
 from backend.infrastructure.files.report_publication_gateway import ReportPublicationGateway
 from backend.infrastructure.office.customer_report_document_gateway import CustomerReportDocumentGateway
+from backend.infrastructure.office.equipment_id_document_reader import EquipmentIdDocumentReader
 from backend.infrastructure.storage.database import create_database_engine, init_db
 
 
@@ -342,6 +347,29 @@ def test_equipment_one_click_missing_source_returns_only_input_requirement(tmp_p
     app.dependency_overrides[get_equipment_report_update_service] = lambda: service
     response = TestClient(app).post("/api/projects/P1/report-workspace/current-report/equipment/update")
     assert response.json() == {"status": "source_required", "project_id": "P1"}
+
+
+def test_equipment_one_click_explains_unconfigured_workbook(tmp_path: Path) -> None:
+    selection = Document()
+    selection.add_paragraph("DG-L-0002")
+    selection_path = tmp_path / "EquipmentID.docx"
+    selection.save(selection_path)
+    before = selection_path.read_bytes()
+    report = CurrentReportArtifact(status="ready", mode="official", file_name="Report.docx",
+        file_path=tmp_path / "Report.docx", file_sha256="a" * 64, history_root=tmp_path / "History")
+    service = EquipmentReportUpdateService(
+        workspace_store=SimpleNamespace(get_by_project=lambda _: SimpleNamespace(local_workspace_path=tmp_path)),
+        source_reader=EquipmentIdDocumentReader(),
+        catalog_reader=ExternalExcelReadService(SimpleNamespace(get_by_type=lambda _: None)),
+        current_report_updates=SimpleNamespace(get_current_report=lambda _: report),
+        today=date.today,
+    )
+    app.dependency_overrides[get_equipment_report_update_service] = lambda: service
+    response = TestClient(app).post("/api/projects/P1/report-workspace/current-report/equipment/update")
+    assert response.status_code == 409
+    assert "No equipment calibration workbook is configured" in response.json()["detail"]
+    assert "Settings" in response.json()["detail"]
+    assert selection_path.read_bytes() == before
 
 
 def test_current_customer_report_state_generate_and_download(tmp_path: Path) -> None:

@@ -12,6 +12,7 @@ from backend.application.current_report_update_service import EquipmentReportWri
 from backend.application.equipment_report_update_service import (
     EquipmentCatalogReader, EquipmentSourceReader, resolve_equipment_rows,
 )
+from backend.application.external_excel_read_service import ExternalExcelReadError, ExternalExcelReadNotFoundError
 from backend.application.tools_service import ToolsError
 
 
@@ -64,6 +65,8 @@ class ToolsEquipmentReportService:
             catalog = self._catalog_reader.read_equipment_calibrations()
             if Path(catalog.resource_path) != catalog_path:
                 raise ValueError("Equipment workbook changed while reading.")
+        except (ExternalExcelReadError, ExternalExcelReadNotFoundError) as exc:
+            raise ToolsError(str(exc)) from exc
         except (LookupError, OSError, RuntimeError, ValueError) as exc:
             raise ToolsError("Equipment calibration workbook is unavailable. Check its path and layout in Settings.") from exc
         rows, _warnings = resolve_equipment_rows(selection.references, catalog.rows, today=self._today())

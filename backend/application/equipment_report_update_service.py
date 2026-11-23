@@ -14,6 +14,9 @@ from backend.application.current_report_update_service import (
     CurrentReportUpdateError,
     UpdateCurrentEquipmentListReportCommand,
 )
+from backend.application.external_excel_read_service import ExternalExcelReadError, ExternalExcelReadNotFoundError
+
+
 class EquipmentReportUpdateError(ValueError):
     """Raised when an equipment-list update cannot be performed safely."""
 
@@ -214,7 +217,10 @@ class EquipmentReportUpdateService:
                 catalog_sha256 = _fingerprint(catalog_path)
                 if catalog_sha256 != before:
                     raise ValueError("The equipment workbook changed while reading.")
-            except (FileNotFoundError, OSError, RuntimeError, ValueError):
+            except (ExternalExcelReadError, ExternalExcelReadNotFoundError) as exc:
+                blockers.append(str(exc))
+                catalog = None
+            except (LookupError, OSError, RuntimeError, ValueError):
                 blockers.append(
                     "Equipment calibration Excel is unavailable or does not match a supported "
                     "Equipment layout. Check the active path in Settings."

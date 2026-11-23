@@ -540,9 +540,12 @@ async def update_equipment_list_one_click(
     try:
         outcome = await run_in_threadpool(service.update_one_click, project_id=project_id,
             updated_by=updated_by, content=content, references_text=references_text)
-    except (ValueError, OSError, CurrentReportFileConflictError) as exc:
+    except (EquipmentReportUpdateError, CurrentReportFileConflictError) as exc:
         logger.warning("Equipment List update failed for project %s: %s", project_id, exc)
-        raise HTTPException(409, detail="Equipment List could not be updated. Check EquipmentID.docx, the Settings calibration workbook and report access, then retry. No existing selection file is overwritten.") from exc
+        raise HTTPException(409, detail=str(exc)) from exc
+    except (ValueError, OSError, RuntimeError) as exc:
+        logger.warning("Equipment List update failed for project %s: %s", project_id, exc, exc_info=True)
+        raise HTTPException(409, detail="Equipment List could not be updated. Check access to the project report and EquipmentID.docx, then retry.") from exc
     if outcome.status == "source_required":
         return {"status": "source_required", "project_id": project_id}
     result = outcome.update
