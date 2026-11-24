@@ -752,7 +752,35 @@
       "closed_at": "2026-11-24T22:44:33.166599Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LIBRARY_ENTRY_BACK_20261125": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-entry-back-20261125",
+      "branch": "codex/library-entry-back-20261125",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_ENTRY_BACK_20261125",
+        "summary": "Separate library navigation from receipt picking and add contextual Back.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Projects home and existing Reference Library navigation. No picker on entry, explicit receipt still opens picker, back to originating page or Projects for direct entry. Isolated click verification.",
+        "scope_paths": [
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/reference-library.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "0363b1b6debcee2375d4d47ad76b0ff51cd8680f",
+        "started_at": "2026-11-24T23:45:26.027048Z",
+        "updated_at": "2026-11-24T23:45:26.027048Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
