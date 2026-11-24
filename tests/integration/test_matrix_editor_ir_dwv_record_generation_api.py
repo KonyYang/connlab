@@ -13,7 +13,7 @@ from openpyxl import load_workbook
 from backend.api.main import app
 
 
-def seed_ir_dwv_project(session, root: Path, *, project_id="IR-DWV-SMOKE", official=True, samples="5+5(d)"):
+def seed_ir_dwv_project(session, root: Path, *, project_id="IR-DWV-SMOKE", official=True, samples="5+5(d)", discover_template=False):
     """Reusable isolated repository fixture; never bind a business folder or template."""
     from backend.domain import Project, LtrRecord, LtrStatus, ConfirmedMatrixCell, ConfirmedMatrixStatus, ExternalResourceType
     from backend.application.external_resource_service import ExternalResourceService
@@ -34,7 +34,11 @@ def seed_ir_dwv_project(session, root: Path, *, project_id="IR-DWV-SMOKE", offic
     template = root / "templates" / "IR&DWV Template.xlsx"
     template.parent.mkdir(parents=True)
     shutil.copyfile(Path(__file__).parents[1] / "fixtures" / "ir_dwv" / "IR_DWV_Template.xlsx", template)
-    ExternalResourceService(ExternalResourceRepository(session)).upsert_resource(ExternalResourceType.IR_DWV_RECORD_TEMPLATE, template, True)
+    resources = ExternalResourceService(ExternalResourceRepository(session))
+    if discover_template:
+        resources.upsert_resource(ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template.parent, True)
+    else:
+        resources.upsert_resource(ExternalResourceType.IR_DWV_RECORD_TEMPLATE, template, True)
     dl = "DL-2026-10-IRDWV"
     ProjectRepository(session).create(Project(project_id=project_id, project_no=dl, product_name="Isolated IR DWV connector", requestor="Requestor"))
     LtrRecordRepository(session).create(LtrRecord("smoke-ltr", project_id, dl, LtrStatus.REGISTERED, date(2026, 10, 1)))
@@ -107,6 +111,75 @@ def real_project(tmp_path, request):
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+@pytest.mark.parametrize("real_project", [{"discover_template": True}], indirect=True)
+@pytest.mark.parametrize("name, saved_duplicate", [
+    ("Lab IR&DWV master.xlsx", False),
+    ("FDQF-E-033 approved.xlsx", True),
+])
+def test_ir_dwv_operation_discovers_approved_template_by_name_or_number(real_project, name, saved_duplicate):
+    client, seeded, _ = real_project
+    if saved_duplicate:
+        save = client.put("/api/external-resources/ir_dwv_record_template",
+                          json={"path": str(seeded.template), "active": True})
+        assert save.status_code == 200, save.text
+    approved = seeded.template.rename(seeded.template.with_name(name))
+    template_bytes = approved.read_bytes()
+    approved.with_name("IR&DWV old incompatible.xlsx").write_bytes(b"not an Excel workbook")
+    shutil.copyfile(approved, approved.with_name("~$IR&DWV Temp.xlsx"))
+    base = f"/api/projects/{seeded.project_id}/matrix-editor"
+    request = {**seeded.request, "matrix_has_pending_changes": True}
+    response = client.post(base + "/ir-dwv-record-publication/preview", json=request)
+    assert response.status_code == 200, response.text
+    preview = response.json()
+    assert preview["status"] == "ready", preview
+    download = client.post(base + "/ir-dwv-record-draft/generate",
+                           json={**request, "preview_token": preview["preview_token"]})
+    assert download.status_code == 200, download.text
+    assert download.content.startswith(b"PK")
+    assert approved.read_bytes() == template_bytes
+
+
+@pytest.mark.parametrize("real_project", [{"discover_template": True}], indirect=True)
+@pytest.mark.parametrize("problem", ["missing", "incompatible", "ambiguous"])
+def test_ir_dwv_operation_explains_which_template_problem_to_fix(real_project, problem):
+    client, seeded, _ = real_project
+    if problem == "missing":
+        seeded.template.rename(seeded.template.with_name("Unrelated register.xlsx"))
+    elif problem == "incompatible":
+        seeded.template.write_bytes(b"not an Excel workbook")
+    else:
+        shutil.copyfile(seeded.template, seeded.template.with_name("FDQF-E-033 second copy.xlsx"))
+    response = client.post(f"/api/projects/{seeded.project_id}/matrix-editor/ir-dwv-record-publication/preview",
+                           json=seeded.request)
+    assert response.status_code == 200, response.text
+    preview = response.json()
+    assert preview["status"] == "blocked"
+    explanation = " ".join(preview["blockers"])
+    assert "Template folder" in explanation
+    if problem == "missing":
+        assert "IR&DWV" in explanation and "FDQF-E-033" in explanation and ".xlsx" in explanation
+    elif problem == "incompatible":
+        assert "IR&DWV Template.xlsx" in explanation and "compatible" in explanation
+    else:
+        assert "IR&DWV Template.xlsx" in explanation and "FDQF-E-033 second copy.xlsx" in explanation
+    assert not seeded.target.exists()
+
+
+@pytest.mark.parametrize("real_project", [{"discover_template": True}], indirect=True)
+def test_ir_dwv_operation_preserves_an_explicit_template_outside_the_folder(real_project):
+    client, seeded, _ = real_project
+    override = seeded.template.parent.parent / "Previously approved.xlsx"
+    shutil.copyfile(seeded.template, override)
+    shutil.copyfile(seeded.template, seeded.template.with_name("FDQF-E-033 other compatible copy.xlsx"))
+    save = client.put("/api/external-resources/ir_dwv_record_template", json={"path": str(override), "active": True})
+    assert save.status_code == 200, save.text
+
+    response = client.post(f"/api/projects/{seeded.project_id}/matrix-editor/ir-dwv-record-publication/preview",
+                           json=seeded.request)
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "ready", response.json()
 
 
 @pytest.mark.parametrize("real_project,pending,edited_samples,authority,file_name", [

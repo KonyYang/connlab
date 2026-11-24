@@ -101,6 +101,19 @@ function locationResource(overrides: Partial<ExternalResource> = {}): ExternalRe
 describe("Automatic location validation", () => {
   beforeEach(() => {vi.mocked(listExternalResources).mockReset(); vi.mocked(validateExternalResource).mockReset(); vi.mocked(saveExternalResource).mockReset();});
 
+it.each([false, true])("uses Template folder without a duplicate IR/DWV field (saved template: %s)", async (saved) => {
+  const folder = locationResource({resource_id:"tpl", resource_type:"project_folder_template", path:"D:\\Source\\Template"});
+  const template = locationResource({resource_id:"ir", resource_type:"ir_dwv_record_template", path:"d:/source/template/IR&DWV Template.xlsx"});
+  vi.mocked(listExternalResources).mockResolvedValue(saved ? [folder, template] : [folder]);
+  vi.mocked(validateExternalResource).mockResolvedValue({...folder, validation_status:"valid", validation_failure_reason:null});
+  render(<SettingsPage />);
+  expect(await screen.findByLabelText("Template folder path")).toBeTruthy();
+  await waitFor(() => expect(validateExternalResource).toHaveBeenCalledWith("project_folder_template"));
+  expect(screen.queryByLabelText(/IR\/DWV record template/)).toBeNull();
+  expect(validateExternalResource).not.toHaveBeenCalledWith("ir_dwv_record_template");
+  expect(saveExternalResource).not.toHaveBeenCalled();
+});
+
 it("rechecks saved locations on entry without saving paths or requiring Enter", async () => {
   const resource = locationResource();
   vi.mocked(listExternalResources).mockResolvedValue([resource]);
@@ -160,7 +173,7 @@ it("serializes full validation and continues after one resource fails", async ()
   finish({...resource, validation_status:"valid", validation_failure_reason:null});
   await waitFor(() => expect(validateExternalResource).toHaveBeenCalledTimes(4));
   expect(screen.getByLabelText("Standard version file path").getAttribute("title")).toBe("Workbook could not be checked");
-  await waitFor(() => expect(screen.getByLabelText("IR/DWV record template path").getAttribute("aria-invalid")).toBe("false"));
+  await waitFor(() => expect(screen.getByLabelText("IR/DWV record template override path").getAttribute("aria-invalid")).toBe("false"));
 });
 
 it("does not apply an old validation result to a newly edited and saved path", async () => {
