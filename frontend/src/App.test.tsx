@@ -42,12 +42,16 @@ beforeEach(() => {
   vi.mocked(listLegacyProjects).mockResolvedValue([]);
 });
 
-it("routes ordinary receipt to the library without old adoption or recovery calls", async () => {
-  window.history.replaceState({}, "", "/projects");
+it("opens the library from home and only picks a folder after an explicit library click", async () => {
+  window.history.replaceState({}, "", "/");
   const user = userEvent.setup(); render(<App />);
   await user.click(await screen.findByRole("button", { name: "Receive materials" }));
-  expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
-  expect(window.location.pathname).toBe("/reference");
+  const library = await screen.findByRole("region", { name: "Project materials library" });
+  expect(window.location.pathname + window.location.search).toBe("/reference");
+  expect(receipts.pickReceiptFolder).not.toHaveBeenCalled();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  await user.click(within(library).getByRole("button", { name: "Receive materials" }));
+  await screen.findByRole("dialog", { name: "Receive project materials" });
   await screen.findByRole("button", { name: "Receive",exact:true });
   expect(receipts.pickReceiptFolder).toHaveBeenCalledOnce();
   expect(receipts.confirmReceipt).not.toHaveBeenCalled();
@@ -56,13 +60,31 @@ it("routes ordinary receipt to the library without old adoption or recovery call
   expect(libraryApi.getPortableInfo).not.toHaveBeenCalled();
 });
 
-it("closing archive confirmation retains the ordinary library", async () => {
-  window.history.replaceState({}, "", "/reference?receive=1");
+it.each(["/reference", "/reference?receive=1"])(
+  "uses Projects as the Back destination for direct entry at %s without opening a picker",
+  async (path) => {
+    window.history.replaceState({}, "", path);
+    const user = userEvent.setup(); render(<App />);
+    const library = await screen.findByRole("region", { name: "Project materials library" });
+    expect(receipts.pickReceiptFolder).not.toHaveBeenCalled();
+    await user.click(within(library).getByRole("button", { name: "Back", exact: true }));
+    await waitFor(() => expect(window.location.pathname + window.location.search).toBe("/projects"));
+    expect(receipts.pickReceiptFolder).not.toHaveBeenCalled();
+  }
+);
+
+it("returns to the exact Workbench page that opened the library", async () => {
+  const origin = "/projects/P1/matrix-editor?tab=tests#sequence";
+  window.history.replaceState({ preserved: true }, "", origin);
   const user = userEvent.setup(); render(<App />);
-  await user.click(await screen.findByRole("button", { name: "Cancel", exact: true }));
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(receipts.pickReceiptFolder).toHaveBeenCalled();
-  expect(window.location.search).toBe("");
+  await screen.findByRole("region", { name: "Matrix editor" });
+  await user.click(screen.getByRole("button", { name: "Library", exact: true }));
+  const library = await screen.findByRole("region", { name: "Project materials library" });
+  await user.click(screen.getByRole("button", { name: "Library", exact: true }));
+  await user.click(within(library).getByRole("button", { name: "Back", exact: true }));
+  await screen.findByRole("region", { name: "Matrix editor" });
+  expect(window.location.pathname + window.location.search + window.location.hash).toBe(origin);
+  expect(window.history.state).toEqual({ preserved: true });
 });
 
 it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project-library", "/projects/import/link", "/tools/legacy-projects"])("retires the old receiving page at %s safely",async(path)=>{
@@ -80,7 +102,7 @@ it("shows an imported project in the normal workbench without a special file act
   expect(screen.queryByRole("button", { name: "Browse Files" })).toBeNull();
 });
 
-it.each(["", "batch-1"])("preserves browsing context but returns from import to all Projects for batch=%s", async (batchId) => {
+it.each(["", "batch-1"])("returns from the library to the Projects list with its original batch=%s", async (batchId) => {
   const record: libraryApi.LibraryMember = { member_id: "member-1", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/test-library/projects/CPI", revision: 1, batch_id: batchId || null, snapshot_status: "current", snapshot_created_at: "2026-10-27", warnings: [], can_continue: true };
   vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [record] });
   vi.mocked(listProjectRegistryRows).mockResolvedValue([{ project_id: "project-1", display_project_id: "DL-2026-09-032", display_project_id_kind: "registered", has_registered_ltr: true, requestor: "Lab", status: "active", progress: 0, sample_description: "CPI-450" }]);
@@ -94,12 +116,12 @@ it.each(["", "batch-1"])("preserves browsing context but returns from import to 
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Receive materials" }));
-  expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
+  const library = await screen.findByRole("region", { name: "Project materials library" });
   expect(window.location.pathname).toBe("/reference");
-  await user.click(screen.getByRole("button", { name: "Cancel", exact: true }));
-  await user.click(within(screen.getByRole("navigation", { name: "Test sidebar" })).getByRole("button", { name: "Projects" }));
+  await user.click(within(library).getByRole("button", { name: "Back", exact: true }));
+  await waitFor(() => expect(window.location.pathname + window.location.search).toBe('/projects' + suffix));
   await user.click(await screen.findByRole("button", { name: /Open Workbench.*DL-2026-09-032/ }));
-  expect(window.location.pathname).toBe("/projects/project-1");
+  expect(window.location.pathname + window.location.search).toBe("/projects/project-1" + suffix);
   expect(await screen.findByRole("region", { name: "Project Workbench" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Browse Files" })).toBeNull();
 });
@@ -125,8 +147,9 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   expect(window.location.pathname).toBe("/projects");
   expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
   await user.click(screen.getByRole("button", { name: "Receive materials" }));
-  expect(await screen.findByRole("dialog", { name: "Receive project materials" })).toBeTruthy();
+  expect(await screen.findByRole("region", { name: "Project materials library" })).toBeTruthy();
   expect(window.location.pathname).toBe("/reference");
+  expect(receipts.pickReceiptFolder).not.toHaveBeenCalled();
   expect(libraryApi.pickLibraryFolder).not.toHaveBeenCalled();
 });
 
@@ -309,8 +332,11 @@ it("waits for source preparation before opening the receipt confirmation", async
   vi.mocked(receipts.getArchiveJob).mockImplementation(async id => id === "preview"
     ? new Promise(resolve => { prepare = resolve; })
     : {status: "done", result: {warnings: []}});
-  window.history.replaceState({}, "", "/reference?receive=1");
+  window.history.replaceState({}, "", "/reference");
+  const user = userEvent.setup();
   const mounted = render(<App />);
+  const library = await screen.findByRole("region", { name: "Project materials library" });
+  await user.click(within(library).getByRole("button", { name: "Receive materials" }));
   await waitFor(() => expect(receipts.pickReceiptFolder).toHaveBeenCalledOnce());
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(screen.queryByRole("button", {name: "Receive", exact: true})).toBeNull();

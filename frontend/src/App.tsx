@@ -178,8 +178,24 @@ function parseRoute(pathname: string): Route {
 }
 
 function navigate(path: string, state: Record<string, unknown> = {}): void {
-  window.history.pushState({...state, connlabRuntimeScope:storageNamespace("history")}, "", path);
+  const destination = parseRoute(new URL(path, window.location.href).pathname);
+  const current = parseRoute(window.location.pathname);
+  const referenceHasOrigin = destination.name === "reference" && current.name !== "reference";
+  window.history.pushState({
+    ...state,
+    connlabRuntimeScope: storageNamespace("history"),
+    referenceHasOrigin,
+  }, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function backFromReference(): void {
+  const entry = window.history.state;
+  if (entry?.referenceHasOrigin === true && entry.connlabRuntimeScope === storageNamespace("history")) {
+    window.history.back();
+    return;
+  }
+  navigate("/projects");
 }
 
 function parseCurrentRoute(): Route {
@@ -243,6 +259,7 @@ export default function App(): ReactElement {
     if (intakeInteractionLockReason && route.name === "intake") {
       return;
     }
+    if (path === "/reference" && route.name === "reference") return;
     if (path === "/projects" && route.name !== "projects" && lastProjectRoute) {
       navigate(lastProjectRoute);
       return;
@@ -319,7 +336,7 @@ export default function App(): ReactElement {
     >
       <RouteLoadBoundary key={JSON.stringify(route)}>
       <Suspense fallback={<RouteLoadingFallback />}>
-      {route.name === "reference" && <ReferenceLibraryPage copyContext={workbenchCopyContext} onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} />}
+      {route.name === "reference" && <ReferenceLibraryPage onBack={backFromReference} copyContext={workbenchCopyContext} onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} />}
       {(route.name === "projects" || route.name === "projectLibraryList") && (
         <>
           <ProjectListPage
@@ -328,7 +345,7 @@ export default function App(): ReactElement {
             onViewAll={() => navigate('/projects')}
             onOpenMember={id => navigate(`/reference?entry=${encodeURIComponent(`member:${id}`)}`)}
             onOpenLinked={id => navigate(`/reference?entry=${encodeURIComponent(`linked:${id}`)}`)}
-            onImport={() => navigate("/reference?receive=1")}
+            onImport={() => navigate("/reference")}
           />
         </>
       )}

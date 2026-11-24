@@ -14,7 +14,7 @@ const sources: Record<string,string> = { connlab: "ConnLab project", received: "
 const saved = () => { try { return JSON.parse(runtimeSessionStorage.getItem("reference-search") ?? "{}"); } catch { return {}; } };
 const initialEntry = () => new URLSearchParams(window.location.search).get("entry") ?? saved().project ?? "";
 const matchesKey = (row: ReferenceProject, key: string) => row.key === key || Boolean(row.member_id && key === "member:" + row.member_id);
-export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenProject: (id:string) => void; copyContext?: WorkbenchCopyContext | null; onOpenMember?: (id:string) => void; onOpenLinked?: (id:string) => void }) {
+export function ReferenceLibraryPage({ onBack, onOpenProject, copyContext }: { onBack?: () => void; onOpenProject: (id:string) => void; copyContext?: WorkbenchCopyContext | null; onOpenMember?: (id:string) => void; onOpenLinked?: (id:string) => void }) {
  const direct = new URLSearchParams(window.location.search).has("entry");
  const [query,setQuery] = useState<string>(() => direct ? "" : saved().query ?? "");
  const [search,setSearch] = useState(query);
@@ -27,7 +27,7 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
  const [error,setError] = useState("");
  const [busy,setBusy] = useState(false);
  const [reload,setReload] = useState(0);
- const [receiving,setReceiving] = useState(() => new URLSearchParams(window.location.search).get("receive") === "1");
+ const [receiving,setReceiving] = useState(false);
  const [resumeOperation,setResumeOperation] = useState<string|undefined>();
  const [scanning,setScanning]=useState<"idle"|"working"|"cancellation_requested">("idle");
  const [scanWarnings,setScanWarnings]=useState<string[]>([]);
@@ -75,12 +75,15 @@ export function ReferenceLibraryPage({ onOpenProject, copyContext }: { onOpenPro
   try{await cancelArchiveJob(scanJob.current);}
   catch(cause){if(mounted.current){setScanWarnings([(cause as Error).message]);setScanning("working");}}
  }
- function closeReceipt(){setReceiving(false);const url=new URL(window.location.href);url.searchParams.delete("receive");window.history.replaceState(null,"",url);}
+ function closeReceipt(){setReceiving(false);}
  function received(key:string){closeReceipt();setSelectedKey(key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}
  async function openFolder(){if(!selected)return;setError("");try{await openReferenceFile(selected.key);}catch(cause){setError((cause as Error).message);}}
  return <section className="reference-library" aria-label="Project materials library">
   <form className="library-search" onSubmit={event=>{event.preventDefault();setSearch(query);setReload(value=>value+1);}}>
-   <div className="library-search-input"><UiIcon name="search"/><input aria-label="Search project materials" placeholder="Project number, product, test item or filename…" value={query} onChange={event=>setQuery(event.target.value)}/></div>
+   <div className="library-search-entry">
+    {onBack && <button className="library-back" type="button" onClick={onBack}><span aria-hidden="true">←</span>Back</button>}
+    <div className="library-search-input"><UiIcon name="search"/><input aria-label="Search project materials" placeholder="Project number, product, test item or filename…" value={query} onChange={event=>setQuery(event.target.value)}/></div>
+   </div>
    <button className="library-primary" type="submit" disabled={busy}>Search</button><button className="library-primary" type="button" disabled={receiving} onClick={()=>{setResumeOperation(undefined);setReceiving(true);}}><UiIcon name="new-project"/>Receive materials</button>
   </form>
   {receiving && <ReceiveMaterials initialOperation={resumeOperation} onClose={closeReceipt} onReceived={received}/>}
