@@ -22,6 +22,7 @@ from openpyxl.formula.tokenizer import Tokenizer
 from openpyxl.utils import column_index_from_string, get_column_letter
 from openpyxl.utils.units import DEFAULT_COLUMN_WIDTH, pixels_to_EMU
 from openpyxl.worksheet.worksheet import Worksheet
+from backend.application.ir_dwv_template_discovery import IR_DWV_FORM_NUMBER, discover_ir_dwv_template
 from backend.application.matrix_editor_ir_dwv_record_projection import (
     IrDwvEquipment, IrDwvRecordStep, IrDwvRecordGroup, IrDwvRecordProjection,
 )
@@ -39,25 +40,64 @@ from backend.infrastructure.office.ir_dwv_record_workbook_layout import (
 class IrDwvRecordWorkbookGateway:
     """Build a blank record workbook without mutating its registered template."""
 
-    def __init__(self, template_path: Path | None) -> None:
+    def __init__(self, template_path: Path | None, *, template_folder: Path | None = None) -> None:
         self._template_path = Path(template_path) if template_path is not None else None
+        self._template_folder = template_folder
 
     def template_fingerprint(self) -> str:
         """Read and validate one consistent template snapshot without changing it."""
-        workbook, payload = self._load_template()
-        try:
-            _validate_template_fingerprint(workbook.worksheets[0])
-        finally:
-            workbook.close()
-        return f"{self._template_path.resolve()}:{sha256(payload).hexdigest()}"
+        path, workbook, payload = self._load_template()
+        workbook.close()
+        return f"{path.resolve()}:{sha256(payload).hexdigest()}"
 
     def _load_template(self):
-        self._validate_template_available()
-        payload = self._template_path.read_bytes()
+        path = self._template_path or discover_ir_dwv_template(
+            self._template_folder, validate_layout=self._validate_discovery_candidate,
+        )
+        lock = path.with_name(f"~${path.name}")
+        if lock.exists():
+            raise ValueError(f"blocked: 请关闭 Excel 中的 {path.name}")
+        workbook, payload = self._read_template(path)
+        return path, workbook, payload
+
+    def _validate_discovery_candidate(self, path: Path) -> None:
+        # A lock affects whether the selected workbook can be used, not its form identity.
+        workbook, _ = self._read_template(path)
+        workbook.close()
+
+    @staticmethod
+    def _read_template(path: Path):
         try:
-            return load_workbook(BytesIO(payload), data_only=False), payload
+            payload = path.read_bytes()
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"IR/DWV template not found: {path}. "
+                "Restore the approved .xlsx workbook there or correct its location in Settings."
+            ) from exc
+        except OSError as exc:
+            raise OSError(
+                f"Cannot read IR/DWV template: {path}. "
+                "Close the workbook in Excel and check that this computer can read it."
+            ) from exc
+        incompatible = (
+            f"IR/DWV template {path.name} is not compatible with {IR_DWV_FORM_NUMBER}. "
+            "In Template folder, use the approved .xlsx workbook with the original form layout."
+        )
+        try:
+            workbook = load_workbook(BytesIO(payload), data_only=False)
         except (BadZipFile, InvalidFileException, SyntaxError, KeyError) as exc:
-            raise ValueError(f"IR/DWV template is not a readable XLSX workbook: {exc}") from exc
+            raise ValueError(
+                f"IR/DWV template {path.name} is not a readable .xlsx workbook. "
+                f"Place a compatible {IR_DWV_FORM_NUMBER} workbook in Template folder."
+            ) from exc
+        try:
+            if not workbook.worksheets:
+                raise ValueError("The workbook has no worksheets.")
+            _validate_template_fingerprint(workbook.worksheets[0])
+        except ValueError as exc:
+            workbook.close()
+            raise ValueError(f"{incompatible} {exc}") from exc
+        return workbook, payload
 
     def validate_projection(self, projection: IrDwvRecordProjection) -> None:
         """Check layout capacity without opening or changing any output file."""
@@ -83,10 +123,9 @@ class IrDwvRecordWorkbookGateway:
         if not target.parent.is_dir():
             raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
         self.validate_projection(projection)
-        workbook, _payload = self._load_template()
+        _path, workbook, _payload = self._load_template()
         try:
             prototype = workbook.worksheets[0]
-            _validate_template_fingerprint(prototype)
             logos = template_block_logos(prototype)
             generated: list[Worksheet] = []
             generated_names: list[tuple[Worksheet, str]] = []
@@ -179,18 +218,6 @@ class IrDwvRecordWorkbookGateway:
             workbook.close()
         return target
 
-    def _validate_template_available(self) -> None:
-        if self._template_path is None:
-            raise ValueError("Configure the IR/DWV record template in File Locations before generating a form.")
-        if not self._template_path.is_file():
-            raise FileNotFoundError(
-                f"IR/DWV record template does not exist: {self._template_path}"
-            )
-        lock = self._template_path.with_name(f"~${self._template_path.name}")
-        if lock.exists():
-            raise ValueError("blocked: 请关闭 Excel 中的 IR&DWV Template.xlsx")
-
-
 def _positive_integer(value: Any) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise ValueError("IR/DWV sample count must be a positive integer.")
@@ -204,7 +231,7 @@ def _validate_template_fingerprint(sheet: Worksheet) -> None:
         "B13": "Test/Test Condition",
         "H13": "Test/Test Condition",
         "B20": "UNITS",
-        "L39": "FDQF-E-033",
+        "L39": IR_DWV_FORM_NUMBER,
         "L40": "G",
     }
     changed = [
@@ -659,7 +686,7 @@ def _fill_block(
                 cell.value = None
     sheet.cell(layout.footer_form_row, origin, "此表为DGLAB-LNP-11之附件")
     sheet.cell(layout.footer_form_row, last - 1, "Form No:")
-    sheet.cell(layout.footer_form_row, last, "FDQF-E-033")
+    sheet.cell(layout.footer_form_row, last, IR_DWV_FORM_NUMBER)
     sheet.cell(layout.footer_revision_row, last - 1, "Rev:")
     sheet.cell(layout.footer_revision_row, last, "G")
 

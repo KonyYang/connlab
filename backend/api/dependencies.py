@@ -1858,19 +1858,18 @@ def get_matrix_editor_ir_dwv_record_generation_service(
     session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
 ):
     from backend.application.matrix_editor_ir_dwv_record_generation_service import MatrixEditorIrDwvRecordGenerationService
+    from backend.application.ir_dwv_template_discovery import is_ir_dwv_template_name
     from backend.infrastructure.office.ir_dwv_record_workbook_gateway import IrDwvRecordWorkbookGateway
     from backend.infrastructure.files.ir_dwv_record_artifact_store import IrDwvRecordArtifactStore
     resources = ExternalResourceRepository(session)
-    resource = resources.get_by_type(ExternalResourceType.IR_DWV_RECORD_TEMPLATE)
-    if resource is not None:
-        template = resource.path if resource.active else None
-    else:
-        directory = _active_resource_path(resources, ExternalResourceType.PROJECT_FOLDER_TEMPLATE)
-        template = Path(directory) / "IR&DWV Template.xlsx" if directory else None
+    directory = _active_resource_path(resources, ExternalResourceType.PROJECT_FOLDER_TEMPLATE)
+    override = _active_resource_path(resources, ExternalResourceType.IR_DWV_RECORD_TEMPLATE)
+    if override is not None and override.parent == directory and is_ir_dwv_template_name(override):
+        override = None
     return MatrixEditorIrDwvRecordGenerationService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
         basic_information_store=get_download_basic_information_reader(session), ltr_store=LtrRecordRepository(session),
-        workbook_gateway=IrDwvRecordWorkbookGateway(template),
+        workbook_gateway=IrDwvRecordWorkbookGateway(override, template_folder=directory),
         artifact_store=IrDwvRecordArtifactStore(settings.data_dir / "generated_ir_dwv_record_drafts"),
     )
 

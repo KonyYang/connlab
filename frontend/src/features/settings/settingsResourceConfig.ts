@@ -51,7 +51,7 @@ export const SHARED_RESOURCE_CONFIGS: SettingsResourceConfig[] = [
   },
   {
     resourceType: "ir_dwv_record_template",
-    label: "IR/DWV record template",
+    label: "IR/DWV record template override",
     category: "Default locations",
     expectedKind: "Excel file",
     registryBacked: true

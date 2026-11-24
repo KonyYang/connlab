@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { listExternalResources, saveExternalResource, validateExternalResource, type ExternalResource, type ExternalResourceType } from "../../api/client";
 
 import { SHARED_RESOURCE_CONFIGS } from "./settingsResourceConfig";
+import { visibleSettingsResourceConfigs } from "./settingsSelectors";
 
-const displayedTypes = new Set(SHARED_RESOURCE_CONFIGS.map(row => row.resourceType));
 type SaveInput = {path: string; active: boolean; worksheet_name?: string | null};
 type Messages = Partial<Record<ExternalResourceType, string | null>>;
 function message(reason: string | null): string {
@@ -80,6 +80,7 @@ export function useSettingsResources() {
         return next;
       });
       // Queue each probe separately so an operator save can run before the next Office check.
+      const displayedTypes = new Set(visibleSettingsResourceConfigs(loaded).map(row => row.resourceType));
       const probes = [...loaded].sort((a, b) => {
         const isFolder = (type: ExternalResourceType) => SHARED_RESOURCE_CONFIGS.find(row => row.resourceType === type)?.expectedKind === "Folder";
         return Number(isFolder(b.resource_type)) - Number(isFolder(a.resource_type));
