@@ -737,11 +737,11 @@
   "tasks": {
     "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
       "branch": "codex/ir-dwv-template-discovery-20261124",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "ccf38f43e23dfe616ab6dad6bc0ccacc14c67643",
       "task": {
         "task_id": "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124",
         "summary": "Discover the IR/DWV template from Template folder when the form is requested.",
@@ -761,9 +761,70 @@
         "risk_reasons": [],
         "activation_head": "75b2583195936f2ca80c81cec879879d26e0d7af",
         "started_at": "2026-11-24T00:06:28.271312Z",
-        "updated_at": "2026-11-24T00:06:28.271312Z",
+        "updated_at": "2026-11-24T00:17:49.094385Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "summary": "Discover IR/DWV templates in Template folder when the IR/DWV operation needs one. Recognize IR&DWV or FDQF-E-033 filenames and verify the approved layout. Explain missing, incompatible and competing templates. Settings hides redundant entries and retains existing explicit overrides.",
+          "subject": "e53430faf72afcf0960b05eaee4f1fa6a7aa6a21",
+          "task_id": "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124",
+          "schema": "connlab.sol-task-report",
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "result": "Focused self-review checked lazy lookup, known workbook identity, duplicate and explicit-override behavior, and unchanged project output safeguards."
+            },
+            "developer": {
+              "status": "passed",
+              "result": "Verified five failing backend cases and two failed Settings cases before implementation, then demonstrated on-demand behavior and override compatibility."
+            },
+            "qa": {
+              "status": "passed",
+              "result": "Ran final isolated backend suites, Settings and IR/DWV frontend tests, build, and verified an isolated copy of the actual approved workbook."
+            }
+          },
+          "scope_ok": true,
+          "validation": [
+            {
+              "result": "229 tests passed on final implementation (four isolated suites: 114, 46, 47, 22).",
+              "status": "passed",
+              "command": "Pytest IR/DWV workbook, external resources, generation and folder recovery"
+            },
+            {
+              "result": "23 tests passed in 3 files.",
+              "status": "passed",
+              "command": "Vitest Settings and IR/DWV action tests"
+            },
+            {
+              "result": "TypeScript and Vite production build passed.",
+              "status": "passed",
+              "command": "npm run build"
+            },
+            {
+              "result": "On-demand discovery and layout validation passed with FDQF-E-033 IR&DWV Template.xlsx. Real template only read.",
+              "status": "passed",
+              "command": "Isolated copy of actual approved workbook"
+            }
+          ],
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/application/ir_dwv_template_discovery.py",
+            "backend/infrastructure/office/ir_dwv_record_workbook_gateway.py",
+            "frontend/src/features/settings/settingsSelectors.ts",
+            "frontend/src/features/settings/settingsResourceConfig.ts",
+            "frontend/src/features/settings/useSettingsResources.ts",
+            "frontend/src/pages/SettingsPage.test.tsx",
+            "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py"
+          ],
+          "version": 1,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "e53430faf72afcf0960b05eaee4f1fa6a7aa6a21",
+            "primary_before": "6d68bb788e25aba6f7e0c38d9a1a0120a124b72b",
+            "integrated_head": "ccf38f43e23dfe616ab6dad6bc0ccacc14c67643",
+            "recovered": false
+          }
+        }
       }
     }
   }
