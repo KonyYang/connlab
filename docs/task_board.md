@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124",
-    "tier": "standard",
-    "subject": "e53430faf72afcf0960b05eaee4f1fa6a7aa6a21",
-    "summary": "Discover the IR/DWV template from Template folder when the form is requested.",
+    "task_id": "TASK_LIBRARY_ENTRY_BACK_20261125",
+    "tier": "micro",
+    "subject": "df0bd22ef29cf17d14f94159c800b4fb10917a7d",
+    "summary": "Separate library navigation from receipt picking and add contextual Back.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local close only. Preserve implementation e53430fa and validation in finish commit 3f96ab70: 229 backend tests, 23 frontend tests, production build and approved workbook copy validation.",
-    "closed_at": "2026-11-24T22:45:21.066677Z"
+    "decision_ref": "User explicitly closed the completed library entry and Back navigation task. Local Edge click verification, frontend test results, fixture data and existing receipt verification records are retained.",
+    "closed_at": "2026-11-24T23:59:22.262803Z"
   },
   "retained_history": [
     {
@@ -750,81 +750,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local close only. Retain implementation fbce6d70 and validation in finish commit 1462acd4, including 11 tests and isolated Windows Explorer foreground evidence.",
       "closed_at": "2026-11-24T22:44:33.166599Z"
+    },
+    {
+      "task_id": "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124",
+      "tier": "standard",
+      "subject": "e53430faf72afcf0960b05eaee4f1fa6a7aa6a21",
+      "summary": "Discover the IR/DWV template from Template folder when the form is requested.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local close only. Preserve implementation e53430fa and validation in finish commit 3f96ab70: 229 backend tests, 23 frontend tests, production build and approved workbook copy validation.",
+      "closed_at": "2026-11-24T22:45:21.066677Z"
     }
   ],
-  "tasks": {
-    "TASK_LIBRARY_ENTRY_BACK_20261125": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-entry-back-20261125",
-      "branch": "codex/library-entry-back-20261125",
-      "resources": [],
-      "integrated_head": "724af9f37d5648a3e2bf794a2e47576f9140bb32",
-      "task": {
-        "task_id": "TASK_LIBRARY_ENTRY_BACK_20261125",
-        "summary": "Separate library navigation from receipt picking and add contextual Back.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Projects home and existing Reference Library navigation. No picker on entry, explicit receipt still opens picker, back to originating page or Projects for direct entry. Isolated click verification.",
-        "scope_paths": [
-          "frontend/src/App.tsx",
-          "frontend/src/App.test.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.tsx",
-          "frontend/src/pages/reference-library.css"
-        ],
-        "risk_reasons": [],
-        "activation_head": "0363b1b6debcee2375d4d47ad76b0ff51cd8680f",
-        "started_at": "2026-11-24T23:45:26.027048Z",
-        "updated_at": "2026-11-24T23:58:00.962840Z",
-        "checkpoint": null,
-        "report": {
-          "changed_paths": [
-            "frontend/src/App.tsx",
-            "frontend/src/App.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx",
-            "frontend/src/pages/reference-library.css"
-          ],
-          "validation": [
-            {
-              "result": "78 passed across five files. Seven expected regression failures before implementation. A parallel run showed one timing-sensitive receipt test failure; all passed in sequential final run.",
-              "status": "passed",
-              "command": "Targeted Vitest, sequential"
-            },
-            {
-              "result": "TypeScript and Vite passed. Reviewed pathname/entry history, stale query, and layout. Four scoped files.",
-              "status": "passed",
-              "command": "npm run build and exact diff self-review"
-            },
-            {
-              "result": "Clicked home, Workbench and old direct receive URL; Back returned to /, /projects/hint-a and /projects respectively, zero automatic picker requests; button is left of search. Explicit headed click reached genuine picker endpoint HTTP 200 with cancellation. An additional interactive confirm in this headed session copied 13 files from a source outside the fixture into the isolated receive target; no source write by the receipt workflow. Isolated services stopped and evidence/copies retained.",
-              "status": "passed",
-              "command": "Local Edge on isolated 5245/8865"
-            }
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "df0bd22ef29cf17d14f94159c800b4fb10917a7d",
-            "primary_before": "224f6b9a4a04933c380648d02afe2d3768bc56c0",
-            "integrated_head": "724af9f37d5648a3e2bf794a2e47576f9140bb32",
-            "recovered": false
-          },
-          "subject": "df0bd22ef29cf17d14f94159c800b4fb10917a7d",
-          "task_id": "TASK_LIBRARY_ENTRY_BACK_20261125",
-          "scope_ok": true,
-          "summary": "Projects Receive materials opens the library without picking. The library only picks after explicit receipt action. Back restores the in-app history entry or opens Projects on direct entry.",
-          "version": 1,
-          "schema": "connlab.sol-task-report",
-          "roles": {
-            "developer": {
-              "context": "Implemented four scoped files and performed the focused self-review and isolated validation for a micro task.",
-              "status": "passed"
-            }
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
