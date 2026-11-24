@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123",
-    "tier": "high_risk",
-    "subject": "1fffea7308281c572b67fdb874fda0a8f11cd769",
-    "summary": "Recover the local release folder binding for DL-2026-09-001.",
+    "task_id": "TASK_PROJECT_FOLDER_FOREGROUND_20261125",
+    "tier": "micro",
+    "subject": "fbce6d70ada2f5135112a25a735c227646ed1bf7",
+    "summary": "Show the folder explicitly opened by the user in the foreground on Windows.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested final close. Preserve the local database and manifest backup and verified release status. The task only changed local project data and the board. Use the ordinary fast-forward close gate for the board.",
-    "closed_at": "2026-11-23T14:50:50.112235Z"
+    "decision_ref": "User explicitly requested local close only. Retain implementation fbce6d70 and validation in finish commit 1462acd4, including 11 tests and isolated Windows Explorer foreground evidence.",
+    "closed_at": "2026-11-24T22:44:33.166599Z"
   },
   "retained_history": [
     {
@@ -732,6 +732,15 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested final close. Preserve fixes acd001b2 and 7ce09021, the 212 Python and 80 frontend tests, and isolated release recovery evidence. Follow the ordinary fast-forward close gate.",
       "closed_at": "2026-11-23T13:29:56.257162Z"
+    },
+    {
+      "task_id": "TASK_RELEASE_PROJECT_FOLDER_RELINK_20261123",
+      "tier": "high_risk",
+      "subject": "1fffea7308281c572b67fdb874fda0a8f11cd769",
+      "summary": "Recover the local release folder binding for DL-2026-09-001.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested final close. Preserve the local database and manifest backup and verified release status. The task only changed local project data and the board. Use the ordinary fast-forward close gate for the board.",
+      "closed_at": "2026-11-23T14:50:50.112235Z"
     }
   ],
   "tasks": {
@@ -823,73 +832,6 @@
             "primary_before": "6d68bb788e25aba6f7e0c38d9a1a0120a124b72b",
             "integrated_head": "ccf38f43e23dfe616ab6dad6bc0ccacc14c67643",
             "recovered": false
-          }
-        }
-      }
-    },
-    "TASK_PROJECT_FOLDER_FOREGROUND_20261125": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
-      "branch": "codex/project-folder-foreground-20261125",
-      "resources": [],
-      "integrated_head": "b307ab90c6fe93029ea961f25bb7a1e0ef7b96ec",
-      "task": {
-        "task_id": "TASK_PROJECT_FOLDER_FOREGROUND_20261125",
-        "summary": "Show the folder explicitly opened by the user in the foreground on Windows.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Windows directory opening and targeted regression evidence only.",
-        "scope_paths": [
-          "backend/infrastructure/files/local_folder_open_gateway.py",
-          "tests/unit/test_local_folder_open_gateway.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "3f96ab707ebd54e47c4a306941379cd8e9750247",
-        "started_at": "2026-11-24T22:39:34.698971Z",
-        "updated_at": "2026-11-24T22:42:34.760830Z",
-        "checkpoint": null,
-        "report": {
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "fbce6d70ada2f5135112a25a735c227646ed1bf7",
-            "primary_before": "4861b51a6562193d4945dbe34f92b2e0cb32b944",
-            "integrated_head": "b307ab90c6fe93029ea961f25bb7a1e0ef7b96ec",
-            "recovered": false
-          },
-          "scope_ok": true,
-          "summary": "After an explicit folder open, restore and raise only the Explorer window that matches the requested directory.",
-          "task_id": "TASK_PROJECT_FOLDER_FOREGROUND_20261125",
-          "version": 1,
-          "subject": "fbce6d70ada2f5135112a25a735c227646ed1bf7",
-          "validation": [
-            {
-              "command": "pytest test_local_folder_open_gateway.py test_project_folder_open_service.py test_project_folder_open_api.py",
-              "status": "passed",
-              "result": "11 passed on Windows. The two new native-adapter cases reproduced the missing restore/activation before the implementation. Coverage includes denied keyboard focus, a case-insensitive Chinese path and a same-name unrelated folder."
-            },
-            {
-              "command": "Windows interactive smoke using LocalFolderOpenGateway on a worker thread and an isolated folder",
-              "status": "passed",
-              "result": "Opened an isolated Chinese-named folder, verified Explorer was minimized, opened again through the gateway, and observed visible=1 minimized=0 foreground=True. No business files or other workstation tested."
-            },
-            {
-              "command": "git diff --cached --check",
-              "status": "passed",
-              "result": "No whitespace errors."
-            }
-          ],
-          "changed_paths": [
-            "backend/infrastructure/files/local_folder_open_gateway.py",
-            "tests/unit/test_local_folder_open_gateway.py"
-          ],
-          "schema": "connlab.sol-task-report",
-          "roles": {
-            "developer": {
-              "result": "Implemented and self-reviewed the exact two-file diff for path matching, native fallback and existing open guards.",
-              "status": "passed"
-            }
           }
         }
       }
