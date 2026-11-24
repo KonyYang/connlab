@@ -734,7 +734,39 @@
       "closed_at": "2026-11-23T13:29:56.257162Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
+      "branch": "codex/ir-dwv-template-discovery-20261124",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124",
+        "summary": "Discover the IR/DWV template from Template folder when the form is requested.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Resolve a validated top-level XLSX named with IR&DWV or FDQF-E-033 when IR/DWV generation uses it. Explain missing or ambiguous templates, hide redundant Settings rows, and retain active legacy overrides.",
+        "scope_paths": [
+          "backend/api/dependencies.py",
+          "backend/application/ir_dwv_template_discovery.py",
+          "backend/infrastructure/office/ir_dwv_record_workbook_gateway.py",
+          "frontend/src/features/settings/settingsSelectors.ts",
+          "frontend/src/features/settings/settingsResourceConfig.ts",
+          "frontend/src/features/settings/useSettingsResources.ts",
+          "frontend/src/pages/SettingsPage.test.tsx",
+          "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "75b2583195936f2ca80c81cec879879d26e0d7af",
+        "started_at": "2026-11-24T00:06:28.271312Z",
+        "updated_at": "2026-11-24T00:06:28.271312Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
