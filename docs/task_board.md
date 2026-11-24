@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PROJECT_FOLDER_FOREGROUND_20261125",
-    "tier": "micro",
-    "subject": "fbce6d70ada2f5135112a25a735c227646ed1bf7",
-    "summary": "Show the folder explicitly opened by the user in the foreground on Windows.",
+    "task_id": "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124",
+    "tier": "standard",
+    "subject": "e53430faf72afcf0960b05eaee4f1fa6a7aa6a21",
+    "summary": "Discover the IR/DWV template from Template folder when the form is requested.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local close only. Retain implementation fbce6d70 and validation in finish commit 1462acd4, including 11 tests and isolated Windows Explorer foreground evidence.",
-    "closed_at": "2026-11-24T22:44:33.166599Z"
+    "decision_ref": "User explicitly requested local close only. Preserve implementation e53430fa and validation in finish commit 3f96ab70: 229 backend tests, 23 frontend tests, production build and approved workbook copy validation.",
+    "closed_at": "2026-11-24T22:45:21.066677Z"
   },
   "retained_history": [
     {
@@ -741,102 +741,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested final close. Preserve the local database and manifest backup and verified release status. The task only changed local project data and the board. Use the ordinary fast-forward close gate for the board.",
       "closed_at": "2026-11-23T14:50:50.112235Z"
+    },
+    {
+      "task_id": "TASK_PROJECT_FOLDER_FOREGROUND_20261125",
+      "tier": "micro",
+      "subject": "fbce6d70ada2f5135112a25a735c227646ed1bf7",
+      "summary": "Show the folder explicitly opened by the user in the foreground on Windows.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local close only. Retain implementation fbce6d70 and validation in finish commit 1462acd4, including 11 tests and isolated Windows Explorer foreground evidence.",
+      "closed_at": "2026-11-24T22:44:33.166599Z"
     }
   ],
-  "tasks": {
-    "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-review-wording\\connlab",
-      "branch": "codex/ir-dwv-template-discovery-20261124",
-      "resources": [],
-      "integrated_head": "ccf38f43e23dfe616ab6dad6bc0ccacc14c67643",
-      "task": {
-        "task_id": "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124",
-        "summary": "Discover the IR/DWV template from Template folder when the form is requested.",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Resolve a validated top-level XLSX named with IR&DWV or FDQF-E-033 when IR/DWV generation uses it. Explain missing or ambiguous templates, hide redundant Settings rows, and retain active legacy overrides.",
-        "scope_paths": [
-          "backend/api/dependencies.py",
-          "backend/application/ir_dwv_template_discovery.py",
-          "backend/infrastructure/office/ir_dwv_record_workbook_gateway.py",
-          "frontend/src/features/settings/settingsSelectors.ts",
-          "frontend/src/features/settings/settingsResourceConfig.ts",
-          "frontend/src/features/settings/useSettingsResources.ts",
-          "frontend/src/pages/SettingsPage.test.tsx",
-          "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "75b2583195936f2ca80c81cec879879d26e0d7af",
-        "started_at": "2026-11-24T00:06:28.271312Z",
-        "updated_at": "2026-11-24T00:17:49.094385Z",
-        "checkpoint": null,
-        "report": {
-          "summary": "Discover IR/DWV templates in Template folder when the IR/DWV operation needs one. Recognize IR&DWV or FDQF-E-033 filenames and verify the approved layout. Explain missing, incompatible and competing templates. Settings hides redundant entries and retains existing explicit overrides.",
-          "subject": "e53430faf72afcf0960b05eaee4f1fa6a7aa6a21",
-          "task_id": "TASK_IR_DWV_TEMPLATE_DISCOVERY_20261124",
-          "schema": "connlab.sol-task-report",
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "result": "Focused self-review checked lazy lookup, known workbook identity, duplicate and explicit-override behavior, and unchanged project output safeguards."
-            },
-            "developer": {
-              "status": "passed",
-              "result": "Verified five failing backend cases and two failed Settings cases before implementation, then demonstrated on-demand behavior and override compatibility."
-            },
-            "qa": {
-              "status": "passed",
-              "result": "Ran final isolated backend suites, Settings and IR/DWV frontend tests, build, and verified an isolated copy of the actual approved workbook."
-            }
-          },
-          "scope_ok": true,
-          "validation": [
-            {
-              "result": "229 tests passed on final implementation (four isolated suites: 114, 46, 47, 22).",
-              "status": "passed",
-              "command": "Pytest IR/DWV workbook, external resources, generation and folder recovery"
-            },
-            {
-              "result": "23 tests passed in 3 files.",
-              "status": "passed",
-              "command": "Vitest Settings and IR/DWV action tests"
-            },
-            {
-              "result": "TypeScript and Vite production build passed.",
-              "status": "passed",
-              "command": "npm run build"
-            },
-            {
-              "result": "On-demand discovery and layout validation passed with FDQF-E-033 IR&DWV Template.xlsx. Real template only read.",
-              "status": "passed",
-              "command": "Isolated copy of actual approved workbook"
-            }
-          ],
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/application/ir_dwv_template_discovery.py",
-            "backend/infrastructure/office/ir_dwv_record_workbook_gateway.py",
-            "frontend/src/features/settings/settingsSelectors.ts",
-            "frontend/src/features/settings/settingsResourceConfig.ts",
-            "frontend/src/features/settings/useSettingsResources.ts",
-            "frontend/src/pages/SettingsPage.test.tsx",
-            "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py"
-          ],
-          "version": 1,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "e53430faf72afcf0960b05eaee4f1fa6a7aa6a21",
-            "primary_before": "6d68bb788e25aba6f7e0c38d9a1a0120a124b72b",
-            "integrated_head": "ccf38f43e23dfe616ab6dad6bc0ccacc14c67643",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
