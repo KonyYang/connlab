@@ -826,6 +826,31 @@
           }
         }
       }
+    },
+    "TASK_PROJECT_FOLDER_FOREGROUND_20261125": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
+      "branch": "codex/project-folder-foreground-20261125",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PROJECT_FOLDER_FOREGROUND_20261125",
+        "summary": "Show the folder explicitly opened by the user in the foreground on Windows.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Windows directory opening and targeted regression evidence only.",
+        "scope_paths": [
+          "backend/infrastructure/files/local_folder_open_gateway.py",
+          "tests/unit/test_local_folder_open_gateway.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "3f96ab707ebd54e47c4a306941379cd8e9750247",
+        "started_at": "2026-11-24T22:39:34.698971Z",
+        "updated_at": "2026-11-24T22:39:34.698971Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
