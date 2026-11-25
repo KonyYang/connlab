@@ -129,15 +129,13 @@ class BasicProjectWorkspaceService:
         elif blockers:
             status = "blocked"
         available = False
-        registered = None
-        try:
-            if not resolution:
-                registered = self.workspaces.get_by_project(project_id)
-                if registered:
-                    self._verify_record(registered)
-                    available = True
-        except (ValueError, OSError):
-            pass
+        registered = None if resolution else self.workspaces.get_by_project(project_id)
+        if registered:
+            try:
+                self._verify_record(registered)
+                available = True
+            except (ValueError, OSError):
+                pass
         registered_path = (resolution["previous_record"]["official_folder_path"] if resolution else
                            str(registered.official_folder_path) if registered else None)
         resolution_required = False
