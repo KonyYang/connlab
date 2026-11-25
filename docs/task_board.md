@@ -833,6 +833,33 @@
           "schema": "connlab.sol-task-report"
         }
       }
+    },
+    "TASK_LIBRARY_PROJECT_TABLE_20261126": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
+      "branch": "codex/library-project-table-20261126",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_PROJECT_TABLE_20261126",
+        "summary": "Paginate project materials in a wider two-column registry table.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Library project list presentation, paging and selection, with responsive file-pane sizing.",
+        "scope_paths": [
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+          "frontend/src/features/material-receipts/LibraryProjectTable.tsx",
+          "frontend/src/features/material-receipts/library-project-table.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "e140fc8ee1928bb4f896c9b754a2874155679d8f",
+        "started_at": "2026-11-25T22:38:22.577363Z",
+        "updated_at": "2026-11-25T22:38:22.577363Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
