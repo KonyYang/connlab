@@ -1,6 +1,6 @@
 """Derived archive directory index, separate from durable copy operations."""
 from uuid import uuid4
-from sqlalchemy import select,delete
+from sqlalchemy import select,delete,func
 from backend.domain.project_library import ProjectLibraryConflict
 from backend.infrastructure.storage.models_project_library import MaterialArchiveFolderModel, MaterialArchiveFileModel, MaterialReceiptBatchModel
 from backend.infrastructure.storage.repositories.material_receipt import MaterialReceiptRepository
@@ -85,6 +85,44 @@ class MaterialArchiveRepository:
         try:self.session.commit()
         except Exception:
             self.session.rollback();raise
+
+    def pending_directory_receipts(self):
+        payload = MaterialReceiptBatchModel.payload_json
+        fields = ("target_path", "number", "title", "folder_id", "batch_id", "status")
+        statement = select(*(func.json_extract(payload, "$." + field).label(field) for field in fields)).where(
+            func.json_extract(payload, "$.operation") == "material_archive",
+            func.json_extract(payload, "$.status") != "completed")
+        return self.session.execute(statement).mappings()
+
+    def directory_rows(self):
+        # Separate read-only directory discovery from receipt ownership and project associations.
+        return self.session.scalars(select(MaterialArchiveFolderModel).where(
+            MaterialArchiveFolderModel.normalized_path.startswith("directory:"))).all()
+
+    def index_directory(self, path, number, title, files):
+        identity = "directory:" + normalized(path)
+        row = self.session.scalar(select(MaterialArchiveFolderModel).where(
+            MaterialArchiveFolderModel.normalized_path == identity))
+        if row is None:
+            row = MaterialArchiveFolderModel(folder_id=uuid4().hex, normalized_path=identity,
+                                            library_root="", folder_path=str(path))
+            self.session.add(row)
+        row.folder_path, row.number, row.title, row.indexed_available = str(path), number, title, True
+        key = "directory:" + row.folder_id
+        previous = set(self.session.scalars(select(MaterialArchiveFileModel.relative_path).where(
+            MaterialArchiveFileModel.catalog_key == key)))
+        current = {item["relative_path"] for item in files}
+        if previous != current:
+            self.session.execute(delete(MaterialArchiveFileModel).where(MaterialArchiveFileModel.catalog_key == key))
+            self.session.add_all(MaterialArchiveFileModel(catalog_key=key, **item) for item in files)
+        self.session.commit()
+
+    def hide_absent_directories(self, root, present):
+        from pathlib import Path
+        for row in self.directory_rows():
+            if Path(row.folder_path).parent == root and Path(row.folder_path) not in present:
+                row.indexed_available = False
+        self.session.commit()
 
     def rebind_directory(self, folder_id, expected_path, target, library_root):
         """Relocate a verified copy without replacing its identity or relative search index."""

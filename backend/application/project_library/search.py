@@ -32,13 +32,16 @@ class LibrarySearchService:
             if selected_key:
                 entry = checked_material_entry(self.store, entry)
             associated = bool(entry["folder_path"].strip())
-            available = associated and not entry.get("workspace_unavailable", False) and (self.store.indexed_available(entry["folder_path"]) if hasattr(self.store,"indexed_files") else self.files.available(entry["folder_path"]))
+            available = entry.get("indexed_available")
+            if available is None:
+                available = associated and not entry.get("workspace_unavailable", False) and (self.store.indexed_available(entry["folder_path"]) if hasattr(self.store,"indexed_files") else self.files.available(entry["folder_path"]))
             location_state = "unassociated" if not associated else "available" if available else "unavailable"
             entry = {**entry, "available": available, "location_state": location_state}
             if location_state == "unassociated" and entry.get("project_id") and not tokens and not project:
                 continue
             metadata = (" ".join(str(entry.get(k) or "") for k in ("number", "title", "test_item", "description")) + " " + PureWindowsPath(entry["folder_path"]).name).casefold()
-            if all(token in metadata for token in tokens):
+            listed = kind == "all" and all(token in metadata for token in tokens)
+            if listed:
                 projects.append(entry)
             if location_state == "unassociated":
                 continue
@@ -53,8 +56,9 @@ class LibrarySearchService:
                 if kind != "all" and kind != category:
                     continue
                 if all(token in metadata + " " + row["name"].casefold() for token in tokens):
-                    if not any(project_row["key"] == entry["key"] for project_row in projects):
+                    if not listed:
                         projects.append(entry)
+                        listed = True
                     matches.append({**row, "key": entry["key"], "title": entry["title"],
                                     "number": entry["number"], "kind": category,
                                     "directory": str(PurePosixPath(row["relative_path"]).parent)})

@@ -15,7 +15,7 @@ it("opens the picker directly and receives after exactly one concise confirmatio
  expect(api.pickReceiptFolder).toHaveBeenCalledOnce();
  expect(screen.queryByLabelText("Project number")).toBeNull();expect(screen.queryByLabelText("Declared project state")).toBeNull();
  expect(api.confirmArchive).not.toHaveBeenCalled();await user.click(screen.getByRole("button",{name:"Receive",exact:true}));
- await waitFor(()=>expect(received).toHaveBeenCalledWith("archive:one"));expect(api.confirmArchive).toHaveBeenCalledOnce();
+ await waitFor(()=>expect(received).toHaveBeenCalledWith(plan.target_path));expect(api.confirmArchive).toHaveBeenCalledOnce();
 });
 it("picker cancellation exits without creating an operation",async()=>{
  const close=vi.fn();vi.mocked(api.pickReceiptFolder).mockResolvedValue(null);render(<ReceiveMaterials onClose={close} onReceived={vi.fn()}/>);
@@ -57,10 +57,10 @@ it("allows leaving while the worker is still cancelling and never reports comple
  expect(close).toHaveBeenCalled();expect(received).not.toHaveBeenCalled();expect(api.cancelArchiveJob).toHaveBeenCalled();view.unmount();
 });
 
-it("selects an existing canonical receipt key without confirming or duplicating it",async()=>{
+it("selects an existing folder without confirming or duplicating it",async()=>{
  const received=vi.fn();vi.mocked(api.getArchiveJob).mockResolvedValue({status:"done",result:{status:"existing",source_path:plan.target_path,target_path:plan.target_path,target_key:"receipt:retained"}});
  render(<ReceiveMaterials onClose={vi.fn()} onReceived={received}/>);
- await waitFor(()=>expect(received).toHaveBeenCalledWith("receipt:retained"));
+ await waitFor(()=>expect(received).toHaveBeenCalledWith(plan.target_path));
  expect(api.confirmArchive).not.toHaveBeenCalled();
 });
 

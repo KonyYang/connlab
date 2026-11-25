@@ -186,14 +186,14 @@ def archive_service(session,settings):
         LibrarySearchRepository(session, get_project_registry_summary_service(session), settings.data_dir))
 
 
-def start_archive_job(session,settings,action):
+def start_archive_job(session,settings,action, factory=archive_service):
     from sqlalchemy.orm import Session
     from backend.infrastructure.project_library.material_archive_files import archive_jobs
     engine=session.get_bind()
     def worker(cancellation):
         with Session(engine) as fresh:
-            service=archive_service(fresh,settings)
-            service.files.cancellation=cancellation
+            service=factory(fresh,settings)
+            getattr(service, "scanner", service.files).cancellation=cancellation
             return action(service)
     return checked(lambda:archive_jobs.start(worker))
 
@@ -201,6 +201,12 @@ def start_archive_job(session,settings,action):
 @router.post('/archive/refresh',status_code=202)
 def refresh_archive(session=Depends(get_session),settings=Depends(get_settings)):
     return start_archive_job(session,settings,lambda service:service.refresh())
+
+
+@router.post('/folders/refresh',status_code=202)
+def refresh_configured_folders(session=Depends(get_session),settings=Depends(get_settings)):
+    from backend.api.routes_project_library import get_configured_library
+    return start_archive_job(session, settings, lambda service: service.refresh(), get_configured_library)
 
 
 @router.post('/archive/preview',status_code=202)

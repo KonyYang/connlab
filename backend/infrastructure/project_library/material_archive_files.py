@@ -141,6 +141,23 @@ class MaterialArchiveFiles(MaterialReceiptFiles):
                 raise OSError(ctypes.get_errno(),'Could not publish without replacing an existing folder.')
         self.check_root(target,expected)
 
+    def directory_label(self, path):
+        def parse(name):
+            match = re.fullmatch(r"(DL-\d{4}-\d{2}-\d{3}[A-Z0-9]*)(?:[\s_-]+(.*))?", name, re.I)
+            return (match[1].upper(), (match[2] or "").strip()) if match else (None, name)
+
+        number, title = parse(path.name)
+        if number and not title:
+            descriptions = set()
+            for child in self.children(path):
+                self.check_cancel()
+                other, description = parse(child.name)
+                if other == number and description:
+                    descriptions.add(description)
+            if len(descriptions) == 1:
+                title = descriptions.pop()
+        return number, title
+
     def metadata(self, path):
         title=Path(path).name
         number=re.search(r"\bDL-\d{4}-\d{2}-\d{3}[A-Z0-9]*\b",title,re.I)

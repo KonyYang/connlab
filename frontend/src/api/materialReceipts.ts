@@ -44,7 +44,7 @@ export type ArchivePlan = {status:"ready"|"conflict"|"existing"|"pending";source
 export type ArchiveJob = {status:"working"|"cancellation_requested"|"done"|"cancelled"|"failed";result?:unknown;error?:string};
 export const startArchivePreview=(source:string,independent=false)=>post<{job_id:string}>("/archive/preview",{source,independent});
 export const confirmArchive=(plan:ArchivePlan)=>post<{job_id:string}>("/archive/confirm",{plan_id:plan.plan_id,fingerprint:plan.fingerprint});
-export const refreshArchive=()=>post<{job_id:string}>("/archive/refresh",{});
+export const refreshArchive=()=>post<{job_id:string}>("/folders/refresh",{});
 export const getArchiveJob=(id:string)=>requestJson<ArchiveJob>(`${base}/archive/jobs/${encodeURIComponent(id)}`);
 export const cancelArchiveJob=(id:string)=>post<ArchiveJob>(`/archive/jobs/${encodeURIComponent(id)}/cancel`,{});
 export const getArchiveOperation=(id:string)=>requestJson<ReceiptBatch>(`${base}/archive/operations/${encodeURIComponent(id)}`);

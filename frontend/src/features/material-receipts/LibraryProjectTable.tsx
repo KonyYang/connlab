@@ -30,8 +30,8 @@ export function LibraryProjectTable({ projects, selectedKey, onSelect, onResume,
         <colgroup><col className="library-id-column" /><col /></colgroup>
         <thead><tr><th scope="col">Project ID</th><th scope="col">Sample Description</th></tr></thead>
         <tbody>{rows.map(row => {
-          const number = row.number || "No number";
-          const title = row.title || "Not recorded";
+          const number = row.number || "—";
+          const title = row.title || "—";
           const active = row.key === selectedKey;
           return <tr key={row.key} className={active ? "is-selected" : undefined}
             onClick={() => onSelect(row.key)}>

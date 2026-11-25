@@ -33,6 +33,53 @@ def get_library_search_service(session=Depends(get_session), settings=Depends(ge
         SearchFiles(), open_document)
 
 
+def get_configured_library(session=Depends(get_session), settings=Depends(get_settings)):
+    from backend.api.dependencies import get_default_storage_locations
+    from backend.application.project_library.configured_folders import ConfiguredFolderCatalog, ConfiguredFolderLibrary
+    from backend.infrastructure.project_library.material_archive_files import MaterialArchiveFiles
+    from backend.infrastructure.project_library.search_files import SearchFiles, open_document
+    from backend.infrastructure.storage.repositories.material_archive import MaterialArchiveRepository
+
+    store = MaterialArchiveRepository(session)
+    scanner = MaterialArchiveFiles(settings)
+    materials = Path(store.receipts.settings()["root_path"] or scanner.default_root())
+    project_kind = ExternalResourceType.PROJECT_OUTPUT_ROOT
+    locations = get_default_storage_locations(session, settings)
+    project_root = locations.effective(project_kind)
+    configured = ExternalResourceRepository(session).get_by_type(project_kind)
+    roots = [("materials", materials, True)]
+    if project_root != materials:
+        roots.append(("projects", project_root, configured is None or configured.active))
+    return ConfiguredFolderLibrary(ConfiguredFolderCatalog(store, roots), SearchFiles(exclude_internal=True), open_document, scanner)
+
+
+@router.get("/folders/search")
+def search_configured_folders(q: str = Query("", max_length=512),
+                              source: str = Query("all", pattern="^(all|materials|projects)$"),
+                              kind: str = Query("all", pattern="^(all|application|plan|record|report|photo|other)$"),
+                              project: str = Query("", max_length=256), offset: int = Query(0, ge=0),
+                              service=Depends(get_configured_library), session=Depends(get_session), settings=Depends(get_settings)):
+    # Old project/member links may select an indexed outer directory, never expand the search boundary.
+    if project.startswith(("project:", "member:", "linked:", "receipt:", "archive:")):
+        entries = service.store.catalog()
+        if not any(row["key"] == project for row in entries):
+            legacy_rows = get_library_search_service(session, settings).store.catalog()
+            legacy = next((row for row in legacy_rows if row["key"] == project), None)
+            if legacy is None and project.startswith("member:"):
+                legacy = next((row for row in legacy_rows if row.get("member_id") == project[7:]), None)
+            if legacy and legacy.get("folder_path"):
+                path = Path(legacy["folder_path"])
+                project = next((row["key"] for row in entries if Path(row["folder_path"]) == path), project)
+    return checked(lambda: service.search(q, source, kind, project, offset))
+
+
+@router.get("/folders/browse")
+def browse_configured_folder(key: str = Query(..., max_length=256),
+                            relative_directory: str = Query("", max_length=4096),
+                            service=Depends(get_configured_library)):
+    return checked(lambda: service.browse(key, relative_directory))
+
+
 @router.get("/search")
 def search_library(q: str = Query("", max_length=512), source: str = Query("all", pattern="^(all|connlab|received|linked)$"),
                    kind: str = Query("all", pattern="^(all|application|plan|record|report|photo|other)$"),
@@ -52,6 +99,11 @@ class LibraryOpenRequest(BaseModel):
     key: str = Field(max_length=256)
     relative_path: str = Field(default="", max_length=4096)
     containing: bool = False
+
+
+@router.post("/folders/open-file")
+def open_configured_file(request: LibraryOpenRequest, service=Depends(get_configured_library)):
+    return checked(lambda: service.open(request.key, request.relative_path, request.containing))
 
 
 @router.post("/open-file")

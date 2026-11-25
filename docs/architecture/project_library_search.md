@@ -1,46 +1,23 @@
-# Project library: stage 1
+# Project Library
 
-Approved baseline: find project material, receive managed copies, and use reference
-files safely. Stage 1 implements only discovery and access through `/reference`.
+The page queries the current **Materials library folder** and **Project default save location**.
+Entering the page, submitting a search, and Refresh start a cancellable background scan. Typing
+and changing filters use the existing lightweight index. Each request checks the active Settings
+paths. An unavailable root produces a path-specific warning while the other root remains usable.
 
-- Projects remains the execution workspace. Existing project and legacy registrations remain intact. Historical import/recovery
-  implementations remain compatibility code only; ordinary library navigation does not
-  enter them or call portable-data APIs. No registration migration or file relocation.
-- Read-only catalog combines existing registry summaries, explicit member/project
-  associations, registered Workbench workspaces and legacy links. Same numbers do not merge
-  identities. Equivalent Windows paths for an explicitly associated member are not
-  listed twice; separate historical copies remain separate.
-- Search combines number, product/sample description, recorded test item and file
-  name. All query words must match; no document contents are read or indexed.
-  Unrecorded legacy metadata is not inferred. Categories are filename suggestions.
-- Ordinary searches read the file index. Refresh checks directories and updates it.
-  A ConnLab project without a registered workspace has no project materials root.
-  Historical folder-generation records do not grant read or copy access. Browsing,
-  opening, and copying recheck the selected workspace manifest and recovery state.
-  Received folders remain browsable on their own. Copying to a project requires
-  its verified workspace at destination selection, preview, confirmation and retry.
-  Each location has a 20,000-entry and 40-level traversal bound. Incomplete scans
-  and unavailable locations are reported; the registration is retained.
-- File access resolves a stable catalog identity plus relative path on the server.
-  Paths are revalidated, redirected paths/traversal/ADS rejected. Only document and
-  image types are opened directly; other files remain accessible through folders.
-  Tests inject launchers and use isolated SQLite databases and temporary folders.
+Each direct child directory appears once, independently of project registration or duplicate LTR
+numbers. A folder named `DL-YYYY-MM-NNN Description` supplies its own description. For a bare
+number, the browser uses the unique description from a direct child with the same number.
+Unmatched and ambiguous descriptions display as a dash. Folders without an LTR show their
+folder name as the description. The outer folder remains the browse root, including its siblings
+of the described child. Search covers these labels and filenames, without opening documents.
 
-Stage 2: explicit receipt confirmation, independent reception root, duplicates,
-supplementary conflict storage and editable received-project metadata.
-Stage 3: explicit copy to a selected current project and lightweight report markers.
-Full-text search, snapshot restoration expansion, synchronization and automatic
-backup are excluded. Direct Office saves edit the selected existing file; stage 1
-does not create historical versions or copy reference files to execution projects.
+The path and two-column list identify the selected folder. Double-click or Enter opens a file.
+The folder icon on a file row opens its containing directory. Folder access revalidates paths,
+excludes internal storage, and rejects links and traversal. Browsing requires no current project
+or copy session. Receive materials still archives a selected external folder at the configured
+materials location through the existing confirmation and recovery workflow.
 
-Acceptance: search by each supported field and combined terms; browse deep files;
-filter by source/type; open document/containing folder; refresh after rename/delete;
-retain missing locations with navigation to existing location controls; preserve all
-files and project data; retain existing project identities and verify that ordinary navigation has no recovery links.
-
-The current library workspace uses top search/receive controls, a project list and a
-selected-project folder browser. Narrow windows stack these panes. Browser contents
-come from actual directory entries; no file classification moves or renames materials.
-Selected-file copy requires an explicit native project and target directory, a current
-conflict preview, and confirmation. It shares receipt publication protections and
-never updates Matrix, lifecycle, workspace bindings or portable snapshots.
+Directory index records use separately namespaced identities in the existing derived index.
+They confer no project or receipt ownership. Former registrations, receipts and recovery history
+are retained. Old navigation links may resolve only to an outer folder within the current roots.

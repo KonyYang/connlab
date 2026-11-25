@@ -11,13 +11,16 @@ def internal_material_path(relative):
     return any(part.casefold()=='.connlab' for part in path.parts) or name.endswith(('.db','.sqlite','.sqlite3','.db-wal','.db-shm','.sqlite-wal','.sqlite-shm','.sqlite3-wal','.sqlite3-shm','.db-journal','.sqlite-journal','.sqlite3-journal'))
 
 class SearchFiles:
+    def __init__(self, *, exclude_internal=False):
+        self.exclude_internal = exclude_internal
+
     def available(self, root):
         try:
             return checked_path(root).is_dir()
         except (OSError, ValueError):
             return False
 
-    def scan(self, root, limit=20000):
+    def scan(self, root, limit=20000, check_cancel=None):
         root = checked_path(root)
         files, warnings = [], []
         pending = [(root, 0)]
@@ -27,6 +30,8 @@ class SearchFiles:
             try:
                 with os.scandir(folder) as entries:
                     for entry in entries:
+                        if check_cancel:
+                            check_cancel()
                         if internal_material_path(str(Path(entry.path).relative_to(root))): continue
                         visited += 1
                         if visited > limit:
@@ -78,6 +83,8 @@ class SearchFiles:
     def resolve(self, root, relative):
         # Reject Windows drive, ADS, UNC and traversal syntax on every platform.
         parts = relative.replace("\\", "/").split("/")
+        if self.exclude_internal and internal_material_path("/".join(parts)):
+            raise ValueError("Internal project files are excluded from materials browsing.")
         if relative and (":" in relative or relative.startswith(("/", "\\")) or ".." in parts):
             raise ValueError("Choose a file inside the project folder.")
         base = checked_path(root)
