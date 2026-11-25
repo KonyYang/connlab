@@ -827,11 +827,11 @@
     },
     "TASK_LIBRARY_MATERIAL_TREE_20261125": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-material-tree-20261125",
       "resources": [],
-      "integrated_head": "0c0e53c3d730f6032b641b243ec2418ad412d541",
+      "integrated_head": "2265e2bdb029b42445c49c9deb96c1c5a80b6736",
       "task": {
         "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
         "summary": "Expand project material folders inline in the reference library.",
@@ -846,7 +846,7 @@
         "risk_reasons": [],
         "activation_head": "dcd0622f81b873a674970ccfa5e0e0397bcbc99d",
         "started_at": "2026-11-25T14:29:55.851999Z",
-        "updated_at": "2026-11-25T14:54:06.104248Z",
+        "updated_at": "2026-11-25T14:54:29.250946Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -856,7 +856,43 @@
           "summary": "Remove the visible Browsing materials line above the selected project heading.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
+          "changed_paths": [
+            "frontend/src/pages/ReferenceLibraryPage.tsx"
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "16413dc8a221768c87bc0a59dfcea3dcab95117e",
+            "primary_before": "e2e981636c40f6be4188014fa13ce41b7df1dda6",
+            "integrated_head": "2265e2bdb029b42445c49c9deb96c1c5a80b6736",
+            "recovered": false
+          },
+          "scope_ok": true,
+          "schema": "connlab.sol-task-report",
+          "subject": "16413dc8a221768c87bc0a59dfcea3dcab95117e",
+          "version": 1,
+          "validation": [
+            {
+              "summary": "ReferenceLibraryPage tests: 16 passed; diff check passed.",
+              "status": "passed"
+            }
+          ],
+          "roles": {
+            "reviewer": {
+              "summary": "Self-reviewed the single text element removal.",
+              "status": "passed"
+            },
+            "qa": {
+              "status": "passed"
+            },
+            "developer": {
+              "status": "passed"
+            }
+          },
+          "summary": "Remove visible Browsing materials helper row above project number."
+        }
       }
     }
   }
