@@ -770,7 +770,32 @@
       "closed_at": "2026-11-24T23:59:22.262803Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LIBRARY_OPEN_FOLDER_COLOR_20261125": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
+      "branch": "codex/library-open-folder-color-20261125",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_OPEN_FOLDER_COLOR_20261125",
+        "summary": "Match the library Open folder button background to Back.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Use the existing secondary button background tokens only on the managed location action.",
+        "scope_paths": [
+          "frontend/src/pages/reference-library.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "10c5a4a26ff0568fcfb7a78d2ee39eb21a9d6a29",
+        "started_at": "2026-11-25T14:21:02.793697Z",
+        "updated_at": "2026-11-25T14:21:02.793697Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
