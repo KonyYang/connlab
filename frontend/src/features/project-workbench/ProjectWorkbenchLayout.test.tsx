@@ -46,6 +46,27 @@ it("creates a basic folder without confirmed Matrix, Fee, Basic Information or O
  await userEvent.click(button); expect(basic.create).toHaveBeenCalledTimes(1); expect(legacy).not.toHaveBeenCalled();
  expect(screen.queryByText("Office template missing")).toBeNull();
 });
+
+it("resolves an unavailable registered folder from its workbench row and leaves cancellation read-only", async () => {
+  const basic = basicDirectory();
+  basic.preview = {
+    ...basic.preview!, status: "blocked", resolution_required: true,
+    registered_folder_path: "D:/Retired/DL-001/Connector", resolution_operation_id: null,
+    blockers: ["Registered project workspace parent must be an existing folder: D:/Retired"],
+  };
+  renderWorkbench({basicWorkspace: basic});
+  const row = within(screen.getByRole("heading", {name: "Project folder"}).closest("article")!);
+  expect(row.getByText("D:/Retired/DL-001/Connector")).toBeTruthy();
+  expect(screen.queryByRole("button", {name: "Create folder"})).toBeNull();
+  await userEvent.click(row.getByRole("button", {name: "Recheck"}));
+  expect(basic.refresh).toHaveBeenCalled();
+  await userEvent.click(row.getByRole("button", {name: /Resolve folder/}));
+  const dialog = within(screen.getByRole("dialog", {name: "Resolve project folder"}));
+  expect(dialog.getByRole("radio", {name: "Link existing project folder"})).toBeTruthy();
+  expect(dialog.getByRole("radio", {name: "Create a new working folder"})).toBeTruthy();
+  await userEvent.click(dialog.getByRole("button", {name: "Cancel"}));
+  expect(basic.create).not.toHaveBeenCalled();
+});
 it("rechecks the associated basic directory on repeat Create folder without rebuilding", async () => {
  const basic = basicDirectory({directoryAvailable:true}); const legacy=vi.fn();
  renderWorkbench({basicWorkspace:basic,onUpdateOfficialWorkspace:legacy,officialWorkspacePreview:{...folderReview().preview.workspace_preview,status:"completed"}});

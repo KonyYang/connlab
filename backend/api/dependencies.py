@@ -2000,6 +2000,27 @@ def get_basic_project_workspace_service(
     )
 
 
+def get_project_workspace_resolution_service(
+    session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
+):
+    from backend.application.project_workspace_resolution import ProjectWorkspaceResolutionService
+
+    resources = ExternalResourceRepository(session)
+
+    def default_root():
+        kind = ExternalResourceType.PROJECT_OUTPUT_ROOT
+        configured = resources.get_by_type(kind)
+        if configured is not None and not configured.active:
+            raise ValueError("The project default save location is disabled. Choose another parent folder.")
+        return get_default_storage_locations(session, settings).effective(kind)
+
+    return ProjectWorkspaceResolutionService(
+        basic=get_basic_project_workspace_service(session, settings),
+        workspaces=ProjectOfficialWorkspaceRepository(session),
+        default_root=default_root,
+    )
+
+
 def _official_workspace_settings_from_registry(
     resources: ExternalResourceRepository,
 ) -> OfficialWorkspaceSettings:

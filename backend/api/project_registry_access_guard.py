@@ -81,6 +81,9 @@ async def require_registry_write_access(
         "/api/projects/{project_id}/project-folder/generation/resume",
         "/api/projects/{project_id}/official-workspace/basic/create",
         "/api/projects/{project_id}/official-workspace/basic/resume",
+        "/api/projects/{project_id}/official-workspace/resolution/apply",
+        "/api/projects/{project_id}/official-workspace/resolution/resume",
+        "/api/projects/{project_id}/official-workspace/resolution/abandon",
         "/api/projects/{project_id}/project-folder/files/start",
         "/api/projects/{project_id}/project-folder/files/operations/{operation_id}/resume",
     }

@@ -6015,6 +6015,9 @@ export function confirmProjectPointProfile(projectId: string, command: ProjectPo
 
 export type BasicProjectWorkspacePreview = {
   project_id: string;
+  resolution_required?: boolean;
+  registered_folder_path?: string | null;
+  resolution_operation_id?: string | null;
   status: "ready" | "available" | "review_required" | "blocked" | "recovery_required";
   directory_available: boolean;
   official_project_folder_path: string | null;

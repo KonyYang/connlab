@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { ReferenceLibraryPage } from "./ReferenceLibraryPage";
+import { runtimeSessionStorage } from "../runtimeEnvironment";
 import * as api from "../api/referenceLibrary";
 import * as archive from "../api/materialReceipts";
 vi.mock("../api/materialReceipts",()=>({refreshArchive:vi.fn(),getArchiveJob:vi.fn(),cancelArchiveJob:vi.fn(),pickReceiptFolder:vi.fn(),startArchivePreview:vi.fn()}));
@@ -43,19 +44,47 @@ it("searches filenames across projects and supports type filtering", async () =>
  await act(async()=>{await user.selectOptions(screen.getByLabelText("Material type"),"record");});
  await waitFor(()=>expect(api.searchReferenceLibrary).toHaveBeenCalledWith("PwrBlade 温升","all","record",project.key,0,expect.any(AbortSignal)));
 });
-it("keeps unavailable entries out of the main list but offers their registered location and a refresh action", async () => {
+it("omits missing folders from ordinary browsing, saved selection and search", async () => {
  const user=userEvent.setup();
  const missing={...project,key:"project:missing",project_id:"missing",number:"OLD-MISSING",folder_path:"D:/missing",available:false};
+ runtimeSessionStorage.setItem("reference-search",JSON.stringify({project:missing.key}));
  vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[missing,project],files:[],total:0,warnings:[]});
  render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
  await screen.findByRole("button",{name:"温升记录.xlsx"});
- expect(screen.queryByRole("button",{name:/OLD-MISSING.*ConnLab project/})).toBeNull();
- await user.click(screen.getByText("1 material location unavailable"));
- await user.click(screen.getByRole("button",{name:"View location for OLD-MISSING"}));
- expect(screen.getByText("D:/missing")).toBeTruthy();
- expect(screen.getByText(/Restore access to the registered folder, then refresh/)).toBeTruthy();
- expect(screen.getByRole("button",{name:"Refresh materials"})).toBeTruthy();
- expect(screen.getByRole("button",{name:"Open folder",exact:true})).toHaveProperty("disabled",true);
+ expect(screen.queryByText("OLD-MISSING")).toBeNull();
+ expect(screen.queryByText(/material location unavailable/i)).toBeNull();
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[missing],files:[],total:0,warnings:[]});
+ await user.type(screen.getByLabelText("Search project materials"),missing.number);
+ await user.click(screen.getByRole("button",{name:"Search",exact:true}));
+ expect(await screen.findByText("No matching project materials.")).toBeTruthy();
+ expect(screen.queryByText("D:/missing")).toBeNull();
+});
+it.each([true,false])("opens a stale direct link inline and retries that location (record returned: %s)",async(retained)=>{
+ const user=userEvent.setup();
+ const missing={...project,key:"archive:old",project_id:null,folder_path:"D:/missing",available:false};
+ window.history.replaceState(null,"","/reference?entry=archive:old");
+ vi.mocked(api.searchReferenceLibrary).mockImplementation(async(_query,_source,_kind,key)=>({projects:key===missing.key?(retained?[missing]:[]):[project],files:[],total:0,warnings:[]}));
+ render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ const refresh=await screen.findByRole("button",{name:"Refresh materials"});
+ expect(screen.queryByRole("button",{name:"Materials information"})).toBeNull();
+ const count=vi.mocked(archive.refreshArchive).mock.calls.length;
+ await waitFor(()=>expect(refresh).toHaveProperty("disabled",false));
+ await user.click(refresh);
+ await waitFor(()=>expect(archive.refreshArchive).toHaveBeenCalledTimes(count+1));
+ expect(api.browseReferenceFiles).not.toHaveBeenCalled();
+});
+it("offers one root-offline message with a scan retry and a Settings action",async()=>{
+ const user=userEvent.setup(),settings=vi.fn();
+ vi.mocked(archive.getArchiveJob).mockResolvedValue({status:"done",result:{available:false,root_path:"D:/offline-library",warnings:["Materials library folder is unavailable. Check its connection in Settings."]}});
+ render(<ReferenceLibraryPage onOpenProject={vi.fn()} onOpenSettings={settings}/>);
+ expect(await screen.findByRole("alert")).toHaveProperty("textContent",expect.stringContaining("D:/offline-library"));
+ expect(screen.getAllByText(/Materials library folder is unavailable/)).toHaveLength(1);
+ await user.click(screen.getByRole("button",{name:"Open Settings"}));
+ expect(settings).toHaveBeenCalledOnce();
+ vi.mocked(archive.getArchiveJob).mockResolvedValue({status:"done",result:{available:true,warnings:[]}});
+ await user.click(screen.getByRole("button",{name:"Retry"}));
+ await waitFor(()=>expect(archive.refreshArchive).toHaveBeenCalledTimes(2));
+ await waitFor(()=>expect(screen.queryByRole("alert")).toBeNull());
 });
 it("preserves actionable scan warnings and search failures",async()=>{
  const user=userEvent.setup();
@@ -151,9 +180,10 @@ it("distinguishes an explicitly searched project with no linked materials from a
  expect(screen.getByText(/No materials linked yet. Open the project Workbench/)).toBeTruthy();
  expect(screen.queryByText(/Original material location is unavailable/)).toBeNull();
 });
-it("does not describe retained unavailable locations as absent materials",async()=>{
+it("shows an empty ordinary list without suggesting repair of individual missing locations",async()=>{
  vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...project,folder_path:"D:/offline",available:false}],files:[],total:0,warnings:[]});
  render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
- expect(await screen.findByText("No available material locations. Review the location warning.")).toBeTruthy();
- expect(screen.queryByText("No materials to show. Receive existing files.")).toBeNull();
+ expect(await screen.findByText(/No materials to show/)).toBeTruthy();
+ expect(screen.queryByText(/D:\/offline/)).toBeNull();
+ expect(screen.queryByRole("button",{name:/View location/})).toBeNull();
 });
