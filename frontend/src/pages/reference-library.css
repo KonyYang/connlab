@@ -6,6 +6,8 @@
 .reference-library .library-primary { color: white; background: var(--color-primary, #1f66d1); border-color: var(--color-primary, #1f66d1); }
 .library-search { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .library-search button, .library-filters button, .library-location button, .library-file-actions button { display: inline-flex; gap: 7px; align-items: center; justify-content: center; }
+.library-location button:not(:disabled) { background: var(--color-action-secondary-bg); }
+.library-location button:hover:not(:disabled) { background: var(--color-action-secondary-hover); }
 .library-search-input { flex: 1 1 320px; min-width: 0; display: flex; gap: 9px; align-items: center; border: 1px solid var(--color-border, #d8e0ea); border-radius: 6px; padding-left: 12px; background: var(--color-surface, white); }
 .reference-library .library-search-input input { width: 100%; border: 0; background: transparent; padding: 10px 8px; }
 .library-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
