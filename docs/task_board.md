@@ -827,7 +827,7 @@
     },
     "TASK_LIBRARY_MATERIAL_TREE_20261125": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-material-tree-20261125",
       "resources": [],
@@ -846,55 +846,17 @@
         "risk_reasons": [],
         "activation_head": "dcd0622f81b873a674970ccfa5e0e0397bcbc99d",
         "started_at": "2026-11-25T14:29:55.851999Z",
-        "updated_at": "2026-11-25T14:38:26.382775Z",
+        "updated_at": "2026-11-25T14:54:06.104248Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
           "stage": "revision",
           "status": "running",
-          "summary": "Remove redundant Open file toolbar button while preserving file-row activation.",
+          "summary": "Remove the visible Browsing materials line above the selected project heading.",
           "requires_user": false
         },
-        "report": {
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "70 relevant frontend tests and TypeScript/Vite build passed, including one open per activation. Evidence: tmp/library-material-tree-20261125/remove-open-test.txt and remove-open-build.txt."
-            }
-          ],
-          "subject": "b43eed07a0808e10aef271169804bdf295176f28",
-          "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
-          "version": 1,
-          "roles": {
-            "developer": {
-              "status": "passed"
-            },
-            "qa": {
-              "status": "passed"
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Self-reviewed exact diff and keyboard selection behavior."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "b43eed07a0808e10aef271169804bdf295176f28",
-            "primary_before": "688a02b924e0232fd1dffcf4fc2a3cb83cae8248",
-            "integrated_head": "0c0e53c3d730f6032b641b243ec2418ad412d541",
-            "recovered": false
-          },
-          "summary": "Remove duplicate Open file action; use the existing file row with double-click or Enter.",
-          "schema": "connlab.sol-task-report",
-          "changed_paths": [
-            "frontend/src/features/material-receipts/MaterialFileList.tsx",
-            "frontend/src/features/material-receipts/MaterialFiles.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx"
-          ],
-          "scope_ok": true
-        }
+        "report": null
       }
     }
   }
