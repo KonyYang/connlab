@@ -852,6 +852,7 @@
           "backend/api/routes_project_library.py",
           "backend/application/project_library",
           "backend/infrastructure/project_library/material_archive_files.py",
+          "backend/infrastructure/project_library/search_files.py",
           "backend/infrastructure/storage/repositories/material_archive.py",
           "docs/architecture/project_library_search.md",
           "frontend/src/App.test.tsx",
@@ -866,7 +867,7 @@
         "risk_reasons": [],
         "activation_head": "e140fc8ee1928bb4f896c9b754a2874155679d8f",
         "started_at": "2026-11-25T22:38:22.577363Z",
-        "updated_at": "2026-11-25T23:32:14.193568Z",
+        "updated_at": "2026-11-25T23:36:32.519072Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
