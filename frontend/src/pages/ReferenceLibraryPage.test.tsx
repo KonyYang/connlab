@@ -27,7 +27,13 @@ it("shows projects beside actual managed files and opens the selected file", asy
  const user=userEvent.setup(); render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
  const filename=await screen.findByRole("button",{name:"温升记录.xlsx"});
  expect(screen.getByText("D:/isolated")).toBeTruthy();
- await act(async()=>{await user.click(filename);await user.click(screen.getByRole("button",{name:"Open file",exact:true}));});
+ await user.click(filename);
+ expect(api.openReferenceFile).not.toHaveBeenCalled();
+ expect(screen.queryByRole("button",{name:"Open file",exact:true})).toBeNull();
+ await user.dblClick(filename);
+ expect(api.openReferenceFile).toHaveBeenCalledTimes(1);
+ await user.keyboard("{Enter}");
+ expect(api.openReferenceFile).toHaveBeenCalledTimes(2);
  expect(api.openReferenceFile).toHaveBeenCalledWith(project.key,file.relative_path,false);
  await act(async()=>{await user.click(screen.getByRole("button",{name:"Open folder",exact:true}));});
  expect(api.openReferenceFile).toHaveBeenCalledWith(project.key);
@@ -150,7 +156,7 @@ it("shows the selected file and keeps ordinary access available without a copy d
  expect(screen.queryByRole("region",{name:"Copy destination"})).toBeNull();
  await user.click(screen.getByRole("button",{name:"温升记录.xlsx"}));
  expect(screen.getByRole("button",{name:file.name,pressed:true})).toBeTruthy();
- expect(screen.getByRole("button",{name:"Open file",exact:true})).toHaveProperty("disabled",false);
+ expect(screen.getByRole("button",{name:"Open containing folder",exact:true})).toHaveProperty("disabled",false);
  expect(screen.getByRole("button",{name:"Copy to current project…"})).toHaveProperty("disabled",true);
 });
 it("browsing project B changes the source and clears file selection but keeps explicit Workbench A as destination",async()=>{
@@ -208,5 +214,5 @@ it("expands sibling folders in place and clears a hidden file selection",async()
  await user.click(screen.getByRole("button",{name:"Records",expanded:true}));
  expect(screen.queryByRole("button",{name:file.name})).toBeNull();
  expect(screen.getByRole("button",{name:"Photos",expanded:true})).toBeTruthy();
- expect(screen.getByRole("button",{name:"Open file",exact:true})).toHaveProperty("disabled",true);
+ expect(screen.getByRole("button",{name:"Open containing folder",exact:true})).toHaveProperty("disabled",true);
 });
