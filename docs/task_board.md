@@ -836,11 +836,11 @@
     },
     "TASK_LIBRARY_PROJECT_TABLE_20261126": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-project-table-20261126",
       "resources": [],
-      "integrated_head": "1bdf0fdebad77ab8f699c3cb6af1cef67082eb7e",
+      "integrated_head": "53f8dc8e9f6fb25389477c3a612b5b82a7beebdd",
       "task": {
         "task_id": "TASK_LIBRARY_PROJECT_TABLE_20261126",
         "summary": "Paginate project materials in a wider two-column registry table.",
@@ -867,7 +867,7 @@
         "risk_reasons": [],
         "activation_head": "e140fc8ee1928bb4f896c9b754a2874155679d8f",
         "started_at": "2026-11-25T22:38:22.577363Z",
-        "updated_at": "2026-11-25T23:36:32.519072Z",
+        "updated_at": "2026-11-25T23:44:08.541763Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -877,7 +877,67 @@
           "summary": "Scope library browsing to the two configured roots, derive LTR labels from folders and remove Workbench and copy coupling.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "changed_paths": [
+            "backend/api/routes_material_receipts.py",
+            "backend/api/routes_project_library.py",
+            "backend/application/project_library/configured_folders.py",
+            "backend/application/project_library/search.py",
+            "backend/infrastructure/project_library/material_archive_files.py",
+            "backend/infrastructure/project_library/search_files.py",
+            "backend/infrastructure/storage/repositories/material_archive.py",
+            "docs/architecture/project_library_search.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/api/materialReceipts.ts",
+            "frontend/src/api/referenceLibrary.ts",
+            "frontend/src/features/material-receipts/CopyMaterials.test.tsx",
+            "frontend/src/features/material-receipts/CopyMaterials.tsx",
+            "frontend/src/features/material-receipts/LibraryProjectTable.tsx",
+            "frontend/src/features/material-receipts/MaterialFileList.tsx",
+            "frontend/src/features/material-receipts/MaterialFiles.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.test.tsx",
+            "frontend/src/features/material-receipts/ReceiveMaterials.tsx",
+            "frontend/src/features/material-receipts/material-file-tree.css",
+            "frontend/src/features/material-receipts/useWorkbenchCopyContext.test.tsx",
+            "frontend/src/features/material-receipts/useWorkbenchCopyContext.ts",
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx",
+            "tests/integration/test_configured_folder_library.py"
+          ],
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "summary": "Self-reviewed root-scoped indexes, legacy file access boundary, stale request and repeated submission handling."
+            },
+            "qa": {
+              "status": "passed"
+            },
+            "developer": {
+              "status": "passed"
+            }
+          },
+          "summary": "Project Library queries the two live configured roots. Direct folders derive LTR labels, including only unique same-number child descriptions. Explicit search refreshes in the background; read-only row actions have no Workbench binding.",
+          "schema": "connlab.sol-task-report",
+          "subject": "e18656da17d59e2615a047901de8738d1eac3e1d",
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "53 frontend tests; production frontend build; 96 backend tests passed, 4 symlink fixtures skipped on host (junction test passed). Isolated Edge at 765/360px: both roots, same-ID rows, write a new sample file then Enter, change Materials folder via Settings API, search and open / containing-folder request. OS opener intercepted. Evidence tmp/configlib-final-py.log, tmp/configlib-front.log, tmp/configlib-build.log, tmp/configlib-smoke/."
+            }
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "e18656da17d59e2615a047901de8738d1eac3e1d",
+            "primary_before": "2794778f8e2de0657f453f4d8be816d9e4eeb2fe",
+            "integrated_head": "53f8dc8e9f6fb25389477c3a612b5b82a7beebdd",
+            "recovered": false
+          },
+          "scope_ok": true,
+          "task_id": "TASK_LIBRARY_PROJECT_TABLE_20261126",
+          "version": 1
+        }
       }
     }
   }
