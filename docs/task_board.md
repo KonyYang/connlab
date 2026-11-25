@@ -848,14 +848,25 @@
         "route": "sol_build_review_qa",
         "scope": "Library project list presentation, paging and selection, with responsive file-pane sizing.",
         "scope_paths": [
+          "backend/api/routes_material_receipts.py",
+          "backend/api/routes_project_library.py",
+          "backend/application/project_library",
+          "backend/infrastructure/project_library/material_archive_files.py",
+          "backend/infrastructure/storage/repositories/material_archive.py",
+          "docs/architecture/project_library_search.md",
+          "frontend/src/App.test.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/api/materialReceipts.ts",
+          "frontend/src/api/referenceLibrary.ts",
           "frontend/src/features/material-receipts",
           "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.tsx"
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "tests/integration/test_configured_folder_library.py"
         ],
         "risk_reasons": [],
         "activation_head": "e140fc8ee1928bb4f896c9b754a2874155679d8f",
         "started_at": "2026-11-25T22:38:22.577363Z",
-        "updated_at": "2026-11-25T23:31:57.680998Z",
+        "updated_at": "2026-11-25T23:32:14.193568Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
