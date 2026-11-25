@@ -10,7 +10,7 @@
   table-layout: fixed;
   font-size: .9rem;
 }
-.library-id-column { width: clamp(7.4rem, 38%, 11rem); }
+.library-id-column { width: 25%; }
 .library-project-table th,
 .library-project-table td {
   padding: 8px 10px;
