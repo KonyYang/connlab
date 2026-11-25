@@ -827,11 +827,11 @@
     },
     "TASK_LIBRARY_MATERIAL_TREE_20261125": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-material-tree-20261125",
       "resources": [],
-      "integrated_head": "6083888d8d911deaac119adea11f288acad2821b",
+      "integrated_head": "9741d24c36baaf05df292a0d3dd4b02d62c4df49",
       "task": {
         "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
         "summary": "Expand project material folders inline in the reference library.",
@@ -846,7 +846,7 @@
         "risk_reasons": [],
         "activation_head": "dcd0622f81b873a674970ccfa5e0e0397bcbc99d",
         "started_at": "2026-11-25T14:29:55.851999Z",
-        "updated_at": "2026-11-25T14:59:54.543839Z",
+        "updated_at": "2026-11-25T15:00:32.167238Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -856,7 +856,44 @@
           "summary": "Use one accessible folder icon button before the plain path in the material file panel.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "subject": "b3c68f218b928ac3ba50c686a2542e6c0cd488a5",
+          "roles": {
+            "developer": {
+              "status": "passed"
+            },
+            "qa": {
+              "status": "passed"
+            },
+            "reviewer": {
+              "summary": "Self-reviewed action, accessible label and offline disabled state.",
+              "status": "passed"
+            }
+          },
+          "scope_ok": true,
+          "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
+          "changed_paths": [
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx"
+          ],
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "b3c68f218b928ac3ba50c686a2542e6c0cd488a5",
+            "primary_before": "6eeef71b929cb6e9683d5ed6944c5c4b67bc2d5c",
+            "integrated_head": "9741d24c36baaf05df292a0d3dd4b02d62c4df49",
+            "recovered": false
+          },
+          "summary": "Move folder opening to one labeled icon button before the selectable path.",
+          "validation": [
+            {
+              "summary": "16 library page tests and TypeScript/Vite build passed. Verified icon-only button, title, adjacent path and existing open action.",
+              "status": "passed"
+            }
+          ]
+        }
       }
     }
   }
