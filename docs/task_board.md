@@ -842,6 +842,30 @@
           "schema": "connlab.sol-task-report"
         }
       }
+    },
+    "TASK_LIBRARY_ID_WIDTH_20261126": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
+      "branch": "codex/library-id-width-20261126",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_ID_WIDTH_20261126",
+        "summary": "Halve the Project ID column in Project Library.",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Only the widths of the two library table columns.",
+        "scope_paths": [
+          "frontend/src/features/material-receipts/library-project-table.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "c1a145608d7f767f384a65b0b723556eac7b9d53",
+        "started_at": "2026-11-25T23:53:44.801896Z",
+        "updated_at": "2026-11-25T23:53:44.801896Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
