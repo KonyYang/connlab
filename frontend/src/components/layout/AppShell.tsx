@@ -6,7 +6,6 @@ import { TopBarActionsProvider } from "./TopBarActionsContext";
 type AppShellProps = {
   activeRoute: string;
   topBarTitle?: string;
-  topBarLeadingAction?: ReactNode;
   topBarActions?: ReactNode;
   children: ReactNode;
   interactionLocked?: boolean;
@@ -23,7 +22,6 @@ function navigate(path: string): void {
 export function AppShell({
   activeRoute,
   topBarTitle,
-  topBarLeadingAction,
   topBarActions,
   children,
   interactionLocked = false,
@@ -55,7 +53,6 @@ export function AppShell({
           <TopBar
             activeRoute={activeRoute}
             titleOverride={topBarTitle}
-            leadingAction={topBarLeadingAction}
             projectFolderId={projectFolderId}
             folderBlockedReason={interactionLocked ? (interactionLockedReason ?? "Current operation is running. Keep this page open.") : undefined}
             actions={topBarActions}

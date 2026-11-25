@@ -154,9 +154,9 @@ it("opens the unified list from the old Legacy URL and returns there after brows
 });
 
 vi.mock("./components/layout/AppShell", () => ({
-  AppShell: ({ children, onNavigate, activeRoute, projectFolderId, topBarLeadingAction }: { children: ReactNode; onNavigate: (path: string) => void; activeRoute: string; projectFolderId?: string; topBarLeadingAction?: ReactNode }) => (
+  AppShell: ({ children, onNavigate, activeRoute, projectFolderId, topBarActions }: { children: ReactNode; onNavigate: (path: string) => void; activeRoute: string; projectFolderId?: string; topBarActions?: ReactNode }) => (
     <>
-      {topBarLeadingAction && <header aria-label="Page header">{topBarLeadingAction}</header>}
+      {topBarActions && <header aria-label="Page header">{topBarActions}</header>}
       <output data-testid="active-area">{activeRoute}</output>
       <output data-testid="folder-project">{projectFolderId ?? "none"}</output>
       <nav aria-label="Test sidebar">

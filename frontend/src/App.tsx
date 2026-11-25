@@ -332,9 +332,9 @@ export default function App(): ReactElement {
       interactionLocked={Boolean(intakeInteractionLockReason)}
       interactionLockedReason={intakeInteractionLockReason ?? undefined}
       topBarTitle={topBarTitle}
-      topBarLeadingAction={route.name === "reference" ? (
+      topBarActions={route.name === "reference" ? (
         <button className="ui-secondary-action" type="button" onClick={backFromReference}>
-          <span aria-hidden="true">← </span>Back
+          Back
         </button>
       ) : undefined}
       onNavigate={handleShellNavigate}
