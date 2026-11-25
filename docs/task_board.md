@@ -848,15 +848,14 @@
         "route": "sol_build_review_qa",
         "scope": "Library project list presentation, paging and selection, with responsive file-pane sizing.",
         "scope_paths": [
-          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/features/material-receipts",
           "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-          "frontend/src/features/material-receipts/LibraryProjectTable.tsx",
-          "frontend/src/features/material-receipts/library-project-table.css"
+          "frontend/src/pages/ReferenceLibraryPage.tsx"
         ],
         "risk_reasons": [],
         "activation_head": "e140fc8ee1928bb4f896c9b754a2874155679d8f",
         "started_at": "2026-11-25T22:38:22.577363Z",
-        "updated_at": "2026-11-25T22:55:00.445049Z",
+        "updated_at": "2026-11-25T22:55:15.229950Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
