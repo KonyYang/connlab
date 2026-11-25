@@ -845,11 +845,11 @@
     },
     "TASK_LIBRARY_ID_WIDTH_20261126": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-id-width-20261126",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "c6a93a14261b92aa4b1451bd1526cbec94e10449",
       "task": {
         "task_id": "TASK_LIBRARY_ID_WIDTH_20261126",
         "summary": "Halve the Project ID column in Project Library.",
@@ -862,9 +862,39 @@
         "risk_reasons": [],
         "activation_head": "c1a145608d7f767f384a65b0b723556eac7b9d53",
         "started_at": "2026-11-25T23:53:44.801896Z",
-        "updated_at": "2026-11-25T23:53:44.801896Z",
+        "updated_at": "2026-11-25T23:56:50.600794Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "task_id": "TASK_LIBRARY_ID_WIDTH_20261126",
+          "scope_ok": true,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "c7270bfc3147838a39ffd5a96bd9e2c979fe3475",
+            "primary_before": "b09086307916317113bc64ce7677174654bf64d2",
+            "integrated_head": "c6a93a14261b92aa4b1451bd1526cbec94e10449",
+            "recovered": false
+          },
+          "schema": "connlab.sol-task-report",
+          "changed_paths": [
+            "frontend/src/features/material-receipts/library-project-table.css"
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Self-reviewed the one-line table width change and checked browser layout."
+            }
+          },
+          "version": 1,
+          "summary": "Library Project ID column now occupies 25 percent.",
+          "subject": "c7270bfc3147838a39ffd5a96bd9e2c979fe3475",
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "TypeScript/Vite build passed. Isolated Edge at 360, 852 and 1200 px confirmed exactly half the previous measured cell width, full width gain in description, stable file pane, and no horizontal overflow. Measurements in tmp/library-id-width-20261126."
+            }
+          ]
+        }
       }
     }
   }
