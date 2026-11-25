@@ -122,7 +122,7 @@ it("keeps an exact member entry when a project with the same member id has anoth
  render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
  expect(await screen.findByText("D:/separate-copy")).toBeTruthy();
  await waitFor(()=>expect(api.browseReferenceFiles).toHaveBeenCalledWith("member:m1","",expect.any(AbortSignal)));
- expect(getReportShortcuts).toHaveBeenCalledWith("member:m1",expect.any(AbortSignal));
+ expect(getReportShortcuts).not.toHaveBeenCalled();
 });
 
 it("keeps incomplete receipts visible and allows search while a scan cancellation is pending",async()=>{
@@ -160,8 +160,18 @@ it("shows the selected file and keeps ordinary access available without a copy d
  expect(screen.queryByRole("region",{name:"Copy destination"})).toBeNull();
  await user.click(screen.getByRole("button",{name:"温升记录.xlsx"}));
  expect(screen.getByRole("button",{name:file.name,pressed:true})).toBeTruthy();
- expect(screen.getByRole("button",{name:"Open containing folder",exact:true})).toHaveProperty("disabled",false);
- expect(screen.getByRole("button",{name:"Copy to current project…"})).toHaveProperty("disabled",true);
+ expect(screen.queryByRole("button",{name:"Open containing folder"})).toBeNull();
+ const menu=screen.getByRole("button",{name:"Actions for "+file.name});
+ await user.click(menu);
+ expect(screen.queryByRole("button",{name:"Copy to current project…"})).toBeNull();
+ expect(screen.queryByText("More")).toBeNull();
+ await user.keyboard("{Escape}");
+ expect(document.activeElement).toBe(menu);
+ expect(screen.queryByRole("button",{name:"Open containing folder"})).toBeNull();
+ await user.click(menu);
+ await user.click(screen.getByRole("button",{name:"Open containing folder"}));
+ expect(api.openReferenceFile).toHaveBeenCalledWith(project.key,file.relative_path,true);
+ expect(getReportShortcuts).not.toHaveBeenCalled();
 });
 it("browsing project B changes the source and clears file selection but keeps explicit Workbench A as destination",async()=>{
  const user=userEvent.setup();const b={...project,key:"project:p2",project_id:"p2",number:"DL-B",title:"Product B",folder_path:"D:/B"};
@@ -179,10 +189,11 @@ it("browsing project B changes the source and clears file selection but keeps ex
  expect(heading.textContent).not.toContain(b.number);
  expect(heading.textContent).not.toContain("Managed location");
  expect(screen.getByRole("button",{name:file.name,pressed:false})).toBeTruthy();
- expect(screen.getByRole("region",{name:"Copy destination"}).textContent).toContain("DL-2026-08-079");
- expect(screen.getByRole("region",{name:"Copy destination"}).textContent).toContain("D:/isolated");
+ expect(screen.queryByText(project.folder_path)).toBeNull();
+ await user.click(screen.getByRole("button",{name:"Actions for "+file.name}));
+ expect(screen.getByRole("button",{name:"Copy to current project…"})).toBeTruthy();
  view.rerender(<ReferenceLibraryPage copyContext={null} onOpenProject={vi.fn()}/>);
- expect(screen.queryByRole("region",{name:"Copy destination"})).toBeNull();
+ expect(screen.queryByRole("button",{name:"Copy to current project…"})).toBeNull();
 });
 
 it("distinguishes an explicitly searched project with no linked materials from a missing registered location",async()=>{
@@ -223,7 +234,7 @@ it("expands sibling folders in place and clears a hidden file selection",async()
  await user.click(screen.getByRole("button",{name:"Records",expanded:true}));
  expect(screen.queryByRole("button",{name:file.name})).toBeNull();
  expect(screen.getByRole("button",{name:"Photos",expanded:true})).toBeTruthy();
- expect(screen.getByRole("button",{name:"Open containing folder",exact:true})).toHaveProperty("disabled",true);
+ expect(screen.queryByRole("button",{name:"Open containing folder"})).toBeNull();
 });
 
 it.each([
@@ -260,13 +271,17 @@ it("opens the copy destination file tree directly even when absent from the ordi
  }));
  vi.mocked(api.browseReferenceFiles).mockImplementation(async key => ({
   key,root:key===target.key?target.folder_path:project.folder_path,current_directory:"",
-  location_state:"available",items:[key===target.key?targetFile:file],warnings:[]
+  location_state:"available",items:key===target.key?[targetFile]:[targetFile,file],warnings:[]
  }));
  vi.mocked(archive.previewMaterialCopy).mockResolvedValue({status:"ready",candidates:[],plan_id:"copy",fingerprint:"hash",items:[],target_path:target.folder_path});
  vi.mocked(archive.confirmMaterialCopy).mockResolvedValue({batch_id:"batch",status:"completed",target_key:target.key,target_path:target.folder_path,source_path:"D:/isolated",receipt_id:null,items:[],counts:{},directory_counts:{}});
  render(<ReferenceLibraryPage onOpenProject={vi.fn()} copyContext={{session_id:"session",token:"target",intent:1,target}}/>);
- await user.click(await screen.findByRole("button",{name:file.name}));
+ await user.click(await screen.findByRole("button",{name:targetFile.name}));
+ expect(screen.queryByText(target.folder_path)).toBeNull();
+ await user.click(screen.getByRole("button",{name:"Actions for "+file.name}));
  await user.click(screen.getByRole("button",{name:"Copy to current project…"}));
+ expect(screen.getByRole("dialog").textContent).toContain(target.folder_path);
+ expect(screen.getByRole("dialog").textContent).toContain(file.relative_path);
  await user.click(await screen.findByRole("button",{name:"Check destination"}));
  await user.click(await screen.findByRole("button",{name:"Confirm copy"}));
  await user.click(await screen.findByRole("button",{name:"View target materials"}));

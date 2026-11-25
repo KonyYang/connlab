@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { browseReferenceFiles, type BrowseFile, type BrowseResult } from "../../api/referenceLibrary";
 import { UiIcon } from "../../components/common/UiIcon";
 import "./material-file-tree.css";
@@ -9,7 +9,9 @@ type ListProps = {
   selectedPath?: string;
   showPaths: boolean;
   onSelect: (file: BrowseFile) => void;
-  onOpen?: (file: BrowseFile) => void;
+  onOpen: (file: BrowseFile) => void;
+  onOpenContaining: (file: BrowseFile) => void;
+  onCopy?: (file: BrowseFile) => void;
   onCollapse: (folder: string) => void;
 };
 type DirectoryProps = Omit<ListProps, "rows"> & { directory: BrowseFile; depth: number };
@@ -53,24 +55,60 @@ function FolderRow(props: DirectoryProps) {
   </li>;
 }
 
+function FileRow({file, showPaths, selectedPath, onOpen, onSelect, onOpenContaining, onCopy}:
+  Omit<ListProps, "rows" | "projectKey" | "onCollapse"> & {file: BrowseFile}) {
+  const [expanded, setExpanded] = useState(false);
+  const row = useRef<HTMLLIElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    function dismiss(event: PointerEvent) {
+      if (!row.current?.contains(event.target as Node)) setExpanded(false);
+    }
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, [expanded]);
+
+  function close() {
+    setExpanded(false);
+    trigger.current?.focus();
+  }
+
+  return <li ref={row} onBlur={event => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setExpanded(false);
+  }} onKeyDown={event => {
+    if (expanded && event.key === "Escape") { event.stopPropagation(); close(); }
+  }}>
+    <div className="material-file-line">
+      <button type="button" className="material-tree-row" aria-pressed={selectedPath === file.relative_path}
+        onClick={() => { setExpanded(false); onSelect(file); }} onDoubleClick={() => onOpen(file)}
+        onKeyDown={event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            if (!event.repeat) onOpen(file);
+          }
+        }}>
+        <span className="material-tree-spacer" aria-hidden="true" />
+        <span className="file-symbol"><UiIcon name="file" /></span>
+        <span>{file.name}{showPaths && <small>{file.relative_path}</small>}</span>
+      </button>
+      <button type="button" ref={trigger} className="material-file-trigger" title="File actions"
+        aria-label={`Actions for ${file.name}`} aria-expanded={expanded}
+        onClick={() => { onSelect(file); setExpanded(!expanded); }}>…</button>
+    </div>
+    {expanded && <div className="material-row-actions" role="group" aria-label="File actions">
+      <button type="button" onClick={() => { close(); onOpenContaining(file); }}>Open containing folder</button>
+      {onCopy && <button type="button" onClick={() => { close(); onCopy(file); }}>Copy to current project…</button>}
+    </div>}
+  </li>;
+}
+
 export function MaterialFileList({ rows, depth = 0, ...actions }: ListProps & {depth?:number}) {
   return <ul className="material-tree" style={{"--folder-depth": depth} as CSSProperties}
     aria-label={depth === 0 ? "Project material files" : undefined}>
     {rows.map(file => file.is_directory
       ? <FolderRow {...actions} key={file.relative_path} directory={file} depth={depth} />
-      : <li key={file.relative_path}>
-          <button type="button" className="material-tree-row" aria-pressed={actions.selectedPath === file.relative_path}
-            onClick={() => actions.onSelect(file)} onDoubleClick={() => actions.onOpen?.(file)}
-            onKeyDown={event => {
-              if (event.key === "Enter" && actions.onOpen) {
-                event.preventDefault();
-                if (!event.repeat) actions.onOpen(file);
-              }
-            }}>
-            <span className="material-tree-spacer" aria-hidden="true" />
-            <span className="file-symbol"><UiIcon name="file" /></span>
-            <span>{file.name}{actions.showPaths && <small>{file.relative_path}</small>}</span>
-          </button>
-        </li>)}
+      : <FileRow key={file.relative_path} file={file} {...actions} />)}
   </ul>;
 }
