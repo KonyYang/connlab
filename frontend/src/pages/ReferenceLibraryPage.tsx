@@ -3,7 +3,6 @@ import {refreshArchive,getArchiveJob,cancelArchiveJob,type WorkbenchCopyContext}
 import { useEffect, useMemo, useRef, useState } from "react";
 import { openReferenceFile, searchReferenceLibrary, type ReferenceProject, type BrowseFile } from "../api/referenceLibrary";
 import { ReceiveMaterials } from "../features/material-receipts/ReceiveMaterials";
-import { MaterialDetails } from "../features/material-receipts/MaterialDetails";
 import { MaterialFiles } from "../features/material-receipts/MaterialFiles";
 import { CopyMaterials } from "../features/material-receipts/CopyMaterials";
 import { UiIcon } from "../components/common/UiIcon";
@@ -35,7 +34,6 @@ export function ReferenceLibraryPage({ onOpenProject, onOpenSettings, copyContex
  const [scanWarnings,setScanWarnings]=useState<string[]>([]);
  const [offlineRoot,setOfflineRoot]=useState<string|null>(null);
  const scanJob=useRef<string|null>(null),mounted=useRef(false),initialScan=useRef(false);
- const [details,setDetails] = useState<ReferenceProject | null>(null);
  const [copy,setCopy] = useState<{project:ReferenceProject;file:BrowseFile} | null>(null);
  useEffect(() => {
   let live=true; const controller=new AbortController(); setBusy(true); setError(""); setBrowseWarnings([]);
@@ -58,6 +56,7 @@ export function ReferenceLibraryPage({ onOpenProject, onOpenSettings, copyContex
  },[search,source,kind,reload,direct]);
  const visibleProjects=projects.filter(row=>listed(row,search));
  const selected=projects.find(row=>row.key===selectedKey) ?? null;
+ const workbenchId = selected?.source === "connlab" ? selected.project_id : null;
  const unavailableLink=Boolean(direct && (!selected || (!selected.available && selected.folder_path && !receiptIncomplete(selected))));
  useEffect(()=>{runtimeSessionStorage.setItem("reference-search",JSON.stringify({query:search,source,kind,project:selectedKey}));},[selectedKey,search,source,kind]);
  const issues=useMemo(()=>Array.from(new Set([...(error?[error]:[]),...scanWarnings,...warnings,...browseWarnings])),[error,scanWarnings,warnings,browseWarnings]);
@@ -118,17 +117,16 @@ export function ReferenceLibraryPage({ onOpenProject, onOpenSettings, copyContex
     <header className="library-project-heading" aria-label="Browsing materials">
      <div className="library-location">
       <button type="button" aria-label="Open folder" disabled={!selected.available}
-       title={selected.available ? "Open folder" : selected.folder_path ? "Restore access to the registered folder, then refresh." : "Open the project Workbench to create or link its working folder."}
+       title={selected.available ? "Open folder" : selected.folder_path ? "Restore access to the registered folder, then refresh." : "No folder linked."}
        onClick={() => void openFolder()}><UiIcon name="folder" /></button>
       <span className="library-location-path" style={{flexBasis: 0}}>{selected.folder_path || "No materials linked yet"}</span>
+      {workbenchId && <button type="button" onClick={() => onOpenProject(workbenchId)}>Open workbench</button>}
      </div>
-     <button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button>
     </header>
     {copyContext && <section className="library-copy-destination" aria-label="Copy destination"><strong>Copy destination (Workbench): {copyContext.target.number || "No number"} · {copyContext.target.title}</strong><span>{copyContext.target.folder_path}</span></section>}
-    {receiptIncomplete(selected) ? <p className="library-empty">Receipt incomplete. Continue receipt to finish copying and registration.</p> : <MaterialFiles key={selected.key} canCopy={Boolean(copyContext)} onRefresh={scanning==="idle" ? ()=>void refreshIndex() : undefined} onOpenWorkbench={selected.project_id ? ()=>onOpenProject(selected.project_id!) : undefined} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>}
+    {receiptIncomplete(selected) ? <p className="library-empty">Receipt incomplete. Continue receipt to finish copying and registration.</p> : <MaterialFiles key={selected.key} canCopy={Boolean(copyContext)} onRefresh={scanning==="idle" ? ()=>void refreshIndex() : undefined} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>}
    </> : <div className="library-empty"><UiIcon name="folder"/><p>Select a project to view its materials.</p></div>}</section>
   </div>
-  {details && <MaterialDetails key={details.key} project={details} onClose={()=>setDetails(null)} onBrowse={key=>{setDetails(null);setSelectedKey(key);}} onProject={onOpenProject} onChanged={()=>setReload(value=>value+1)}/>}
-  {copy && <CopyMaterials source={copy.project} file={copy.file} context={copyContext} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetMaterials={row=>{setCopy(null);setDetails(row);setDirect("");setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
+  {copy && <CopyMaterials source={copy.project} file={copy.file} context={copyContext} onClose={()=>setCopy(null)} onCopied={()=>setReload(value=>value+1)} onTargetMaterials={row=>{setCopy(null);setDirect(row.key);setSelectedKey(row.key);setSearch("");setQuery("");setSource("all");setKind("all");setReload(value=>value+1);}}/>}
  </section>;
 }
