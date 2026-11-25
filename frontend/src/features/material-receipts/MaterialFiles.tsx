@@ -4,7 +4,7 @@ import { useReportShortcuts, reportLabels } from "./ReportShortcuts";
 import type { ReportRole } from "../../api/reportShortcuts";
 import { MaterialFileList } from "./MaterialFileList";
 import { UiIcon } from "../../components/common/UiIcon";
-export function MaterialFiles({ project, query, kind, refresh, onError, onWarnings, onCopy, canCopy = false, onRefresh, onOpenWorkbench }: { project: ReferenceProject; query: string; kind: string; refresh: number; onError: (message: string) => void; onWarnings: (notes: string[]) => void; onCopy: (file: BrowseFile) => void; canCopy?: boolean; onRefresh?: () => void; onOpenWorkbench?: () => void }) {
+export function MaterialFiles({ project, query, kind, refresh, onError, onWarnings, onCopy, canCopy = false, onRefresh }: { project: ReferenceProject; query: string; kind: string; refresh: number; onError: (message: string) => void; onWarnings: (notes: string[]) => void; onCopy: (file: BrowseFile) => void; canCopy?: boolean; onRefresh?: () => void }) {
  const shortcuts=useReportShortcuts(project.key,refresh,onError,project.available);
  const [rows, setRows] = useState<BrowseFile[]>([]);
  const [selected, setSelected] = useState<BrowseFile | null>(null);
@@ -24,7 +24,10 @@ export function MaterialFiles({ project, query, kind, refresh, onError, onWarnin
   return () => { live = false; controller.abort(); };
  }, [project.key, project.available, query, kind, offset, refresh]);
  async function open(file: BrowseFile, containing = false) { onError(""); try { await openReferenceFile(project.key, file.relative_path, containing); } catch (cause) { onError((cause as Error).message); } }
- if (!project.available) return <>{shortcuts.links}<div className="library-empty"><UiIcon name="folder" /><p>{project.folder_path ? "Original material location is unavailable. The entry is retained. Restore access to the registered folder, then refresh." : "No materials linked yet. Open the project Workbench to create or link its working folder."}</p>{project.folder_path ? <button disabled={!onRefresh} onClick={onRefresh}>Refresh materials</button> : onOpenWorkbench && <button onClick={onOpenWorkbench}>Open project Workbench</button>}</div></>;
+ if (!project.available) return <>{shortcuts.links}{project.folder_path && <div className="library-empty">
+  <UiIcon name="folder" /><p>Original material location is unavailable. The entry is retained. Restore access to the registered folder, then refresh.</p>
+  <button disabled={!onRefresh} onClick={onRefresh}>Refresh materials</button>
+ </div>}</>;
  return <>
   {shortcuts.links}{shortcuts.dialog}{shortcuts.reselectRole && <p className="library-reselect-report">Select the replacement file below for {reportLabels[shortcuts.reselectRole]}. <button onClick={shortcuts.cancelReselect}>Cancel report selection</button></p>}
   <div className="library-file-scroll">

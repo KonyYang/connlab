@@ -6,7 +6,7 @@ import { ReferenceLibraryPage } from "./ReferenceLibraryPage";
 import { runtimeSessionStorage } from "../runtimeEnvironment";
 import * as api from "../api/referenceLibrary";
 import * as archive from "../api/materialReceipts";
-vi.mock("../api/materialReceipts",()=>({refreshArchive:vi.fn(),getArchiveJob:vi.fn(),cancelArchiveJob:vi.fn(),pickReceiptFolder:vi.fn(),startArchivePreview:vi.fn()}));
+vi.mock("../api/materialReceipts",async()=>({...await vi.importActual<typeof import("../api/materialReceipts")>("../api/materialReceipts"),refreshArchive:vi.fn(),getArchiveJob:vi.fn(),cancelArchiveJob:vi.fn(),pickReceiptFolder:vi.fn(),startArchivePreview:vi.fn(),previewMaterialCopy:vi.fn(),confirmMaterialCopy:vi.fn()}));
 import {getReportShortcuts} from "../api/reportShortcuts";
 import { getLegacyProject } from "../api/legacyProjects";
 vi.mock("../api/referenceLibrary", () => ({ searchReferenceLibrary: vi.fn(), openReferenceFile: vi.fn(), browseReferenceFiles: vi.fn() }));
@@ -190,9 +190,9 @@ it("distinguishes an explicitly searched project with no linked materials from a
  await screen.findByRole("button",{name:"温升记录.xlsx"});
  vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[{...project,folder_path:"",available:false}],files:[],total:0,warnings:[]});
  await user.type(screen.getByLabelText("Search project materials"),"PwrBlade");await user.click(screen.getByRole("button",{name:"Search",exact:true}));
- await user.click(await screen.findByRole("button",{name:"Open project Workbench"}));
+ await user.click(await screen.findByRole("button",{name:"Open workbench"}));
  expect(open).toHaveBeenCalledWith("p1");
- expect(screen.getByText(/No materials linked yet. Open the project Workbench/)).toBeTruthy();
+ expect(screen.getByText("No materials linked yet")).toBeTruthy();
  expect(screen.queryByText(/Original material location is unavailable/)).toBeNull();
 });
 it("shows an empty ordinary list without suggesting repair of individual missing locations",async()=>{
@@ -224,4 +224,53 @@ it("expands sibling folders in place and clears a hidden file selection",async()
  expect(screen.queryByRole("button",{name:file.name})).toBeNull();
  expect(screen.getByRole("button",{name:"Photos",expanded:true})).toBeTruthy();
  expect(screen.getByRole("button",{name:"Open containing folder",exact:true})).toHaveProperty("disabled",true);
+});
+
+it.each([
+ ["connlab", "p1", true],
+ ["connlab", null, false],
+ ["received", "p1", false],
+ ["received", null, false],
+ ["linked", "p1", false],
+] as const)("limits workbench access for %s with project id %s", async (source, id, allowed) => {
+ const user = userEvent.setup();
+ const open = vi.fn();
+ const row = {...project, source, project_id:id, number:"Project 1234ABCD"};
+ vi.mocked(api.searchReferenceLibrary).mockResolvedValue({projects:[row],files:[],total:0,warnings:[]});
+ render(<ReferenceLibraryPage onOpenProject={open}/>);
+ await screen.findByRole("button", {name:file.name});
+ expect(screen.queryByRole("button", {name:"Materials information"})).toBeNull();
+ const shortcut = screen.queryByRole("button", {name:"Open workbench"});
+ if (allowed) {
+  expect(shortcut).toBeTruthy();
+  await user.click(shortcut!);
+  expect(open).toHaveBeenCalledWith(id);
+ } else {
+  expect(shortcut).toBeNull();
+  expect(open).not.toHaveBeenCalled();
+ }
+});
+
+it("opens the copy destination file tree directly even when absent from the ordinary list", async () => {
+ const user = userEvent.setup();
+ const target = {...project,key:"project:target",project_id:"target",folder_path:"D:/target"};
+ const targetFile = {...file,name:"copied.xlsx",relative_path:"copied.xlsx"};
+ vi.mocked(api.searchReferenceLibrary).mockImplementation(async (_q,_s,_k,key) => ({
+  projects:key === target.key ? [target] : [project],files:[],warnings:[],total:0
+ }));
+ vi.mocked(api.browseReferenceFiles).mockImplementation(async key => ({
+  key,root:key===target.key?target.folder_path:project.folder_path,current_directory:"",
+  location_state:"available",items:[key===target.key?targetFile:file],warnings:[]
+ }));
+ vi.mocked(archive.previewMaterialCopy).mockResolvedValue({status:"ready",candidates:[],plan_id:"copy",fingerprint:"hash",items:[],target_path:target.folder_path});
+ vi.mocked(archive.confirmMaterialCopy).mockResolvedValue({batch_id:"batch",status:"completed",target_key:target.key,target_path:target.folder_path,source_path:"D:/isolated",receipt_id:null,items:[],counts:{},directory_counts:{}});
+ render(<ReferenceLibraryPage onOpenProject={vi.fn()} copyContext={{session_id:"session",token:"target",intent:1,target}}/>);
+ await user.click(await screen.findByRole("button",{name:file.name}));
+ await user.click(screen.getByRole("button",{name:"Copy to current project…"}));
+ await user.click(await screen.findByRole("button",{name:"Check destination"}));
+ await user.click(await screen.findByRole("button",{name:"Confirm copy"}));
+ await user.click(await screen.findByRole("button",{name:"View target materials"}));
+ expect(await screen.findByRole("button",{name:targetFile.name})).toBeTruthy();
+ expect(screen.queryByRole("dialog")).toBeNull();
+ expect(screen.queryByRole("button",{name:file.name})).toBeNull();
 });
