@@ -836,11 +836,11 @@
     },
     "TASK_LIBRARY_PROJECT_TABLE_20261126": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-project-table-20261126",
       "resources": [],
-      "integrated_head": "84ae6b06c9e23ca88c3ad9ce63d089ec96134c35",
+      "integrated_head": "1bdf0fdebad77ab8f699c3cb6af1cef67082eb7e",
       "task": {
         "task_id": "TASK_LIBRARY_PROJECT_TABLE_20261126",
         "summary": "Paginate project materials in a wider two-column registry table.",
@@ -855,7 +855,7 @@
         "risk_reasons": [],
         "activation_head": "e140fc8ee1928bb4f896c9b754a2874155679d8f",
         "started_at": "2026-11-25T22:38:22.577363Z",
-        "updated_at": "2026-11-25T22:55:15.229950Z",
+        "updated_at": "2026-11-25T22:59:32.091762Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -865,7 +865,49 @@
           "summary": "User requested file-specific actions, deferred copy destination and removal of daily report shortcuts.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "scope_ok": true,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "06af568ffeaa8cd471dd1e6ce5d043edca6e7f21",
+            "primary_before": "8897abbd1c7c1191a27af3e1685feefc280589ce",
+            "integrated_head": "1bdf0fdebad77ab8f699c3cb6af1cef67082eb7e",
+            "recovered": false
+          },
+          "changed_paths": [
+            "frontend/src/features/material-receipts/MaterialFileList.tsx",
+            "frontend/src/features/material-receipts/MaterialFiles.tsx",
+            "frontend/src/features/material-receipts/ReportShortcuts.test.tsx",
+            "frontend/src/features/material-receipts/ReportShortcuts.tsx",
+            "frontend/src/features/material-receipts/material-file-tree.css",
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx"
+          ],
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "summary": "Self-reviewed scoped diff, contextual targeting, focus, copy proof and backend boundaries."
+            },
+            "developer": {
+              "status": "passed"
+            },
+            "qa": {
+              "status": "passed"
+            }
+          },
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_LIBRARY_PROJECT_TABLE_20261126",
+          "subject": "06af568ffeaa8cd471dd1e6ce5d043edca6e7f21",
+          "summary": "Paged two-column project registry with contextual file actions. No permanent destination or report shortcut controls in daily browsing.",
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "71 relevant frontend tests passed and production build passed. Isolated Edge at 765/360 px checked menu, dismissal, file targeting, double click, no copy action without destination, no report lookup, and viewport width. OS opener intercepted. Evidence tmp/librow-red.log, tmp/librow-green.log, tmp/librow-build.log, tmp/librow-smoke/."
+            }
+          ]
+        }
       }
     }
   }
