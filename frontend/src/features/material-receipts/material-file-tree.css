@@ -25,3 +25,18 @@
 .material-tree-row[aria-expanded="false"] .material-tree-chevron { transform: rotate(-90deg); }
 .material-tree-row small { display: block; color: var(--color-text-muted); }
 .material-tree-note { margin: 4px 8px; padding-inline-start: min(calc((var(--folder-depth) + 1) * 1rem), 20%); overflow-wrap: anywhere; }
+
+.material-file-line { display: flex; align-items: center; }
+.material-file-line .material-tree-row { flex: 1; min-width: 0; }
+.reference-library .material-file-trigger {
+  flex: none;
+  padding: 0 6px;
+  min-width: 32px;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.reference-library .material-file-trigger:hover,
+.reference-library .material-file-trigger[aria-expanded="true"] { background: var(--color-action-secondary-bg); }
+.material-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; padding: 4px; }
