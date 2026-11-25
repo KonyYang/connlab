@@ -827,11 +827,11 @@
     },
     "TASK_LIBRARY_MATERIAL_TREE_20261125": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-material-tree-20261125",
       "resources": [],
-      "integrated_head": "dfc383b1409f9410c3af6fe0b348058e18b1e019",
+      "integrated_head": "1992bb5707dcb74728de05498ab812645063f2fa",
       "task": {
         "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
         "summary": "Expand project material folders inline in the reference library.",
@@ -863,7 +863,7 @@
         "risk_reasons": [],
         "activation_head": "dcd0622f81b873a674970ccfa5e0e0397bcbc99d",
         "started_at": "2026-11-25T14:29:55.851999Z",
-        "updated_at": "2026-11-25T15:40:30.487929Z",
+        "updated_at": "2026-11-25T15:44:33.140829Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -873,7 +873,61 @@
           "summary": "User requested Workbench-verified native library and copy locations, including legacy-only and inaccessible bindings.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "scope_ok": true,
+          "roles": {
+            "reviewer": {
+              "status": "passed",
+              "summary": "Self-reviewed selected-source lookup, historical associations, registration and manifest, recovery journal, cached search, and copy preview/confirm/retry."
+            },
+            "qa": {
+              "status": "passed"
+            },
+            "developer": {
+              "status": "passed"
+            }
+          },
+          "summary": "Remove historical folder-generation records as native library roots. Share registered workspace verification with Workbench for live access, indexing and copy destinations.",
+          "version": 1,
+          "schema": "connlab.sol-task-report",
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "Reproduced legacy template path before the fix. Backend suite 249 passed/5 skipped; final affected backend rerun 80 passed/1 skipped incl new archive guard. Frontend 75 passed; Vite production build passed. Isolated Edge at 989/360px verified missing and created project paths. Logs tmp/libauth-final.log, tmp/libauth-final-recheck.log, tmp/libauth-frontend.log, tmp/libauth-build.log, tmp/libauth-browser/result.txt."
+            }
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "cb2ff38f1c555b067439056c9e3b23feb2d686a1",
+            "primary_before": "2fd041e922a0b5183d17f19ca25c1fce2ce2aa83",
+            "integrated_head": "1992bb5707dcb74728de05498ab812645063f2fa",
+            "recovered": false
+          },
+          "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
+          "subject": "cb2ff38f1c555b067439056c9e3b23feb2d686a1",
+          "changed_paths": [
+            "backend/api/routes_material_receipts.py",
+            "backend/api/routes_project_library.py",
+            "backend/api/routes_report_shortcuts.py",
+            "backend/application/basic_project_workspace_service.py",
+            "backend/application/project_library/catalog_entry.py",
+            "backend/application/project_library/material_archive.py",
+            "backend/application/project_library/material_copy.py",
+            "backend/application/project_library/report_shortcuts.py",
+            "backend/application/project_library/search.py",
+            "backend/infrastructure/storage/repositories/library_search.py",
+            "docs/architecture/project_library_search.md",
+            "frontend/src/features/material-receipts/useWorkbenchCopyContext.test.tsx",
+            "frontend/src/features/material-receipts/useWorkbenchCopyContext.ts",
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx",
+            "tests/integration/test_basic_project_workspace_api.py",
+            "tests/integration/test_library_search.py",
+            "tests/integration/test_material_archive.py",
+            "tests/integration/test_report_shortcuts.py"
+          ]
+        }
       }
     }
   }
