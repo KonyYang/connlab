@@ -363,20 +363,20 @@ it("waits for source preparation before opening the receipt confirmation", async
 });
 
 
-it("keeps copy intent separate from sidebar last-project navigation memory",async()=>{
+it("browses without creating a copy session and remembers the last workspace independently",async()=>{
  const user=userEvent.setup();window.history.replaceState({},"","/projects/P1");
  render(<App/>);
  await screen.findByRole("region",{name:"Project Workbench"});
- await waitFor(()=>expect(receipts.updateCopyContext).toHaveBeenLastCalledWith("test-browser",1,"P1"));
+ expect(receipts.createCopyContextSession).not.toHaveBeenCalled();
  const count=vi.mocked(receipts.updateCopyContext).mock.calls.length;
  await user.click(screen.getByRole("button",{name:"Library",exact:true}));
  await screen.findByRole("region",{name:"Project materials library"});
  expect(receipts.updateCopyContext).toHaveBeenCalledTimes(count);
  await user.click(screen.getByRole("button",{name:"Settings",exact:true}));
- await waitFor(()=>expect(receipts.updateCopyContext).toHaveBeenLastCalledWith("test-browser",2,null));
+ expect(receipts.updateCopyContext).not.toHaveBeenCalled();
  expect(screen.getByTestId("folder-project").textContent).toBe("none");
  await user.click(screen.getByRole("button",{name:"Library",exact:true}));
- await waitFor(()=>expect(receipts.updateCopyContext).toHaveBeenLastCalledWith("test-browser",3,null));
+ expect(receipts.createCopyContextSession).not.toHaveBeenCalled();
  expect(screen.getByTestId("folder-project").textContent).toBe("none");
  await user.click(within(screen.getByRole("navigation", {name:"Test sidebar"})).getByRole("button",{name:"Projects"}));
  expect(window.location.pathname).toBe("/projects/P1");

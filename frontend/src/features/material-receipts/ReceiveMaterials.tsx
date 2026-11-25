@@ -17,13 +17,13 @@ export function ReceiptResults({ batch }: { batch: ReceiptBatch }) {
   <details><summary>Receipt details</summary><ul className="materials-items">{batch.items.map(row => <li key={row.relative_path}><strong>{row.relative_path}{row.directory ? " (folder)" : ""}</strong><span>{labels[row.status ?? ""] ?? row.status}</span><span>{row.target_relative}</span>{row.message && <span>{row.message}</span>}</li>)}</ul></details>
  </section>;
 }
-export function ReceiveMaterials({onClose,onReceived,initialOperation}:{onClose:()=>void;onReceived:(key:string)=>void;initialOperation?:string}) {
+export function ReceiveMaterials({onClose,onReceived,initialOperation}:{onClose:()=>void;onReceived:(path:string)=>void;initialOperation?:string}) {
  const [plan,setPlan]=useState<ArchivePlan|null>(readPending);
  const [operation,setOperation]=useState<ReceiptBatch|null>(null);
  const [attempted,setAttempted]=useState(()=>Boolean(readPending()));
  const [busy,setBusy]=useState(false),[cancelling,setCancelling]=useState(false),[error,setError]=useState("");
  const live=useRef(false),started=useRef(false),job=useRef<string|null>(null);
- const finish=(value:ReceiptBatch)=>{setOperation(value);if(value.status==="completed"){runtimeSessionStorage.removeItem(pendingKey);onReceived(value.target_key);}};
+ const finish=(value:ReceiptBatch)=>{setOperation(value);if(value.status==="completed"){runtimeSessionStorage.removeItem(pendingKey);onReceived(value.target_path);}};
  async function run(start:Promise<{job_id:string}>,kind:"preview"|"copy") {
   setBusy(true);setError("");setCancelling(false);
   try {
@@ -40,7 +40,7 @@ export function ReceiveMaterials({onClose,onReceived,initialOperation}:{onClose:
      if(kind==="copy")finish(result.result as ReceiptBatch);
      else {
       const next=result.result as ArchivePlan;
-      if(next.status==="existing")onReceived(next.target_key!);
+      if(next.status==="existing")onReceived(next.target_path);
       else if(next.status==="pending"){setOperation(next.operation!);setAttempted(true);}
       else setPlan(next);
      }

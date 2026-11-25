@@ -37,6 +37,4 @@
   background: transparent;
   color: var(--color-text-muted);
 }
-.reference-library .material-file-trigger:hover,
-.reference-library .material-file-trigger[aria-expanded="true"] { background: var(--color-action-secondary-bg); }
-.material-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; padding: 4px; }
+.reference-library .material-file-trigger:hover { background: var(--color-action-secondary-bg); }

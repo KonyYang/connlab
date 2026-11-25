@@ -1,5 +1,4 @@
 import {getRuntimeEnvironment, storageNamespace} from "./runtimeEnvironment";
-import { useWorkbenchCopyContext } from "./features/material-receipts/useWorkbenchCopyContext";
 import { LegacyPlanningBoundary } from './features/tools/LegacyPlanningBoundary';
 import { lazy, Suspense, useEffect, useRef, useState, type ReactElement } from "react";
 import { AppShell } from "./components/layout/AppShell";
@@ -212,7 +211,6 @@ function parseCurrentRoute(): Route {
 
 export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(parseCurrentRoute);
-  const workbenchCopyContext = useWorkbenchCopyContext(isProjectWorkspaceRoute(route) && "projectId" in route ? route.projectId : null, route.name === "reference");
   const resumeTemperatureWorkspace = useRef<boolean | null>(route.name === "temperatureRise" ? true : null);
   const navigationGeneration = useRef(0);
   const [intakeSession, setIntakeSession] =
@@ -341,7 +339,7 @@ export default function App(): ReactElement {
     >
       <RouteLoadBoundary key={JSON.stringify(route)}>
       <Suspense fallback={<RouteLoadingFallback />}>
-      {route.name === "reference" && <ReferenceLibraryPage copyContext={workbenchCopyContext} onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} onOpenSettings={() => navigate("/settings")} />}
+      {route.name === "reference" && <ReferenceLibraryPage onOpenSettings={() => navigate("/settings")} />}
       {(route.name === "projects" || route.name === "projectLibraryList") && (
         <>
           <ProjectListPage
