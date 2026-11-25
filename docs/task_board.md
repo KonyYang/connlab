@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LIBRARY_ENTRY_BACK_20261125",
-    "tier": "micro",
-    "subject": "df0bd22ef29cf17d14f94159c800b4fb10917a7d",
-    "summary": "Separate library navigation from receipt picking and add contextual Back.",
+    "task_id": "TASK_PROJECT_FOLDER_RESOLUTION_20261125",
+    "tier": "high_risk",
+    "subject": "eba0bda389a6c7ec80aee6a4905b2af04e01df6e",
+    "summary": "Hide unavailable library locations and safely resolve missing registered project workspaces.",
     "disposition": "completed",
-    "decision_ref": "User explicitly closed the completed library entry and Back navigation task. Local Edge click verification, frontend test results, fixture data and existing receipt verification records are retained.",
-    "closed_at": "2026-11-24T23:59:22.262803Z"
+    "decision_ref": "User closed the accepted project folder resolution and library Back revision. Keep the implementation and isolated QA evidence locally.",
+    "closed_at": "2026-11-25T14:18:51.652838Z"
   },
   "retained_history": [
     {
@@ -759,97 +759,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local close only. Preserve implementation e53430fa and validation in finish commit 3f96ab70: 229 backend tests, 23 frontend tests, production build and approved workbook copy validation.",
       "closed_at": "2026-11-24T22:45:21.066677Z"
+    },
+    {
+      "task_id": "TASK_LIBRARY_ENTRY_BACK_20261125",
+      "tier": "micro",
+      "subject": "df0bd22ef29cf17d14f94159c800b4fb10917a7d",
+      "summary": "Separate library navigation from receipt picking and add contextual Back.",
+      "disposition": "completed",
+      "decision_ref": "User explicitly closed the completed library entry and Back navigation task. Local Edge click verification, frontend test results, fixture data and existing receipt verification records are retained.",
+      "closed_at": "2026-11-24T23:59:22.262803Z"
     }
   ],
-  "tasks": {
-    "TASK_PROJECT_FOLDER_RESOLUTION_20261125": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
-      "branch": "codex/project-folder-resolution-20261125",
-      "resources": [],
-      "integrated_head": "6fc450d70d89048d6f77a5c1c9bbc23d2e2a1cc1",
-      "task": {
-        "task_id": "TASK_PROJECT_FOLDER_RESOLUTION_20261125",
-        "summary": "Hide unavailable library locations and safely resolve missing registered project workspaces.",
-        "tier": "high_risk",
-        "route": "full_chain",
-        "scope": "Reference library filtering and official single-project folder resolution with identity checks, non-overwriting creation, recovery, regression tests and matching UI.",
-        "scope_paths": [
-          "backend/application",
-          "backend/api",
-          "backend/infrastructure",
-          "frontend/src",
-          "tests/unit",
-          "tests/integration"
-        ],
-        "risk_reasons": [
-          "Explicit mutation of the authoritative project workspace binding and filesystem."
-        ],
-        "activation_head": "20509ae18d728ed5aeb0547925a019afdde5e70b",
-        "started_at": "2026-11-25T00:01:01.228880Z",
-        "updated_at": "2026-11-25T14:17:23.369137Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_PROJECT_FOLDER_RESOLUTION_20261125",
-          "stage": "revision",
-          "status": "running",
-          "summary": "Place text-only Back at far right of library header and verify at 676px, preserving navigation.",
-          "requires_user": false
-        },
-        "report": {
-          "roles": {
-            "reviewer": {
-              "status": "passed"
-            },
-            "planner": {
-              "status": "passed"
-            },
-            "qa": {
-              "status": "passed"
-            },
-            "developer": {
-              "status": "passed"
-            },
-            "integrator": {
-              "status": "passed"
-            }
-          },
-          "version": 1,
-          "changed_paths": [
-            "frontend/src/App.test.tsx",
-            "frontend/src/App.tsx",
-            "frontend/src/components/layout/AppShell.tsx",
-            "frontend/src/components/layout/TopBar.tsx"
-          ],
-          "scope_ok": true,
-          "subject": "eba0bda389a6c7ec80aee6a4905b2af04e01df6e",
-          "schema": "connlab.sol-task-report",
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "Earlier accepted state 4e2989d2: 218 backend tests passed, one permission-based symlink skip, 143 UI tests passed, production build, isolated SQLite/real HTTP and Edge at 360/555 px, recovery, offline handling and navigation. Evidence: tmp/folder-resolution-qa-20261125."
-            },
-            {
-              "status": "passed",
-              "summary": "Final header revision: 40 App and library tests passed, TypeScript/Vite build passed, Edge verified 360/676/1280 px: text-only Back on title row at right, 12/12/16px margin, both return paths and explicit receipt action. Evidence: tmp/folder-resolution-qa-20261125/back-right/."
-            }
-          ],
-          "summary": "Hide unavailable materials and safely resolve missing registered project workspaces. Place text-only library Back at the far right of the header.",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "eba0bda389a6c7ec80aee6a4905b2af04e01df6e",
-            "primary_before": "56fa7695b23e96adc957bd25938b60408b0c701e",
-            "integrated_head": "6fc450d70d89048d6f77a5c1c9bbc23d2e2a1cc1",
-            "recovered": false
-          },
-          "task_id": "TASK_PROJECT_FOLDER_RESOLUTION_20261125"
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
