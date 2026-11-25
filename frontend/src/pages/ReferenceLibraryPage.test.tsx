@@ -35,7 +35,11 @@ it("shows projects beside actual managed files and opens the selected file", asy
  await user.keyboard("{Enter}");
  expect(api.openReferenceFile).toHaveBeenCalledTimes(2);
  expect(api.openReferenceFile).toHaveBeenCalledWith(project.key,file.relative_path,false);
- await act(async()=>{await user.click(screen.getByRole("button",{name:"Open folder",exact:true}));});
+ const folderButton=screen.getByRole("button",{name:"Open folder",exact:true});
+ expect(folderButton.textContent).toBe("");
+ expect(folderButton.title).toBe("Open folder");
+ expect(folderButton.nextElementSibling?.textContent).toBe(project.folder_path);
+ await act(async()=>{await user.click(folderButton);});
  expect(api.openReferenceFile).toHaveBeenCalledWith(project.key);
  const before=vi.mocked(api.browseReferenceFiles).mock.calls.length;
  await act(async()=>{await user.click(screen.getByRole("button",{name:"Refresh"}));});

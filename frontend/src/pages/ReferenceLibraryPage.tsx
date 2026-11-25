@@ -115,7 +115,15 @@ export function ReferenceLibraryPage({ onOpenProject, onOpenSettings, copyContex
     {!busy && !visibleProjects.length && <p className="library-empty">{search?"No matching project materials.":"No materials to show."}</p>}
    </aside>
    <section className="library-files" aria-label="Selected project materials">{unavailableLink ? (!busy && !error && offlineRoot===null && <div className="library-empty"><p>This material location is unavailable.</p>{selected?.folder_path && <p>{selected.folder_path}</p>}<button disabled={scanning!=="idle"} onClick={()=>void refreshIndex()}>Refresh materials</button></div>) : selected ? <>
-    <header className="library-project-heading" aria-label="Browsing materials"><div className="library-location"><span className="library-location-path"><UiIcon name="folder"/>{selected.folder_path || "No materials linked yet"}</span><button disabled={!selected.available} title={!selected.available ? selected.folder_path ? "Restore access to the registered folder, then refresh." : "Open the project Workbench to create or link its working folder." : undefined} onClick={()=>void openFolder()}><UiIcon name="folder"/>Open folder</button></div><button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button></header>
+    <header className="library-project-heading" aria-label="Browsing materials">
+     <div className="library-location">
+      <button type="button" aria-label="Open folder" disabled={!selected.available}
+       title={selected.available ? "Open folder" : selected.folder_path ? "Restore access to the registered folder, then refresh." : "Open the project Workbench to create or link its working folder."}
+       onClick={() => void openFolder()}><UiIcon name="folder" /></button>
+      <span className="library-location-path" style={{flexBasis: 0}}>{selected.folder_path || "No materials linked yet"}</span>
+     </div>
+     <button className="library-text-link" onClick={()=>setDetails(selected)}>Materials information</button>
+    </header>
     {copyContext && <section className="library-copy-destination" aria-label="Copy destination"><strong>Copy destination (Workbench): {copyContext.target.number || "No number"} · {copyContext.target.title}</strong><span>{copyContext.target.folder_path}</span></section>}
     {receiptIncomplete(selected) ? <p className="library-empty">Receipt incomplete. Continue receipt to finish copying and registration.</p> : <MaterialFiles key={selected.key} canCopy={Boolean(copyContext)} onRefresh={scanning==="idle" ? ()=>void refreshIndex() : undefined} onOpenWorkbench={selected.project_id ? ()=>onOpenProject(selected.project_id!) : undefined} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings} onCopy={file=>setCopy({project:selected,file})}/>}
    </> : <div className="library-empty"><UiIcon name="folder"/><p>Select a project to view its materials.</p></div>}</section>
