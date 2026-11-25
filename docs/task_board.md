@@ -836,7 +836,7 @@
     },
     "TASK_LIBRARY_PROJECT_TABLE_20261126": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-project-table-20261126",
       "resources": [],
@@ -856,48 +856,17 @@
         "risk_reasons": [],
         "activation_head": "e140fc8ee1928bb4f896c9b754a2874155679d8f",
         "started_at": "2026-11-25T22:38:22.577363Z",
-        "updated_at": "2026-11-25T22:42:26.823665Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "summary": "Two-column paged project-materials table with a balanced desktop split and stacked mobile layout.",
-          "changed_paths": [
-            "frontend/src/features/material-receipts/LibraryProjectTable.tsx",
-            "frontend/src/features/material-receipts/library-project-table.css",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx"
-          ],
-          "validation": [
-            {
-              "summary": "Targeted frontend 76 passed, production build passed. Isolated Edge at 989, 765 and 360px checked headers, row selection, actual file names, width and paging through 45 entries. Evidence tmp/libtable-green.log, tmp/libtable-build.log, tmp/libtable-smoke/.",
-              "status": "passed"
-            }
-          ],
-          "scope_ok": true,
+        "updated_at": "2026-11-25T22:55:00.445049Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "63b0c0d514b1cfef96ac9df30cc3899b440252cf",
-            "primary_before": "2da7dd24a569b0e0cb8d312f39e6ca1344e7a52f",
-            "integrated_head": "84ae6b06c9e23ca88c3ad9ce63d089ec96134c35",
-            "recovered": false
-          },
           "task_id": "TASK_LIBRARY_PROJECT_TABLE_20261126",
-          "roles": {
-            "developer": {
-              "status": "passed"
-            },
-            "qa": {
-              "status": "passed"
-            },
-            "reviewer": {
-              "summary": "Self-reviewed scoped table, row keys, keyboard activation, recovery action, boundaries and pagination.",
-              "status": "passed"
-            }
-          },
-          "subject": "63b0c0d514b1cfef96ac9df30cc3899b440252cf"
-        }
+          "stage": "revision",
+          "status": "running",
+          "summary": "User requested file-specific actions, deferred copy destination and removal of daily report shortcuts.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
