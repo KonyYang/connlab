@@ -9,7 +9,7 @@ type ListProps = {
   selectedPath?: string;
   showPaths: boolean;
   onSelect: (file: BrowseFile) => void;
-  onOpen: (file: BrowseFile) => void;
+  onOpen?: (file: BrowseFile) => void;
   onCollapse: (folder: string) => void;
 };
 type DirectoryProps = Omit<ListProps, "rows"> & { directory: BrowseFile; depth: number };
@@ -60,7 +60,13 @@ export function MaterialFileList({ rows, depth = 0, ...actions }: ListProps & {d
       ? <FolderRow {...actions} key={file.relative_path} directory={file} depth={depth} />
       : <li key={file.relative_path}>
           <button type="button" className="material-tree-row" aria-pressed={actions.selectedPath === file.relative_path}
-            onClick={() => actions.onSelect(file)} onDoubleClick={() => actions.onOpen(file)}>
+            onClick={() => actions.onSelect(file)} onDoubleClick={() => actions.onOpen?.(file)}
+            onKeyDown={event => {
+              if (event.key === "Enter" && actions.onOpen) {
+                event.preventDefault();
+                if (!event.repeat) actions.onOpen(file);
+              }
+            }}>
             <span className="material-tree-spacer" aria-hidden="true" />
             <span className="file-symbol"><UiIcon name="file" /></span>
             <span>{file.name}{actions.showPaths && <small>{file.relative_path}</small>}</span>
