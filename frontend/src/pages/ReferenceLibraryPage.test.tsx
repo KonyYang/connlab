@@ -1,5 +1,5 @@
 import "../api/runtime.testHelpers";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { ReferenceLibraryPage } from "./ReferenceLibraryPage";
@@ -273,4 +273,35 @@ it("opens the copy destination file tree directly even when absent from the ordi
  expect(await screen.findByRole("button",{name:targetFile.name})).toBeTruthy();
  expect(screen.queryByRole("dialog")).toBeNull();
  expect(screen.queryByRole("button",{name:file.name})).toBeNull();
+});
+
+it("pages the two project columns and keeps the file pane on the selected project", async () => {
+ const rows=Array.from({length:43}, (_, index) => ({
+  ...project, key:"project:"+index, number:"ID-"+index, title:"Sample "+index, folder_path:"D:/sample/"+index
+ }));
+ window.history.replaceState(null,"","/reference?entry=project:25");
+ vi.mocked(api.searchReferenceLibrary).mockImplementation(async query => ({
+  projects:query ? [rows[7]] : rows, files:[], total:0, warnings:[]
+ }));
+ const user=userEvent.setup();
+ render(<ReferenceLibraryPage onOpenProject={vi.fn()}/>);
+ const table=within(await screen.findByRole("table",{name:"Project materials"}));
+ expect(table.getAllByRole("columnheader").map(cell=>cell.textContent)).toEqual(["Project ID","Sample Description"]);
+ await waitFor(()=>expect(screen.getByText("Page 2 / 3")).toBeTruthy());
+ expect(table.getAllByRole("row")).toHaveLength(21);
+ expect(table.getByRole("button",{name:"ID-25 Sample 25",pressed:true})).toBeTruthy();
+ await user.click(screen.getByRole("button",{name:"Next",exact:true}));
+ expect(table.getAllByRole("row")).toHaveLength(4);
+ expect(screen.getByText("D:/sample/40")).toBeTruthy();
+ expect(screen.getByRole("button",{name:"Next",exact:true})).toHaveProperty("disabled",true);
+ await user.click(table.getByText("Sample 42"));
+ expect(screen.getByText("D:/sample/42")).toBeTruthy();
+ await user.click(screen.getByRole("button",{name:"Prev",exact:true}));
+ expect(screen.getByText("D:/sample/20")).toBeTruthy();
+ await user.type(screen.getByLabelText("Search project materials"),"Sample 7");
+ await user.click(screen.getByRole("button",{name:"Search",exact:true}));
+ await waitFor(()=>expect(table.getAllByRole("row")).toHaveLength(2));
+ expect(screen.getByText("Page 1 / 1")).toBeTruthy();
+ expect(screen.getByRole("button",{name:"Prev",exact:true})).toHaveProperty("disabled",true);
+ expect(screen.getByText("D:/sample/7")).toBeTruthy();
 });
