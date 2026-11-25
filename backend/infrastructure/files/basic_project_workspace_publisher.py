@@ -13,6 +13,16 @@ from backend.infrastructure.official_workspace_manifest import OfficialWorkspace
 
 
 class BasicProjectWorkspaceJournal(GenerationJournal):
+    def resolution_receipts(self, project_id):
+        current = self.read(project_id)
+        if current and current.get("kind") == "resolution":
+            yield current
+        history = self.project_path(project_id) / "history"
+        for path in history.glob("*.json"):
+            saved = self.read_archived(project_id, path.stem)
+            if saved and saved.get("kind") == "resolution":
+                yield saved
+
     def save(self, state):
         try:
             super().save(state)

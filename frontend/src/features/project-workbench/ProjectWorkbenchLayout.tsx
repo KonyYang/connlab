@@ -12,6 +12,7 @@ import {
 } from "../../api/client";
 import { ProjectManagementDialog } from "../projects-registry/ProjectRegistryManagementDialog";
 import { ProjectFilesDialog } from "./ProjectFilesDialog";
+import { ProjectFolderResolutionDialog } from "./ProjectFolderResolutionDialog";
 import { ProjectPublicFolderBindingDialog } from "./ProjectPublicFolderBindingDialog";
 import { UiIcon } from "../../components/common/UiIcon";
 import {
@@ -72,6 +73,7 @@ export function ProjectWorkbenchLayout({
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
   const [filesDialogProject, setFilesDialogProject] = useState<string | null>(null);
   const [showBasicFolderReview, setShowBasicFolderReview] = useState(false);
+  const [resolutionProject, setResolutionProject] = useState<string | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
   const [publicFolderOpenError, setPublicFolderOpenError] = useState<string | null>(null);
   const [recoveryPreviewCheckedProject, setRecoveryPreviewCheckedProject] = useState<string | null>(null);
@@ -242,8 +244,12 @@ export function ProjectWorkbenchLayout({
   const feeEvaluationButtonState = deriveFeeEvaluationButtonState(confirmedFeeLatest);
   const legacyRecovery = Boolean(runtimeModel.officialWorkspaceCanResume);
   const checkingRecoveryPreview = Boolean(legacyRecovery && officialWorkspaceCanRestart && recoveryPreviewCheckedProject !== project.project_id);
+  const basicPreview = basicWorkspace?.preview;
+  const registeredPath = basicPreview?.project_id === project.project_id && !legacyRecovery &&
+    (basicPreview.resolution_required || basicPreview.resolution_operation_id)
+    ? basicPreview.registered_folder_path : null;
   const displayedOfficialWorkspaceError = basicWorkspace?.error
-    ?? (!lifecycleReadonlyView.readonly && basicWorkspace?.preview?.status === "blocked" ? basicWorkspace.preview.blockers.join("\n") : null)
+    ?? (!registeredPath && !lifecycleReadonlyView.readonly && basicPreview?.status === "blocked" ? basicPreview.blockers.join("\n") : null)
     ?? (legacyRecovery ? officialWorkspaceError : null);
   const folderAlert = deriveProjectFolderAlert(displayedOfficialWorkspaceError ?? "");
   const hasMatrixDraftForPlanning =
@@ -267,21 +273,27 @@ export function ProjectWorkbenchLayout({
         };
   const projectFolderTasks = projectFolderWorkflowTasks;
   const basicBlocked = basicWorkspace?.preview?.status === "blocked";
+  const folderWriteBusy = Boolean(officialWorkspaceCreating || basicWorkspace?.busy || publicFolderWorkflowBusyOperation
+    || publicFolderWorkflowConfirmingOperation || publicFolderWorkflowAutoSyncBusy || runtimeModel.officialFolderCheckRepairing
+    || publicDriveUploading || requestMaterialCollecting || requiredFormsGenerating || runtimeModel.section2SyncSyncing);
   const projectFolderHeaderAction = {
+    resolution: registeredPath ? {registeredPath, recheckDisabled: Boolean(basicWorkspace?.loading || folderWriteBusy),
+      onRecheck: () => { void recheckProjectFolder(); }} : undefined,
     secondaryAction: {
       label: "Generate files",
       disabled: lifecycleReadonlyView.readonly || !basicWorkspace?.directoryAvailable || Boolean(basicWorkspace?.busy || basicWorkspace?.loading) || legacyRecovery || officialWorkspaceCreating,
       title: lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : !basicWorkspace?.directoryAvailable ? "Create or link the project folder before generating files." : undefined,
       onClick: () => setFilesDialogProject(project.project_id),
     },
-    label: legacyRecovery ? "Resume folder operation" : "Create folder",
+    label: registeredPath ? (basicPreview?.resolution_operation_id ? "Resume folder change…" : "Resolve folder…")
+      : legacyRecovery ? "Resume folder operation" : "Create folder",
     disabled: lifecycleReadonlyView.readonly || officialWorkspaceCreating || checkingRecoveryPreview
       || Boolean(basicWorkspace?.busy || basicWorkspace?.loading)
-      || (!legacyRecovery && (!projectNumber || !basicWorkspace?.preview || basicBlocked)),
+      || (registeredPath ? folderWriteBusy : !legacyRecovery && (!projectNumber || !basicPreview || basicBlocked)),
     title: lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message
-      : !projectNumber ? "LTR registration is required before creating a project folder."
+      : registeredPath ? undefined : !projectNumber ? "LTR registration is required before creating a project folder."
       : basicBlocked ? basicWorkspace?.preview?.blockers.join("\n") : undefined,
-    onClick: handleProjectFolderCreateClick,
+    onClick: registeredPath ? () => setResolutionProject(project.project_id) : handleProjectFolderCreateClick,
   };
 
   useEffect(() => {
@@ -449,10 +461,21 @@ export function ProjectWorkbenchLayout({
     }
   }
 
+  async function recheckProjectFolder() {
+    await Promise.all([basicWorkspace?.refresh(), runtimeModel.onRefreshPublicFolderWorkflowContext()]);
+  }
+
+  function finishFolderResolution() {
+    if (currentFolderProject.current !== project.project_id) return;
+    setResolutionProject(null);
+    void Promise.all([recheckProjectFolder(), onRefreshOfficialWorkspacePreview()]);
+  }
+
   const currentFolderProject = useRef(project.project_id);
   currentFolderProject.current = project.project_id;
   useEffect(() => {
     setShowBasicFolderReview(false);
+    setResolutionProject(null);
     setFilesDialogProject(null);
     setPublicFolderOpenError(null);
     setShowRegistration(false);
@@ -563,6 +586,10 @@ export function ProjectWorkbenchLayout({
           <button className="primary-action ui-primary-action" type="button" disabled={basicWorkspace.busy} onClick={() => { setShowBasicFolderReview(false); void basicWorkspace.create(true); }}>Use this folder</button>
         </div>
       </ProjectManagementDialog> : null}
+      {resolutionProject === project.project_id && registeredPath && !lifecycleReadonlyView.readonly && !folderWriteBusy ?
+        <ProjectFolderResolutionDialog key={project.project_id + registeredPath} projectId={project.project_id} registeredPath={registeredPath}
+          pendingOperation={basicPreview?.resolution_operation_id ?? null} onCancel={() => setResolutionProject(null)}
+          onRecheck={recheckProjectFolder} onResolved={finishFolderResolution} /> : null}
       {publicFolderBinding?.preview ? <ProjectPublicFolderBindingDialog key={`${project.project_id}:${publicFolderBinding.preview.expected_context}`}
         preview={publicFolderBinding.preview} busy={publicFolderBinding.busy} error={publicFolderBinding.error}
         onConfirm={publicFolderBinding.onConfirm} onCancel={publicFolderBinding.onCancel} /> : null}

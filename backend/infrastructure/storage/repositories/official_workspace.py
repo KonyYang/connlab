@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.infrastructure.files.recoverable_output_publisher import file_hash
-from backend.infrastructure.official_workspace_manifest import OfficialWorkspaceManifestGateway, stable_folder_identity
+from backend.infrastructure.official_workspace_manifest import (
+    OfficialWorkspaceManifestGateway, stable_folder_identity, workspace_locations_overlap,
+)
 from backend.infrastructure.storage.models import (
     FileAssetModel, ProjectFolderRecordModel, ProjectOfficialWorkspaceRecordModel,
     ProjectRequestMaterialCollectionModel, ProjectRequestMaterialCollectionItemModel,
@@ -36,6 +38,14 @@ class ProjectOfficialWorkspaceRepository:
         if record is not None and self._resolve_description_rename is not None:
             return self._resolve_description_rename(record)
         return record
+
+    def require_workspace_unclaimed(self, project_id: str, target: Path) -> None:
+        paths = self._session.scalars(select(ProjectOfficialWorkspaceRecordModel.local_workspace_path)
+            .where(ProjectOfficialWorkspaceRecordModel.project_id != project_id))
+        for registered in paths:
+            other = Path(registered)
+            if workspace_locations_overlap(target, other):
+                raise ValueError("The selected location overlaps another registered project's workspace.")
 
     def save(self, record: OfficialWorkspaceRecord) -> OfficialWorkspaceRecord:
         """Create or update the workspace record for a project."""

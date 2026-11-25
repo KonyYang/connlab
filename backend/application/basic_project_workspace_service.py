@@ -27,7 +27,7 @@ class BasicProjectWorkspaceService:
         self.commit = commit or (lambda: None)
         self.check_other_writes = check_other_writes or (lambda _: None)
 
-    def _identity(self, project_id):
+    def registered_identity(self, project_id):
         project = self.projects.get(project_id)
         if project is None:
             raise LookupError("Project not found.")
@@ -37,6 +37,10 @@ class BasicProjectWorkspaceService:
         if not identity.has_registered_ltr:
             raise ValueError("A registered LTR number is required before creating the project folder.")
         number = parse_ltr_number(identity.ltr_number).normalized
+        return project, identity, number
+
+    def _identity(self, project_id):
+        project, identity, number = self.registered_identity(project_id)
         record = self.workspaces.get_by_project(project_id)
         # Defaults plan new workspaces; a registered project keeps its own location.
         root = record.local_workspace_path.parent if record else self.settings.local_workspace_root
@@ -115,16 +119,30 @@ class BasicProjectWorkspaceService:
         legacy = self.shared.read(project_id)
         if legacy and legacy["status"] != "completed":
             blockers.append("Project folder generation is unfinished. Resume the existing operation first.")
-        if operation and operation["status"] != "completed":
+        resolution = operation if operation and operation.get("kind") == "resolution" and operation["status"] != "completed" else None
+        if resolution:
+            blockers = ["Finish the interrupted project folder resolution."]
+            status = "blocked"
+        elif operation and operation["status"] != "completed":
             blockers.append("A basic project folder operation needs recovery.")
             status = "recovery_required"
         elif blockers:
             status = "blocked"
         available = False
-        if self.workspaces.get_by_project(project_id):
+        registered = None if resolution else self.workspaces.get_by_project(project_id)
+        if registered:
             try:
-                self._verify_record(self.workspaces.get_by_project(project_id))
+                self._verify_record(registered)
                 available = True
+            except (ValueError, OSError):
+                pass
+        registered_path = (resolution["previous_record"]["official_folder_path"] if resolution else
+                           str(registered.official_folder_path) if registered else None)
+        resolution_required = False
+        if registered and not available and status == "blocked" and not (legacy and legacy["status"] != "completed"):
+            try:
+                _, _, number = self.registered_identity(project_id)
+                resolution_required = number == registered.dl_number and registered_directory_missing(registered)
             except (ValueError, OSError):
                 pass
         facts = {"project_id": project_id, "status": status, "directory_available": available,
@@ -132,13 +150,16 @@ class BasicProjectWorkspaceService:
                  "target_identity": target_identity, "blockers": blockers,
                  "directories": directories,
                  "operation_id": operation["operation_id"] if operation and operation["status"] != "completed" else None}
-        return {**facts, "expected_context": fingerprint(facts)}
+        return {**facts, "expected_context": fingerprint(facts),
+                "resolution_required": resolution_required or bool(resolution),
+                "registered_folder_path": registered_path,
+                "resolution_operation_id": resolution["operation_id"] if resolution else None}
 
     def create(self, project_id, expected_context, request_id, *, confirm_existing=False):
         with self.shared.lock(project_id):
             self._require_other_writes_clear(project_id)
             pending = self.journal.read(project_id)
-            if pending and pending.get("request_id") == request_id:
+            if pending and pending.get("kind") == "basic" and pending.get("request_id") == request_id:
                 return self._run(pending) if pending["status"] != "completed" else self._result(pending)
             if pending and pending["status"] != "completed":
                 raise ValueError("Resume the unfinished basic project folder operation before starting another.")
@@ -231,3 +252,44 @@ class BasicProjectWorkspaceService:
         return {"operation_id": state["operation_id"], "status": state["status"], "directory_available": available,
                 "official_project_folder_path": str(record.official_folder_path) if record else None,
                 "issues": state.get("issues", []), "message": state.get("message")}
+
+
+def registered_directory_missing(record):
+    """A missing location can be resolved. An occupied or redirected path needs review."""
+    workspace = record.local_workspace_path
+    if (workspace == workspace.parent or record.official_folder_path.parent != workspace
+            or record.official_folder_path.name.casefold() in {".connlab", "source book"}
+            or record.source_book_path != workspace / "Source Book"
+            or record.manifest_path != workspace / ".connlab" / "manifest.json"):
+        raise ValueError("The registered project folder layout needs manual review.")
+    for path in (workspace, record.source_book_path, record.official_folder_path, record.manifest_path):
+        if not path.is_absolute() or ".." in path.parts:
+            raise ValueError("The registered workspace has an invalid path.")
+        require_safe_output_path(path)
+    missing = False
+    for path, directory in ((workspace, True), (record.official_folder_path, True), (record.manifest_path, False)):
+        try:
+            path.stat()
+        except FileNotFoundError:
+            missing = True
+            continue
+        if not (path.is_dir() if directory else path.is_file()):
+            raise ValueError(f"The registered path has an unexpected file type: {path}.")
+    if missing and workspace.is_dir() and not record.official_folder_path.exists():
+        prefix = f"{record.dl_number} ".casefold()
+        if any(child.name.casefold().startswith(prefix) for child in workspace.iterdir()):
+            raise ValueError("A possible renamed project folder exists in the registered workspace. Review its association.")
+        if record.manifest_path.is_file():
+            try:
+                payload = OfficialWorkspaceManifestGateway().read(record.manifest_path)
+            except (OSError, ValueError) as exc:
+                raise ValueError("The registered workspace identity manifest cannot be read. Restore it from a verified backup.") from exc
+            if (not isinstance(payload, dict) or payload.get("schema_version") not in (1, 2)
+                    or payload.get("project_id") != record.project_id
+                    or payload.get("dl_number") != record.dl_number
+                    or payload.get("workspace_id", record.workspace_id) != record.workspace_id
+                    or Path(str(payload.get("local_workspace_path"))) != workspace
+                    or Path(str(payload.get("source_book_path"))) != record.source_book_path
+                    or Path(str(payload.get("official_project_folder_path"))) != record.official_folder_path):
+                raise ValueError("The registered workspace has a conflicting project identity. Review its association.")
+    return missing

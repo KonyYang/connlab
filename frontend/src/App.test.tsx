@@ -65,9 +65,9 @@ it.each(["/reference", "/reference?receive=1"])(
   async (path) => {
     window.history.replaceState({}, "", path);
     const user = userEvent.setup(); render(<App />);
-    const library = await screen.findByRole("region", { name: "Project materials library" });
+    await screen.findByRole("region", { name: "Project materials library" });
     expect(receipts.pickReceiptFolder).not.toHaveBeenCalled();
-    await user.click(within(library).getByRole("button", { name: "Back", exact: true }));
+    await user.click(within(screen.getByRole("banner", { name: "Page header" })).getByRole("button", { name: "Back", exact: true }));
     await waitFor(() => expect(window.location.pathname + window.location.search).toBe("/projects"));
     expect(receipts.pickReceiptFolder).not.toHaveBeenCalled();
   }
@@ -79,9 +79,9 @@ it("returns to the exact Workbench page that opened the library", async () => {
   const user = userEvent.setup(); render(<App />);
   await screen.findByRole("region", { name: "Matrix editor" });
   await user.click(screen.getByRole("button", { name: "Library", exact: true }));
-  const library = await screen.findByRole("region", { name: "Project materials library" });
+  await screen.findByRole("region", { name: "Project materials library" });
   await user.click(screen.getByRole("button", { name: "Library", exact: true }));
-  await user.click(within(library).getByRole("button", { name: "Back", exact: true }));
+  await user.click(within(screen.getByRole("banner", { name: "Page header" })).getByRole("button", { name: "Back", exact: true }));
   await screen.findByRole("region", { name: "Matrix editor" });
   expect(window.location.pathname + window.location.search + window.location.hash).toBe(origin);
   expect(window.history.state).toEqual({ preserved: true });
@@ -116,9 +116,9 @@ it.each(["", "batch-1"])("returns from the library to the Projects list with its
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Receive materials" }));
-  const library = await screen.findByRole("region", { name: "Project materials library" });
+  await screen.findByRole("region", { name: "Project materials library" });
   expect(window.location.pathname).toBe("/reference");
-  await user.click(within(library).getByRole("button", { name: "Back", exact: true }));
+  await user.click(within(screen.getByRole("banner", { name: "Page header" })).getByRole("button", { name: "Back", exact: true }));
   await waitFor(() => expect(window.location.pathname + window.location.search).toBe('/projects' + suffix));
   await user.click(await screen.findByRole("button", { name: /Open Workbench.*DL-2026-09-032/ }));
   expect(window.location.pathname + window.location.search).toBe("/projects/project-1" + suffix);
@@ -154,8 +154,9 @@ it("opens the unified list from the old Legacy URL and returns there after brows
 });
 
 vi.mock("./components/layout/AppShell", () => ({
-  AppShell: ({ children, onNavigate, activeRoute, projectFolderId }: { children: ReactNode; onNavigate: (path: string) => void; activeRoute: string; projectFolderId?: string }) => (
+  AppShell: ({ children, onNavigate, activeRoute, projectFolderId, topBarLeadingAction }: { children: ReactNode; onNavigate: (path: string) => void; activeRoute: string; projectFolderId?: string; topBarLeadingAction?: ReactNode }) => (
     <>
+      {topBarLeadingAction && <header aria-label="Page header">{topBarLeadingAction}</header>}
       <output data-testid="active-area">{activeRoute}</output>
       <output data-testid="folder-project">{projectFolderId ?? "none"}</output>
       <nav aria-label="Test sidebar">

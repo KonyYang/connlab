@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.api.dependencies import (
     get_official_project_workspace_service, get_official_folder_relocation_service,
-    get_basic_project_workspace_service,
+    get_basic_project_workspace_service, get_project_workspace_resolution_service,
 )
 from backend.application.official_folder_relocation_service import (
     OfficialFolderRelocationPreview, OfficialFolderRelocationService,
@@ -118,6 +118,60 @@ class BasicWorkspaceCreateRequest(BaseModel):
 
 class BasicWorkspaceResumeRequest(BaseModel):
     operation_id: str
+
+
+class WorkspaceResolutionPreviewRequest(BaseModel):
+    strategy: Literal["relink", "recreate"]
+    path: str | None = None
+
+
+class WorkspaceResolutionApplyRequest(WorkspaceResolutionPreviewRequest):
+    expected_context: str
+    request_id: str
+
+
+@router.post("/resolution/preview")
+def preview_workspace_resolution(project_id: str, request: WorkspaceResolutionPreviewRequest,
+                                 service=Depends(get_project_workspace_resolution_service)):
+    try:
+        return service.preview(project_id, request.strategy, request.path)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/resolution/apply")
+def apply_workspace_resolution(project_id: str, request: WorkspaceResolutionApplyRequest,
+                               service=Depends(get_project_workspace_resolution_service)):
+    try:
+        return service.apply(project_id, request.strategy, request.path, request.expected_context, request.request_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/resolution/resume")
+def resume_workspace_resolution(project_id: str, request: BasicWorkspaceResumeRequest,
+                                service=Depends(get_project_workspace_resolution_service)):
+    try:
+        return service.resume(project_id, request.operation_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/resolution/abandon")
+def keep_registered_workspace(project_id: str, request: BasicWorkspaceResumeRequest,
+                              service=Depends(get_project_workspace_resolution_service)):
+    try:
+        return service.abandon(project_id, request.operation_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.get("/basic/preview")

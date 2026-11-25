@@ -13,6 +13,7 @@ import type {
 } from "./projectFolderTaskSelectors";
 
 export type ProjectFolderHeaderAction = {
+  resolution?: {registeredPath: string; recheckDisabled: boolean; onRecheck: () => void};
   secondaryAction?: Omit<ProjectFolderHeaderAction, "secondaryAction">;
   label: string;
   disabled: boolean;
@@ -75,14 +76,14 @@ export function ProjectFolderActionsSurface({
   readonlyReason?: string;
   footerAction?: ReactNode;
 }): ReactElement {
-  const panelBlocker = readonlyReason ?? selectPanelBlocker(tasks);
+  const panelBlocker = readonlyReason ?? selectPanelBlocker(tasks, Boolean(headerAction?.resolution));
   return (
     <section className="runtime-console-folder-actions" aria-label="Folder Actions">
       <header className="runtime-console-folder-actions-header">
         <p className="eyebrow">Folder Actions</p>
         {headerAction ? (
           <div className="runtime-console-folder-header-actions">
-          <button
+          {!headerAction.resolution && <button
             className="runtime-console-folder-header-action is-primary"
             type="button"
             disabled={headerAction.disabled}
@@ -90,7 +91,7 @@ export function ProjectFolderActionsSurface({
             onClick={headerAction.onClick}
           >
             {headerAction.label}
-          </button>
+          </button>}
           {headerAction.secondaryAction ? (
             <button className="runtime-console-folder-header-action" type="button"
               disabled={headerAction.secondaryAction.disabled} title={headerAction.secondaryAction.title}
@@ -102,7 +103,20 @@ export function ProjectFolderActionsSurface({
         ) : null}
       </header>
       <div className="runtime-console-folder-operation-list">
-        {tasks.map((task) => (
+        {tasks.map((task) => task.key === "project_folder" && headerAction?.resolution ? (
+          <article key={task.key} className="runtime-console-folder-operation">
+            <span className="runtime-console-folder-operation-icon" aria-hidden="true"><UiIcon name="folder" /></span>
+            <div className="runtime-console-folder-operation-copy">
+              <h3>Project folder</h3>
+              <p>The registered folder is unavailable. Reconnect its drive or resolve the folder location.</p>
+              <small className="project-basic-folder-path">{headerAction.resolution.registeredPath}</small>
+              <div className="project-folder-resolution-actions">
+                <button className="runtime-console-folder-header-action is-primary" type="button" disabled={headerAction.disabled} title={headerAction.title} onClick={headerAction.onClick}>{headerAction.label}</button>
+                <button className="runtime-console-folder-header-action" type="button" disabled={headerAction.resolution.recheckDisabled} onClick={headerAction.resolution.onRecheck}>Recheck</button>
+              </div>
+            </div>
+          </article>
+        ) : (
           <FolderOperation
             key={task.key}
             task={task}
@@ -231,10 +245,11 @@ function FolderOperation({
   );
 }
 
-function selectPanelBlocker(tasks: ProjectFolderTaskRow[]): string | null {
+function selectPanelBlocker(tasks: ProjectFolderTaskRow[], resolving: boolean): string | null {
   const directBlocker = tasks.flatMap((task) => task.blockers).find(
-    (message) => !message.startsWith("Required public directory is missing or not a folder:") ||
-      !tasks.some((task) => task.detailMessages?.includes(message))
+    (message) => !(resolving && message === "Project folder is not available yet.") &&
+      (!message.startsWith("Required public directory is missing or not a folder:") ||
+      !tasks.some((task) => task.detailMessages?.includes(message)))
   );
   return directBlocker ?? null;
 }

@@ -242,6 +242,15 @@ def stable_folder_identity(path: Path) -> list[int] | None:
     return [stat_result.st_dev, stat_result.st_ino]
 
 
+def workspace_locations_overlap(left: Path, right: Path) -> bool:
+    """Compare offline registrations lexically and resolve live drive aliases at existing ancestors."""
+    if left.is_relative_to(right) or right.is_relative_to(left):
+        return True
+    left = left.resolve(strict=False)
+    right = right.resolve(strict=False)
+    return left.is_relative_to(right) or right.is_relative_to(left)
+
+
 def _reject_redirected_manifest(path: Path) -> None:
     """Fail closed when the identity file itself redirects outside the workspace."""
     if OfficialWorkspaceManifestGateway.first_redirected_path(path) is not None:

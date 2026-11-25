@@ -332,11 +332,16 @@ export default function App(): ReactElement {
       interactionLocked={Boolean(intakeInteractionLockReason)}
       interactionLockedReason={intakeInteractionLockReason ?? undefined}
       topBarTitle={topBarTitle}
+      topBarLeadingAction={route.name === "reference" ? (
+        <button className="ui-secondary-action" type="button" onClick={backFromReference}>
+          <span aria-hidden="true">← </span>Back
+        </button>
+      ) : undefined}
       onNavigate={handleShellNavigate}
     >
       <RouteLoadBoundary key={JSON.stringify(route)}>
       <Suspense fallback={<RouteLoadingFallback />}>
-      {route.name === "reference" && <ReferenceLibraryPage onBack={backFromReference} copyContext={workbenchCopyContext} onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} />}
+      {route.name === "reference" && <ReferenceLibraryPage copyContext={workbenchCopyContext} onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} onOpenSettings={() => navigate("/settings")} />}
       {(route.name === "projects" || route.name === "projectLibraryList") && (
         <>
           <ProjectListPage

@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 import runpy
+import shutil
 import pytest
 
 from backend.api.main import app
@@ -464,3 +465,117 @@ def test_missing_registered_workspace_does_not_fall_back_to_new_default(tmp_path
         assert not list(new_root.iterdir())
         with sessions() as session:
             assert deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1").official_folder_path == original
+
+@pytest.mark.parametrize("strategy", ["relink", "recreate"])
+def test_resolve_missing_workspace_through_project_actions(tmp_path, strategy):
+    with prepared(tmp_path) as (client, sessions, original_root, _):
+        old_folder = Path(create(client)["official_project_folder_path"])
+        manual_name = "operator notes.txt"
+        (old_folder / manual_name).write_text("manual work", encoding="utf-8")
+        fixture = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_session_api.py")))
+        fixture["_seed_project"]("P2", tmp_path)
+        with sessions() as session:
+            deps.LtrRecordRepository(session).create(LtrRecord("ltr2", "P2", "DL-2026-09-003", LtrStatus.REGISTERED))
+            deps.FileAssetRepository(session).create(
+                FileAsset("historical", "P1", FileAssetType.ATTACHMENT, old_folder / manual_name))
+            session.commit()
+        second = "/api/projects/P2/official-workspace/basic"
+        second_context = client.get(second + "/preview").json()["expected_context"]
+        second_created = client.post(second + "/create", json={"expected_context": second_context, "request_id": "create-p2"})
+        assert second_created.status_code == 200, second_created.text
+        other_folder = Path(second_created.json()["official_project_folder_path"])
+        new_parent = tmp_path / "selected"
+        new_parent.mkdir()
+        restored = original_root.rename(tmp_path / "restored")
+        saved_copy = restored / old_folder.relative_to(original_root)
+        base = "/api/projects/P1/official-workspace"
+        basic = client.get(base + "/basic/preview").json()
+        assert basic["resolution_required"] and basic["registered_folder_path"] == str(old_folder)
+        if strategy == "relink":
+            backup_workspace = shutil.copytree(saved_copy.parent, new_parent / saved_copy.parent.name)
+            target = backup_workspace / saved_copy.name
+        else:
+            target = new_parent
+        body = {"strategy": strategy, "path": str(target)}
+        preview = client.post(base + "/resolution/preview", json=body)
+        assert preview.status_code == 200, preview.text
+        assert preview.json()["old_path"] == str(old_folder)
+        if strategy == "recreate":
+            assert not list(new_parent.iterdir())
+        apply = {**body, "expected_context": preview.json()["expected_context"], "request_id": "resolve-one"}
+        response = client.post(base + "/resolution/apply", json=apply)
+        assert response.status_code == 200, response.text
+        assert response.json()["directory_available"]
+        destination = Path(response.json()["official_project_folder_path"])
+        assert str(destination) == preview.json()["target_path"]
+        assert (destination / manual_name).exists() == (strategy == "relink")
+        assert (saved_copy / manual_name).read_text(encoding="utf-8") == "manual work"
+        assert not old_folder.exists()
+        refreshed = client.get(base + "/basic/preview").json()
+        assert refreshed["directory_available"] and not refreshed.get("resolution_required")
+        assert Path(refreshed["official_project_folder_path"]) == destination
+        with sessions() as session:
+            assert deps.FileAssetRepository(session).get("historical").path == old_folder / manual_name
+            assert deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P2").official_folder_path == other_folder
+        assert client.get(second + "/preview").json()["resolution_required"]
+        replay = client.post(base + "/resolution/apply", json=apply)
+        assert replay.status_code == 200 and replay.json()["operation_id"] == response.json()["operation_id"]
+
+
+def test_resolve_rechecks_default_location_before_applying(tmp_path):
+    with prepared(tmp_path) as (client, sessions, original_root, _):
+        old_folder = Path(create(client)["official_project_folder_path"])
+        original_root.rename(tmp_path / "offline-copy")
+        endpoint = "/api/projects/P1/official-workspace/resolution"
+        body = {"strategy": "recreate"}
+        assert client.post(endpoint + "/preview", json=body).status_code == 409
+        assert not original_root.exists()
+
+        current_default = tmp_path / "new-default"
+        current_default.mkdir()
+        def set_default(path):
+            with sessions() as session:
+                deps.ExternalResourceRepository(session).upsert(
+                    ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, path))
+                session.commit()
+        set_default(current_default)
+        preview = client.post(endpoint + "/preview", json=body)
+        assert preview.status_code == 200, preview.text
+        assert Path(preview.json()["target_path"]).is_relative_to(current_default)
+        assert tuple(current_default.iterdir()) == ()
+        changed_default = tmp_path / "latest-default"
+        changed_default.mkdir()
+        set_default(changed_default)
+        apply = {**body, "expected_context": preview.json()["expected_context"], "request_id": "default-location"}
+        assert client.post(endpoint + "/apply", json=apply).status_code == 409
+        assert tuple(current_default.iterdir()) == tuple(changed_default.iterdir()) == ()
+        with sessions() as session:
+            assert deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1").official_folder_path == old_folder
+
+
+def test_interrupted_resolution_can_keep_reconnected_folder(tmp_path, monkeypatch):
+    with prepared(tmp_path) as (client, sessions, root, _):
+        old_folder = Path(create(client)["official_project_folder_path"])
+        offline = root.rename(tmp_path / "offline-copy")
+        destination = tmp_path / "alternative"
+        destination.mkdir()
+        endpoint = "/api/projects/P1/official-workspace"
+        choice = {"strategy": "recreate", "path": str(destination)}
+        review = client.post(endpoint + "/resolution/preview", json=choice).json()
+        def unavailable(*args):
+            raise OSError("isolated binding interruption")
+        with monkeypatch.context() as patch:
+            patch.setattr(deps.ProjectOfficialWorkspaceRepository, "save", unavailable)
+            result = client.post(endpoint + "/resolution/apply", json={
+                **choice, "expected_context": review["expected_context"], "request_id": "interrupted"})
+            assert result.status_code == 409, result.text
+        offline.rename(root)
+        pending = client.get(endpoint + "/basic/preview").json()["resolution_operation_id"]
+        assert pending
+        result = client.post(endpoint + "/resolution/abandon", json={"operation_id": pending})
+        assert result.status_code == 200, result.text
+        assert result.json()["status"] == "abandoned" and result.json()["directory_available"]
+        refreshed = client.get(endpoint + "/basic/preview").json()
+        assert refreshed["directory_available"] and not refreshed["resolution_operation_id"]
+        assert Path(refreshed["official_project_folder_path"]) == old_folder
+        assert Path(review["target_path"]).is_dir()
