@@ -827,7 +827,7 @@
     },
     "TASK_LIBRARY_MATERIAL_TREE_20261125": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-material-tree-20261125",
       "resources": [],
@@ -846,57 +846,17 @@
         "risk_reasons": [],
         "activation_head": "dcd0622f81b873a674970ccfa5e0e0397bcbc99d",
         "started_at": "2026-11-25T14:29:55.851999Z",
-        "updated_at": "2026-11-25T15:18:19.830782Z",
+        "updated_at": "2026-11-25T15:33:09.826255Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
           "stage": "revision",
           "status": "running",
-          "summary": "User requested source-aware direct Workbench navigation and removal of the materials information dialog.",
+          "summary": "User requested Workbench-verified native library and copy locations, including legacy-only and inaccessible bindings.",
           "requires_user": false
         },
-        "report": {
-          "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
-          "scope_ok": true,
-          "summary": "Replace materials details with a direct ConnLab-only Workbench action and navigate from copy results to the target tree.",
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "74 frontend tests passed, production build passed, isolated Edge native navigation and archive tree checks passed at 989 and 360 px. Evidence in tmp/library-material-tree-20261125/workbench-{green.log,build.log,smoke/result.txt}."
-            }
-          ],
-          "changed_paths": [
-            "frontend/src/features/material-receipts/MaterialDetails.test.tsx",
-            "frontend/src/features/material-receipts/MaterialDetails.tsx",
-            "frontend/src/features/material-receipts/MaterialFiles.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx"
-          ],
-          "subject": "f76ab86ca302eb11ed59d17bd9215314053472bc",
-          "version": 1,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "f76ab86ca302eb11ed59d17bd9215314053472bc",
-            "primary_before": "6a90ad02356f076c84938d700e5ccd8a75165c49",
-            "integrated_head": "dfc383b1409f9410c3af6fe0b348058e18b1e019",
-            "recovered": false
-          },
-          "schema": "connlab.sol-task-report",
-          "roles": {
-            "developer": {
-              "status": "passed"
-            },
-            "qa": {
-              "status": "passed"
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Self-reviewed final diff, source and navigation guards, orphan removal and access to copy destination."
-            }
-          }
-        }
+        "report": null
       }
     }
   }
