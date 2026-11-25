@@ -827,7 +827,7 @@
     },
     "TASK_LIBRARY_MATERIAL_TREE_20261125": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-material-tree-20261125",
       "resources": [],
@@ -846,57 +846,17 @@
         "risk_reasons": [],
         "activation_head": "dcd0622f81b873a674970ccfa5e0e0397bcbc99d",
         "started_at": "2026-11-25T14:29:55.851999Z",
-        "updated_at": "2026-11-25T14:35:13.577232Z",
-        "checkpoint": null,
-        "report": {
-          "summary": "Inline nested folder browsing, full-width filenames and compact file selection; preserve explicit open, copy, search and report shortcuts.",
-          "schema": "connlab.sol-task-report",
+        "updated_at": "2026-11-25T14:36:52.331232Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
-          "validation": [
-            {
-              "summary": "70 related frontend tests, TypeScript/Vite build. Real Edge with isolated SQLite/archive at 989 and 360px: expand two branches, select a nested file, collapse clears hidden selection, empty folder state, no metadata columns, no horizontal overflow. Evidence tmp/library-material-tree-20261125.",
-              "status": "passed"
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed"
-            },
-            "qa": {
-              "summary": "Isolated frontend, build and browser checks.",
-              "status": "passed"
-            },
-            "reviewer": {
-              "summary": "Focused self-review of local diff, async cancellation, selection and file operation boundaries.",
-              "status": "passed"
-            },
-            "developer": {
-              "status": "passed"
-            },
-            "integrator": {
-              "summary": "Checked implementation commit, scope and local clean tree before writer integration.",
-              "status": "passed"
-            }
-          },
-          "changed_paths": [
-            "frontend/src/features/material-receipts/MaterialFileList.tsx",
-            "frontend/src/features/material-receipts/MaterialFiles.tsx",
-            "frontend/src/features/material-receipts/material-file-tree.css",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx"
-          ],
-          "subject": "e754d10b1d1cbf420ff62ae92444ed4f084117e5",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "e754d10b1d1cbf420ff62ae92444ed4f084117e5",
-            "primary_before": "6d2f9c802514eaf3086a88a406705bd10b19f28b",
-            "integrated_head": "8f852d855fa038d7bc0e95a3a81154416536c077",
-            "recovered": false
-          },
-          "scope_ok": true
-        }
+          "stage": "revision",
+          "status": "running",
+          "summary": "Remove redundant Open file toolbar button while preserving file-row activation.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
