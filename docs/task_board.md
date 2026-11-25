@@ -827,7 +827,7 @@
     },
     "TASK_LIBRARY_MATERIAL_TREE_20261125": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-material-tree-20261125",
       "resources": [],
@@ -846,54 +846,17 @@
         "risk_reasons": [],
         "activation_head": "dcd0622f81b873a674970ccfa5e0e0397bcbc99d",
         "started_at": "2026-11-25T14:29:55.851999Z",
-        "updated_at": "2026-11-25T14:56:45.937703Z",
+        "updated_at": "2026-11-25T14:59:54.543839Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
           "stage": "revision",
           "status": "running",
-          "summary": "Show project number and product title on the selected library card only and remove the redundant managed-location label from the file panel.",
+          "summary": "Use one accessible folder icon button before the plain path in the material file panel.",
           "requires_user": false
         },
-        "report": {
-          "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
-          "schema": "connlab.sol-task-report",
-          "scope_ok": true,
-          "subject": "de9d144dfe34f754534ea744178e814206b016e4",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "de9d144dfe34f754534ea744178e814206b016e4",
-            "primary_before": "53b3e8060770f4b22dc704952a622631aceb3194",
-            "integrated_head": "6083888d8d911deaac119adea11f288acad2821b",
-            "recovered": false
-          },
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "summary": "Self-reviewed the focused header and selection assertions."
-            },
-            "qa": {
-              "status": "passed"
-            },
-            "developer": {
-              "status": "passed"
-            }
-          },
-          "summary": "Keep the selected project number and product on the left and lead the right panel with its folder path.",
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "16 library page tests including selection, updated path and nonduplicated title; diff check passed."
-            }
-          ],
-          "changed_paths": [
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx"
-          ],
-          "version": 1
-        }
+        "report": null
       }
     }
   }
