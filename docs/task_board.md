@@ -761,7 +761,39 @@
       "closed_at": "2026-11-24T22:45:21.066677Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_PROJECT_FOLDER_RESOLUTION_20261125": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
+      "branch": "codex/project-folder-resolution-20261125",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PROJECT_FOLDER_RESOLUTION_20261125",
+        "summary": "Hide unavailable library locations and safely resolve missing registered project workspaces.",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Reference library filtering and official single-project folder resolution with identity checks, non-overwriting creation, recovery, regression tests and matching UI.",
+        "scope_paths": [
+          "backend/application",
+          "backend/api",
+          "backend/infrastructure",
+          "frontend/src",
+          "tests/unit",
+          "tests/integration"
+        ],
+        "risk_reasons": [
+          "Explicit mutation of the authoritative project workspace binding and filesystem."
+        ],
+        "activation_head": "20509ae18d728ed5aeb0547925a019afdde5e70b",
+        "started_at": "2026-11-25T00:01:01.228880Z",
+        "updated_at": "2026-11-25T00:01:01.228880Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
