@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/project-library/report-shortcuts", tags=["materi
 
 def get_report_shortcut_service(session=Depends(get_session), settings=Depends(get_settings)):
     return ReportShortcutService(ReportShortcutRepository(session), MaterialReceiptFiles(settings),
-        LibrarySearchRepository(session, get_project_registry_summary_service(session)))
+        LibrarySearchRepository(session, get_project_registry_summary_service(session), settings.data_dir))
 
 
 class ClearShortcutRequest(BaseModel):

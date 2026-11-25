@@ -60,11 +60,6 @@ class BasicProjectWorkspaceService:
         if record:
             if record.project_id != project_id or record.dl_number != number:
                 raise ValueError("The linked folder identity does not match this project.")
-            if (record.local_workspace_path == root or not record.local_workspace_path.is_relative_to(root)
-                    or record.official_folder_path.parent != record.local_workspace_path
-                    or record.source_book_path != record.local_workspace_path / "Source Book"
-                    or record.manifest_path != record.local_workspace_path / ".connlab" / "manifest.json"):
-                raise ValueError("The linked project folder is outside its registered workspace.")
             self._verify_record(record)
             return record
         workspace = root / number
@@ -74,17 +69,33 @@ class BasicProjectWorkspaceService:
 
     @staticmethod
     def _verify_record(record):
+        root = record.local_workspace_path
+        if (not root.is_absolute() or ".." in root.parts or root == root.parent
+                or record.official_folder_path.parent != root
+                or record.source_book_path != root / "Source Book"
+                or record.manifest_path != root / ".connlab" / "manifest.json"):
+            raise ValueError("The linked project folder is outside its registered workspace.")
         for path in (record.local_workspace_path, record.official_folder_path, record.manifest_path):
             require_safe_output_path(path)
         if not record.official_folder_path.is_dir() or not record.manifest_path.is_file():
             raise ValueError("The linked project folder or identity manifest is missing. Review its association; no replacement folder was created.")
         data = OfficialWorkspaceManifestGateway().read(record.manifest_path)
-        if (data.get("schema_version") not in {1, 2} or data.get("project_id") != record.project_id
-                or data.get("dl_number") not in {None, "", record.dl_number}
+        if (not isinstance(data, dict) or data.get("schema_version") not in (1, 2) or data.get("project_id") != record.project_id
+                or data.get("dl_number") not in (None, "", record.dl_number)
                 or data.get("official_project_folder_path") != str(record.official_folder_path)):
             raise ValueError("Project folder manifest identity needs review.")
         if data.get("official_folder_identity") is not None and data["official_folder_identity"] != file_identity(record.official_folder_path):
             raise ValueError("The linked project directory was replaced; review before writing.")
+
+    @classmethod
+    def registered_directory_available(cls, record, operation):
+        if not record or (operation and operation.get("kind") == "resolution" and operation.get("status") != "completed"):
+            return False
+        try:
+            cls._verify_record(record)
+        except (ValueError, OSError):
+            return False
+        return True
 
     def preview(self, project_id):
         blockers, record, target_identity, directories = [], None, None, {}
@@ -128,14 +139,8 @@ class BasicProjectWorkspaceService:
             status = "recovery_required"
         elif blockers:
             status = "blocked"
-        available = False
         registered = None if resolution else self.workspaces.get_by_project(project_id)
-        if registered:
-            try:
-                self._verify_record(registered)
-                available = True
-            except (ValueError, OSError):
-                pass
+        available = self.registered_directory_available(registered, operation)
         registered_path = (resolution["previous_record"]["official_folder_path"] if resolution else
                            str(registered.official_folder_path) if registered else None)
         resolution_required = False

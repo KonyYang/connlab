@@ -184,7 +184,7 @@ def test_retained_temporary_registry_project_cannot_become_live_copy_context(lib
     session.commit()
     summaries=get_project_registry_summary_service(session)
     assert summaries.get_row('temporary').display_project_id_kind == 'temporary'
-    real_catalog=LibrarySearchRepository(session,summaries)
+    real_catalog=LibrarySearchRepository(session,summaries,files.settings.data_dir)
     copies=MaterialReceiptService(MaterialReceiptRepository(session),files,real_catalog)
     browser=copies.create_copy_context()['session_id']
     with pytest.raises(ValueError,match='temporary'):
@@ -192,10 +192,10 @@ def test_retained_temporary_registry_project_cannot_become_live_copy_context(lib
     session.add(ProjectLibraryMemberModel(member_id='imported',project_id='temporary',ltr_number='Historical-1',title='Imported history',folder_path=str(root),source_path='old source',created_at='2026-11-14'))
     session.commit()
     assert summaries.get_row('temporary').display_project_id_kind == 'imported'
-    active=copies.update_copy_context(browser,2,'temporary')
-    assert active['target']['project_id'] == 'temporary'
+    with pytest.raises(ValueError, match="Create the project folder"):
+        copies.update_copy_context(browser,2,'temporary')
     session.get(ProjectModel,'temporary').registry_state='trash'
     session.commit()
     with pytest.raises((LookupError,ValueError)):
-        copies.copy_preview('project:temporary','first.docx',{'session_id':browser,'token':active['token']})
+        copies.update_copy_context(browser,3,'temporary')
     assert (root/'first.docx').read_bytes() == b'first'

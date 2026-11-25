@@ -380,7 +380,7 @@ def test_registered_workspace_survives_default_location_change(tmp_path, monkeyp
         # Search reads the explicit library index, not a live directory scan.
         from backend.api.routes_project_library import get_library_search_service
         with sessions() as session:
-            get_library_search_service(session).refresh()
+            get_library_search_service(session, settings).refresh()
             session.commit()
         manual = original / "Test results" / "manual.txt"
         manual.write_bytes(b"operator-owned content")
@@ -572,6 +572,11 @@ def test_interrupted_resolution_can_keep_reconnected_folder(tmp_path, monkeypatc
         offline.rename(root)
         pending = client.get(endpoint + "/basic/preview").json()["resolution_operation_id"]
         assert pending
+        browse = client.get("/api/project-library/browse", params={"key":"project:P1"}).json()
+        assert browse["location_state"] == "unavailable" and browse["items"] == []
+        session_id = client.post("/api/material-receipts/copy-context/session").json()["session_id"]
+        dest = {"session_id":session_id,"intent":1,"project_id":"P1"}
+        assert client.post("/api/material-receipts/copy-context", json=dest).status_code == 409
         result = client.post(endpoint + "/resolution/abandon", json={"operation_id": pending})
         assert result.status_code == 200, result.text
         assert result.json()["status"] == "abandoned" and result.json()["directory_available"]
@@ -579,3 +584,55 @@ def test_interrupted_resolution_can_keep_reconnected_folder(tmp_path, monkeypatc
         assert refreshed["directory_available"] and not refreshed["resolution_operation_id"]
         assert Path(refreshed["official_project_folder_path"]) == old_folder
         assert Path(review["target_path"]).is_dir()
+        assert client.post("/api/material-receipts/copy-context", json={**dest,"intent":2}).status_code == 200
+
+
+def test_library_and_copy_require_the_workbench_folder_even_with_a_live_legacy_path(tmp_path):
+    from backend.infrastructure.storage.models import ProjectFolderRecordModel
+    from backend.infrastructure.storage.repositories.material_archive import MaterialArchiveRepository
+    with prepared(tmp_path) as (client, sessions, _, _):
+        template = tmp_path / "Template"
+        template.mkdir()
+        original = template / "template.txt"
+        original.write_bytes(b"template only")
+        key = "project:P1"
+        with sessions() as session:
+            session.add(ProjectFolderRecordModel(folder_id="old", project_id="P1", folder_path=str(template)))
+            session.commit()
+            MaterialArchiveRepository(session).cache(
+                {"key": key, "folder_path": str(template), "title": "Legacy"},
+                [{"name": original.name, "relative_path": original.name}])
+        def browse():
+            return client.get("/api/project-library/browse", params={"key":key}).json()
+        def workbench():
+            return client.get("/api/projects/P1/official-workspace/basic/preview").json()["directory_available"]
+        session_id = client.post("/api/material-receipts/copy-context/session").json()["session_id"]
+        def destination(intent):
+            return client.post("/api/material-receipts/copy-context", json={
+                "project_id":"P1", "session_id":session_id, "intent":intent})
+        assert not workbench()
+        entry = client.get("/api/project-library/search", params={"project":key}).json()
+        assert entry["projects"][0]["folder_path"] == "" and entry["files"] == []
+        assert browse()["location_state"] == "unassociated"
+        assert destination(1).status_code == 409
+        assert client.post("/api/project-library/open-file", json={"key":key}).status_code == 409
+        root = Path(create(client)["official_project_folder_path"]).parent
+        assert workbench() and browse()["root"] == str(root)
+        active = destination(2)
+        assert active.status_code == 200 and active.json()["target"]["folder_path"] == str(root)
+        (root / "source.txt").write_text("isolated", encoding="utf8")
+        proof = {"token":active.json()["token"], "session_id":session_id}
+        preview = client.post("/api/material-receipts/copy-preview", json={
+            "source_key":key,"relative_path":"source.txt","context":proof,"target_relative_directory":"Reference materials"})
+        assert preview.status_code == 200, preview.text
+        manifest = root / ".connlab" / "manifest.json"
+        manifest.rename(manifest.with_suffix(".removed"))
+        assert not workbench() and browse()["items"] == []
+        plan = preview.json()
+        confirmation = client.post("/api/material-receipts/copy-confirm", json={
+            "plan_id":plan["plan_id"],"fingerprint":plan["fingerprint"],"context":proof})
+        assert confirmation.status_code == 409, confirmation.text
+        assert not (root / "Reference materials" / "source.txt").exists()
+        assert destination(3).status_code == 409
+        assert original.read_bytes() == b"template only"
+        assert list(template.iterdir()) == [original]

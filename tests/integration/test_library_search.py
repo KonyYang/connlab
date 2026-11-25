@@ -121,12 +121,12 @@ def test_api_unifies_existing_identities_without_copying_or_writing(tmp_path):
         ])
         session.commit()
     with Session(engine) as session:
-        LibrarySearchService(LibrarySearchRepository(session, get_project_registry_summary_service(session)), SearchFiles(), opened.append).refresh()
+        LibrarySearchService(LibrarySearchRepository(session, get_project_registry_summary_service(session), tmp_path), SearchFiles(), opened.append).refresh()
     app = FastAPI()
     app.include_router(router)
     def service():
         with Session(engine) as session:
-            yield LibrarySearchService(LibrarySearchRepository(session, get_project_registry_summary_service(session)), SearchFiles(), opened.append)
+            yield LibrarySearchService(LibrarySearchRepository(session, get_project_registry_summary_service(session), tmp_path), SearchFiles(), opened.append)
     app.dependency_overrides[get_library_search_service] = service
     with engine.connect() as connection:
         before = list(connection.execute(text("SELECT * FROM projects")))

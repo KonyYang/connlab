@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/material-receipts", tags=["material-receipts"])
 
 def get_material_receipt_service(session=Depends(get_session), settings=Depends(get_settings)):
     return MaterialReceiptService(MaterialReceiptRepository(session), MaterialReceiptFiles(settings),
-        LibrarySearchRepository(session, get_project_registry_summary_service(session)))
+        LibrarySearchRepository(session, get_project_registry_summary_service(session), settings.data_dir))
 
 
 def checked(action):
@@ -183,7 +183,7 @@ def archive_service(session,settings):
     from backend.infrastructure.project_library.material_archive_files import MaterialArchiveFiles
     from backend.infrastructure.storage.repositories.material_archive import MaterialArchiveRepository
     return MaterialArchiveService(MaterialArchiveRepository(session),MaterialArchiveFiles(settings),
-        LibrarySearchRepository(session,get_project_registry_summary_service(session)))
+        LibrarySearchRepository(session, get_project_registry_summary_service(session), settings.data_dir))
 
 
 def start_archive_job(session,settings,action):

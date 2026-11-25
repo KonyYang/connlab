@@ -1,5 +1,6 @@
 """Read-only search and explicit access; independent of intake and recovery."""
 from pathlib import PurePosixPath, PureWindowsPath
+from .catalog_entry import catalog_entry, checked_material_entry
 
 
 def material_kind(name):
@@ -28,8 +29,10 @@ class LibrarySearchService:
         for entry in catalog:
             if selected_key and entry["key"] != selected_key or source != "all" and entry["source"] != source:
                 continue
+            if selected_key:
+                entry = checked_material_entry(self.store, entry)
             associated = bool(entry["folder_path"].strip())
-            available = associated and (self.store.indexed_available(entry["folder_path"]) if hasattr(self.store,"indexed_files") else self.files.available(entry["folder_path"]))
+            available = associated and not entry.get("workspace_unavailable", False) and (self.store.indexed_available(entry["folder_path"]) if hasattr(self.store,"indexed_files") else self.files.available(entry["folder_path"]))
             location_state = "unassociated" if not associated else "available" if available else "unavailable"
             entry = {**entry, "available": available, "location_state": location_state}
             if location_state == "unassociated" and entry.get("project_id") and not tokens and not project:
@@ -62,14 +65,9 @@ class LibrarySearchService:
                 "warnings": list(dict.fromkeys(warnings))}
 
     def browse(self, key, relative_directory=""):
-        catalog = self.store.catalog()
-        entry = next((row for row in catalog if row["key"] == key), None)
-        if entry is None and key.startswith("member:"):
-            entry = next((row for row in catalog if row.get("member_id") == key.removeprefix("member:")), None)
-        if entry is None:
-            raise LookupError("Project library entry not found.")
+        entry = catalog_entry(self.store, key)
         root = entry["folder_path"]
-        state = "unassociated" if not root.strip() else "available" if self.files.available(root) else "unavailable"
+        state = "unassociated" if not root.strip() else "available" if not entry.get("workspace_unavailable") and self.files.available(root) else "unavailable"
         directory, rows, warnings = "", [], []
         if state == "available":
             directory, rows, warnings = self.files.browse(root, relative_directory)
@@ -79,11 +77,11 @@ class LibrarySearchService:
                 "location_state": state, "items": rows, "warnings": warnings}
 
     def open(self, key, relative="", containing=False):
-        entry = next((entry for entry in self.store.catalog() if entry["key"] == key), None)
-        if entry is None:
-            raise LookupError("Project library entry not found.")
+        entry = catalog_entry(self.store, key)
         if not entry["folder_path"].strip():
             raise ValueError("A material folder is not linked to this project yet. Use its workspace to associate one.")
+        if entry.get("workspace_unavailable"):
+            raise ValueError("The registered project folder is unavailable. Review its location in the Workbench.")
         path = self.files.resolve(entry["folder_path"], relative)
         if containing and relative:
             path = path.parent
@@ -97,7 +95,8 @@ class LibrarySearchService:
     def refresh(self):
         """Explicit cache refresh for existing catalog sources; queries never perform this walk."""
         for entry in self.store.catalog():
-            if not entry.get('folder_path') or not hasattr(self.store,'cache_index'):continue
+            entry = checked_material_entry(self.store, entry)
+            if entry.get('workspace_unavailable') or not entry.get('folder_path') or not hasattr(self.store,'cache_index'):continue
             if not self.files.available(entry['folder_path']):continue
             rows,warnings=self.files.scan(entry['folder_path'])
             if not warnings:self.store.cache_index(entry,rows)

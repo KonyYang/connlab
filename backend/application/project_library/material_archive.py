@@ -6,7 +6,10 @@ import logging
 from backend.application.project_library.material_receipt import MaterialReceiptService
 from backend.domain.project_library import ProjectLibraryConflict
 
+from .catalog_entry import checked_material_entry
+
 logger=logging.getLogger(__name__)
+
 
 class MaterialArchiveService:
     def __init__(self,store,files,catalog):
@@ -39,7 +42,9 @@ class MaterialArchiveService:
                 self.files.check_cancel()
                 if entry.get('intake_status','completed')!='completed':continue
                 try:
-                    if not self.files.available(entry['folder_path']):
+                    entry = checked_material_entry(self.catalog, entry)
+                    if not entry['folder_path']:continue
+                    if entry.get('workspace_unavailable') or not self.files.available(entry['folder_path']):
                         self.store.mark_available(entry['folder_path'],False);continue
                     rows=self.files.scan_index(entry['folder_path'])
                     self.store.cache(entry,rows)
@@ -58,10 +63,13 @@ class MaterialArchiveService:
                 if op['status']!='completed' and op['root_path']==str(root) and (op['target_path']==str(source) or op['source_path']==str(source) and not independent):
                     return dict(status='pending',operation=op,target_path=op['target_path'],source_path=str(source))
             if source.parent==root:
+                existing = self._entry_for_path(source)
+                if existing and checked_material_entry(self.catalog, existing).get("workspace_unavailable"):
+                    raise ProjectLibraryConflict("Review the registered project folder in the Workbench before indexing it.")
                 number,title=self.files.metadata(source)
                 row=self.store.register(root,source,number,title)
                 # Existing receipt/project identities own their links and selection state.
-                row=self._entry_for_path(source) or row
+                row=existing or row
                 self.store.cache(row,self.files.scan_index(source))
                 return dict(status='existing',source_path=str(source),target_path=str(source),target_key=row['key'])
             target=root/source.name
