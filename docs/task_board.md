@@ -824,6 +824,32 @@
           "schema": "connlab.sol-task-report"
         }
       }
+    },
+    "TASK_LIBRARY_MATERIAL_TREE_20261125": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
+      "branch": "codex/library-material-tree-20261125",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_MATERIAL_TREE_20261125",
+        "summary": "Expand project material folders inline in the reference library.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Frontend material tree, selection, search and related feedback and tests.",
+        "scope_paths": [
+          "frontend/src/features/material-receipts",
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "dcd0622f81b873a674970ccfa5e0e0397bcbc99d",
+        "started_at": "2026-11-25T14:29:55.851999Z",
+        "updated_at": "2026-11-25T14:29:55.851999Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
