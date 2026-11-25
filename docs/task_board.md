@@ -773,11 +773,11 @@
   "tasks": {
     "TASK_LIBRARY_OPEN_FOLDER_COLOR_20261125": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
       "branch": "codex/library-open-folder-color-20261125",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "6c7b8f38781efffef82d7c1e6238eb1c31d49c15",
       "task": {
         "task_id": "TASK_LIBRARY_OPEN_FOLDER_COLOR_20261125",
         "summary": "Match the library Open folder button background to Back.",
@@ -790,9 +790,39 @@
         "risk_reasons": [],
         "activation_head": "10c5a4a26ff0568fcfb7a78d2ee39eb21a9d6a29",
         "started_at": "2026-11-25T14:21:02.793697Z",
-        "updated_at": "2026-11-25T14:21:02.793697Z",
+        "updated_at": "2026-11-25T14:22:45.962690Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "roles": {
+            "developer": {
+              "summary": "Implemented and checked the exact two CSS rules.",
+              "status": "passed"
+            }
+          },
+          "version": 1,
+          "validation": [
+            {
+              "summary": "TypeScript and Vite build passed. Edge 926px on isolated SQLite: both default #eef5ff and hover #e3efff. Evidence tmp/library-open-folder-color-20261125/colors.json.",
+              "status": "passed"
+            }
+          ],
+          "summary": "Open folder uses the same normal and hover background tokens as Back.",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "d8f1e51ab402f1a564488ffa82a58b827a8e875c",
+            "primary_before": "1e27df5b4867c89e8c9e31ac6a2d56192e141ae5",
+            "integrated_head": "6c7b8f38781efffef82d7c1e6238eb1c31d49c15",
+            "recovered": false
+          },
+          "task_id": "TASK_LIBRARY_OPEN_FOLDER_COLOR_20261125",
+          "scope_ok": true,
+          "subject": "d8f1e51ab402f1a564488ffa82a58b827a8e875c",
+          "changed_paths": [
+            "frontend/src/pages/reference-library.css"
+          ],
+          "schema": "connlab.sol-task-report"
+        }
       }
     }
   }
