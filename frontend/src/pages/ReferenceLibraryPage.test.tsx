@@ -168,7 +168,12 @@ it("browsing project B changes the source and clears file selection but keeps ex
  await user.click(screen.getByRole("button",{name:"温升记录.xlsx"}));
  await user.click(screen.getByRole("button",{name:/DL-B Product B/}));
  await screen.findByRole("button",{name:"温升记录.xlsx"});
- expect(screen.getByLabelText("Browsing materials").textContent).toContain("Product B");
+ expect(screen.getByRole("button",{name:/DL-B Product B/,pressed:true})).toBeTruthy();
+ const heading=screen.getByLabelText("Browsing materials");
+ expect(heading.textContent).toContain(b.folder_path);
+ expect(heading.textContent).not.toContain(b.title);
+ expect(heading.textContent).not.toContain(b.number);
+ expect(heading.textContent).not.toContain("Managed location");
  expect(screen.getByRole("button",{name:file.name,pressed:false})).toBeTruthy();
  expect(screen.getByRole("region",{name:"Copy destination"}).textContent).toContain("DL-2026-08-079");
  expect(screen.getByRole("region",{name:"Copy destination"}).textContent).toContain("D:/isolated");
