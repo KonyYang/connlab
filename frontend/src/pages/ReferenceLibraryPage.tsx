@@ -7,6 +7,7 @@ import { MaterialFiles } from "../features/material-receipts/MaterialFiles";
 import { CopyMaterials } from "../features/material-receipts/CopyMaterials";
 import { UiIcon } from "../components/common/UiIcon";
 import "./reference-library.css";
+import { LibraryProjectTable } from "../features/material-receipts/LibraryProjectTable";
 
 const kinds: Record<string,string> = { application: "Application", plan: "Test plan", record: "Test record", report: "Report", photo: "Photo", other: "Other" };
 const sources: Record<string,string> = { connlab: "ConnLab project", received: "Received materials", linked: "Linked folder" };
@@ -106,11 +107,11 @@ export function ReferenceLibraryPage({ onOpenProject, onOpenSettings, copyContex
    {offlineRoot!==null ? <><button disabled={scanning!=="idle"} onClick={()=>void refreshIndex()}>Retry</button>{onOpenSettings && <button onClick={onOpenSettings}>Open Settings</button>}</> : error && <button onClick={()=>setReload(value=>value+1)}>Retry</button>}
   </div>}
   <div className="library-workspace">
-   <aside className="library-projects" aria-label="Project materials"><header><strong>Project materials</strong><span>{visibleProjects.length}</span></header>{busy && <p role="status">Searching…</p>}
-    <div className="library-project-list">{visibleProjects.map(row=><div className={"library-project-card"+(row.key===selectedKey?" is-selected":"")} key={row.key}>
-     <button className="library-project-choice" aria-pressed={row.key===selectedKey} onClick={()=>{setDirect("");setSelectedKey(row.key);setError("");}}><strong>{row.number || "No number"}</strong><span>{row.title || "Not recorded"}</span><small>{sources[row.source]}</small></button>
-     {receiptIncomplete(row) && <div className="library-incomplete"><span>Receipt incomplete</span><button disabled={receiving} onClick={()=>{setResumeOperation(row.operation_id!);setReceiving(true);}}>Continue receipt</button></div>}
-    </div>)}</div>
+   <aside className="library-projects" aria-label="Project materials">
+    {busy && <p role="status">Searching…</p>}
+    <LibraryProjectTable projects={visibleProjects} selectedKey={selectedKey} receiving={receiving}
+     onSelect={key=>{setDirect("");setSelectedKey(key);setError("");}}
+     onResume={id=>{setResumeOperation(id);setReceiving(true);}} />
     {!busy && !visibleProjects.length && <p className="library-empty">{search?"No matching project materials.":"No materials to show."}</p>}
    </aside>
    <section className="library-files" aria-label="Selected project materials">{unavailableLink ? (!busy && !error && offlineRoot===null && <div className="library-empty"><p>This material location is unavailable.</p>{selected?.folder_path && <p>{selected.folder_path}</p>}<button disabled={scanning!=="idle"} onClick={()=>void refreshIndex()}>Refresh materials</button></div>) : selected ? <>
