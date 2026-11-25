@@ -9,6 +9,8 @@ class ReportShortcutService:
 
     def list(self, key):
         entry = catalog_entry(self.catalog, key)
+        if entry.get("workspace_unavailable") or not entry["folder_path"]:
+            return {"key": entry["key"], "items": []}
         items = [{**pointer, **self.files.report_pointer(entry["folder_path"], pointer["relative_path"])}
                  for pointer in self.store.list(entry["key"])]
         return {"key": entry["key"], "items": items}
@@ -25,6 +27,8 @@ class ReportShortcutService:
         with self.files.lock():
             entry = catalog_entry(self.catalog, key)
             current = self._current(entry["key"], role, expected_path)
+            if entry.get("workspace_unavailable") or not entry["folder_path"]:
+                raise ValueError("The materials folder is unavailable.")
             path = self.files.report_pointer(entry["folder_path"], relative_path, require_file=True)["relative_path"]
             if current and current != path and not replacement_confirmed:
                 raise ProjectLibraryConflict("Confirm replacement after reviewing the current and selected report.")

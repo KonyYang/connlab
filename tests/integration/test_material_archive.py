@@ -198,7 +198,7 @@ def test_real_catalog_search_uses_lightweight_index_without_scan_or_availability
     service.refresh()
     class Summaries:
         def list_rows(self):return []
-    repo=LibrarySearchRepository(store.session,Summaries());disk=SearchFiles()
+    repo=LibrarySearchRepository(store.session,Summaries(),files.settings.data_dir);disk=SearchFiles()
     def forbidden(*args):raise AssertionError('Queries must not scan or stat material folders')
     monkeypatch.setattr(disk,'scan',forbidden);monkeypatch.setattr(disk,'available',forbidden)
     search=LibrarySearchService(repo,disk,lambda path:None)
@@ -321,7 +321,7 @@ def test_index_search_includes_the_physical_folder_name_without_io(archive):
     store.register(str(root),str(folder),None,'Older retained title');service.refresh()
     class Summaries:
         def list_rows(self):return []
-    search=LibrarySearchService(LibrarySearchRepository(store.session,Summaries()),SearchFiles(),lambda path:None)
+    search=LibrarySearchService(LibrarySearchRepository(store.session,Summaries(),files.settings.data_dir),SearchFiles(),lambda path:None)
     assert len(search.search('remember-this-folder')['projects'])==1
 
 
@@ -388,7 +388,7 @@ def test_retry_preserves_manual_edits_to_received_partial_files(archive,tmp_path
     assert not Path(op['target_path']).exists()
 
 
-def existing_material_catalog(store,folder,kind):
+def existing_material_catalog(store,folder,kind,data_dir):
     from backend.infrastructure.storage.repositories.library_search import LibrarySearchRepository
     from backend.api.dependencies import get_project_registry_summary_service
     if kind=='receipt':
@@ -396,12 +396,21 @@ def existing_material_catalog(store,folder,kind):
             source_path='historical-origin',batch_id='historical-batch',created_at='2020-01-01'))
         key='receipt:retained-receipt'
     else:
-        from backend.infrastructure.storage.models import ProjectModel,ProjectFolderRecordModel
+        from backend.infrastructure.storage.models import ProjectModel, ProjectOfficialWorkspaceRecordModel
         store.session.add(ProjectModel(project_id='retained-native',product_name='Retained connector',requestor='Lab',status='draft'))
         store.session.commit()
-        store.session.add(ProjectFolderRecordModel(folder_id='retained-folder',project_id='retained-native',folder_path=str(folder)))
+        import json
+        official = folder / "Project contents"
+        official.mkdir()
+        manifest = folder / ".connlab" / "manifest.json"
+        manifest.parent.mkdir()
+        manifest.write_text(json.dumps({"schema_version": 2, "project_id": "retained-native",
+            "official_project_folder_path": str(official)}), encoding="utf8")
+        store.session.add(ProjectOfficialWorkspaceRecordModel(workspace_id="verified", project_id="retained-native",
+            dl_number="DL-2020-01-001",local_workspace_path=str(folder),source_book_path=str(folder/"Source Book"),
+            official_folder_path=str(official),manifest_path=str(manifest),created_at="2020-01-01"))
         store.session.commit();key='project:retained-native'
-    return LibrarySearchRepository(store.session,get_project_registry_summary_service(store.session)),key
+    return LibrarySearchRepository(store.session,get_project_registry_summary_service(store.session),data_dir),key
 
 
 @pytest.mark.parametrize('kind',['receipt','native'])
@@ -410,11 +419,11 @@ def test_receiving_a_known_direct_child_returns_its_real_browsable_catalog_ident
     from backend.infrastructure.project_library.search_files import SearchFiles
     service,store,files,root=archive
     folder=root/'Already registered';folder.mkdir();(folder/'report.txt').write_bytes(b'retained')
-    catalog,key=existing_material_catalog(store,folder,kind);service.catalog=catalog
+    catalog,key=existing_material_catalog(store,folder,kind,files.settings.data_dir);service.catalog=catalog
     result=service.preview(str(folder))
     assert result['status']=='existing' and result['target_key']==key
     search=LibrarySearchService(catalog,SearchFiles(),lambda path:None)
-    assert search.browse(result['target_key'])['items'][0]['name']=='report.txt'
+    assert 'report.txt' in [item['name'] for item in search.browse(result['target_key'])['items']]
     selected=search.search(project=result['target_key'])
     assert [row['key'] for row in selected['projects']]==[key]
     assert [row['name'] for row in selected['files']]==['report.txt']
@@ -429,7 +438,7 @@ def test_existing_external_index_adopts_library_root_and_becomes_unavailable_whe
     service,store,files,root=archive
     configured=tmp_path/'Later library';folder=configured/'Existing connector';folder.mkdir(parents=True)
     (folder/'report.txt').write_bytes(b'retained')
-    catalog,key=existing_material_catalog(store,folder,kind);service.catalog=catalog
+    catalog,key=existing_material_catalog(store,folder,kind,files.settings.data_dir);service.catalog=catalog
     service.refresh()
     before=store.indexed_files(key);assert before and store.indexed_available(str(folder))
     store.receipts.configure(str(configured));service.refresh()
@@ -447,8 +456,22 @@ def test_receiving_a_child_does_not_select_an_overlapping_parent_catalog_entry(a
     from backend.infrastructure.project_library.search_files import SearchFiles
     service,store,files,root=archive
     folder=root/'Distinct child';folder.mkdir();(folder/'report.txt').write_bytes(b'child report')
-    catalog,parent_key=existing_material_catalog(store,root,'receipt');service.catalog=catalog
+    catalog,parent_key=existing_material_catalog(store,root,'receipt',files.settings.data_dir);service.catalog=catalog
     result=service.preview(str(folder))
     assert result['target_key']!=parent_key
     assert result['target_key'].startswith('archive:')
     assert LibrarySearchService(catalog,SearchFiles(),lambda path:None).browse(result['target_key'])['root']==str(folder)
+
+def test_receiving_an_existing_workspace_with_a_missing_manifest_cannot_refresh_its_file_index(archive):
+    service, store, files, root = archive
+    folder = root / "Project"
+    folder.mkdir()
+    catalog, key = existing_material_catalog(store, folder, "native", files.settings.data_dir)
+    service.catalog = catalog
+    (folder / ".connlab" / "manifest.json").unlink()
+    (folder / "manual.txt").write_bytes(b"retained")
+    from backend.domain.project_library import ProjectLibraryConflict
+    with pytest.raises(ProjectLibraryConflict, match="Workbench"):
+        service.preview(str(folder))
+    assert store.indexed_files(key) == []
+    assert (folder / "manual.txt").read_bytes() == b"retained"

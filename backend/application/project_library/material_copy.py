@@ -1,6 +1,7 @@
 """Explicit selected-file copying into an existing project, without adoption or recovery."""
 from datetime import datetime, timezone
 from uuid import uuid4
+from .catalog_entry import catalog_entry
 from backend.domain.project_library import ProjectLibraryConflict
 
 
@@ -10,14 +11,13 @@ class MaterialCopyService:
 
     def _entry(self, key, native=False):
         self.store.refresh()
-        entries = self.catalog.catalog()
-        entry = next((row for row in entries if row["key"] == key), None)
-        if entry is None:
-            raise LookupError("Material entry not found. Refresh the library.")
+        entry = catalog_entry(self.catalog, key)
         if native and (not entry.get("project_id") or entry["source"] == "linked"):
             raise ValueError("Choose an existing ConnLab project as the copy destination.")
         if native and not self.catalog.copy_target_eligible(entry["project_id"]):
             raise ValueError("Open an active Project Workbench; retained temporary work cannot be a copy target.")
+        if entry.get("workspace_unavailable"):
+            raise ValueError("The registered project folder is unavailable. Review its location in the Workbench.")
         if not entry["folder_path"] or not self.files.available(entry["folder_path"]):
             raise ValueError("Associate or locate the material folder before copying.")
         return {**entry, "available": True}

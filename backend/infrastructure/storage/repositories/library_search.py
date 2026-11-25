@@ -2,8 +2,11 @@
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 import logging
-from pathlib import PureWindowsPath
-from backend.infrastructure.storage.models import ProjectFolderRecordModel, ProjectModel
+from pathlib import Path, PureWindowsPath
+from backend.application.basic_project_workspace_service import BasicProjectWorkspaceService
+from backend.infrastructure.files.generation_journal import GenerationJournal
+from backend.infrastructure.storage.repositories.official_workspace import ProjectOfficialWorkspaceRepository
+from backend.infrastructure.storage.models import ProjectModel
 from backend.infrastructure.storage.models_legacy_projects import LegacyProjectRecordModel
 from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
 
@@ -11,28 +14,47 @@ from backend.infrastructure.storage.repositories.project_library import ProjectL
 logger=logging.getLogger(__name__)
 
 class LibrarySearchRepository:
-    def __init__(self, session, summaries):
+    def __init__(self, session, summaries, data_dir):
         self.session, self.summaries = session, summaries
+        self.workspaces = ProjectOfficialWorkspaceRepository(session)
+        self.journal = GenerationJournal(data_dir / "basic_project_workspace")
 
     def copy_target_eligible(self, project_id):
         row = self.summaries.get_row(project_id)
-        return bool(row and row.registry_state == "active" and row.display_project_id_kind != "temporary")
+        if not row or row.registry_state != "active" or row.display_project_id_kind == "temporary":
+            return False
+        record = self.workspaces.get_by_project(project_id)
+        if record is None:
+            raise ValueError("Create the project folder in the Workbench before copying materials.")
+        return True
+
+    def check_material_entry(self, entry):
+        """Live operations verify the selected project without touching unrelated directories."""
+        if not entry["key"].startswith("project:") or not entry["folder_path"]:
+            return entry
+        record = self.workspaces.get_by_project(entry["project_id"])
+        if record is None and entry["source"] == "received":
+            return entry
+        if record and record.local_workspace_path == Path(entry["folder_path"]):
+            try:
+                operation = self.journal.read(record.project_id)
+            except (OSError, ValueError):
+                return {**entry, "workspace_unavailable": True}
+            if BasicProjectWorkspaceService.registered_directory_available(record, operation):
+                return entry
+        return {**entry, "workspace_unavailable": True}
 
     def catalog(self):
         store = ProjectLibraryRepository(self.session)
         members = store.members()
         hidden = set(self.session.scalars(select(ProjectModel.project_id).where(ProjectModel.registry_state != "active")))
-        workspaces = {row["project_id"]: row for row in store.workspaces()}
-        folders = {}
-        for row in self.session.scalars(select(ProjectFolderRecordModel).order_by(ProjectFolderRecordModel.created_on, ProjectFolderRecordModel.folder_id)):
-            folders[row.project_id] = row.folder_path
+        workspaces = {record["project_id"]: record["local_workspace_path"] for record in store.workspaces()}
         entries, represented = [], set()
         for row in self.summaries.list_rows():
             if row.registry_state != "active":
                 continue
             member = next((m for m in members if m["project_id"] == row.project_id and m.get("disposition") != "recovery"), None)
-            workspace = workspaces.get(row.project_id)
-            root = workspace["local_workspace_path"] if workspace else folders.get(row.project_id) or (member["folder_path"] if member else "")
+            root = workspaces.get(row.project_id) or (member["folder_path"] if member else "")
             entries.append(dict(key=f"project:{row.project_id}", project_id=row.project_id,
                 member_id=member["member_id"] if member else None, title=row.sample_description or "Not recorded",
                 number=row.display_project_id, test_item=row.test_item or "", source="received" if member else "connlab", folder_path=root))

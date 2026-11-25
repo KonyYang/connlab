@@ -23,13 +23,13 @@ from backend.application.project_library.automatic_snapshot import AutomaticPort
 router = APIRouter(prefix="/api/project-library", tags=["project-library"])
 
 
-def get_library_search_service(session=Depends(get_session)):
+def get_library_search_service(session=Depends(get_session), settings=Depends(get_settings)):
     from backend.api.dependencies import get_project_registry_summary_service
     from backend.application.project_library.search import LibrarySearchService
     from backend.infrastructure.storage.repositories.library_search import LibrarySearchRepository
     from backend.infrastructure.project_library.search_files import SearchFiles, open_document
     return LibrarySearchService(
-        LibrarySearchRepository(session, get_project_registry_summary_service(session)),
+        LibrarySearchRepository(session, get_project_registry_summary_service(session), settings.data_dir),
         SearchFiles(), open_document)
 
 

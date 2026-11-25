@@ -40,3 +40,12 @@ it("boots directly in Library with no inferred target and carries pending real a
  await act(async()=>resolve({session_id:"browser",intent:1,token:"active",target}));
  expect(live.result.current?.token).toBe("active");
 });
+
+it("enables the copy destination after the open Workbench creates its folder", async () => {
+ vi.mocked(api.updateCopyContext).mockResolvedValueOnce({session_id:"browser",intent:1,target:null,token:null});
+ const view = renderHook(() => useWorkbenchCopyContext("p1",false));
+ await waitFor(() => expect(api.updateCopyContext).toHaveBeenCalledTimes(1));
+ expect(view.result.current).toBeNull();
+ act(() => { window.dispatchEvent(new CustomEvent("connlab:project-folder-changed",{detail:"p1"})); });
+ await waitFor(() => expect(view.result.current?.target.project_id).toBe("p1"));
+});

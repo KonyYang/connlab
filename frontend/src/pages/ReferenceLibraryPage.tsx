@@ -119,7 +119,7 @@ export function ReferenceLibraryPage({ onOpenProject, onOpenSettings, copyContex
       <button type="button" aria-label="Open folder" disabled={!selected.available}
        title={selected.available ? "Open folder" : selected.folder_path ? "Restore access to the registered folder, then refresh." : "No folder linked."}
        onClick={() => void openFolder()}><UiIcon name="folder" /></button>
-      <span className="library-location-path" style={{flexBasis: 0}}>{selected.folder_path || "No materials linked yet"}</span>
+      <span className="library-location-path" style={{flexBasis: 0}}>{selected.folder_path || (workbenchId ? "Project folder has not been created." : "No materials linked yet")}</span>
       {workbenchId && <button type="button" onClick={() => onOpenProject(workbenchId)}>Open workbench</button>}
      </div>
     </header>

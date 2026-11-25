@@ -7,13 +7,18 @@ files safely. Stage 1 implements only discovery and access through `/reference`.
   implementations remain compatibility code only; ordinary library navigation does not
   enter them or call portable-data APIs. No registration migration or file relocation.
 - Read-only catalog combines existing registry summaries, explicit member/project
-  associations, workspace/folder records and legacy links. Same numbers do not merge
+  associations, registered Workbench workspaces and legacy links. Same numbers do not merge
   identities. Equivalent Windows paths for an explicitly associated member are not
   listed twice; separate historical copies remain separate.
 - Search combines number, product/sample description, recorded test item and file
   name. All query words must match; no document contents are read or indexed.
   Unrecorded legacy metadata is not inferred. Categories are filename suggestions.
-- Queries inspect filesystem metadata on demand. Refresh sees external file changes.
+- Ordinary searches read the file index. Refresh checks directories and updates it.
+  A ConnLab project without a registered workspace has no project materials root.
+  Historical folder-generation records do not grant read or copy access. Browsing,
+  opening, and copying recheck the selected workspace manifest and recovery state.
+  Received folders remain browsable on their own. Copying to a project requires
+  its verified workspace at destination selection, preview, confirmation and retry.
   Each location has a 20,000-entry and 40-level traversal bound. Incomplete scans
   and unavailable locations are reported; the registration is retained.
 - File access resolves a stable catalog identity plus relative path on the server.

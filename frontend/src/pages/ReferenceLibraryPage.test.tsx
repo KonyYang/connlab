@@ -192,7 +192,7 @@ it("distinguishes an explicitly searched project with no linked materials from a
  await user.type(screen.getByLabelText("Search project materials"),"PwrBlade");await user.click(screen.getByRole("button",{name:"Search",exact:true}));
  await user.click(await screen.findByRole("button",{name:"Open workbench"}));
  expect(open).toHaveBeenCalledWith("p1");
- expect(screen.getByText("No materials linked yet")).toBeTruthy();
+ expect(screen.getByText("Project folder has not been created.")).toBeTruthy();
  expect(screen.queryByText(/Original material location is unavailable/)).toBeNull();
 });
 it("shows an empty ordinary list without suggesting repair of individual missing locations",async()=>{
