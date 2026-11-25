@@ -764,7 +764,7 @@
   "tasks": {
     "TASK_PROJECT_FOLDER_RESOLUTION_20261125": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
       "branch": "codex/project-folder-resolution-20261125",
       "resources": [],
@@ -788,82 +788,17 @@
         ],
         "activation_head": "20509ae18d728ed5aeb0547925a019afdde5e70b",
         "started_at": "2026-11-25T00:01:01.228880Z",
-        "updated_at": "2026-11-25T00:16:11.091670Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "roles": {
-            "reviewer": {
-              "status": "passed"
-            },
-            "qa": {
-              "status": "passed"
-            },
-            "integrator": {
-              "status": "passed"
-            },
-            "planner": {
-              "status": "passed"
-            },
-            "developer": {
-              "status": "passed"
-            }
-          },
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/project_registry_access_guard.py",
-            "backend/api/routes_official_project_workspace.py",
-            "backend/application/basic_project_workspace_service.py",
-            "backend/application/project_workspace_resolution.py",
-            "backend/infrastructure/files/basic_project_workspace_publisher.py",
-            "backend/infrastructure/official_workspace_manifest.py",
-            "backend/infrastructure/storage/repositories/official_workspace.py",
-            "frontend/src/App.test.tsx",
-            "frontend/src/App.tsx",
-            "frontend/src/api/client.ts",
-            "frontend/src/api/projectFolderResolution.ts",
-            "frontend/src/components/layout/AppShell.tsx",
-            "frontend/src/components/layout/TopBar.tsx",
-            "frontend/src/features/project-workbench/ProjectFolderResolutionDialog.test.tsx",
-            "frontend/src/features/project-workbench/ProjectFolderResolutionDialog.tsx",
-            "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx",
-            "frontend/src/pages/reference-library.css",
-            "frontend/src/workbench.css",
-            "tests/integration/test_basic_project_workspace_api.py",
-            "tests/unit/test_project_workspace_resolution.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "218 backend tests passed, one symlink permission skip; Windows junction and renamed-folder 409 recovery verified."
-            },
-            {
-              "status": "passed",
-              "summary": "143 frontend tests passed and TypeScript/Vite build passed."
-            },
-            {
-              "status": "passed",
-              "summary": "Isolated SQLite, real HTTP and Edge at 360 and 555 px: default creation, relink, manual-file outcomes, offline library, direct links and header Back. Native folder selection supplied by fixture. Evidence: tmp/folder-resolution-qa-20261125."
-            }
-          ],
+        "updated_at": "2026-11-25T14:13:09.235200Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
           "task_id": "TASK_PROJECT_FOLDER_RESOLUTION_20261125",
-          "summary": "Hide unavailable materials, move library Back to its title, and resolve a missing registered project folder with safe relink, new-folder creation, resume and keep-previous actions.",
-          "scope_ok": true,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "4e2989d25ccbdd4e139bf876f04580850144ea1c",
-            "primary_before": "1c7738a6ea6071a0e22fc134b0da5600d859c4f3",
-            "integrated_head": "212c56361f225145671976251a42eae3a2cee706",
-            "recovered": false
-          },
-          "subject": "4e2989d25ccbdd4e139bf876f04580850144ea1c",
-          "version": 1
-        }
+          "stage": "revision",
+          "status": "running",
+          "summary": "Place text-only Back at far right of library header and verify at 676px, preserving navigation.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
