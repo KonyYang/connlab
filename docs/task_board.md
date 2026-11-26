@@ -854,11 +854,11 @@
     },
     "TASK_LIBRARY_SEARCH_CLEAR_20261126": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/library-search-clear-20261126",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "a44675c0a852ca69a15a3f50b76813942163076c",
       "task": {
         "task_id": "TASK_LIBRARY_SEARCH_CLEAR_20261126",
         "summary": "Update library results when the search box is cleared.",
@@ -872,9 +872,40 @@
         "risk_reasons": [],
         "activation_head": "15d127c91b9f27529fde5057b6109ea9d5c5b2e1",
         "started_at": "2026-11-26T00:07:26.270969Z",
-        "updated_at": "2026-11-26T00:07:26.270969Z",
+        "updated_at": "2026-11-26T00:09:02.389872Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "version": 1,
+          "roles": {
+            "developer": {
+              "summary": "Self-reviewed the input handler, retained submit behavior for nonblank text and separate clear-all action.",
+              "status": "passed"
+            }
+          },
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
+            "frontend/src/pages/ReferenceLibraryPage.tsx"
+          ],
+          "task_id": "TASK_LIBRARY_SEARCH_CLEAR_20261126",
+          "subject": "b5987e71277b5bb5ae039a18da1c84b1e0d58934",
+          "summary": "Clearing the keyword immediately restores results under the current filters.",
+          "schema": "connlab.sol-task-report",
+          "validation": [
+            {
+              "summary": "Both new tests reproduced stale results before the fix. All 18 ReferenceLibraryPage tests passed after the fix with isolated fixtures; TypeScript and Vite build passed.",
+              "status": "passed"
+            }
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "b5987e71277b5bb5ae039a18da1c84b1e0d58934",
+            "primary_before": "5f76690b5dc84844f4dce9918b2fee2e904e16f2",
+            "integrated_head": "a44675c0a852ca69a15a3f50b76813942163076c",
+            "recovered": false
+          }
+        }
       }
     }
   }
