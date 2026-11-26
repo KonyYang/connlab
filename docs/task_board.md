@@ -845,11 +845,11 @@
   "tasks": {
     "TASK_REPORT_CONTENT_ENTRY_20261127": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
       "branch": "codex/report-content-entry-20261127",
       "resources": [],
-      "integrated_head": "7e4bf361c98bfadc8ab23755b7e272b0d5b5f98e",
+      "integrated_head": "6673aeab205e061d7061f4b6ba8266c104d61b94",
       "task": {
         "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
         "summary": "Simplify report entry, section editing and direct customer copies",
@@ -865,7 +865,7 @@
         "risk_reasons": [],
         "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
         "started_at": "2026-11-26T22:40:05.457358Z",
-        "updated_at": "2026-11-26T23:29:54.616027Z",
+        "updated_at": "2026-11-26T23:37:48.225109Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -875,7 +875,68 @@
           "summary": "User requested state-specific entry order and explicit confirmation for regenerating an existing official internal report. Local only.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
+          "subject": "6b705c758ff5b3ce1a8d7dc6ccc2960e7f62cf2c",
+          "summary": "State-dependent entry with named official report continuation and explicit regeneration confirmation.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/report-workspace/ReportWorkingCopy.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/features/report-workspace/reportContentEditor.css"
+          ],
+          "validation": [
+            {
+              "name": "Report and app UI tests",
+              "status": "passed",
+              "summary": "17 files, 177 tests passed.",
+              "evidence": "D:/PythonProject/connlab/tmp/report-entry-states-20261127-073116/qa.log"
+            },
+            {
+              "name": "Frontend build",
+              "status": "passed",
+              "summary": "Production frontend built successfully.",
+              "evidence": "D:/PythonProject/connlab/tmp/report-entry-states-20261127-073116/build.log"
+            },
+            {
+              "name": "Isolated browser smoke",
+              "status": "passed",
+              "summary": "Three independent databases; empty, official resume, regeneration/cancel/archive, customer download, restore last section and 531px layout passed. Final raw-XML footer check superseded by document readback.",
+              "evidence": "D:/PythonProject/connlab/tmp/report-entry-states-20261127-073116/smoke.log"
+            },
+            {
+              "name": "Downloaded Word readback",
+              "status": "passed",
+              "summary": "Reopened the downloaded document and verified CUSTOMER TEST REPORT and Form E-4515 across Word runs.",
+              "evidence": "D:/PythonProject/connlab/tmp/report-entry-states-20261127-073116/readback.log"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Regression tests and scope-limited implementation."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Independent entry-state review covered file identity, confirmation and narrow layout."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Report and shell suite, production build, independent fixture databases, browser and Word readback."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "6b705c758ff5b3ce1a8d7dc6ccc2960e7f62cf2c",
+            "primary_before": "162f253c5b2aeb3a6c357f4a7770e8a898b0db05",
+            "integrated_head": "6673aeab205e061d7061f4b6ba8266c104d61b94",
+            "recovered": false
+          }
+        }
       }
     }
   }
