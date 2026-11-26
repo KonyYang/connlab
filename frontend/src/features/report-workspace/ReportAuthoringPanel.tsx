@@ -1,15 +1,5 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./reportAuthoringPanel.css";
-import { ReportFactUpdates } from "./ReportFactUpdates";
-import { ReportResultsImport } from "./ReportResultsImport";
-import { ReportToolsPackageImport } from "./ReportToolsPackageImport";
-import { ReportEvidenceResults } from './ReportEvidenceResults';
-import { ReportResultUpdate } from "./ReportResultUpdate";
-import { ReportPhotoSlots } from "./ReportPhotoSlots";
-import { ReportCustomerCopy } from "./ReportCustomerCopy";
-import { ReportBatchPreparation } from './ReportBatchPreparation';
-import { ReportDocumentReview } from './ReportDocumentReview';
-import { ReportDelivery } from './ReportDelivery';
 import {
   getReportAuthoring, uploadReportSource, saveReportMapping, selectReportBase, downloadReportArtifact,
   getReportFactTargets, type ReportFactLocation,
@@ -28,16 +18,10 @@ const emptyMapping = (): Omit<ReportMappingInput, "expected_revision" | "source_
   report_text: "",
 });
 
-export function ReportAuthoringPanel({ projectId, disabled = false, onOperationStart, sharedState, onChanged, openRequest }: {
+export function ReportAuthoringPanel({ projectId, disabled = false, onOperationStart, sharedState, onChanged }: {
   projectId: string; disabled?: boolean; onOperationStart?: () => (() => void) | null;
   sharedState?: ReportAuthoringState | null; onChanged?: (state: ReportAuthoringState) => void;
-  openRequest?: { section: 0 | 1 | 2; sequence: number };
 }) {
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const entryHeading = useRef<HTMLHeadingElement | null>(null);
-  const [focusTarget, setFocusTarget] = useState<0 | 1 | 2 | null>(null);
-  const sectionHeadings = useRef<Array<HTMLHeadingElement | null>>([]);
   const [localState, setLocalState] = useState<ReportAuthoringState | null>(null);
   const state = sharedState === undefined ? localState : sharedState;
   const [busy, setBusy] = useState(false);
@@ -54,25 +38,13 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
   currentProject.current = projectId;
   useEffect(() => {
     operation.current?.releaseOutside(); operation.current = null;
-    sequence.current += 1; setLocalState(null); setOpen(false); setFocusTarget(null); setBusy(false); setError("");
+    sequence.current += 1; setLocalState(null); setBusy(false); setError("");
     setFile(null); setSourceId(""); setMapping(emptyMapping());
     return () => { sequence.current += 1; operation.current?.releaseOutside(); operation.current = null; };
   }, [projectId]);
   useEffect(() => {
-    if (openRequest) { setOpen(true); setFocusTarget(openRequest.section); }
-  }, [openRequest]);
-  useEffect(() => {
     if (state) setSourceId(previous => state.sources.some(source => source.source_id === previous) ? previous : state.sources[0]?.source_id || "");
   }, [state]);
-  useEffect(() => {
-    if (!open || !state || focusTarget === null) return;
-    const heading = sectionHeadings.current[focusTarget];
-    if (!heading) return;
-    heading.focus({ preventScroll: true });
-    heading.scrollIntoView?.({ block: "start", behavior: "auto" });
-    setFocusTarget(null);
-  }, [open, state, focusTarget]);
-
   function beginOperation(): (() => void) | null {
     if (operation.current || disabled || currentProject.current !== projectId) return null;
     const releaseOutside = onOperationStart ? onOperationStart() : () => undefined;
@@ -143,46 +115,11 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
 
   const locked = busy || disabled;
   const latest = state?.outputs[state.outputs.length - 1];
-  const customer = state?.customer_outputs?.[state.customer_outputs.length - 1];
-  const pendingCount = state?.mappings.filter(item => item.status !== "confirmed").length || 0;
-  const steps = [
-    { title: "Choose report base", purpose: "Retain an original or approved layout, then confirm sources and project mappings.",
-      status: state ? `${state.sources.length} retained sources · ${latest ? "Working copy available" : "Report base needed"}` : "Open to load saved sources." },
-    { title: "Update report content", purpose: "Update project facts, temperature / CR results, mechanical results and photos.",
-      status: state ? `${pendingCount} mappings pending confirmation · ${latest ? "Working copy available" : "Choose a base first"}` : "Open to load saved content." },
-    { title: "Review customer copy", purpose: "Generate a separate customer copy and check content and disclosure before delivery.",
-      status: state ? (customer ? (customer.status === "package_checked" ? "Package checked · not formal approval" : "Customer copy needs review") : "No customer review copy yet") : "Open to load customer review status." },
-  ];
-  function openSection(index: 0 | 1 | 2) {
-    setOpen(true); setFocusTarget(index);
-    if (!state) void run(() => getReportAuthoring(projectId));
-  }
-  function backToSteps() {
-    entryHeading.current?.focus({ preventScroll: true });
-    entryHeading.current?.scrollIntoView?.({ block: "start", behavior: "auto" });
-  }
-  return <section className="report-workspace-card report-preparation" aria-label="Report sources and mappings">
-    <h2 ref={entryHeading} tabIndex={-1}>Report preparation</h2>
-    <p className="report-workspace-note">Prepare a new report copy from retained evidence. Original files stay unchanged; checks do not formally release a report.</p>
-    <ol className="report-preparation-actions">
-      {steps.map((step, index) => <li key={step.title}>
-        <button type="button" className="secondary-action" disabled={locked} aria-controls={`${panelId}-section-${index}`} aria-expanded={open}
-          onClick={() => openSection(index as 0 | 1 | 2)}><span aria-hidden="true">{index + 1}. </span>{step.title}</button>
-        <p>{step.purpose}</p><small>{step.status}</small>
-      </li>)}
-    </ol>
-    {open && <button type="button" aria-controls={`${panelId}-details`} aria-expanded={open} disabled={locked}
-      onClick={() => { setOpen(false); setFocusTarget(null); }}>Hide preparation tools</button>}
-    {open && <div id={`${panelId}-details`}>
-      <p className="report-workspace-note">Use a retained original or approved report as the base. Only new copies are produced; original files are not changed or formally released.</p>
-      {error && <p role="alert">{error}</p>}
-      {busy && <p role="status">Preparing report evidence...</p>}
-      <button type="button" disabled={locked} onClick={() => void run(() => getReportAuthoring(projectId))}>Reload saved evidence</button>
-      {state && <>
-        <section className="report-preparation-region" id={`${panelId}-section-0`} aria-labelledby={`${panelId}-heading-0`}>
-        <h3 id={`${panelId}-heading-0`} ref={element => { sectionHeadings.current[0] = element; }} tabIndex={-1}>1. Choose report base</h3>
-        <button type="button" className="report-preparation-back" onClick={backToSteps}>Back to report steps</button>
-        {!latest && <p className="report-preparation-guidance">Retain this project's report or an approved layout reference, then select Use as report base to create a working copy.</p>}
+  return <section className="report-preparation" aria-label="Report sources and mappings">
+    <h3>Sources and decisions</h3>
+    {error && <p role="alert">{error}</p>}
+    <button type="button" disabled={locked} onClick={() => void run(() => getReportAuthoring(projectId))}>Reload saved evidence</button>
+    {state && <>
         <fieldset disabled={locked}>
           <legend>Retain a source</legend>
           <label>Source role <select value={role} onChange={event => setRole(event.target.value as ReportSourceRole)}>
@@ -253,32 +190,6 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
         </fieldset>}
         <ul>{state.mappings.map(item => <li key={item.mapping_id}><strong>{item.label}</strong> — {item.status === "confirmed" ? "Confirmed" : "Pending confirmation"}: {item.value || "No decision"}
           <small> ({item.source_locator})</small> <button disabled={locked} type="button" onClick={() => edit(item)}>Edit mapping</button></li>)}</ul>
-        </section>
-        <section className="report-preparation-region" id={`${panelId}-section-1`} aria-labelledby={`${panelId}-heading-1`}>
-        <h3 id={`${panelId}-heading-1`} ref={element => { sectionHeadings.current[1] = element; }} tabIndex={-1}>2. Update report content</h3>
-        <button type="button" className="report-preparation-back" onClick={backToSteps}>Back to report steps</button>
-        {!latest && <p className="report-preparation-guidance">Choose a report base before updating content.</p>}
-        <ReportBatchPreparation projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        <ReportDocumentReview projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        <ReportToolsPackageImport key={`tools-${projectId}`} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        <ReportEvidenceResults key={`evidence-${projectId}`} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        <ReportResultsImport key={projectId} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        <details className="report-batch-advanced"><summary>Advanced individual updates</summary>
-        <p>Use these compatibility tools only for a single targeted update. Prepare report batch above combines selected updates into one new working copy.</p>
-        <ReportFactUpdates projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        <ReportResultUpdate projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        <ReportPhotoSlots projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        </details>
-        </section>
-        <section className="report-preparation-region" id={`${panelId}-section-2`} aria-labelledby={`${panelId}-heading-2`}>
-        <h3 id={`${panelId}-heading-2`} ref={element => { sectionHeadings.current[2] = element; }} tabIndex={-1}>3. Review customer copy</h3>
-        <button type="button" className="report-preparation-back" onClick={backToSteps}>Back to report steps</button>
-        {!latest ? <p className="report-preparation-guidance">Create a working copy and confirm its content before generating a customer review copy.</p>
-          : !customer && <p className="report-preparation-guidance">Check the working copy, then generate a customer review copy below. No report is formally released by these checks.</p>}
-        <ReportCustomerCopy projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        <ReportDelivery projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
-        </section>
-      </>}
-    </div>}
+    </>}
   </section>;
 }

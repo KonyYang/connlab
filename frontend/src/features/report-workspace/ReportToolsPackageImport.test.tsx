@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import * as api from '../../api/reportAuthoring';
+import { ReportToolsPackageImport } from './ReportToolsPackageImport';
 import { ReportAuthoringPanel } from './ReportAuthoringPanel';
 
 vi.mock('../../api/reportAuthoring', async () => ({
@@ -38,8 +39,7 @@ it('shows a qualitative matrix as observations without inheriting its Pass as th
     profile: {} as api.ResultImportRequest, preview_sha256: 'v'.repeat(64),
     data: { sheet_name: '', unit: '', quantity: 'qualitative', raw_curves: ['72'], tables: [{ title: 'Mis-mating observations',
       row_heading: 'Receptacle', column_heading: 'Header', samples: ['SN1'], columns: ['Orange', 'Black'], results: [['Pass', 'Fail']] }] } });
-  render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByRole('button', { name: 'Update report content' }));
+  render(<ReportToolsPackageImport projectId="P1" state={state} onChanged={vi.fn()} disabled={false} />);
   fireEvent.change(await screen.findByLabelText('Reviewed Tools result'), { target: { value: 'qual-1' } });
   fireEvent.change(screen.getByLabelText('Package result Group / Step'), { target: { value: '0' } });
   fireEvent.click(screen.getByRole('button', { name: 'Preview Tools result' }));
@@ -50,8 +50,7 @@ it('shows a qualitative matrix as observations without inheriting its Pass as th
 });
 
 it('reuses reviewed Tools results without remapping columns or inheriting report Pass', async () => {
-  render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByRole('button', { name: 'Update report content' }));
+  render(<ReportToolsPackageImport projectId="P1" state={state} onChanged={vi.fn()} disabled={false} />);
   const entries = await screen.findByLabelText('Reviewed Tools result');
   expect(screen.getByText(/qualitative report placement is not supported/)).toBeTruthy();
   expect(screen.queryByLabelText('Force column (N)')).toBeNull();
@@ -81,8 +80,7 @@ it('shows the retained hold duration and specimen part before report confirmatio
     sheet_name: 'Hold', unit: 'N', quantity: 'hold', force_field: 'end1', withdraw_magnitude: false,
     rows: [{ sample_id: 'SN1', record_id: '3', color: 'Orange', part: 'Board end', value: 240, raw_value: 240, hold_seconds: 6 }],
   } });
-  render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByRole('button', { name: 'Update report content' }));
+  render(<ReportToolsPackageImport projectId="P1" state={state} onChanged={vi.fn()} disabled={false} />);
   fireEvent.change(await screen.findByLabelText('Reviewed Tools result'), { target: { value: 'force-1' } });
   fireEvent.change(screen.getByLabelText('Package result Group / Step'), { target: { value: '0' } });
   fireEvent.click(screen.getByRole('button', { name: 'Preview Tools result' }));
@@ -96,12 +94,12 @@ it('recognizes a Tools ZIP on upload without requiring a measurement source role
   vi.mocked(api.getReportAuthoring).mockResolvedValue({ ...state, sources: [] });
   vi.mocked(api.uploadReportSource).mockResolvedValue(state);
   render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Reload saved evidence' }));
   const file = new File(['package'], 'Mechanical.results.zip', { type: 'application/zip' });
   fireEvent.change(await screen.findByLabelText('Source file'), { target: { files: [file] } });
   fireEvent.click(screen.getByRole('button', { name: 'Retain source copy' }));
   await waitFor(() => expect(api.uploadReportSource).toHaveBeenCalledWith('P1', file, 'tools_result_package', 2));
-  expect(await screen.findByLabelText('Reviewed Tools result')).toBeTruthy();
+  expect(await screen.findByText('Mechanical.results.zip', {selector:'span'})).toBeTruthy();
 });
 
 it('requires explicit cross-project applicability and keeps temperature sample identities separate from channel numbers', async () => {
@@ -109,8 +107,7 @@ it('requires explicit cross-project applicability and keeps temperature sample i
     entry_id: 'temp-1', label: 'Temperature', kind: 'temperature', supported_for_report: true, reason: '',
     source_names: ['temperature.xlsx'], sample_count: 2, sample_ids: [],
   }] });
-  render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByRole('button', { name: 'Update report content' }));
+  render(<ReportToolsPackageImport projectId="P1" state={state} onChanged={vi.fn()} disabled={false} />);
   fireEvent.change(await screen.findByLabelText('Reviewed Tools result'), { target: { value: 'temp-1' } });
   fireEvent.change(screen.getByLabelText('Package result Group / Step'), { target: { value: '0' } });
   const button = screen.getByRole('button', { name: 'Preview Tools result' });

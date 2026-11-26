@@ -39,10 +39,11 @@ import { useUploadedCustomerReportJob } from "./useUploadedCustomerReportJob";
 import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
 import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDialog";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
+import { ReportContentEditor } from "./ReportContentEditor";
 import { ReportAuthoringPanel } from "./ReportAuthoringPanel";
 import { StepReportEvidence, type StepLink } from './StepReportEvidence';
 import { getReportAuthoring, adoptCurrentReportWorkingCopy, updateWorkingCopyLlcr, updateWorkingCopyEquipment,
-  downloadReportArtifact, type ReportAuthoringState } from "../../api/reportAuthoring";
+  uploadReportSource, selectReportBase, downloadReportArtifact, type ReportAuthoringState } from "../../api/reportAuthoring";
 import {
   buildLlcrConfirmationDecisions,
   buildEquipmentSelectionInput,
@@ -57,6 +58,7 @@ type ReportWorkspaceProps = {
   evidenceStep?: StepLink | null;
   projectId: string;
   onBack: () => void;
+  onOpenBasicInformation?: () => void;
   identityLabel?: string;
 };
 
@@ -70,13 +72,14 @@ type CustomerRegenerationApproval = {
   returnFocusTarget: HTMLButtonElement;
 };
 
-export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector Project", evidenceStep }: ReportWorkspaceProps): ReactElement {
+export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, identityLabel = "Connector Project", evidenceStep }: ReportWorkspaceProps): ReactElement {
   const topBarRoot = useTopBarActionsRoot();
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
   const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
   const [authoringState, setAuthoringState] = useState<ReportAuthoringState | null>(null);
   const [authoringReadFailed, setAuthoringReadFailed] = useState(false);
-  const [authoringOpenRequest, setAuthoringOpenRequest] = useState<{ section: 0 | 1 | 2; sequence: number }>();
+  const wordPicker = useRef<HTMLInputElement>(null);
+  const [directCustomer, setDirectCustomer] = useState(false);
   const workingCopy = authoringState?.outputs.at(-1);
   const [customerReport, setCustomerReport] = useState<CustomerReportState | null>(null);
   const [customerReadFailed, setCustomerReadFailed] = useState(false);
@@ -129,7 +132,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     downloadBlob(response.blob, response.fileName || "Customer Report.docx");
   });
   const legacyBusyAction = pageBusyAction ?? (draftUpdates.busy ? (draftUpdates.action === "equipment" ? "equipment-update" : "llcr")
-    : customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || customerRegenerationApproval || equipmentSourceOpen || equipmentResult || draftUpdates.selectOpen ? "customer-source" : null);
+    : customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || directCustomer || customerRegenerationApproval || equipmentSourceOpen || equipmentResult || draftUpdates.selectOpen ? "customer-source" : null);
   const busyAction = legacyBusyAction ?? (authoringBusy ? "authoring" : !authoringState ? "load" : null);
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
@@ -166,6 +169,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     setInternalGenerationPreview(null);
     setMessage(null);
     setSourcePickerOpen(false);
+    setDirectCustomer(false);
     setCheckingSource(false);
     sourceRequest.current = false;
     customerRequest.current = false;
@@ -265,7 +269,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     setCustomerReportRecovery(null);
     setState(null);
     setCurrentReport(null);
-    setAuthoringState(null); setAuthoringReadFailed(false); setAuthoringOpenRequest(undefined);
+    setAuthoringState(null); setAuthoringReadFailed(false); setDirectCustomer(false);
     setCustomerReport(null);
     setCustomerReadFailed(false);
     loadReportState(projectId)
@@ -323,13 +327,46 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     }
   }
 
+  async function openWordCopy(file: File, isCurrent: () => boolean) {
+    if (!authoringState || !isCurrent()) return;
+    if (!/\.docx$/i.test(file.name)) throw new Error("Select a Word document (.docx).");
+    if (!authoringState.context.dl_number) throw new Error("Register the project LTR number before choosing a Word working copy.");
+    const revision = authoringState.revision;
+    const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+    if (!isCurrent()) return;
+    const sha = Array.from(new Uint8Array(digest), n => n.toString(16).padStart(2, "0")).join("");
+    const retained = await uploadReportSource(projectId, file, "original", revision);
+    if (!isCurrent()) return;
+    acceptAuthoringState(retained);
+    const source = retained.sources.filter(item => item.role === "original" && item.sha256 === sha
+      && !("source_locator" in item && item.source_locator)
+      && item.file_name.localeCompare(file.name, "en", { sensitivity: "accent" }) === 0).at(-1);
+    if (!source || retained.revision > revision + 1) throw new Error("The report sources changed. Choose the Word file again.");
+    const next = await selectReportBase(projectId, source.source_id, retained.revision);
+    if (isCurrent()) acceptAuthoringState(next);
+  }
+
   async function performInternalGeneration(preview: InternalReportGenerationPreview, isCurrent: () => boolean): Promise<void> {
     if (!preview.preview_token || !isCurrent()) return;
-    await generateInternalReport(projectId, preview.preview_token, preview.requires_confirmation);
+    const generated = await generateInternalReport(projectId, preview.preview_token, preview.requires_confirmation);
     if (!isCurrent()) return;
     setInternalGenerationPreview(null);
-    await refresh();
-    if (isCurrent()) setMessage("Generated the Internal Report.");
+    let refreshWarning = "";
+    try { await refresh(); } catch {
+      refreshWarning = "Report generated. Refresh the workspace to check the latest project report status.";
+    }
+    if (!isCurrent() || !authoringState) return;
+    try {
+      const next = await adoptCurrentReportWorkingCopy(projectId, {expected_revision: authoringState.revision,
+        source_sha256: generated.file_sha256, source_mode: "official"});
+      if (isCurrent()) {
+        acceptAuthoringState(next);
+        setMessage("Generated the Internal Report.");
+        if (refreshWarning) setError(refreshWarning);
+      }
+    } catch (cause) {
+      if (isCurrent()) setError("Internal report generated. Unable to prepare its working copy. " + (cause instanceof Error ? cause.message : "Choose the existing Word file to retry."));
+    }
   }
 
   async function handleGenerateInternalReport(): Promise<void> {
@@ -345,6 +382,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
         const name = response.fileName || "Internal Report draft.docx";
         downloadBlob(response.blob, name);
         setMessage(`Downloaded draft: ${name}`);
+        try { await openWordCopy(new File([response.blob], name), isCurrent); }
+        catch (cause) { if (isCurrent()) setError("Draft downloaded. Unable to prepare its working copy. " + (cause instanceof Error ? cause.message : "Choose the downloaded Word file to retry.")); }
       } else if (preview.requires_confirmation) {
         setInternalGenerationPreview(preview);
       } else {
@@ -356,18 +395,19 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     action: Exclude<BusyAction, "load" | null>,
     operation: () => Promise<string | null>
   ): Promise<void> {
-    if (busyAction || authoringOperation.current) {
+    if (busyAction || pageActionRef.current || authoringOperation.current) {
       return;
     }
     setBusyAction(action);
     setError(null);
     setMessage(null);
     try {
-      setMessage(await operation());
+      const result = await operation();
+      if (mounted.current && activeProject.current === projectId) setMessage(result);
     } catch (reason) {
-      setError(errorMessage(reason, "Report workflow failed."));
+      if (mounted.current && activeProject.current === projectId) setError(errorMessage(reason, "Report workflow failed."));
     } finally {
-      setBusyAction(null);
+      if (mounted.current && activeProject.current === projectId) setBusyAction(null);
     }
   }
 
@@ -678,6 +718,57 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     });
   }
 
+  const llcrControls = readiness && (<div className="report-workspace-update-row">
+              <div className="report-workspace-update-content">
+                <h3>LLCR results</h3>
+                <div className="report-workspace-import-row">
+                  <label className="report-workspace-file-field">
+                    LLCR result workbook
+                    <input
+                      accept=".xlsx"
+                      disabled={Boolean(busyAction)}
+                      onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                      type="file"
+                    />
+                  </label>
+                  <button disabled={!selectedFile || Boolean(busyAction)} onClick={() => void handleInspect()} type="button">
+                    {busyAction === "inspect" ? "Inspecting..." : "Inspect LLCR Workbook"}
+                  </button>
+                </div>
+                {latestDataset ? (
+                  <p className="report-workspace-note" title={`Confirmed ${formatDateTime(latestDataset.confirmed_at)}`}>
+                    Dataset r{latestDataset.revision} · {latestDataset.entries.length} results · {latestDataset.source_file_name}
+                  </p>
+                ) : <p className="report-workspace-empty">No confirmed LLCR Result Dataset yet.</p>}
+                <p className="report-workspace-note">LLCR Result and Comment cells and Appendix A</p>
+                {latestDataset && readiness.llcrUpdateBlocker ? <p className="report-workspace-blocker">{readiness.llcrUpdateBlocker}</p> : null}
+              </div>
+              <button
+                className="primary-action"
+                disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
+                onClick={() => void handleUpdateLlcr()}
+                type="button"
+              >
+                {busyAction === "llcr" ? "Updating..." : "Update LLCR Results"}
+              </button>
+            </div>);
+  const equipmentControls = (<div className="report-workspace-update-row report-workspace-equipment-action">
+              <button
+                className="primary-action"
+                disabled={Boolean(busyAction) || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
+                ref={equipmentTrigger}
+                onClick={() => void handleEquipmentUpdate()}
+                type="button"
+              >
+                {busyAction === "equipment-update" ? "Updating..." : "Update Equipment List"}
+              </button>
+              {equipmentStatus ? (
+                <span className="report-workspace-equipment-completion" role="status" aria-label="Equipment List update status">
+                  {equipmentStatus}
+                </span>
+              ) : null}
+            </div>);
+
   const commandbar = (
     <div className="report-workspace-commandbar" aria-label="Report Workspace actions">
       <span className="report-workspace-identity" title={identityLabel}>{identityLabel}</span>
@@ -686,6 +777,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     </div>
   );
 
+  const directCustomerAction = (
+    <button type="button" className="report-editor-link" disabled={Boolean(legacyBusyAction || authoringBusy)} onClick={() => { setDirectCustomer(true); }}>
+          Create customer copy from a finished internal report…
+        </button>
+  );
   return (
     <section className="report-workspace-page" aria-busy={!state && busyAction === "load" && !error}>
       {topBarRoot ? createPortal(commandbar, topBarRoot) : (
@@ -705,20 +801,30 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
         <p>Unable to check the selected working copy. Report changes are paused; the official report has not been changed.</p>
         <button type="button" disabled={pageBusyAction !== null} onClick={() => void runAuthoringReload()}>Retry working-copy status</button>
       </div>}
-      {state && authoringState && <section className="report-workspace-card report-working-copy" aria-label="Selected report working copy">
-        <h2>{workingCopy ? "Selected working copy" : "Choose a working copy"}</h2>
-        {workingCopy ? <>
-          <strong>{workingCopy.file_name}</strong><p>Saved revision {authoringState.revision} · All preparation and section updates use this copy.</p>
-          <details><summary>Version identity</summary><code>{workingCopy.artifact?.sha256 || "Reload to verify this version"}</code></details>
-          <p>The report in the project folder is separate and remains unchanged. These actions do not formally release a report.</p>
-          <button type="button" disabled={Boolean(busyAction)} onClick={() => void runAction('download', async () => {
-            const response = await downloadReportArtifact(workingCopy.download_url); downloadBlob(response.blob, response.fileName || workingCopy.file_name); return null;
+      <input type="file" accept=".docx" ref={wordPicker} hidden aria-label="Working Word file"
+        onChange={event => {
+          const file = event.currentTarget.files?.[0]; event.currentTarget.value = "";
+          if (file) void runAction("authoring", async () => {
+            await openWordCopy(file, () => mounted.current && activeProject.current === projectId); return null;
+          });
+        }} />
+      {workingCopy && authoringState ? <ReportContentEditor key={projectId + ":" + workingCopy.base_source_id}
+        projectId={projectId} state={authoringState} disabled={Boolean(busyAction)}
+        directCustomerAction={directCustomerAction} onChanged={acceptAuthoringState} beginOperation={beginAuthoringOperation} llcr={llcrControls} equipment={equipmentControls}
+        fileActions={<div className="report-workspace-action-row">
+          <button type="button" className="report-editor-link" disabled={Boolean(busyAction)} onClick={() => wordPicker.current?.click()}>Change file…</button>
+          <button type="button" className="secondary-action" disabled={Boolean(busyAction)} onClick={() => void runAction("download", async () => {
+            const response = await downloadReportArtifact(workingCopy.download_url);
+            if (activeProject.current === projectId && mounted.current) downloadBlob(response.blob, response.fileName || workingCopy.file_name);
+            return null;
           })}>Download working copy</button>
-          <button type="button" disabled={Boolean(busyAction)} onClick={() => setAuthoringOpenRequest(previous => ({ section: 2, sequence: (previous?.sequence || 0) + 1 }))}>Review customer copy from this version</button>
-        </> : <>
-          <p>Choose an original in Report preparation, or retain a read-only copy of the current report. Existing report operations remain available until a working copy is selected.</p>
-          {draftUpdates.source?.status === 'ready' && draftUpdates.source.file_sha256 && <>
-          <p>Available report source: {draftUpdates.source.file_name} ({draftUpdates.source.mode === 'official' ? 'project-folder report' : 'retained draft'}).</p>
+        </div>} /> : state && readiness && <section className="report-entry" aria-label="Report generation">
+        <h2>Start a report</h2>
+        <div className="report-entry-row"><h3>Continue from an existing Word file</h3>
+          <button type="button" className="primary-action" disabled={Boolean(busyAction)} onClick={() => wordPicker.current?.click()}>Choose Word file…</button>
+        </div>
+          {authoringState && draftUpdates.source?.status === 'ready' && draftUpdates.source.file_sha256 && <>
+
           <button type="button" disabled={Boolean(busyAction)} onClick={() => void runAction('authoring', async () => {
             const selected = draftUpdates.source!;
             const current = await draftUpdates.refresh();
@@ -730,18 +836,14 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
             const next = await adoptCurrentReportWorkingCopy(projectId, { expected_revision: authoringState.revision,
               source_sha256: current.file_sha256!, source_mode: current.mode });
             acceptAuthoringState(next); return "Selected a new working copy. The original report is unchanged.";
-          })}>Use report source as working copy</button></>}
-        </>}
-      </section>}
-      {state && <ReportAuthoringPanel projectId={projectId} disabled={Boolean(legacyBusyAction) || !authoringState}
-        sharedState={authoringState} onChanged={acceptAuthoringState} openRequest={authoringOpenRequest} onOperationStart={beginAuthoringOperation} />}
-
-      {state && readiness ? (
-        <div className="report-workspace-grid">
-          <section className="report-workspace-card report-workspace-generation" aria-label="Report generation">
-            <section aria-label="Internal Report">
+          })} className="report-editor-link">Continue with {draftUpdates.source.file_name}</button></>}
+        <div className="report-entry-row">
+            <section className="report-entry-create" aria-label="Internal Report">
+              <h3>Create an internal report</h3>
               <div className="report-workspace-report-row report-workspace-initial-report">
                 <div className="report-workspace-action-row">
+                  {state.basic_information_status !== "confirmed" && onOpenBasicInformation ?
+                    <button type="button" className="secondary-action" onClick={onOpenBasicInformation}>Open Basic Information</button> :
                   <button
                     className="primary-action"
                     disabled={Boolean(workingCopy) || !readiness.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
@@ -749,7 +851,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                     type="button"
                   >
                     {busyAction === "initial" ? "Generating..." : "Generate Internal Report"}
-                  </button>
+                  </button>}
                   {reportEntry.kind === "publish" && !workingCopy ? (
                     <button
                       className="primary-action"
@@ -765,7 +867,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                   ) : null}
                 </div>
                 <div className="report-workspace-current-report">
-                  {workingCopy && <small>{currentReport?.mode === 'official' ? 'Report in project folder' : 'Previously managed report'} (not selected for editing)</small>}
                   {reportFileName ? <span className="report-workspace-report-name">{reportFileName}</span> : (
                     <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
                   )}
@@ -775,8 +876,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               {reportEntry.kind === "managed" ? <p className="report-workspace-note">Create the official project folder before publishing this draft.</p> : null}
               {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
             </section>
-            {workingCopy && <p className="report-workspace-note">Continue the selected working copy above. Initial generation is disabled to avoid recreating a different report.</p>}
-            {!workingCopy && <>
+
+        </div>
+        {directCustomerAction}
+        <details open={Boolean(customerReportRecovery || customerJob.busy || customerJob.error || customerJob.job?.status === 'failed') || undefined}>
+          <summary>Project report actions</summary>
             <section className="report-workspace-customer-generation" aria-label="Customer Report">
               <div className="report-workspace-action-row">
                 <button
@@ -798,10 +902,9 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                   </button>
                 ) : null}
               </div>
-              {uploadedCustomerJob.fileName || customerReport?.file_name || customerJob.job?.result?.file_name ? <span className="report-workspace-report-name">
-                {uploadedCustomerJob.fileName || customerReport?.file_name || customerJob.job?.result?.file_name}
+              {customerReport?.file_name || customerJob.job?.result?.file_name ? <span className="report-workspace-report-name">
+                {customerReport?.file_name || customerJob.job?.result?.file_name}
               </span> : null}
-              {uploadedCustomerJob.fileName ? <small className="report-workspace-note">Downloaded copy · selected Internal Report</small> : null}
               {customerReadFailed ? <p role="alert" className="report-workspace-blocker">
                 Unable to check the customer report. Check the connection and retry report status. Existing report files have not been changed.
               </p> : null}
@@ -819,20 +922,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               {currentReport?.status !== "missing" ? customerReport?.blockers.map((blocker) => (
                 <p className="report-workspace-blocker" key={blocker}>{blocker}</p>
               )) : null}
-              {uploadedCustomerJob.job?.status === "queued" || uploadedCustomerJob.job?.status === "running" ? <CustomerReportProgress stage={uploadedCustomerJob.job.stage}
-                elapsedSeconds={uploadedCustomerJob.job.elapsed_seconds} running={uploadedCustomerJob.busy} /> : null}
-              {uploadedCustomerJob.error ? <p role="alert" className="report-workspace-blocker">{uploadedCustomerJob.error}</p> : null}
-              {uploadedCustomerJob.job?.status === "failed" ? <p role="alert" className="report-workspace-blocker">
-                {uploadedCustomerJob.job.message || "Unable to generate the customer report. Select the source and try again."}
-              </p> : null}
-              {uploadedCustomerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
-                <p>{uploadedCustomerJob.queryWarning}</p>
-                <button type="button" onClick={() => void uploadedCustomerJob.retryQuery()}>Retry Status Check</button>
-              </div> : null}
-              {uploadedCustomerJob.downloadError ? <div role="alert" className="report-workspace-blocker">
-                <p>{uploadedCustomerJob.downloadError}</p>
-                <button type="button" disabled={uploadedCustomerJob.busy} onClick={() => void uploadedCustomerJob.retryDownload()}>Retry Download</button>
-              </div> : null}
               {customerJob.job?.status === "queued" || customerJob.job?.status === "running" ? <CustomerReportProgress
                 stage={customerJob.job.stage}
                 elapsedSeconds={customerJob.elapsed}
@@ -884,63 +973,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 </div>
               ) : null}
             </section>
-            </>}
-          </section>
 
-          <section className="report-workspace-card" aria-label="Update Internal Report">
-            <div className="report-workspace-card-heading">
-              <div><h2>Update Internal Report</h2><p>{workingCopy ? `Target: selected working copy (${workingCopy.file_name}). The official report stays unchanged.` : "Update selected sections; other content and manual edits are preserved."}</p></div>
-            </div>
-            <div className="report-workspace-update-row">
-              <div className="report-workspace-update-content">
-                <h3>LLCR results</h3>
-                <div className="report-workspace-import-row">
-                  <label className="report-workspace-file-field">
-                    LLCR result workbook
-                    <input
-                      accept=".xlsx"
-                      disabled={Boolean(busyAction)}
-                      onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                      type="file"
-                    />
-                  </label>
-                  <button disabled={!selectedFile || Boolean(busyAction)} onClick={() => void handleInspect()} type="button">
-                    {busyAction === "inspect" ? "Inspecting..." : "Inspect LLCR Workbook"}
-                  </button>
-                </div>
-                {latestDataset ? (
-                  <p className="report-workspace-note" title={`Confirmed ${formatDateTime(latestDataset.confirmed_at)}`}>
-                    Dataset r{latestDataset.revision} · {latestDataset.entries.length} results · {latestDataset.source_file_name}
-                  </p>
-                ) : <p className="report-workspace-empty">No confirmed LLCR Result Dataset yet.</p>}
-                <p className="report-workspace-note">LLCR Result and Comment cells and Appendix A</p>
-                {latestDataset && readiness.llcrUpdateBlocker ? <p className="report-workspace-blocker">{readiness.llcrUpdateBlocker}</p> : null}
-              </div>
-              <button
-                className="primary-action"
-                disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
-                onClick={() => void handleUpdateLlcr()}
-                type="button"
-              >
-                {busyAction === "llcr" ? "Updating..." : "Update LLCR Results"}
-              </button>
-            </div>
-            <div className="report-workspace-update-row report-workspace-equipment-action">
-              <button
-                className="primary-action"
-                disabled={Boolean(busyAction) || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
-                ref={equipmentTrigger}
-                onClick={() => void handleEquipmentUpdate()}
-                type="button"
-              >
-                {busyAction === "equipment-update" ? "Updating..." : "Update Equipment List"}
-              </button>
-              {equipmentStatus ? (
-                <span className="report-workspace-equipment-completion" role="status" aria-label="Equipment List update status">
-                  {equipmentStatus}
-                </span>
-              ) : null}
-            </div>
+        </details>
+        <details><summary>Report content</summary>
+          <section aria-label="Update Internal Report">
+            {llcrControls}{equipmentControls}
             {draftMode ? <div className="report-workspace-note">
               {draftUpdates.source?.file_name ? <p title={draftUpdates.source.file_name}>Draft source: {draftUpdates.source.file_name} · Updates download a copy.</p>
                 : <p>Select an Internal Report draft to update its sections. Original files are preserved.</p>}
@@ -963,10 +1000,34 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                   : "Generate an Internal Report to update its sections. LLCR import remains available."}
               </p>
             ) : null}
-          </section>
-        </div>
-      ) : null}
 
+          </section>
+          {authoringState && <ReportAuthoringPanel projectId={projectId} sharedState={authoringState} disabled={Boolean(legacyBusyAction)}
+            onChanged={acceptAuthoringState} onOperationStart={beginAuthoringOperation} />}
+        </details>
+      </section>}
+              {uploadedCustomerJob.job?.status === "queued" || uploadedCustomerJob.job?.status === "running" ? <CustomerReportProgress stage={uploadedCustomerJob.job.stage}
+                elapsedSeconds={uploadedCustomerJob.job.elapsed_seconds} running={uploadedCustomerJob.busy} /> : null}
+              {uploadedCustomerJob.error ? <p role="alert" className="report-workspace-blocker">{uploadedCustomerJob.error}</p> : null}
+              {uploadedCustomerJob.job?.status === "failed" ? <p role="alert" className="report-workspace-blocker">
+                {uploadedCustomerJob.job.message || "Unable to generate the customer report. Select the source and try again."}
+              </p> : null}
+              {uploadedCustomerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
+                <p>{uploadedCustomerJob.queryWarning}</p>
+                <button type="button" onClick={() => void uploadedCustomerJob.retryQuery()}>Retry Status Check</button>
+              </div> : null}
+              {uploadedCustomerJob.downloadError ? <div role="alert" className="report-workspace-blocker">
+                <p>{uploadedCustomerJob.downloadError}</p>
+                <button type="button" disabled={uploadedCustomerJob.busy} onClick={() => void uploadedCustomerJob.retryDownload()}>Retry Download</button>
+              </div> : null}
+      {uploadedCustomerJob.fileName && <p role="status">Downloaded customer copy: <strong>{uploadedCustomerJob.fileName}</strong></p>}
+      {!state && error && directCustomerAction}
+      {directCustomer && <CustomerReportSourceDialog direct busy={uploadedCustomerJob.busy} error={uploadedCustomerJob.error}
+        onCancel={() => setDirectCustomer(false)} onGenerate={async file => {
+          const ok = await uploadedCustomerJob.start(file);
+          if (ok && mounted.current && activeProject.current === projectId) setDirectCustomer(false);
+          return ok;
+        }} />}
       {sourcePickerOpen ? <CustomerReportSourceDialog busy={checkingSource || uploadedCustomerJob.busy} error={error || uploadedCustomerJob.error}
         onCancel={() => setSourcePickerOpen(false)} onGenerate={handleGenerateFromUploadedSource} /> : null}
 

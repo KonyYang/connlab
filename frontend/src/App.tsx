@@ -445,12 +445,14 @@ export default function App(): ReactElement {
             );
           }}
           onBackToWorkbench={() => {
-            navigate(`/projects/${encodeURIComponent(route.projectId)}`);
+            const fromReport = window.history.state?.reportOrigin === route.projectId && window.history.state?.connlabRuntimeScope === storageNamespace("history");
+            navigate(`/projects/${encodeURIComponent(route.projectId)}${fromReport ? "/report-workspace" : ""}`);
           }}
         />
       )}
       {route.name === "projectReportWorkspace" && (
         <ProjectReportWorkspacePage
+          onOpenBasicInformation={() => navigate(`/projects/${encodeURIComponent(route.projectId)}/basic-information`, {reportOrigin: route.projectId})}
           projectId={route.projectId}
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
         />

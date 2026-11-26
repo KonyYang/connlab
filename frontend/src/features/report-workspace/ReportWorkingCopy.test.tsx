@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import * as api from '../../api/client';
 import * as authoring from '../../api/reportAuthoring';
 import { ReportWorkspace } from './ReportWorkspace';
+import '../../api/runtime.testHelpers';
 
 vi.mock('../../api/client', async () => ({
   ...await vi.importActual<typeof import('../../api/client')>('../../api/client'),
@@ -14,7 +15,7 @@ vi.mock('../../api/client', async () => ({
 vi.mock('../../api/reportAuthoring', async () => ({
   ...await vi.importActual<typeof import('../../api/reportAuthoring')>('../../api/reportAuthoring'),
   getReportAuthoring: vi.fn(), updateWorkingCopyLlcr: vi.fn(), updateWorkingCopyEquipment: vi.fn(),
-  adoptCurrentReportWorkingCopy: vi.fn(), generateCustomerReviewCopy: vi.fn(),
+  adoptCurrentReportWorkingCopy: vi.fn(), generateCustomerReviewCopy: vi.fn(), selectReportBase: vi.fn(), uploadReportSource: vi.fn(),
 }));
 
 const retained: authoring.ReportAuthoringState = {
@@ -25,6 +26,7 @@ const retained: authoring.ReportAuthoringState = {
 };
 
 beforeEach(() => {
+  localStorage.clear();
   vi.clearAllMocks();
   vi.mocked(api.fetchLatestProjectCustomerReportJob).mockResolvedValue(null);
   vi.mocked(api.fetchReportWorkspace).mockResolvedValue({ project_id: 'P1', basic_information_status: 'confirmed',
@@ -47,16 +49,27 @@ beforeEach(() => {
   vi.mocked(authoring.generateCustomerReviewCopy).mockResolvedValue({ ...retained, revision: 5 });
 });
 
+it('reopens the last content section of this project and working base', async () => {
+  const view = render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
+  fireEvent.click(await screen.findByRole('button', {name:'Equipment list'}));
+  expect(screen.getByRole('button', {name:'Update Equipment List'})).toBeTruthy();
+  view.unmount();
+  render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
+  expect(await screen.findByRole('button', {name:'Update Equipment List'})).toBeTruthy();
+  expect(screen.queryByRole('button', {name:'Inspect LLCR Workbook'})).toBeNull();
+});
+
 it('restores the selected working copy and keeps section updates away from the official report', async () => {
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
   expect(await screen.findByText('Reviewed Working.docx')).toBeTruthy();
-  expect(screen.getByText('Official.docx')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Generate Internal Report' }).matches(':disabled')).toBe(true);
+  expect(screen.queryByText('Official.docx')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Generate Internal Report' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Update LLCR Results' }));
   await waitFor(() => expect(authoring.updateWorkingCopyLlcr).toHaveBeenCalledWith('P1', {
     expected_revision: 4, expected_sha256: 'w'.repeat(64), dataset_revision_id: 'D1',
   }));
   expect(await screen.findByText('Working LLCR.docx')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Equipment list' }));
   fireEvent.click(screen.getByRole('button', { name: 'Update Equipment List' }));
   await waitFor(() => expect(authoring.updateWorkingCopyEquipment).toHaveBeenCalledWith('P1', {
     expected_revision: 5, expected_sha256: 'l'.repeat(64),
@@ -78,7 +91,7 @@ it('does not fall back to official writes when the saved working-copy state cann
 
 it('creates a customer review copy from the selected working version instead of the official report', async () => {
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Review customer copy from this version' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Customer copy' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Generate customer review copy' }));
   await waitFor(() => expect(authoring.generateCustomerReviewCopy).toHaveBeenCalledWith('P1', {
     expected_revision: 4, output_id: 'W1', output_sha256: 'w'.repeat(64), temperature_result_ids: [],
@@ -93,7 +106,7 @@ it('adopts the exact retained section-update draft instead of a different offici
     draft_revision_id: 'draft-7', folder_path: null, official_folder_path: null, can_publish_to_official: false, download_url: '/draft' });
   vi.mocked(authoring.adoptCurrentReportWorkingCopy).mockResolvedValue(retained);
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Use report source as working copy' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue with Later manual draft.docx' }));
   await waitFor(() => expect(authoring.adoptCurrentReportWorkingCopy).toHaveBeenCalledWith('P1', {
     expected_revision: 4, source_sha256: 'd'.repeat(64), source_mode: 'download_draft',
   }));
@@ -105,6 +118,7 @@ it('keeps missing equipment-source selection on the working-copy path', async ()
   vi.mocked(authoring.updateWorkingCopyEquipment).mockResolvedValueOnce({ status: 'source_required', project_id: 'P1' });
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
   await screen.findByText('Reviewed Working.docx');
+  fireEvent.click(screen.getByRole('button', { name: 'Equipment list' }));
   fireEvent.click(screen.getByRole('button', { name: 'Update Equipment List' }));
   const input = await screen.findByLabelText('Equipment IDs');
   fireEvent.change(input, { target: { value: 'DG-Q-0033' } });
@@ -113,4 +127,22 @@ it('keeps missing equipment-source selection on the working-copy path', async ()
     expected_revision: 4, expected_sha256: 'w'.repeat(64),
   }, { referencesText: 'DG-Q-0033' }));
   expect(api.updateEquipmentListOneClick).not.toHaveBeenCalled();
+});
+
+it('reopens the uploaded Word source even if its retained spelling differs and another folder has a matching file', async () => {
+  const file = new File(["manual"], "MANUAL.docx");
+  Object.defineProperty(file, "arrayBuffer", { value: async () => new ArrayBuffer(1) });
+  vi.stubGlobal("crypto", { subtle: { digest: async () => new Uint8Array(32).buffer } });
+  const original = { source_id: "chosen", file_name: "Manual.docx", role: "original" as const,
+    sha256: "00".repeat(32), download_url: "/chosen", size_bytes: 1, report_dl: "DL-001", created_at: "" };
+  const inventoried = { ...original, source_id: "inventory", source_locator: "Source Book/Manual.docx" };
+  vi.mocked(authoring.uploadReportSource).mockResolvedValue({ ...retained, sources: [original, inventoried] });
+  vi.mocked(authoring.selectReportBase).mockResolvedValue(retained);
+  try {
+    render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
+    await screen.findByText("Reviewed Working.docx");
+    fireEvent.change(screen.getByLabelText("Working Word file"), { target: { files: [file] } });
+    await waitFor(() => expect(authoring.selectReportBase).toHaveBeenCalledWith("P1", "chosen", 4));
+    expect(api.generateInternalReport).not.toHaveBeenCalled();
+  } finally { vi.unstubAllGlobals(); }
 });
