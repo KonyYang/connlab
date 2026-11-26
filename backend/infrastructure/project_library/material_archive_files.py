@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event,Lock
 from backend.infrastructure.project_library.material_receipt_files import MaterialReceiptFiles
 from backend.infrastructure.project_library.files import checked_path,identity
+from .material_paths import checked_material_path, display_path, material_io_path
 from backend.infrastructure.project_library.search_files import internal_material_path
 
 logger=logging.getLogger(__name__)
@@ -25,28 +26,34 @@ class MaterialArchiveFiles(MaterialReceiptFiles):
         return MaterialReceiptFiles(self.settings)
 
     def direct(self, root, path):
-        root=checked_path(root); path=checked_path(path)
+        root=checked_material_path(root); path=checked_material_path(path)
         if not path.is_dir() or path.parent!=root or path.name.casefold()==".connlab":
             raise ValueError("Choose a direct project folder inside the materials library, not its root or a nested folder.")
-        return path
+        return display_path(path)
 
     def children(self, root):
-        root=checked_path(root)
+        root=checked_material_path(root)
         result=[]
         for child in sorted(root.iterdir(),key=lambda p:p.name.casefold()):
             if child.name.casefold() in {'.connlab','system volume information','$recycle.bin'}: continue
             try:
                 child=checked_path(child)
-                if child.is_dir(): result.append(child)
+                if child.is_dir(): result.append(display_path(child))
             except (OSError,ValueError): continue
         return result
 
     def source(self, root, source):
-        root=checked_path(root);source=checked_path(source)
+        root=checked_material_path(root);source=checked_material_path(source)
         if not source.is_dir() or source.name.casefold()=='.connlab': raise ValueError("Choose one project folder, not an internal control directory.")
         if source==root or root.is_relative_to(source): raise ValueError("Source and materials library must not contain each other.")
         if source.is_relative_to(root): self.direct(root,source)
-        return source
+        return display_path(source)
+
+    def exists(self, path):
+        return material_io_path(path).exists()
+
+    def check_root(self, root, expected_identity):
+        return super().check_root(material_io_path(root), expected_identity)
 
     def check_cancel(self):
         if getattr(self,'cancellation',None) is not None and self.cancellation.is_set():
@@ -60,7 +67,7 @@ class MaterialArchiveFiles(MaterialReceiptFiles):
         return digest.hexdigest()
 
     def entries(self,source):
-        root=checked_path(source);pending=[(root,0)];result=[]
+        root=checked_material_path(source);pending=[(root,0)];result=[]
         while pending:
             folder,depth=pending.pop();self.check_cancel()
             if depth>40:raise ValueError('The folder is too deeply nested.')
@@ -74,7 +81,7 @@ class MaterialArchiveFiles(MaterialReceiptFiles):
         return sorted(result,key=lambda row:row['relative_path'])
 
     def scan_index(self,source):
-        root=checked_path(source);pending=[(root,0)];result=[]
+        root=checked_material_path(source);pending=[(root,0)];result=[]
         while pending:
             folder,depth=pending.pop();self.check_cancel()
             if depth>40:raise ValueError('The folder is too deeply nested to index.')
@@ -101,7 +108,7 @@ class MaterialArchiveFiles(MaterialReceiptFiles):
         if destination.exists():
             if destination.is_file() and self.digest(destination)==entry['sha256']:return 'skipped'
             raise ValueError('The destination was changed. Existing files are retained.')
-        origin=checked_path(Path(source)/entry['relative_path'])
+        origin=checked_material_path(Path(source)/entry['relative_path'])
         destination.parent.mkdir(parents=True,exist_ok=True);checked_path(destination.parent)
         temporary_root=checked_path(root.parent/'pending',must_exist=False)
         temporary_root.mkdir(exist_ok=True);temporary=temporary_root/uuid4().hex
@@ -121,15 +128,15 @@ class MaterialArchiveFiles(MaterialReceiptFiles):
 
     def new_stage(self, root, operation_id):
         # Only this namespace is excluded from discovery. Never reuse an unverified instance.
-        parent=checked_path(Path(root)/'.connlab'/'receiving',must_exist=False)
+        parent=checked_material_path(Path(root)/'.connlab'/'receiving',must_exist=False)
         parent.mkdir(parents=True,exist_ok=True);checked_path(parent)
         container=parent/(operation_id+'-'+uuid4().hex)
         container.mkdir();path=container/'payload';path.mkdir()
-        return str(path),identity(path)
+        return str(display_path(path)),identity(path)
 
     def publish_folder(self, stage, target, expected):
-        self.check_root(stage,expected)
-        target=checked_path(target,must_exist=False)
+        stage=self.check_root(stage,expected)
+        target=checked_material_path(target,must_exist=False)
         if target.exists(): raise ValueError("The target folder appeared during receipt. Existing files were retained.")
         if os.name=='nt': os.rename(stage,target)
         else:

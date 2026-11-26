@@ -86,15 +86,14 @@ class LibrarySearchService:
             raise ValueError("A material folder is not linked to this project yet. Use its workspace to associate one.")
         if entry.get("workspace_unavailable"):
             raise ValueError("The registered project folder is unavailable. Review its location in the Workbench.")
-        path = self.files.resolve(entry["folder_path"], relative)
-        if containing and relative:
-            path = path.parent
-        if not path.is_dir() and path.suffix.casefold() not in {
+        path = self.files.resolve(entry["folder_path"], relative, containing=containing)
+        directory = self.files.is_directory(path)
+        if not directory and path.suffix.casefold() not in {
             ".doc", ".docx", ".xls", ".xlsx", ".xlsm", ".pdf", ".txt", ".csv",
             ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".ppt", ".pptx"}:
             raise ValueError("Open this file from its folder using a suitable application.")
         self.opener(path)
-        return {"status": "opened", "message": "Folder opened." if path.is_dir() else "File opened."}
+        return {"status": "opened", "message": "Folder opened." if directory else "File opened."}
 
     def refresh(self):
         """Explicit cache refresh for existing catalog sources; queries never perform this walk."""
