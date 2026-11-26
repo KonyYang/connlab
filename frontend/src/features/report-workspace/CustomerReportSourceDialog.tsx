@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
+  direct?: boolean;
   busy: boolean;
   error: string | null;
   onCancel: () => void;
   onGenerate: (file: File) => Promise<boolean>;
 };
 
-export function CustomerReportSourceDialog({ busy, error: requestError, onCancel, onGenerate }: Props) {
+export function CustomerReportSourceDialog({ direct, busy, error: requestError, onCancel, onGenerate }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dialog = useRef<HTMLElement>(null);
@@ -26,8 +27,8 @@ export function CustomerReportSourceDialog({ busy, error: requestError, onCancel
         if (event.shiftKey && document.activeElement === first && last) { event.preventDefault(); last.focus(); }
         else if (!event.shiftKey && document.activeElement === last && first) { event.preventDefault(); first.focus(); }
       }}>
-      <h2 id="customer-source-title">Select Internal Report</h2>
-      <p>The current Internal Report is missing. Select an existing Internal Report (.docx) to generate a customer report download. The source file is not changed.</p>
+      <h2 id="customer-source-title">{direct ? "Create customer copy" : "Select Internal Report"}</h2>
+      <p>{direct ? "Choose the finished internal report for a separate customer review copy." : "The current Internal Report is missing. Select an existing Internal Report (.docx) to generate a customer report download. The source file is not changed."}</p>
       <label className="report-workspace-file-field">Internal Report file
         <input type="file" accept=".docx" disabled={busy} onChange={(event) => {
           const next = event.target.files?.[0] ?? null;
@@ -35,11 +36,12 @@ export function CustomerReportSourceDialog({ busy, error: requestError, onCancel
           setFile(next && /\.docx$/i.test(next.name) ? next : null);
         }} />
       </label>
+      {direct && file && <p className="report-source-name" title={file.name}>{file.name}</p>}
       {error ? <p role="alert">{error}</p> : null}
       {requestError ? <p role="alert">{requestError}</p> : null}
       <div className="report-workspace-action-row">
         <button type="button" className="primary-action" disabled={!file || busy} onClick={() => { if (file) void onGenerate(file); }}>
-          {busy ? "Checking Source..." : "Generate Customer Report"}
+          {busy ? "Preparing…" : direct ? "Generate review copy" : "Generate Customer Report"}
         </button>
         <button type="button" disabled={busy} onClick={onCancel}>Cancel</button>
       </div>

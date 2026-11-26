@@ -50,7 +50,7 @@ vi.mock("../../api/client", async () => {
 
 vi.mock("../../api/reportAuthoring", async () => ({
   ...await vi.importActual<typeof import('../../api/reportAuthoring')>('../../api/reportAuthoring'),
-  getReportAuthoring: vi.fn(), selectReportBase: vi.fn(),
+  getReportAuthoring: vi.fn(), selectReportBase: vi.fn(), adoptCurrentReportWorkingCopy: vi.fn(),
 }));
 
 const state: api.ReportWorkspaceState = {
@@ -161,6 +161,7 @@ const equipmentPreview: api.EquipmentListPreview = {
 describe("ReportWorkspace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(authoring.adoptCurrentReportWorkingCopy).mockImplementation(async id => authoring.getReportAuthoring(id));
     vi.mocked(authoring.getReportAuthoring).mockResolvedValue({ project_id: 'project-1', revision: 0,
       sources: [], mappings: [], outputs: [], base_source_id: null,
       context: { dl_number: 'DL-001', matrix_id: 'matrix-1', steps: [] } });
@@ -230,7 +231,7 @@ describe("ReportWorkspace", () => {
     vi.mocked(authoring.selectReportBase).mockReturnValue(new Promise(resolve => { finishBase = resolve; }));
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await screen.findByRole('region', { name: 'Internal Report' });
-    await userEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
+    await userEvent.click(screen.getByText('Report content', { selector: 'summary' }));
     await userEvent.click(await screen.findByText('Use as report base'));
     expect(screen.getByText('Update Equipment List').matches(':disabled')).toBe(true);
     expect(screen.getByText('Generate Internal Report').matches(':disabled')).toBe(true);
@@ -468,6 +469,24 @@ describe("ReportWorkspace", () => {
     expect(screen.queryByText("Project project-1")).toBeNull();
     await user.click(within(actions).getByRole("button", { name: "Back To Workspace" }));
     expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("generates directly from the selected finished report when an official version exists", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.startStandaloneCustomerReport).mockResolvedValue({ operation_id: "direct", status: "completed",
+      stage: "completed", elapsed_seconds: 0, message: null });
+    vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({ blob: new Blob(["customer"]), fileName: "Customer.docx" });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: /from a finished internal report/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Create customer copy" });
+    const file = new File(["manually finished"], "Reviewed Word.docx");
+    await user.upload(within(dialog).getByLabelText("Internal Report file"), file);
+    expect(within(dialog).getByText(file.name)).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: "Generate review copy" }));
+    await waitFor(() => expect(api.downloadStandaloneCustomerReport).toHaveBeenCalledWith("direct"));
+    expect(api.startStandaloneCustomerReport).toHaveBeenCalledWith(file);
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+    expect(authoring.selectReportBase).not.toHaveBeenCalled();
   });
 
   it("chooses an existing internal DOCX only when the current report is missing and downloads a copy", async () => {

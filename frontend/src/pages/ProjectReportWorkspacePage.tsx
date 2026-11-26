@@ -8,11 +8,12 @@ import "../workbench.css";
 type ProjectReportWorkspacePageProps = {
   projectId: string;
   onBackToWorkbench: () => void;
+  onOpenBasicInformation?: () => void;
 };
 
 export function ProjectReportWorkspacePage({
   projectId,
-  onBackToWorkbench,
+  onBackToWorkbench, onOpenBasicInformation,
 }: ProjectReportWorkspacePageProps): ReactElement {
   const [identity, setIdentity] = useState<{ projectId: string; label: string } | null>(null);
 
@@ -46,7 +47,7 @@ export function ProjectReportWorkspacePage({
     return () => { active = false; };
   }, [projectId]);
 
-  return <ReportWorkspace
+  return <ReportWorkspace key={projectId} onOpenBasicInformation={onOpenBasicInformation}
     evidenceStep={readStepLink(projectId, window.location.search)}
     identityLabel={identity?.projectId === projectId ? identity.label : "Connector Project"}
     onBack={onBackToWorkbench}
