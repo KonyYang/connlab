@@ -118,7 +118,7 @@ class ReportPublicationGateway:
         source, target = Path(source_path), Path(target_path)
         current = Path(current_path) if current_path is not None else None
         if target.suffix.casefold() != ".docx" or not target.parent.is_dir():
-            raise FileNotFoundError("The report destination folder is unavailable. Restore it and preview again.")
+            raise ReportPublicationConflictError(f"The report destination folder is unavailable: {target.parent}. Restore access and preview again.")
         if self.fingerprint(source) != expected_source_sha256:
             raise ReportPublicationConflictError("The generated report changed. Generate again.")
         current_identity = _file_identity(current) if current is not None else None
@@ -133,7 +133,12 @@ class ReportPublicationGateway:
                 raise ReportPublicationConflictError("A report already occupies the new destination. Resolve the conflict and preview again.")
 
         require_current()
-        descriptor, staging_name = tempfile.mkstemp(prefix=".report-", suffix=".stage", dir=target.parent)
+        try:
+            descriptor, staging_name = tempfile.mkstemp(prefix=".report-", suffix=".stage", dir=target.parent)
+        except PermissionError as exc:
+            raise ReportPublicationConflictError(f"Write access denied in {target.parent}. Check folder permissions and preview again.") from exc
+        except FileNotFoundError as exc:
+            raise ReportPublicationConflictError(f"The report destination folder is unavailable: {target.parent}. Restore access and preview again.") from exc
         os.close(descriptor)
         staging = Path(staging_name)
         staging_identity = _file_identity(staging)
@@ -181,7 +186,8 @@ class ReportPublicationGateway:
             committed = True
             return result
         except PermissionError as exc:
-            raise ReportPublicationConflictError("Close the report in Word and check folder write access, then preview generation again.") from exc
+            location = exc.filename2 or exc.filename or target
+            raise ReportPublicationConflictError(f"Write access denied at {location}. Close the report in Word and check folder permissions, then preview again.") from exc
         except FileExistsError as exc:
             raise ReportPublicationConflictError("The report destination changed. Preview generation again.") from exc
         finally:

@@ -6,6 +6,10 @@ import json
 import os
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path, PureWindowsPath
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +35,49 @@ class OfficialWorkspaceManifestGateway:
     def read(self, path: Path) -> dict[str, object]:
         """Read a manifest JSON file as a dictionary."""
         return json.loads(path.read_text(encoding="utf-8"))
+
+    def verify_report_workspace(self, record: OfficialWorkspaceRecord, project_id: str) -> tuple:
+        """Validate the registered destination before report discovery and again before publication."""
+        local = record.local_workspace_path
+        official = record.official_folder_path
+        path = record.manifest_path
+        if not local.is_absolute() or local == local.parent or ".." in local.parts:
+            raise ValueError(f"Invalid registered workspace path: {local}. Link the correct project folder.")
+        if official.parent != local or official.name == "..":
+            raise ValueError(f"Official folder {official} must be directly inside {local}. Link the correct project folder.")
+        for actual, expected in ((path, local / ".connlab" / "manifest.json"),
+                                 (record.source_book_path, local / "Source Book")):
+            if actual != expected:
+                raise ValueError(f"Invalid registered path {actual}. Expected {expected}. Link the correct project folder.")
+        self.require_unredirected_paths(local, official, path, record.source_book_path)
+        for folder in (local, official):
+            if not folder.is_dir():
+                raise ValueError(f"Registered project folder unavailable: {folder}. Restore access or link the correct folder.")
+        if not path.is_file():
+            raise ValueError(f"Project identity file unavailable: {path}. Restore it or link the correct project folder.")
+        try:
+            manifest = self.read(path)
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"Cannot read the project identity file {path}. Restore a readable, valid manifest.") from exc
+        if not isinstance(manifest, dict) or manifest.get("schema_version", 1) not in (1, 2):
+            raise ValueError(f"Invalid project identity record in {path}. Restore the correct identity file.")
+        for key, expected, label in (
+            ("project_id", project_id, "project ID"), ("dl_number", record.dl_number, "LTR number"),
+            ("local_workspace_path", str(local), "workspace path"),
+            ("official_project_folder_path", str(official), "official folder path"),
+        ):
+            if manifest.get(key) != expected:
+                raise ValueError(f"The {label} in {path} does not match the registered value {expected}. Link the correct project folder.")
+        identity = stable_folder_identity(official)
+        if manifest.get("official_folder_identity") is not None and manifest["official_folder_identity"] != identity:
+            raise ValueError(f"Folder identity for {official} differs from {path}. Link the correct project folder.")
+        return stable_folder_identity(local), identity, manifest
+
+    @classmethod
+    def require_unredirected_paths(cls, *paths: Path) -> None:
+        redirected = cls.first_redirected_path(*(part for path in paths for part in (*reversed(path.parents), path)))
+        if redirected is not None:
+            raise ValueError(f"Cannot use {redirected}: a symbolic link, junction or inaccessible path. Restore direct access and preview again.")
 
     def write(self, path: Path, manifest: OfficialWorkspaceManifest) -> None:
         """Write a manifest JSON file in UTF-8."""
