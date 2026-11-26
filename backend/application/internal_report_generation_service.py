@@ -119,7 +119,8 @@ class InternalReportGenerationService:
             except TestReportDraftGenerationError as exc:
                 raise InternalReportGenerationError("Internal Report generation failed before publication. Check the approved template, close Word and preview again; check generation logs if the problem persists.") from exc
             revalidate()
-            snapshot.target_dir.mkdir(parents=True, exist_ok=True)
+            if snapshot.mode != "official":
+                snapshot.target_dir.mkdir(parents=True, exist_ok=True)
             target = snapshot.target_dir / generated.file_name
 
             def persist(result: CurrentReportFileUpdateResult) -> None:

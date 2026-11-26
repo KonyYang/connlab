@@ -137,7 +137,10 @@ def generate_internal_report(project_id: str, request: GenerateInternalReportReq
         raise HTTPException(409, detail=str(exc)) from exc
     except OSError as exc:
         logger.exception("Internal Report filesystem failure for project %s", project_id)
-        raise HTTPException(409, detail="Report generation or publication failed. Review the current report and History/Report, close Word, check template and folder access, then preview again.") from exc
+        path = exc.filename2 or exc.filename
+        if path:
+            raise HTTPException(409, detail=f"Cannot access {path}: {exc.strerror or exc}. Restore access and preview again.") from exc
+        raise HTTPException(409, detail=f"Report generation or publication failed: {exc}. Review the current report and History/Report, then preview again.") from exc
     except Exception as exc:
         logger.exception("Internal Report generation or metadata commit failed for project %s", project_id)
         raise HTTPException(500, detail="Internal Report generation could not finish. Review the current report and History/Report, then preview again. If the issue persists, check generation logs.") from exc

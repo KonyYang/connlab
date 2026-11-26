@@ -352,35 +352,116 @@ def test_generation_preview_has_actionable_blockers_without_writing(lab, state):
     assert not (lab["settings"].data_dir / "internal_report_staging").exists()
 
 
-@pytest.mark.parametrize("location", ["unregistered", "missing_folder", "missing_manifest"])
-def test_unavailable_project_folder_downloads_new_draft_without_mutating_reports(lab, location):
-    original = None
-    if location != "unregistered":
-        original, local = official_report(lab)
-        if location == "missing_folder":
-            moved = original.parent.with_name("operator renamed folder")
-            original.parent.rename(moved)
-            original = moved / original.name
-        else:
-            (local / ".connlab" / "manifest.json").unlink()
-    before = original.read_bytes() if original else None
+@pytest.mark.parametrize("existing", [False, True], ids=["create", "regenerate"])
+def test_registered_report_uses_its_verified_folder_after_default_location_changes(lab, monkeypatch, existing):
+    from docx import Document
+    from backend.infrastructure.office.test_report_document_gateway import TestReportDocumentGateway
+    from tests.unit.test_test_report_document_gateway import _build_template
+
+    _build_template(lab["template"])
+    monkeypatch.setattr(deps, "TestReportDocumentGateway", TestReportDocumentGateway)
+    current, local = official_report(lab)
+    original = current.read_bytes()
+    if not existing:
+        current.unlink()
+    new_default = lab["root"] / "new default"
+    with lab["factory"]() as session:
+        ExternalResourceRepository(session).upsert(ExternalResource("project-root", ExternalResourceType.PROJECT_OUTPUT_ROOT,
+            new_default, True, ExternalResourceValidationStatus.VALID))
+        session.commit()
     reviewed = preview(lab)
-    assert reviewed["mode"] in {"managed_draft", "download_draft"}
-    if reviewed["mode"] == "download_draft":
-        assert generate(lab, reviewed).status_code == 409
+    assert reviewed["mode"] == "official"
+    assert Path(reviewed["target_path"]).parent == current.parent
+    assert reviewed["requires_confirmation"] is existing
+    result = generate(lab, reviewed, existing)
+    assert result.status_code == 200, result.text
+    written = Path(result.json()["file_path"])
+    assert written.parent == current.parent
+    assert Document(written).tables
+    if existing:
+        archive = Path(result.json()["archive_path"])
+        assert archive.parent == local / "History" / "Report" and archive.read_bytes() == original
+    else:
+        assert result.json()["archive_path"] is None
+    assert not new_default.exists()
+
+
+@pytest.mark.parametrize("issue,reason", [
+    ("missing_local", "unavailable"), ("missing_official", "unavailable"),
+    ("missing_manifest", "unavailable"), ("broken_json", "read"),
+    ("foreign", "project"), ("dl_number", "LTR"), ("identity", "identity"),
+    ("redirected", "junction"),
+])
+def test_registered_report_blocks_changed_or_unsafe_location_at_preview_and_write(lab, issue, reason):
+    import os
+    current, local = official_report(lab)
+    reviewed = preview(lab)
+    manifest = local / ".connlab" / "manifest.json"
+    path = manifest
+    retained = current
+    if issue in {"missing_local", "missing_official", "redirected"}:
+        path = local if issue == "missing_local" else current.parent
+        moved = path.with_name("moved by operator")
+        relative = current.relative_to(path)
+        path.rename(moved)
+        retained = moved / relative
+        if issue == "redirected":
+            if os.name == "nt":
+                import _winapi
+                _winapi.CreateJunction(str(moved), str(path))
+            else:
+                path.symlink_to(moved, target_is_directory=True)
+    elif issue == "missing_manifest":
+        manifest.unlink()
+    elif issue == "broken_json":
+        manifest.write_text("{", encoding="utf-8")
+    else:
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        field = {"foreign": "project_id", "dl_number": "dl_number", "identity": "official_folder_identity"}[issue]
+        payload[field] = "different"
+        manifest.write_text(json.dumps(payload), encoding="utf-8")
+    blocked = lab["client"].get(BASE + "/generation-preview").json()
+    assert blocked["status"] == "blocked" and blocked["preview_token"] is None
+    response = generate(lab, reviewed, True)
+    assert response.status_code == 409
+    for message in [" ".join(blocked["blockers"]), response.json()["detail"]]:
+        assert str(path) in message and reason.lower() in message.lower()
+    assert retained.read_bytes() == b"operator manual results, equipment and photos"
+    assert not lab["writer"].reports
+    assert not (local / "History").exists()
+
+
+def test_report_write_denied_names_destination_and_preserves_manual_report(lab, monkeypatch):
+    import tempfile
+
+    current, local = official_report(lab)
+    reviewed = preview(lab)
+    mkstemp = tempfile.mkstemp
+
+    def deny_official_write(*args, **kwargs):
+        if kwargs.get("dir") == current.parent:
+            raise PermissionError("Write access denied")
+        return mkstemp(*args, **kwargs)
+
+    monkeypatch.setattr(tempfile, "mkstemp", deny_official_write)
+    response = generate(lab, reviewed, True)
+    assert response.status_code == 409
+    assert str(current.parent) in response.json()["detail"] and "write access" in response.json()["detail"].lower()
+    assert current.read_bytes() == b"operator manual results, equipment and photos"
+    assert not (local / "History").exists()
+
+
+def test_unregistered_project_downloads_new_draft_without_mutating_reports(lab):
+    reviewed = preview(lab)
+    assert reviewed["mode"] == "managed_draft"
     for _ in range(2):
         response = lab["client"].post(BASE + "/download-draft", json={"preview_token": reviewed["preview_token"]})
         assert response.status_code == 200, response.text
         assert "draft.docx" in response.headers["content-disposition"].lower()
         assert response.content == b"fresh approved template report"
-        if original:
-            assert original.read_bytes() == before
     workspace = lab["client"].get("/api/projects/P1/report-workspace").json()
     assert workspace["report_revisions"] == []
     assert not list((lab["settings"].data_dir / "internal_report_staging").iterdir())
-    if original:
-        assert list(original.parent.glob("*.docx")) == [original]
-        assert not (local / "History").exists()
 
 
 def test_draft_download_rejects_a_folder_that_becomes_official_after_preview(lab):
