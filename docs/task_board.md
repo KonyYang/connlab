@@ -860,6 +860,7 @@
           "backend/api/dependencies.py",
           "backend/api/routes_report_workspace.py",
           "backend/application/internal_report_generation_service.py",
+          "backend/infrastructure/files/report_publication_gateway.py",
           "backend/infrastructure/official_workspace_manifest.py",
           "frontend/src/App.tsx",
           "frontend/src/features/report-workspace",
@@ -870,7 +871,7 @@
         "risk_reasons": [],
         "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
         "started_at": "2026-11-26T22:40:05.457358Z",
-        "updated_at": "2026-11-26T23:46:28.648108Z",
+        "updated_at": "2026-11-26T23:47:00.300395Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
