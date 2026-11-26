@@ -49,6 +49,20 @@ beforeEach(() => {
   vi.mocked(authoring.generateCustomerReviewCopy).mockResolvedValue({ ...retained, revision: 5 });
 });
 
+it.each([
+  ['DL-2026-11-003', 'Expected project LTR: DL-2026-11-003', false],
+  ['', 'Register this project’s LTR number before selecting a report.', true],
+] as const)('shows the expected LTR before choosing a Word file (%s)', async (dl, description, disabled) => {
+  vi.mocked(authoring.getReportAuthoring).mockResolvedValue({
+    ...retained, outputs: [], base_source_id: null, context: { ...retained.context, dl_number: dl },
+  });
+  render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
+  const button = await screen.findByRole('button', { name: 'Continue this project’s Word report…', description });
+  expect(screen.getByText(description)).toBeTruthy();
+  expect(button.matches(':disabled')).toBe(disabled);
+  expect(authoring.uploadReportSource).not.toHaveBeenCalled();
+});
+
 it('reopens the last content section of this project and working base', async () => {
   const view = render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
   fireEvent.click(await screen.findByRole('button', {name:'Equipment list'}));

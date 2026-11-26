@@ -820,8 +820,17 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
           })}>Download working copy</button>
         </div>} /> : state && readiness && <section className="report-entry" aria-label="Report generation">
         <h2>Start a report</h2>
-        <div className="report-entry-row"><h3>Continue from an existing Word file</h3>
-          <button type="button" className="primary-action" disabled={Boolean(busyAction)} onClick={() => wordPicker.current?.click()}>Choose Word file…</button>
+        <div className="report-entry-row">
+          <div>
+            <h3>Existing internal report</h3>
+            {authoringState && <p id="report-entry-expected-ltr">{authoringState.context.dl_number
+              ? `Expected project LTR: ${authoringState.context.dl_number}`
+              : "Register this project’s LTR number before selecting a report."}</p>}
+          </div>
+          <button type="button" className="primary-action"
+            aria-describedby={authoringState ? "report-entry-expected-ltr" : undefined}
+            disabled={Boolean(busyAction) || !authoringState?.context.dl_number}
+            onClick={() => wordPicker.current?.click()}>Continue this project’s Word report…</button>
         </div>
           {authoringState && draftUpdates.source?.status === 'ready' && draftUpdates.source.file_sha256 && <>
 
