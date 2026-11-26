@@ -839,15 +839,16 @@
         "route": "sol_build_review_qa",
         "scope": "Keep ordinary display and stored paths and all existing directory, redirect and overwrite boundaries. Verify with isolated data and Windows legacy length limits.",
         "scope_paths": [
-          "backend/infrastructure/project_library",
-          "backend/application/project_library/search.py",
           "backend/application/project_library/material_archive.py",
-          "tests/integration/test_library_long_paths.py"
+          "backend/application/project_library/search.py",
+          "backend/infrastructure/project_library",
+          "tests/integration/test_library_long_paths.py",
+          "tests/integration/test_material_receipt.py"
         ],
         "risk_reasons": [],
         "activation_head": "81ae27a57e13f0c0182354d53309c158dcb65dad",
         "started_at": "2026-11-26T14:59:42.416202Z",
-        "updated_at": "2026-11-26T14:59:42.416202Z",
+        "updated_at": "2026-11-26T15:12:57.798857Z",
         "checkpoint": null,
         "report": null
       }
