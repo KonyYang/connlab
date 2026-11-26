@@ -63,6 +63,36 @@ it.each([
   expect(authoring.uploadReportSource).not.toHaveBeenCalled();
 });
 
+it('puts creation before the Word chooser and its LTR when the project has no report', async () => {
+  vi.mocked(authoring.getReportAuthoring).mockResolvedValue({ ...retained, outputs: [], base_source_id: null });
+  vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...(await api.fetchCurrentReport('P1')), status: 'missing',
+    mode: null, file_name: null, file_sha256: null, file_path: null });
+  render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
+  const create = await screen.findByRole('button', { name: 'Create a new internal report' });
+  const choose = screen.getByRole('button', { name: 'Continue this project’s Word report…', description: 'Expected project LTR: DL-001' });
+  expect(create.compareDocumentPosition(choose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByText('Start a report')).toBeNull();
+  expect(screen.getByRole('button', { name: /from a finished internal report/ })).toBeTruthy();
+});
+
+it('puts the official file first and continues the displayed file even when the update source snapshot is stale', async () => {
+  vi.mocked(authoring.getReportAuthoring).mockResolvedValue({ ...retained, outputs: [], base_source_id: null });
+  vi.mocked(api.fetchReportUpdateSource).mockResolvedValue({ ...(await api.fetchCurrentReport('P1')), mode: 'download_draft',
+    file_name: 'Other draft.docx', file_sha256: 'd'.repeat(64) });
+  vi.mocked(authoring.adoptCurrentReportWorkingCopy).mockResolvedValue(retained);
+  render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
+  const resume = await screen.findByRole('button', { name: 'Continue with Official.docx' });
+  const regenerate = screen.getByRole('button', { name: 'Regenerate internal report…' });
+  expect(resume.compareDocumentPosition(regenerate) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Create a new internal report' })).toBeNull();
+  fireEvent.click(resume);
+  await screen.findByText('Reviewed Working.docx');
+  expect(authoring.adoptCurrentReportWorkingCopy).toHaveBeenCalledWith('P1', {
+    expected_revision: 4, source_mode: 'official', source_sha256: 'o'.repeat(64),
+  });
+  expect(api.generateInternalReport).not.toHaveBeenCalled();
+});
+
 it('reopens the last content section of this project and working base', async () => {
   const view = render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
   fireEvent.click(await screen.findByRole('button', {name:'Equipment list'}));
@@ -77,7 +107,7 @@ it('restores the selected working copy and keeps section updates away from the o
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
   expect(await screen.findByText('Reviewed Working.docx')).toBeTruthy();
   expect(screen.queryByText('Official.docx')).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Generate Internal Report' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Regenerate internal report…' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Update LLCR Results' }));
   await waitFor(() => expect(authoring.updateWorkingCopyLlcr).toHaveBeenCalledWith('P1', {
     expected_revision: 4, expected_sha256: 'w'.repeat(64), dataset_revision_id: 'D1',
@@ -98,7 +128,7 @@ it('does not fall back to official writes when the saved working-copy state cann
   vi.mocked(authoring.getReportAuthoring).mockRejectedValue(new Error('Source unavailable'));
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
   await screen.findByText(/Unable to check the selected working copy/);
-  expect(screen.getByRole('button', { name: 'Generate Internal Report' }).matches(':disabled')).toBe(true);
+  expect(screen.getByRole('button', { name: 'Regenerate internal report…' }).matches(':disabled')).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Update Equipment List' }));
   expect(api.updateEquipmentListOneClick).not.toHaveBeenCalled();
 });
@@ -113,7 +143,8 @@ it('creates a customer review copy from the selected working version instead of 
   expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
 });
 
-it('adopts the exact retained section-update draft instead of a different official report', async () => {
+it('continues the retained section-update draft when no official report exists', async () => {
+  vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...(await api.fetchCurrentReport('P1')), status: 'missing', mode: null, file_name: null, file_sha256: null });
   vi.mocked(authoring.getReportAuthoring).mockResolvedValue({ ...retained, outputs: [] });
   vi.mocked(api.fetchReportUpdateSource).mockResolvedValue({ status: 'ready', mode: 'download_draft',
     file_name: 'Later manual draft.docx', file_sha256: 'd'.repeat(64), report_revision_id: null,

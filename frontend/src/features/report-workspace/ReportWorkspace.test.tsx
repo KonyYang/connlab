@@ -234,7 +234,7 @@ describe("ReportWorkspace", () => {
     await userEvent.click(screen.getByText('Report content', { selector: 'summary' }));
     await userEvent.click(await screen.findByText('Use as report base'));
     expect(screen.getByText('Update Equipment List').matches(':disabled')).toBe(true);
-    expect(screen.getByText('Generate Internal Report').matches(':disabled')).toBe(true);
+    expect(screen.getByText('Regenerate internal report…').matches(':disabled')).toBe(true);
     await userEvent.click(screen.getByText('Update Equipment List'));
     expect(api.updateEquipmentListOneClick).not.toHaveBeenCalled();
     await act(async () => finishBase({ ...authoringState, revision: 2 }));
@@ -286,7 +286,7 @@ describe("ReportWorkspace", () => {
     expect(onBack).toHaveBeenCalledOnce();
   });
 
-  it("shows only the current filename below Generate and confirms archive regeneration without writing on cancel", async () => {
+  it("prioritizes the resumable current filename before regeneration and confirms archive regeneration without writing on cancel", async () => {
     const user = userEvent.setup();
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
       project_id: "project-1", status: "ready", preview_token: "c".repeat(64),
@@ -297,15 +297,29 @@ describe("ReportWorkspace", () => {
     const internal = await screen.findByRole("region", { name: "Internal Report" });
     const filename = within(internal).getByText(currentReport.file_name!);
     expect(within(internal).queryByText(currentReport.file_path!)).toBeNull();
-    const generate = within(internal).getByRole("button", { name: "Generate Internal Report" });
-    expect(generate.compareDocumentPosition(filename) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    const generate = within(internal).getByRole("button", { name: "Regenerate internal report…" });
+    expect(filename.compareDocumentPosition(generate) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     expect(within(internal).queryByText("Official project report")).toBeNull();
     expect(within(internal).queryByRole("button", { name: "Download Current Report" })).toBeNull();
     expect(within(internal).queryByRole("button", { name: /Open.*folder/ })).toBeNull();
-    await user.click(within(internal).getByRole("button", { name: "Generate Internal Report" }));
+    await user.click(within(internal).getByRole("button", { name: "Regenerate internal report…" }));
     const dialog = await screen.findByRole("dialog", { name: "Archive and regenerate Internal Report" });
     expect(within(dialog).getByText(/manual content, results and photos, will be preserved/)).toBeTruthy();
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(api.generateInternalReport).not.toHaveBeenCalled();
+  });
+
+  it("requires a fresh choice when the official report disappears before regeneration preview", async () => {
+    vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({ project_id: "project-1",
+      status: "ready", preview_token: "c".repeat(64), requires_confirmation: false, mode: "official",
+      target_path: currentReport.file_path!, current_path: null, blockers: [] });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    const regenerate = await screen.findByRole("button", { name: "Regenerate internal report…" });
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null,
+      file_name: null, file_path: null, file_sha256: null });
+    await userEvent.click(regenerate);
+    await screen.findByText(/The official report changed/);
+    expect(screen.getByRole("button", { name: "Create a new internal report" })).toBeTruthy();
     expect(api.generateInternalReport).not.toHaveBeenCalled();
   });
 
@@ -314,7 +328,7 @@ describe("ReportWorkspace", () => {
     let resolvePreview!: (preview: api.InternalReportGenerationPreview) => void;
     vi.mocked(api.previewInternalReportGeneration).mockReturnValue(new Promise((resolve) => { resolvePreview = resolve; }));
     const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Internal Report" }));
+    await user.click(await screen.findByRole("button", { name: "Regenerate internal report…" }));
     view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
     await act(async () => resolvePreview({ project_id: "project-1", status: "ready", preview_token: "c".repeat(64),
       requires_confirmation: true, mode: "official", current_path: currentReport.file_path!, target_path: currentReport.file_path!, blockers: [] }));
@@ -324,6 +338,7 @@ describe("ReportWorkspace", () => {
 
   it.each(["managed_draft", "download_draft"] as const)("downloads a %s copy without publishing or archiving the current report", async (mode) => {
     const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, mode: "managed_draft" });
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
       project_id: "project-1", status: "ready", preview_token: "c".repeat(64),
       requires_confirmation: true, mode, current_path: currentReport.file_path!,
@@ -331,7 +346,7 @@ describe("ReportWorkspace", () => {
     });
     vi.mocked(api.downloadInternalReportDraft).mockResolvedValue({blob: new Blob(["draft"]), fileName: "Internal Report draft.docx"});
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", {name: "Generate Internal Report"}));
+    await user.click(await screen.findByRole("button", {name: "Generate another internal report…"}));
     expect(await screen.findByText("Downloaded draft: Internal Report draft.docx")).toBeTruthy();
     expect(api.generateInternalReport).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog", {name: "Archive and regenerate Internal Report"})).toBeNull();
@@ -342,13 +357,14 @@ describe("ReportWorkspace", () => {
   it("does not download a late draft after switching projects", async () => {
     const user = userEvent.setup();
     let finish!: (value: api.BlobDownloadResponse) => void;
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null, file_name: null, file_sha256: null });
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
       project_id: "project-1", status: "ready", preview_token: "c".repeat(64), requires_confirmation: false,
       mode: "download_draft", current_path: null, target_path: null, blockers: [],
     });
     vi.mocked(api.downloadInternalReportDraft).mockReturnValue(new Promise(resolve => { finish = resolve; }));
     const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", {name: "Generate Internal Report"}));
+    await user.click(await screen.findByRole("button", {name: "Create a new internal report"}));
     await waitFor(() => expect(api.downloadInternalReportDraft).toHaveBeenCalled());
     view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
     await act(async () => finish({blob: new Blob(["draft"]), fileName: "Old project draft.docx"}));
@@ -391,6 +407,7 @@ describe("ReportWorkspace", () => {
 
   it("shows draft download failure without publishing and allows retry", async () => {
     const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null, file_name: null, file_sha256: null });
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
       project_id: "project-1", status: "ready", preview_token: "c".repeat(64), requires_confirmation: false,
       mode: "download_draft", current_path: null, target_path: null, blockers: [],
@@ -398,10 +415,10 @@ describe("ReportWorkspace", () => {
     vi.mocked(api.downloadInternalReportDraft).mockRejectedValueOnce(new Error("Check the approved template and retry."))
       .mockResolvedValueOnce({blob: new Blob(["draft"]), fileName: "Report draft.docx"});
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", {name: "Generate Internal Report"}));
+    await user.click(await screen.findByRole("button", {name: "Create a new internal report"}));
     expect((await screen.findByRole("alert")).textContent).toContain("Check the approved template and retry.");
     expect(URL.createObjectURL).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", {name: "Generate Internal Report"}));
+    await user.click(screen.getByRole("button", {name: "Create a new internal report"}));
     expect(await screen.findByText("Downloaded draft: Report draft.docx")).toBeTruthy();
     expect(api.generateInternalReport).not.toHaveBeenCalled();
   });
@@ -410,22 +427,22 @@ describe("ReportWorkspace", () => {
     const user = userEvent.setup();
     vi.mocked(api.generateInternalReport).mockRejectedValueOnce(new Error("Confirmed authority changed. Preview generation again."));
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Internal Report" }));
+    await user.click(await screen.findByRole("button", { name: "Regenerate internal report…" }));
     await user.click(await screen.findByRole("button", { name: "Archive And Regenerate" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Confirmed authority changed. Preview generation again.");
     expect(screen.getByText(currentReport.file_name!)).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: "Archive and regenerate Internal Report" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Generate Internal Report" }));
+    await user.click(screen.getByRole("button", { name: "Regenerate internal report…" }));
     expect(api.previewInternalReportGeneration).toHaveBeenCalledTimes(2);
     expect(await screen.findByRole("button", { name: "Archive And Regenerate" })).toBeTruthy();
   });
 
   it("uses a concise transient success after confirmed regeneration", async () => {
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await screen.findByRole("button", { name: "Generate Internal Report" });
+    await screen.findByRole("button", { name: "Regenerate internal report…" });
     vi.useFakeTimers();
     try {
-      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Generate Internal Report" })));
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Regenerate internal report…" })));
       await act(async () => fireEvent.click(screen.getByRole("button", { name: "Archive And Regenerate" })));
       expect(api.generateInternalReport).toHaveBeenCalledWith("project-1", "c".repeat(64), true);
       expect(screen.getByText("Generated the Internal Report.")).toBeTruthy();
@@ -462,7 +479,7 @@ describe("ReportWorkspace", () => {
     expect(within(updates).getByLabelText("LLCR result workbook")).toBeTruthy();
     expect(within(updates).getByRole("button", { name: "Update Equipment List" })).toBeTruthy();
     const generation = screen.getByRole("region", { name: "Report generation" });
-    expect(within(generation).getByRole("button", { name: "Generate Internal Report" })).toBeTruthy();
+    expect(within(generation).getByRole("button", { name: "Regenerate internal report…" })).toBeTruthy();
     expect(within(generation).getByRole("button", { name: "Generate Customer Report" })).toBeTruthy();
     expect(within(generation).getByText(customerReport.file_name!)).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Customer Report" })).toBeNull();
@@ -643,7 +660,7 @@ describe("ReportWorkspace", () => {
     expect(screen.queryByText("Confirmed Matrix r4")).toBeNull();
     expect(screen.queryByText("Basic Information v2")).toBeNull();
     expect(within(screen.getByRole("region", { name: "Internal Report" })).queryByText("Official project report")).toBeNull();
-    expect(screen.getByRole("button", { name: "Generate Internal Report" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Regenerate internal report…" })).toBeTruthy();
 
     const fileInput = screen.getByLabelText("LLCR result workbook");
     fireEvent.change(fileInput, {
@@ -677,7 +694,7 @@ describe("ReportWorkspace", () => {
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     const internal = await screen.findByRole("region", { name: "Internal Report" });
     expect(within(internal).getByText(blocker)).toBeTruthy();
-    expect(within(internal).getByRole("button", { name: "Generate Internal Report" }).hasAttribute("disabled")).toBe(true);
+    expect(within(internal).getByRole("button", { name: "Create a new internal report" }).hasAttribute("disabled")).toBe(true);
     expect(screen.queryByText("Basic Information v2")).toBeNull();
     expect(screen.queryByText("Confirmed Matrix r4")).toBeNull();
   });
@@ -702,7 +719,7 @@ describe("ReportWorkspace", () => {
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
-    const generateButton = await screen.findByRole("button", { name: "Generate Internal Report" });
+    const generateButton = await screen.findByRole("button", { name: "Create a new internal report" });
     expect(generateButton).toHaveProperty("disabled", false);
     await user.click(generateButton);
 

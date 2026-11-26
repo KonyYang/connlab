@@ -306,7 +306,31 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     () => deriveReportEntryState(currentReport),
     [currentReport]
   );
-  const reportFileName = currentReport?.status === "ready" ? currentReport.file_name : null;
+  const officialReport = currentReport?.status === "ready" && currentReport.mode === "official" ? currentReport : null;
+  const resumeSource = officialReport ?? (currentReport?.status !== "ambiguous" && draftUpdates.source?.status === "ready" && draftUpdates.source.mode === "download_draft"
+    ? draftUpdates.source : null);
+  const hasDraft = !officialReport && (Boolean(resumeSource) || currentReport?.status === "ready");
+  const generationLabel = officialReport ? "Regenerate internal report…" : hasDraft ? "Generate another internal report…" : "Create a new internal report";
+
+  async function continueReport() {
+    if (!resumeSource || !authoringState) return;
+    await runAction("authoring", async () => {
+      const selected = resumeSource;
+      const current = officialReport ? await fetchCurrentReport(projectId) : await draftUpdates.refresh();
+      if (!mounted.current || activeProject.current !== projectId) return null;
+      if (current.status !== "ready" || !current.file_sha256 || selected.file_sha256 !== current.file_sha256 ||
+          selected.file_name !== current.file_name || selected.file_path !== current.file_path || selected.mode !== current.mode ||
+          (current.mode !== "official" && current.mode !== "download_draft")) {
+        await refresh();
+        throw new Error("The available report changed. Check the refreshed filename before continuing.");
+      }
+      const next = await adoptCurrentReportWorkingCopy(projectId, {
+        expected_revision: authoringState.revision, source_sha256: current.file_sha256, source_mode: current.mode,
+      });
+      acceptAuthoringState(next);
+      return null;
+    });
+  }
 
   async function handleInternalAction(action: "initial", operation: (isCurrent: () => boolean) => Promise<void>): Promise<void> {
     if (busyAction || authoringOperation.current) return;
@@ -376,6 +400,10 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
       if (!isCurrent()) return;
       if (preview.status !== "ready" || !preview.preview_token) {
         setError(preview.blockers.join(" ") || "Resolve the report prerequisites and preview again.");
+      } else if (officialReport && (preview.mode !== "official" || !preview.requires_confirmation ||
+          (officialReport.file_path && preview.current_path !== officialReport.file_path))) {
+        await refresh();
+        if (isCurrent()) setError("The official report changed. Check the refreshed report before generating again.");
       } else if (preview.mode === "managed_draft" || preview.mode === "download_draft") {
         const response = await downloadInternalReportDraft(projectId, preview.preview_token);
         if (!isCurrent()) return;
@@ -819,74 +847,41 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
             return null;
           })}>Download working copy</button>
         </div>} /> : state && readiness && <section className="report-entry" aria-label="Report generation">
-        <h2>Start a report</h2>
-        <div className="report-entry-row">
-          <div>
-            <h3>Existing internal report</h3>
+        <section aria-label="Internal Report">
+          {resumeSource?.file_name && resumeSource.file_sha256 && <div className="report-entry-row">
+            <button className="ui-primary-action report-entry-resume" type="button"
+              disabled={Boolean(busyAction) || !authoringState?.context.dl_number} onClick={() => void continueReport()}>
+              Continue with <span>{resumeSource.file_name}</span>
+            </button>
+          </div>}
+          <div className="report-entry-row">
+            <button className={officialReport || hasDraft ? "ui-secondary-action" : "ui-primary-action"} type="button"
+              disabled={!readiness.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
+              onClick={() => void handleGenerateInternalReport()}>
+              {busyAction === "initial" ? "Generating…" : generationLabel}
+            </button>
+            {state.basic_information_status !== "confirmed" && onOpenBasicInformation &&
+              <button className="ui-secondary-action" type="button" onClick={onOpenBasicInformation}>Open Basic Information</button>}
+            {readiness.initialDraftBlocker && <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p>}
+            {reportEntry.kind === "blocked" && <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p>}
+            {currentReport?.status === "ready" && currentReport.mode !== "official" && <>
+              {currentReport.file_name !== resumeSource?.file_name && <span className="report-workspace-report-name">{currentReport.file_name}</span>}
+              <button type="button" disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()}>Download Current Report</button>
+              {reportEntry.kind === "publish" && <button className="ui-secondary-action" type="button" disabled={Boolean(busyAction)}
+                onClick={() => void handlePublishManagedReport()}>{busyAction === "publish" ? "Publishing..." : "Publish Current Draft To Project Folder"}</button>}
+              {reportEntry.kind === "managed" && <p className="report-workspace-note">Create the official project folder before publishing this draft.</p>}
+            </>}
+          </div>
+          <div className="report-entry-row">
+            <button type="button" className="ui-secondary-action"
+              aria-describedby={authoringState ? "report-entry-expected-ltr" : undefined}
+              disabled={Boolean(busyAction) || !authoringState?.context.dl_number}
+              onClick={() => wordPicker.current?.click()}>Continue this project’s Word report…</button>
             {authoringState && <p id="report-entry-expected-ltr">{authoringState.context.dl_number
               ? `Expected project LTR: ${authoringState.context.dl_number}`
               : "Register this project’s LTR number before selecting a report."}</p>}
           </div>
-          <button type="button" className="primary-action"
-            aria-describedby={authoringState ? "report-entry-expected-ltr" : undefined}
-            disabled={Boolean(busyAction) || !authoringState?.context.dl_number}
-            onClick={() => wordPicker.current?.click()}>Continue this project’s Word report…</button>
-        </div>
-          {authoringState && draftUpdates.source?.status === 'ready' && draftUpdates.source.file_sha256 && <>
-
-          <button type="button" disabled={Boolean(busyAction)} onClick={() => void runAction('authoring', async () => {
-            const selected = draftUpdates.source!;
-            const current = await draftUpdates.refresh();
-            if (activeProject.current !== projectId) return null;
-            if (current.status !== 'ready' || current.file_sha256 !== selected.file_sha256 || current.mode !== selected.mode)
-              throw new Error('The available report source changed. Review the refreshed source before selecting it.');
-            if (current.mode !== 'official' && current.mode !== 'download_draft')
-              throw new Error('This report source is not available for a working copy. Select an original in Report preparation.');
-            const next = await adoptCurrentReportWorkingCopy(projectId, { expected_revision: authoringState.revision,
-              source_sha256: current.file_sha256!, source_mode: current.mode });
-            acceptAuthoringState(next); return "Selected a new working copy. The original report is unchanged.";
-          })} className="report-editor-link">Continue with {draftUpdates.source.file_name}</button></>}
-        <div className="report-entry-row">
-            <section className="report-entry-create" aria-label="Internal Report">
-              <h3>Create an internal report</h3>
-              <div className="report-workspace-report-row report-workspace-initial-report">
-                <div className="report-workspace-action-row">
-                  {state.basic_information_status !== "confirmed" && onOpenBasicInformation ?
-                    <button type="button" className="secondary-action" onClick={onOpenBasicInformation}>Open Basic Information</button> :
-                  <button
-                    className="primary-action"
-                    disabled={Boolean(workingCopy) || !readiness.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
-                    onClick={() => void handleGenerateInternalReport()}
-                    type="button"
-                  >
-                    {busyAction === "initial" ? "Generating..." : "Generate Internal Report"}
-                  </button>}
-                  {reportEntry.kind === "publish" && !workingCopy ? (
-                    <button
-                      className="primary-action"
-                      disabled={Boolean(busyAction)}
-                      onClick={() => void handlePublishManagedReport()}
-                      type="button"
-                    >
-                      {busyAction === "publish" ? "Publishing..." : "Publish Current Draft To Project Folder"}
-                    </button>
-                  ) : null}
-                  {currentReport?.status === "ready" && currentReport.mode !== "official" ? (
-                    <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download Current Report</button>
-                  ) : null}
-                </div>
-                <div className="report-workspace-current-report">
-                  {reportFileName ? <span className="report-workspace-report-name">{reportFileName}</span> : (
-                    <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
-                  )}
-                </div>
-              </div>
-              {readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
-              {reportEntry.kind === "managed" ? <p className="report-workspace-note">Create the official project folder before publishing this draft.</p> : null}
-              {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
-            </section>
-
-        </div>
+        </section>
         {directCustomerAction}
         <details open={Boolean(customerReportRecovery || customerJob.busy || customerJob.error || customerJob.job?.status === 'failed') || undefined}>
           <summary>Project report actions</summary>
@@ -1075,6 +1070,7 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
               }
             }}>
             <h2 id="internal-report-regeneration-title">Archive and regenerate Internal Report</h2>
+            {internalGenerationPreview.current_path && <p className="report-entry-confirm-file">{internalGenerationPreview.current_path.split(/[\\/]/).pop()}</p>}
             <p>The existing report, including manual content, results and photos, will be preserved in History/Report.</p>
             <p>The new report uses the approved E-3707_H template and latest confirmed Basic Information and Matrix. Previous manual content, results and photos are not copied; LLCR results and Equipment List can be updated separately.</p>
             <div className="report-workspace-action-row">
