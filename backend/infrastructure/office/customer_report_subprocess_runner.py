@@ -14,6 +14,7 @@ from typing import Callable
 from uuid import uuid4
 
 from backend.application.tools_service import ToolsError
+from backend.application.test_report_template_resource import discover_test_report_template, TestReportTemplateResourceError
 from backend.shared.operation_diagnostics import path_summary, safe_text, safe_value
 
 
@@ -87,6 +88,15 @@ class CustomerReportSubprocessRunner:
                 raise FileExistsError("Customer report output already exists and will not be replaced.")
             shutil.copy2(source, staged_source)
             shutil.copy2(template, staged_template)
+            # Keep the optional internal heading reference available to the isolated
+            # child. Publish only a complete copy under its discoverable name.
+            try:
+                reference = discover_test_report_template(template.parent)
+                pending = run_dir / "heading-reference.tmp"
+                shutil.copy2(reference, pending)
+                pending.rename(run_dir / "E-3707_H.docx")
+            except (TestReportTemplateResourceError, OSError) as exc:
+                _LOGGER.info("Internal heading reference not staged: %s", type(exc).__name__)
             command_json.write_text(
                 json.dumps(
                     {

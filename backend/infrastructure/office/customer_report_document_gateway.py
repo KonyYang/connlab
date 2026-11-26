@@ -17,8 +17,12 @@ from xml.etree import ElementTree as ET
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 from docx import Document
+from docx.enum.text import WD_COLOR_INDEX
+from docx.text.run import Run
+from docx.opc.exceptions import PackageNotFoundError
 from docx.oxml.ns import qn
 from docx.table import Table
+from backend.application.test_report_template_resource import discover_test_report_template, TestReportTemplateResourceError
 from backend.application.customer_report_projection_service import CustomerReportReadError
 
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
@@ -58,9 +62,65 @@ _HEADING_ALIASES = {"EQUIPMENTS": ("EQUIPMENT",), "TEST DESCRIPTION": ("TEST SEQ
 _REVIEW_TITLE = "Draft review required before use"
 
 
+def _heading_label(text: str, number: int) -> str:
+    return re.sub(rf"^{number}\s*\.\s*", "", _clean_text(text))
+
+
+def _one_typo(left: str, right: str) -> bool:
+    """One letter added, lost, replaced, or transposed with its neighbor."""
+    if abs(len(left) - len(right)) > 1:
+        return False
+    if len(left) > len(right):
+        left, right = right, left
+    i = next((i for i, char in enumerate(left) if char != right[i]), len(left))
+    if len(left) != len(right):
+        return left[i:] == right[i + 1:]
+    return (left[i + 1:] == right[i + 1:]
+            or (left[i:i + 2] == right[i:i + 2][::-1] and left[i + 2:] == right[i + 2:]))
+
+
 def _matches_heading(text: str, number: int, heading: str) -> bool:
-    label = re.sub(rf"^{number}\s*\.\s*", "", _clean_text(text)).casefold()
-    return any(label == name.casefold() for name in (heading, *_HEADING_ALIASES.get(heading, ())))
+    label = _heading_label(text, number).casefold()
+    return any(_one_typo(label, name.casefold()) for name in (heading, *_HEADING_ALIASES.get(heading, ())))
+
+
+@dataclass(frozen=True)
+class _HeadingDifference:
+    number: int
+    actual: str
+    expected: str
+    authority: str
+
+    def message(self) -> str:
+        return (f'Section {self.number}: confirm the heading "{self.actual}". '
+                f'{self.authority}: "{self.expected}".')
+
+
+def _template_headings(path: Path) -> dict[int, str]:
+    result = {}
+    for paragraph in Document(path).element.body.xpath(".//w:p[not(ancestor::w:tbl or ancestor::w:del or ancestor::w:moveFrom)]"):
+        text = "".join(paragraph.xpath(".//w:t[not(ancestor::w:del or ancestor::w:moveFrom)]/text()"))
+        for number, name in enumerate(_SOURCE_HEADINGS, 1):
+            if _matches_heading(text, number, name):
+                result.setdefault(number, _heading_label(text, number))
+                break
+    return result
+
+
+def _heading_differences(actual, customer, internal) -> list[_HeadingDifference]:
+    differences = []
+    for number, raw in actual.items():
+        if number != 7 and number in customer:
+            expected, authority = customer[number], "Customer template (E-4515)"
+        elif number in internal:
+            expected, authority = internal[number], "Internal template (E-3707_H)"
+        else:
+            expected = _SOURCE_HEADINGS[number - 1]
+            authority = "Usual heading (template wording unavailable)"
+        label = _heading_label(raw, number)
+        if label.casefold() != expected.casefold():
+            differences.append(_HeadingDifference(number, label, expected, authority))
+    return differences
 
 
 _SOURCE_SHA256_PROPERTY = "ConnLabSourceReportSHA256"
@@ -202,10 +262,22 @@ class CustomerReportDocumentGateway:
                 template,
                 temporary,
             )
+            customer_titles = _template_headings(temporary)
             if progress is None:
-                notices = _generate_with_word(source, temporary)
+                generated = _generate_with_word(source, temporary)
             else:
-                notices = _generate_with_word(source, temporary, progress=progress)
+                generated = _generate_with_word(source, temporary, progress=progress)
+            notices, observed = generated or ([], {})
+            internal_titles = {}
+            if observed and any(n not in customer_titles or n == 7 for n in observed):
+                try:
+                    reference = discover_test_report_template(template.parent)
+                    with self._protected_package_gateway.readable_copy(reference) as readable:
+                        internal_titles = _template_headings(readable)
+                except (TestReportTemplateResourceError, OfficeProtectedDocumentError, OSError, BadZipFile, PackageNotFoundError,
+                        KeyError, ValueError, SyntaxError) as exc:
+                    _LOGGER.info("Internal heading reference unavailable: %s", type(exc).__name__)
+            differences = _heading_differences(observed, customer_titles, internal_titles)
             _emit_progress(progress, "verifying_output")
             self._after_word_file_operation(
                 lambda: _write_source_report_sha256(temporary, source_hash),
@@ -213,7 +285,7 @@ class CustomerReportDocumentGateway:
                 path=temporary,
             )
             self._after_word_file_operation(
-                lambda: _audit_customer_report(temporary, notices or ()),
+                lambda: _audit_customer_report(temporary, notices, differences),
                 operation="audit generated report",
                 path=temporary,
             )
@@ -346,7 +418,7 @@ def _generate_with_word(
     target_path: Path,
     *,
     progress: Callable[[str], None] | None = None,
-) -> list[str]:
+) -> tuple[list[str], dict[int, str]]:
     try:
         import pythoncom  # type: ignore[import-not-found]
         import win32com.client  # type: ignore[import-not-found]
@@ -425,7 +497,7 @@ def _generate_with_word(
                 cover.End = max(int(cover.Start), int(cover.End) - 1)
                 if cover.End > cover.Start:
                     cover.Delete()
-            target_headings, notices = _copy_customer_body(
+            target_headings, notices, observed = _copy_customer_body(
                 source,
                 working_body,
                 progress=progress,
@@ -451,7 +523,7 @@ def _generate_with_word(
             ) from exc
         _emit_progress(progress, "saving_document")
         target.Save()
-        return notices
+        return notices, observed
     except Exception as exc:
         summary = _error_summary(exc)
         raise ValueError(f"Unable to generate customer report: {summary[:320]}") from None
@@ -559,7 +631,7 @@ def _copy_customer_body(
     target,
     *,
     progress: Callable[[str], None] | None = None,
-) -> tuple[_NumberedHeadingIndex, list[str]]:
+) -> tuple[_NumberedHeadingIndex, list[str], dict[int, str]]:
     headings = _NumberedHeadingIndex.from_document(source, enumerate(_SOURCE_HEADINGS, 1))
     notices = []
     positions = {n: headings.get(n, name)[0] for n, name in enumerate(_SOURCE_HEADINGS, 1)
@@ -623,7 +695,8 @@ def _copy_customer_body(
     _normalize_customer_body_typography(target, target_headings)
     _format_customer_headings(target, target_headings)
     _merge_customer_disclaimer(target)
-    return target_headings, notices
+    observed = {n: headings.get(n, _SOURCE_HEADINGS[n - 1])[1] for n in positions}
+    return target_headings, notices, observed
 
 
 def _emit_progress(progress: Callable[[str], None] | None, stage: str) -> None:
@@ -1189,7 +1262,10 @@ def _find_text(document, text: str, *, required: bool = True):
 def _lookup_heading(document, number: int, heading: str, *, within=None):
     scope = document.Content if within is None else within
     content_end = int(scope.End)
-    for term in (heading, *_HEADING_ALIASES.get(heading, ())):
+    names = (heading, *_HEADING_ALIASES.get(heading, ()))
+    fragments = [part for name in names for part in (name[:3], name[-3:])]
+    candidates = {}
+    for term in dict.fromkeys((*names, *fragments)):
         search = scope.Duplicate
         while True:
             finder = search.Find
@@ -1206,12 +1282,14 @@ def _lookup_heading(document, number: int, heading: str, *, within=None):
             if _matches_heading(text, number, heading):
                 found = paragraph.Duplicate
                 found.End = max(int(found.Start), int(found.End) - 1)
-                return found, text
+                if _heading_label(text, number).casefold() in {name.casefold() for name in names}:
+                    return found, text
+                candidates[int(found.Start)] = (found, text)
             next_start = int(search.End)
             if next_start >= content_end:
                 break
             search = document.Range(next_start, content_end)
-    return None
+    return next(iter(candidates.values())) if len(candidates) == 1 else None
 
 
 def _first_page_header_table(document, label: str):
@@ -1272,7 +1350,8 @@ def _customer_report_number(value: str) -> str:
     return f"{base}{suffix}"
 
 
-def _audit_customer_report(path: Path, notices: Iterable[str] = ()) -> None:
+def _audit_customer_report(path: Path, notices: Iterable[str] = (),
+                           heading_differences: Iterable[_HeadingDifference] = ()) -> None:
     document = Document(path)
     # Word text can be nested in content controls, revision insertions or hyperlinks.
     # Exclude deleted text, field instructions, and nested paragraphs (e.g. text boxes).
@@ -1330,6 +1409,12 @@ def _audit_customer_report(path: Path, notices: Iterable[str] = ()) -> None:
     if re.search(r"(?:WW-XXXX-YY-ZZZ|XX-YY-ZZZ)", header_text, flags=re.IGNORECASE):
         raise ValueError("Generated customer report retained a template report-number placeholder.")
 
+    for difference in heading_differences:
+        review.append(difference.message())
+        for paragraph, text in zip(paragraphs, body_paragraphs):
+            if _heading_label(text, difference.number).casefold() == difference.actual.casefold():
+                for run in paragraph.xpath(".//w:r[not(ancestor::w:del or ancestor::w:moveFrom)]"):
+                    Run(run, document).font.highlight_color = WD_COLOR_INDEX.YELLOW
     if review:
         review = list(dict.fromkeys(review))
         title = document.add_paragraph()
@@ -1337,7 +1422,8 @@ def _audit_customer_report(path: Path, notices: Iterable[str] = ()) -> None:
         document.element.body.insert(0, title._p)
         anchor = title._p
         for item in review:
-            paragraph = document.add_paragraph(item)
+            paragraph = document.add_paragraph()
+            paragraph.add_run(item).font.highlight_color = WD_COLOR_INDEX.YELLOW
             anchor.addnext(paragraph._p)
             anchor = paragraph._p
         _save_review_body(path, document.part.blob)

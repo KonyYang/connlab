@@ -333,6 +333,7 @@ def test_runner_stages_word_inputs_and_output_away_from_the_project_path(
         def __init__(self, command: list[str]) -> None:
             payload = json.loads(Path(command[-1]).read_text(encoding="utf-8"))
             captured.update({key: Path(payload[key]) for key in ("source_path", "template_path", "output_path")})
+            staged_contents["heading_reference"] = (captured["template_path"].parent / "E-3707_H.docx").read_bytes()
             staged_contents["source"] = captured["source_path"].read_bytes()
             staged_contents["template"] = captured["template_path"].read_bytes()
             self.output_path = captured["output_path"]
@@ -354,6 +355,7 @@ def test_runner_stages_word_inputs_and_output_away_from_the_project_path(
     source = project_folder / "DL-2026-09-002 PwrBlade Ultra Pro Rec.R-A TYPE WITH 2HP+20S Qualification test Report_Rev_A.docx"
     output = project_folder / "DL-2026-09-002-CR PwrBlade Ultra Pro Rec.R-A TYPE WITH 2HP+20S Qualification test Report_Rev_A.docx"
     template = tmp_path / "E-4515_F Customer Report.docx"
+    (tmp_path / "E-3707_H Internal.docx").write_bytes(b"heading-reference")
     source.write_bytes(b"source")
     template.write_bytes(b"template")
 
@@ -373,7 +375,7 @@ def test_runner_stages_word_inputs_and_output_away_from_the_project_path(
     assert captured["source_path"] != source.resolve()
     assert captured["template_path"] != template.resolve()
     assert captured["output_path"] != output.resolve()
-    assert staged_contents == {"source": b"source", "template": b"template"}
+    assert staged_contents == {"source": b"source", "template": b"template", "heading_reference": b"heading-reference"}
     assert list((tmp_path / "runs").glob("run-*")) == []
 
 
