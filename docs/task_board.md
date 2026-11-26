@@ -857,15 +857,19 @@
         "route": "sol_build_review_qa",
         "scope": "Frontend report workspace flow and responsive navigation; preserve existing Word and delivery safeguards.",
         "scope_paths": [
+          "backend/api/dependencies.py",
+          "backend/application/internal_report_generation_service.py",
+          "backend/infrastructure/official_workspace_manifest.py",
+          "frontend/src/App.tsx",
           "frontend/src/features/report-workspace",
           "frontend/src/pages/ProjectReportWorkspacePage.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/workbench.css"
+          "frontend/src/workbench.css",
+          "tests/integration/test_internal_report_generation_api.py"
         ],
         "risk_reasons": [],
         "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
         "started_at": "2026-11-26T22:40:05.457358Z",
-        "updated_at": "2026-11-26T23:43:14.195004Z",
+        "updated_at": "2026-11-26T23:43:23.890668Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
