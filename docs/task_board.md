@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LIBRARY_ID_WIDTH_20261126",
+    "task_id": "TASK_LIBRARY_SEARCH_CLEAR_20261126",
     "tier": "micro",
-    "subject": "c7270bfc3147838a39ffd5a96bd9e2c979fe3475",
-    "summary": "Halve the Project ID column in Project Library.",
+    "subject": "b5987e71277b5bb5ae039a18da1c84b1e0d58934",
+    "summary": "Update library results when the search box is cleared.",
     "disposition": "completed",
-    "decision_ref": "User accepted the Project ID column width and requested the search clearing fix locally.",
-    "closed_at": "2026-11-26T00:07:26.102359Z"
+    "decision_ref": "User explicitly approved local close and customer report repair.",
+    "closed_at": "2026-11-26T10:46:28.565922Z"
   },
   "retained_history": [
     {
@@ -795,6 +795,15 @@
       "disposition": "completed",
       "decision_ref": "User accepted and requested local close; retain implementation and verification evidence.",
       "closed_at": "2026-11-25T23:51:07.465433Z"
+    },
+    {
+      "task_id": "TASK_LIBRARY_ID_WIDTH_20261126",
+      "tier": "micro",
+      "subject": "c7270bfc3147838a39ffd5a96bd9e2c979fe3475",
+      "summary": "Halve the Project ID column in Project Library.",
+      "disposition": "completed",
+      "decision_ref": "User accepted the Project ID column width and requested the search clearing fix locally.",
+      "closed_at": "2026-11-26T00:07:26.102359Z"
     }
   ],
   "tasks": {
@@ -852,60 +861,29 @@
         }
       }
     },
-    "TASK_LIBRARY_SEARCH_CLEAR_20261126": {
+    "TASK_CUSTOMER_REPORT_SECTION_REVIEW_20261126": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
-      "branch": "codex/library-search-clear-20261126",
+      "branch": "codex/customer-report-section-review-20261126",
       "resources": [],
-      "integrated_head": "a44675c0a852ca69a15a3f50b76813942163076c",
+      "integrated_head": null,
       "task": {
-        "task_id": "TASK_LIBRARY_SEARCH_CLEAR_20261126",
-        "summary": "Update library results when the search box is cleared.",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Clear the active keyword while preserving source and type filters; verify clear-all.",
+        "task_id": "TASK_CUSTOMER_REPORT_SECTION_REVIEW_20261126",
+        "summary": "Preserve customer-report headings and generate reviewable drafts for missing sections.",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Customer report Word conversion, section review notices and regression verification.",
         "scope_paths": [
-          "frontend/src/pages/ReferenceLibraryPage.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.test.tsx"
+          "backend/infrastructure/office/customer_report_document_gateway.py",
+          "tests/unit/test_customer_report_document_gateway.py"
         ],
         "risk_reasons": [],
-        "activation_head": "15d127c91b9f27529fde5057b6109ea9d5c5b2e1",
-        "started_at": "2026-11-26T00:07:26.270969Z",
-        "updated_at": "2026-11-26T00:09:02.389872Z",
+        "activation_head": "08c031b43d2174b765ddf1bc86045f8d13b7638e",
+        "started_at": "2026-11-26T10:46:28.739334Z",
+        "updated_at": "2026-11-26T10:46:28.739334Z",
         "checkpoint": null,
-        "report": {
-          "version": 1,
-          "roles": {
-            "developer": {
-              "summary": "Self-reviewed the input handler, retained submit behavior for nonblank text and separate clear-all action.",
-              "status": "passed"
-            }
-          },
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.tsx"
-          ],
-          "task_id": "TASK_LIBRARY_SEARCH_CLEAR_20261126",
-          "subject": "b5987e71277b5bb5ae039a18da1c84b1e0d58934",
-          "summary": "Clearing the keyword immediately restores results under the current filters.",
-          "schema": "connlab.sol-task-report",
-          "validation": [
-            {
-              "summary": "Both new tests reproduced stale results before the fix. All 18 ReferenceLibraryPage tests passed after the fix with isolated fixtures; TypeScript and Vite build passed.",
-              "status": "passed"
-            }
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "b5987e71277b5bb5ae039a18da1c84b1e0d58934",
-            "primary_before": "5f76690b5dc84844f4dce9918b2fee2e904e16f2",
-            "integrated_head": "a44675c0a852ca69a15a3f50b76813942163076c",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
