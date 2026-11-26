@@ -1067,23 +1067,18 @@ def test_default_library_does_not_claim_a_registered_project_directory(receipt, 
 
 
 @pytest.mark.parametrize('receipt', [False], indirect=True)
-def test_default_library_creation_failure_does_not_save_a_setting(receipt, tmp_path, monkeypatch):
-    from backend.infrastructure.project_library import material_receipt_files
+def test_default_library_creation_failure_does_not_save_a_setting(receipt, tmp_path):
     service, store, files, catalog, session = receipt
     documents = tmp_path / 'Documents'
     documents.mkdir()
     files.settings = __import__('dataclasses').replace(files.settings, output_root=documents / 'ConnLab')
     expected = documents / 'ConnLab' / 'Materials'
-    mkdir = Path.mkdir
-    def deny_default(path, *args, **kwargs):
-        if path == expected:
-            raise PermissionError('Synthetic default folder access denied')
-        return mkdir(path, *args, **kwargs)
-    monkeypatch.setattr(Path, 'mkdir', deny_default)
+    expected.parent.write_bytes(b'existing user file')
     with pytest.raises(ValueError, match='Settings'):
         service.runtime(ensure_default=True)
     assert store.settings() == {'root_path': '', 'revision': 0}
     assert not expected.exists()
+    assert expected.parent.read_bytes() == b'existing user file'
 
 
 @pytest.mark.parametrize('receipt', [False], indirect=True)
