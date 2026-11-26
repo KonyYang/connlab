@@ -833,7 +833,33 @@
       "closed_at": "2026-11-26T12:06:39.359155Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LIBRARY_OPEN_FOLDER_RIGHT_20261126": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
+      "branch": "codex/library-open-folder-right-20261126",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_OPEN_FOLDER_RIGHT_20261126",
+        "summary": "Align the reference library Open folder button at the right end of the path row",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Move the existing icon after its path and verify alignment and activation.",
+        "scope_paths": [
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "7f98207d7e3fa329db17282e2a651cd6ef89477e",
+        "started_at": "2026-11-26T15:58:53.154770Z",
+        "updated_at": "2026-11-26T15:58:53.154770Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
