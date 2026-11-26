@@ -74,11 +74,11 @@ class MaterialArchiveService:
                 return dict(status='existing',source_path=str(source),target_path=str(source),target_key=row['key'])
             target=root/source.name
             occupied={op['target_path'] for op in self.store.operations() if op['status']!='completed'}
-            if target.exists() or str(target) in occupied:
+            if self.files.exists(target) or str(target) in occupied:
                 if not independent:
                     return dict(status='conflict',source_path=str(source),target_path=str(target),target_key=self._key_for_path(target))
                 counter=2
-                while (root/f'{source.name} ({counter})').exists() or str(root/f'{source.name} ({counter})') in occupied:
+                while self.files.exists(root/f'{source.name} ({counter})') or str(root/f'{source.name} ({counter})') in occupied:
                     counter+=1
                 target=root/f'{source.name} ({counter})'
             for entry in self.catalog.catalog():
@@ -128,11 +128,11 @@ class MaterialArchiveService:
             raise ProjectLibraryConflict('Materials library folder changed. Restore the original setting to continue this receipt.')
         try:
             final=Path(op['target_path'])
-            published=op['root_identity'] is not None and final.exists() and self.files.root_identity(final)==op['root_identity']
+            published=op['root_identity'] is not None and self.files.exists(final) and self.files.root_identity(final)==op['root_identity']
             if op['phase']=='index_pending' or published:
                 if not published: raise ProjectLibraryConflict('The published directory changed. Existing files were retained.')
                 return self._register(plan,op)
-            if final.exists(): raise ProjectLibraryConflict('The destination appeared during receipt. Existing files were retained.')
+            if self.files.exists(final): raise ProjectLibraryConflict('The destination appeared during receipt. Existing files were retained.')
             if self.files.root_identity(plan['source_path'])!=plan['source_identity']:
                 raise ProjectLibraryConflict('The source directory changed. Continue only with the original source.')
             if op['root_identity'] is None:

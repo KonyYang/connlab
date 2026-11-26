@@ -7,6 +7,7 @@ import shutil
 from uuid import uuid4
 from backend.domain.project_library import ProjectLibraryConflict
 from backend.infrastructure.files.user_documents import user_documents_directory
+from .material_paths import checked_material_path, display_path, material_io_path
 from backend.infrastructure.project_library.files import (
     LibraryFiles, checked_path, inventory, identity, file_hash,
 )
@@ -43,7 +44,7 @@ class MaterialReceiptFiles:
             return {"relative_path": relative, "available": False, "modified_at": None}
 
     def root_identity(self, root):
-        return identity(self.root(root))
+        return identity(material_io_path(self.root(root)))
 
     def selected_file(self, root, relative):
         from backend.infrastructure.project_library.material_copy_files import MaterialCopyFiles
@@ -69,24 +70,25 @@ class MaterialReceiptFiles:
         return self.settings.output_path("Materials")
 
     def root(self, value, *, create=False):
-        root = checked_path(value, must_exist=not create)
-        data = self.settings.data_dir.resolve()
-        if root.is_relative_to(data) or data.is_relative_to(root):
+        root = checked_material_path(value, must_exist=not create)
+        data = display_path(self.settings.data_dir.resolve())
+        location = display_path(root)
+        if location.is_relative_to(data) or data.is_relative_to(location):
             raise ValueError("The materials library folder must be separate from ConnLab internal data.")
         if create:
             from backend.infrastructure.files.default_storage_directory import DefaultStorageDirectory
             root = DefaultStorageDirectory().create(root)
         if not root.is_dir():
             raise ValueError("Choose an available Materials library folder.")
-        return root
+        return display_path(root)
 
     def binding(self, config):
         root = self.root(config["root_path"])
-        return {**config, "root_path": str(root), "identity": identity(root)}
+        return {**config, "root_path": str(root), "identity": identity(material_io_path(root))}
 
     def available(self, value):
         try:
-            return checked_path(value).is_dir()
+            return checked_material_path(value).is_dir()
         except (ValueError, OSError):
             return False
 

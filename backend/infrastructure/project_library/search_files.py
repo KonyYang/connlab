@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 import os
 from pathlib import Path
-from backend.infrastructure.project_library.files import checked_path
+from .material_paths import checked_material_path, display_path, material_io_path, shell_path
 
 
 def internal_material_path(relative):
@@ -16,12 +16,12 @@ class SearchFiles:
 
     def available(self, root):
         try:
-            return checked_path(root).is_dir()
+            return checked_material_path(root).is_dir()
         except (OSError, ValueError):
             return False
 
     def scan(self, root, limit=20000, check_cancel=None):
-        root = checked_path(root)
+        root = checked_material_path(root)
         files, warnings = [], []
         pending = [(root, 0)]
         visited = 0
@@ -37,7 +37,7 @@ class SearchFiles:
                         if visited > limit:
                             return files, [*warnings, "Search is incomplete: folder scan limit reached."]
                         try:
-                            path = checked_path(entry.path)
+                            path = checked_material_path(entry.path)
                             if not path.is_relative_to(root):
                                 raise ValueError("Outside project folder")
                             if path.is_dir():
@@ -54,8 +54,8 @@ class SearchFiles:
         return files, warnings
 
     def browse(self, root, relative, limit=20000):
-        folder = self.resolve(root, relative)
-        base = checked_path(root)
+        base = checked_material_path(root)
+        folder = self._resolve(base, relative)
         if not folder.is_dir():
             raise ValueError("Choose a directory inside the material folder.")
         rows, warnings = [], []
@@ -66,7 +66,7 @@ class SearchFiles:
                     break
                 try:
                     if internal_material_path(str(Path(entry.path).relative_to(base))): continue
-                    path = checked_path(entry.path)
+                    path = checked_material_path(entry.path)
                     if not path.is_relative_to(base):
                         raise ValueError("Outside material folder")
                     directory = path.is_dir()
@@ -80,22 +80,33 @@ class SearchFiles:
         rows.sort(key=lambda row: (not row["is_directory"], row["name"].casefold()))
         return "" if folder == base else folder.relative_to(base).as_posix(), rows, warnings
 
-    def resolve(self, root, relative):
+    def resolve(self, root, relative, *, containing=False):
+        path = self._resolve(checked_material_path(root), relative)
+        return display_path(path.parent if containing and relative else path)
+
+    def _resolve(self, base, relative):
         # Reject Windows drive, ADS, UNC and traversal syntax on every platform.
         parts = relative.replace("\\", "/").split("/")
         if self.exclude_internal and internal_material_path("/".join(parts)):
             raise ValueError("Internal project files are excluded from materials browsing.")
         if relative and (":" in relative or relative.startswith(("/", "\\")) or ".." in parts):
             raise ValueError("Choose a file inside the project folder.")
-        base = checked_path(root)
-        path = checked_path(base.joinpath(*parts))
+        path = checked_material_path(base.joinpath(*parts))
         if not path.is_relative_to(base):
             raise ValueError("Choose a file inside the project folder.")
         return path
+
+    def is_directory(self, path):
+        return material_io_path(path).is_dir()
 
 
 def open_document(path):
     launcher = getattr(os, "startfile", None)
     if launcher is None:
         raise ValueError("Opening files requires the local Windows workstation.")
-    launcher(str(path))
+    try:
+        launcher(shell_path(path))
+    except OSError as error:
+        if getattr(error, "winerror", None) == 206:
+            raise ValueError("Windows could not open this long path. Open its containing folder or copy the file to a shorter location.") from error
+        raise
