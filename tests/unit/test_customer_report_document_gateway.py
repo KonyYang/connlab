@@ -1165,7 +1165,7 @@ def _minimal_document(path: Path, *, customer: bool) -> None:
     document.save(path)
 
 
-@pytest.mark.parametrize("heading", ["7. EQUIPMENT", "7. EQUIPMENTS", "4. TEST SEQUENCES", "1. Purpose"])
+@pytest.mark.parametrize("heading", ["7. EQUIPMENT", "7. EQUIPMENTS", "4. TEST SEQUENCES", "1. Purpose", "1. PURPSOE", "7. EQUIPMNETS"])
 def test_reads_heading_variants_without_changing_the_text(heading):
     document = Document()
     document.add_paragraph(heading)
@@ -1222,3 +1222,34 @@ def test_merged_test_sequence_table_does_not_require_individually_addressable_wo
             raise AssertionError("Word cannot address rows of a vertically merged sequence matrix")
 
     assert not gateway_module._sanitize_sample_table(MergedSequenceTable())
+
+def test_review_uses_actual_template_wording_and_highlights_differences(tmp_path):
+    path = tmp_path / "draft.docx"
+    _minimal_document(path, customer=True)
+    draft = Document(path)
+    draft.paragraphs[0].runs[0].text = "1. PURPSOE"
+    draft.save(path)
+    differences = gateway_module._heading_differences(
+        {1: "1. PURPSOE", 4: "4. TEST SEQUENCES", 7: "7. EQUIPMENTS"},
+        {4: "TEST SEQUENCES"}, {1: "PURPOSE", 4: "TEST DESCRIPTION", 7: "EQUIPMENT"},
+    )
+    gateway_module._audit_customer_report(path, heading_differences=differences)
+    draft = Document(path)
+    highlighted = [r.text for p in draft.paragraphs for r in p.runs if r.font.highlight_color]
+    assert "1. PURPSOE" in highlighted
+    assert any("PURPSOE" in value and "PURPOSE" in value for value in highlighted)
+    assert any("EQUIPMENTS" in value and "EQUIPMENT" in value and "E-3707" in value for value in highlighted)
+    assert not any("TEST SEQUENCES" in value for value in highlighted)
+    assert not any("Complete section 1" in p.text for p in draft.paragraphs)
+
+
+def test_unreadable_optional_reference_marks_fallback_without_claiming_template_wording(tmp_path, monkeypatch):
+    source, template, output = (tmp_path / name for name in ("source.docx", "E-4515.docx", "draft.docx"))
+    _minimal_document(source, customer=False)
+    _minimal_document(template, customer=True)
+    with ZipFile(tmp_path / "E-3707_H.docx", "w") as broken:
+        broken.writestr("word/document.xml", "<broken/>")
+    monkeypatch.setattr(gateway_module, "_generate_with_word", lambda *_args: ([], {7: "EQUIPMENT"}))
+    CustomerReportDocumentGateway().generate_customer_report(source_path=source, template_path=template, output_path=output)
+    highlighted = [r.text for p in Document(output).paragraphs for r in p.runs if r.font.highlight_color]
+    assert any("template wording unavailable" in t and '"EQUIPMENT"' in t for t in highlighted)
