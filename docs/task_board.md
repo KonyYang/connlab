@@ -863,11 +863,11 @@
     },
     "TASK_CUSTOMER_REPORT_SECTION_REVIEW_20261126": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/customer-report-section-review-20261126",
       "resources": [],
-      "integrated_head": "d760b32f0ae682e9695bbb0c4e98479c47011176",
+      "integrated_head": "f080934b9b857cf086d78a1c77a53f6cb97b8e17",
       "task": {
         "task_id": "TASK_CUSTOMER_REPORT_SECTION_REVIEW_20261126",
         "summary": "Preserve customer-report headings and generate reviewable drafts for missing sections.",
@@ -883,7 +883,7 @@
         "risk_reasons": [],
         "activation_head": "08c031b43d2174b765ddf1bc86045f8d13b7638e",
         "started_at": "2026-11-26T10:46:28.739334Z",
-        "updated_at": "2026-11-26T11:07:37.843380Z",
+        "updated_at": "2026-11-26T11:14:45.144414Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -893,7 +893,48 @@
           "summary": "User requested visible review flags for headings that differ from the template including accepted spelling variants.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "0447ef78b47746cf09cdcfbf83a8e2d2a77a9ad8",
+            "primary_before": "311c1fc3cc05a1a273a75f174c561d7171c883c2",
+            "integrated_head": "f080934b9b857cf086d78a1c77a53f6cb97b8e17",
+            "recovered": false
+          },
+          "summary": "Compare actual section wording with authored templates and flag discrepancies in yellow in the review checklist and corresponding draft heading.",
+          "task_id": "TASK_CUSTOMER_REPORT_SECTION_REVIEW_20261126",
+          "schema": "connlab.sol-task-report",
+          "scope_ok": true,
+          "version": 1,
+          "roles": {
+            "reviewer": {
+              "summary": "Same-agent review of template precedence, optional reference failures, preserved source wording, yellow run styling and internal-only equipment boundary.",
+              "status": "passed"
+            },
+            "developer": {
+              "summary": "Regression tests reproduced unmarked deviations, failed heading recognition and missing reference staging before implementation.",
+              "status": "passed"
+            },
+            "qa": {
+              "summary": "Validated final tests and six attachment-based cases with the normal Word subprocess, inspected highlighted runs and verified input hashes.",
+              "status": "passed"
+            }
+          },
+          "subject": "0447ef78b47746cf09cdcfbf83a8e2d2a77a9ad8",
+          "validation": [
+            {
+              "summary": "111 isolated customer-report tests passed. All 6 real Word subprocess smoke scenarios passed including both directions for equipment, matching singular, transposed letters and customer template precedence. Evidence: tmp/customer-report-smoke-bd5cdf09/spelling-16c1c114/results-68e273d7/checks.json",
+              "status": "passed"
+            }
+          ],
+          "changed_paths": [
+            "backend/infrastructure/office/customer_report_document_gateway.py",
+            "backend/infrastructure/office/customer_report_subprocess_runner.py",
+            "tests/unit/test_customer_report_document_gateway.py",
+            "tests/unit/test_customer_report_subprocess_runner.py"
+          ]
+        }
       }
     }
   }
