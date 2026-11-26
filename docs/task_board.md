@@ -845,11 +845,11 @@
   "tasks": {
     "TASK_REPORT_CONTENT_ENTRY_20261127": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
       "branch": "codex/report-content-entry-20261127",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "56cfc3b25760f4708cd864246542ab3946971afc",
       "task": {
         "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
         "summary": "Simplify report entry, section editing and direct customer copies",
@@ -865,9 +865,77 @@
         "risk_reasons": [],
         "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
         "started_at": "2026-11-26T22:40:05.457358Z",
-        "updated_at": "2026-11-26T22:40:05.457358Z",
+        "updated_at": "2026-11-26T23:01:50.829209Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
+          "subject": "5834257e4f9ab7b93ce1613b0108010ad7d0c7fd",
+          "summary": "Simplified new and existing Word report entry, resumed section per project and Word base, consolidated Report content and direct customer draft download. Isolated real workflow verification on desktop and narrow screens.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/App.tsx",
+            "frontend/src/features/report-workspace/CustomerReportSourceDialog.tsx",
+            "frontend/src/features/report-workspace/ReportAuthoringPanel.test.tsx",
+            "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
+            "frontend/src/features/report-workspace/ReportContentEditor.tsx",
+            "frontend/src/features/report-workspace/ReportToolsPackageImport.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkingCopy.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/features/report-workspace/reportContentEditor.css",
+            "frontend/src/pages/ProjectReportWorkspacePage.tsx"
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Read prior manual report continuation practice and relevant source. Implemented after reproduction; self-reviewed diff."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Independent report_entry_review examined Word identity, revision handling and direct customer availability. Corrected case-insensitive source selection, preserved backend revalidation and distinguished generated-file success from refresh/adoption issues."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Independent report_entry_qa verified 180 frontend tests and TypeScript/Vite build. 54 backend integration tests passed. End-to-end Edge and Word verification from clean test data."
+            }
+          },
+          "validation": [
+            {
+              "name": "UI and routing tests, production frontend build",
+              "status": "passed",
+              "summary": "180 passed; build passed",
+              "evidence": "D:/PythonProject/connlab/tmp/report-entry-20261127/qa-final-ui.log"
+            },
+            {
+              "name": "Isolated API suites",
+              "status": "passed",
+              "summary": "54 passed; one TestClient deprecation warning",
+              "evidence": "D:/PythonProject/connlab/tmp/report-entry-20261127/api-qa.log"
+            },
+            {
+              "name": "Isolated Edge browser on real API and native Word",
+              "status": "passed",
+              "summary": "Created working report, continued manual Word copy, restored saved sections, generated and downloaded E-4515 from selected report, operated narrow selector at 390 CSS pixels; inputs unchanged.",
+              "evidence": "D:/PythonProject/connlab/tmp/report-entry-20261127/acceptance.log"
+            },
+            {
+              "name": "Word document readback",
+              "status": "passed",
+              "summary": "Working DOCX byte-identical to manual input; customer file opens, E-4515 footer found.",
+              "evidence": "D:/PythonProject/connlab/tmp/report-entry-20261127/word-validation.log"
+            }
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "5834257e4f9ab7b93ce1613b0108010ad7d0c7fd",
+            "primary_before": "02aaa7d85997344a701e929ac7ff3b5dc9247b2c",
+            "integrated_head": "56cfc3b25760f4708cd864246542ab3946971afc",
+            "recovered": false
+          }
+        }
       }
     }
   }
