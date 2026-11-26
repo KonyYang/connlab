@@ -58,6 +58,34 @@ it("searches filenames across projects and supports type filtering", async () =>
  await act(async()=>{await user.selectOptions(screen.getByLabelText("Material type"),"record");});
  await waitFor(()=>expect(api.searchReferenceLibrary).toHaveBeenCalledWith("PwrBlade 温升","all","record",project.key,0,expect.any(AbortSignal)));
 });
+it.each([false, true])("clears a submitted keyword immediately (with filters: %s)", async withFilters => {
+ const user = userEvent.setup();
+ const other = { ...project, key: "project:p2", number: "DL-2026-02-002" };
+ const extra = { ...project, key: "project:p3", number: "DL-2026-02-003" };
+ vi.mocked(api.searchReferenceLibrary).mockImplementation(async (q, source, kind) => ({
+  projects: q ? [project] : source === "materials" && kind === "report" ? [project, other] : [project, other, extra],
+  files: [], total: 0, warnings: []
+ }));
+ render(<ReferenceLibraryPage/>);
+ await screen.findByText(extra.number);
+ const input = screen.getByRole("textbox", { name: "Search project materials" });
+ if (withFilters) {
+  await user.selectOptions(screen.getByLabelText("Source"), "materials");
+  await user.selectOptions(screen.getByLabelText("Material type"), "report");
+ }
+ await user.type(input, "PwrBlade{Enter}");
+ await waitFor(() => expect(screen.queryByText(other.number)).toBeNull());
+ await user.clear(input);
+ expect(await screen.findByText(other.number)).toBeTruthy();
+ if (withFilters) {
+  expect(screen.queryByText(extra.number)).toBeNull();
+  expect((screen.getByLabelText("Source") as HTMLSelectElement).value).toBe("materials");
+  expect((screen.getByLabelText("Material type") as HTMLSelectElement).value).toBe("report");
+  await user.click(screen.getByRole("button", { name: "Clear filters" }));
+ }
+ expect(await screen.findByText(extra.number)).toBeTruthy();
+ expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
+});
 it("accepts Enter even when the previous index query is still loading",async()=>{
  const user=userEvent.setup();
  vi.mocked(api.searchReferenceLibrary).mockImplementation(async q=>q==="latest"

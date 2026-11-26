@@ -102,7 +102,11 @@ export function ReferenceLibraryPage({ onOpenSettings }: { onOpenSettings?: () =
  async function openFolder(){if(!selected)return;setError("");try{await openReferenceFile(selected.key);}catch(cause){setError((cause as Error).message);}}
  return <section className="reference-library" aria-label="Project materials library">
   <form className="library-search" onSubmit={event=>{event.preventDefault();setDirect("");pendingSelection.current="";setSearch(query);setReload(value=>value+1);void refreshIndex();}}>
-   <div className="library-search-input"><UiIcon name="search"/><input aria-label="Search project materials" placeholder="Project ID, description or filename…" value={query} onChange={event=>setQuery(event.target.value)}/></div>
+   <div className="library-search-input"><UiIcon name="search"/><input aria-label="Search project materials" placeholder="Project ID, description or filename…" value={query} onChange={event => {
+    const value = event.target.value;
+    setQuery(value);
+    if (!value.trim()) setSearch("");
+   }}/></div>
    <button className="library-primary" type="submit">Search</button><button className="library-primary" type="button" disabled={receiving} onClick={()=>{setResumeOperation(undefined);setReceiving(true);}}><UiIcon name="new-project"/>Receive materials</button>
   </form>
   {receiving && <ReceiveMaterials initialOperation={resumeOperation} onClose={closeReceipt} onReceived={received}/>}
