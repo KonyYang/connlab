@@ -824,7 +824,35 @@
       "closed_at": "2026-11-26T11:22:10.446645Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_LIBRARY_MAX_PATH_20261126": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
+      "branch": "codex/library-max-path-20261126",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_LIBRARY_MAX_PATH_20261126",
+        "summary": "Handle Windows long material paths in library discovery, access and archival receipt",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Keep ordinary display and stored paths and all existing directory, redirect and overwrite boundaries. Verify with isolated data and Windows legacy length limits.",
+        "scope_paths": [
+          "backend/infrastructure/project_library",
+          "backend/application/project_library/search.py",
+          "backend/application/project_library/material_archive.py",
+          "tests/integration/test_library_long_paths.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "81ae27a57e13f0c0182354d53309c158dcb65dad",
+        "started_at": "2026-11-26T14:59:42.416202Z",
+        "updated_at": "2026-11-26T14:59:42.416202Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
