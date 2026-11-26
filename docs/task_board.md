@@ -876,12 +876,14 @@
         "scope": "Customer report Word conversion, section review notices and regression verification.",
         "scope_paths": [
           "backend/infrastructure/office/customer_report_document_gateway.py",
-          "tests/unit/test_customer_report_document_gateway.py"
+          "backend/infrastructure/office/customer_report_subprocess_runner.py",
+          "tests/unit/test_customer_report_document_gateway.py",
+          "tests/unit/test_customer_report_subprocess_runner.py"
         ],
         "risk_reasons": [],
         "activation_head": "08c031b43d2174b765ddf1bc86045f8d13b7638e",
         "started_at": "2026-11-26T10:46:28.739334Z",
-        "updated_at": "2026-11-26T11:06:00.238325Z",
+        "updated_at": "2026-11-26T11:07:37.843380Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
