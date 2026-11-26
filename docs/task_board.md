@@ -842,7 +842,35 @@
       "closed_at": "2026-11-26T15:44:07.683527Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_REPORT_CONTENT_ENTRY_20261127": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
+      "branch": "codex/report-content-entry-20261127",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
+        "summary": "Simplify report entry, section editing and direct customer copies",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Frontend report workspace flow and responsive navigation; preserve existing Word and delivery safeguards.",
+        "scope_paths": [
+          "frontend/src/features/report-workspace",
+          "frontend/src/pages/ProjectReportWorkspacePage.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/workbench.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
+        "started_at": "2026-11-26T22:40:05.457358Z",
+        "updated_at": "2026-11-26T22:40:05.457358Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
