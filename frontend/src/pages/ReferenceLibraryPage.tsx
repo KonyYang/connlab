@@ -132,10 +132,10 @@ export function ReferenceLibraryPage({ onOpenSettings }: { onOpenSettings?: () =
    <section className="library-files" aria-label="Selected project materials">{unavailableLink ? (!busy && !error && offlineRoot===null && <div className="library-empty"><p>This material location is unavailable.</p>{selected?.folder_path && <p>{selected.folder_path}</p>}<button disabled={scanning!=="idle"} onClick={()=>void refreshIndex()}>Refresh materials</button></div>) : selected ? <>
     <header className="library-project-heading" aria-label="Browsing materials">
      <div className="library-location">
+      <span className="library-location-path" style={{flexBasis: 0}}>{selected.folder_path}</span>
       <button type="button" aria-label="Open folder" disabled={!selected.available}
        title={selected.available ? "Open folder" : selected.folder_path ? "Restore access to the registered folder, then refresh." : "No folder linked."}
        onClick={() => void openFolder()}><UiIcon name="folder" /></button>
-      <span className="library-location-path" style={{flexBasis: 0}}>{selected.folder_path}</span>
      </div>
     </header>
     {receiptIncomplete(selected) ? <p className="library-empty">Receipt incomplete. Continue receipt to finish copying and registration.</p> : <MaterialFiles key={selected.key} onRefresh={scanning==="idle" ? ()=>void refreshIndex() : undefined} project={selected} query={search} kind={kind} refresh={reload} onError={setError} onWarnings={setBrowseWarnings}/>}
