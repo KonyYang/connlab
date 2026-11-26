@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LIBRARY_OPEN_FOLDER_COLOR_20261125",
-    "tier": "micro",
-    "subject": "d8f1e51ab402f1a564488ffa82a58b827a8e875c",
-    "summary": "Match the library Open folder button background to Back.",
+    "task_id": "TASK_LIBRARY_MAX_PATH_20261126",
+    "tier": "standard",
+    "subject": "0c0c973fa21e7c49b063c312b8714e9387100a0d",
+    "summary": "Handle Windows long material paths in library discovery, access and archival receipt",
     "disposition": "completed",
-    "decision_ref": "User requested local-only close after verification. Edge colors.json and local master implementation d8f1e51a verified.",
-    "closed_at": "2026-11-26T12:06:39.359155Z"
+    "decision_ref": "User accepted the verified materials long-path repair and requested closure.",
+    "closed_at": "2026-11-26T15:44:07.683527Z"
   },
   "retained_history": [
     {
@@ -822,85 +822,18 @@
       "disposition": "completed",
       "decision_ref": "User accepted customer report fixes and requested local-only closure, retaining commits, Word samples and evidence.",
       "closed_at": "2026-11-26T11:22:10.446645Z"
+    },
+    {
+      "task_id": "TASK_LIBRARY_OPEN_FOLDER_COLOR_20261125",
+      "tier": "micro",
+      "subject": "d8f1e51ab402f1a564488ffa82a58b827a8e875c",
+      "summary": "Match the library Open folder button background to Back.",
+      "disposition": "completed",
+      "decision_ref": "User requested local-only close after verification. Edge colors.json and local master implementation d8f1e51a verified.",
+      "closed_at": "2026-11-26T12:06:39.359155Z"
     }
   ],
-  "tasks": {
-    "TASK_LIBRARY_MAX_PATH_20261126": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
-      "branch": "codex/library-max-path-20261126",
-      "resources": [],
-      "integrated_head": "7bfa9e69bc3252b8f0cbf35c1450f938ff255e7e",
-      "task": {
-        "task_id": "TASK_LIBRARY_MAX_PATH_20261126",
-        "summary": "Handle Windows long material paths in library discovery, access and archival receipt",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Keep ordinary display and stored paths and all existing directory, redirect and overwrite boundaries. Verify with isolated data and Windows legacy length limits.",
-        "scope_paths": [
-          "backend/application/project_library/material_archive.py",
-          "backend/application/project_library/search.py",
-          "backend/infrastructure/project_library",
-          "tests/integration/test_library_long_paths.py",
-          "tests/integration/test_material_receipt.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "81ae27a57e13f0c0182354d53309c158dcb65dad",
-        "started_at": "2026-11-26T14:59:42.416202Z",
-        "updated_at": "2026-11-26T15:18:31.623560Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_LIBRARY_MAX_PATH_20261126",
-          "subject": "0c0c973fa21e7c49b063c312b8714e9387100a0d",
-          "summary": "Use Windows extended paths for material discovery, indexing and archive I/O. Keep normal catalog paths and supported file associations at the shell boundary.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/application/project_library/material_archive.py",
-            "backend/application/project_library/search.py",
-            "backend/infrastructure/project_library/material_archive_files.py",
-            "backend/infrastructure/project_library/material_paths.py",
-            "backend/infrastructure/project_library/material_receipt_files.py",
-            "backend/infrastructure/project_library/search_files.py",
-            "tests/integration/test_library_long_paths.py",
-            "tests/integration/test_material_receipt.py"
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed"
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Independent focused review findings on long configured roots and ambiguous filenames addressed; exact final diff re-reviewed."
-            },
-            "qa": {
-              "status": "passed"
-            }
-          },
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "Native unmanifested Windows process using Python 3.13.3 and 12 synthetic paths at the incident lengths 260-291: baseline indexed 0 with 12 warnings; final indexed, browsed and archive-indexed all 12 with 0 warnings. An independent 285-character receipt completed and retried without duplication; validated readable file/folder shell targets using an intercepted launcher. Evidence tmp/library-max-path-20261126/{baseline,fixed,native-receipt}.log."
-            },
-            {
-              "status": "passed",
-              "summary": "Final project venv affected suite: 268 passed, 4 symlink-permission skips; junction covered. Python 3.13 final targeted tests: 13 passed including runtime locks. Initial wider 3.13 run saw a transient writer-lock test process exit failure which passed on baseline and final targeted recheck. Evidence tmp/library-max-path-20261126/{final-regression,final-py313,runtime-baseline}.log."
-            }
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "0c0c973fa21e7c49b063c312b8714e9387100a0d",
-            "primary_before": "506b9d847054ea47a673fd08e7c41cdac1cb57fa",
-            "integrated_head": "7bfa9e69bc3252b8f0cbf35c1450f938ff255e7e",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
