@@ -845,11 +845,11 @@
   "tasks": {
     "TASK_REPORT_CONTENT_ENTRY_20261127": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
       "branch": "codex/report-content-entry-20261127",
       "resources": [],
-      "integrated_head": "56cfc3b25760f4708cd864246542ab3946971afc",
+      "integrated_head": "7e4bf361c98bfadc8ab23755b7e272b0d5b5f98e",
       "task": {
         "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
         "summary": "Simplify report entry, section editing and direct customer copies",
@@ -865,7 +865,7 @@
         "risk_reasons": [],
         "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
         "started_at": "2026-11-26T22:40:05.457358Z",
-        "updated_at": "2026-11-26T23:18:26.135037Z",
+        "updated_at": "2026-11-26T23:21:24.921500Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -875,7 +875,54 @@
           "summary": "Clarify Word continuation and show the expected project LTR before selection. Local only.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
+          "subject": "c3f984c100b0e50fabfa6936cd96bc07e84a6202",
+          "summary": "Display the expected project LTR before the Word chooser and clarify continuation of the current project's report.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/report-workspace/ReportWorkingCopy.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx"
+          ],
+          "validation": [
+            {
+              "name": "Targeted tests",
+              "status": "passed",
+              "summary": "68 passed; build passed",
+              "evidence": "D:/PythonProject/connlab/tmp/report-ltr-entry-20261127-071858/tests.log"
+            },
+            {
+              "name": "Edge browser smoke",
+              "status": "passed",
+              "summary": "531x813 prompt visible before picker, other project rejected with no retained sources or outputs, current project working copy byte-identical.",
+              "evidence": "D:/PythonProject/connlab/tmp/report-ltr-entry-20261127-071858/smoke.log"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Changed the existing Word entry and tested missing and populated LTR."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Independent ltr_entry_review verified identity, failed read, accessible description and scope."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Local targeted suite, frontend build and isolated Edge/Word file smoke passed on final changes."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "c3f984c100b0e50fabfa6936cd96bc07e84a6202",
+            "primary_before": "af2fd46190cb9373cb96d1e78b5116f03f8b1fb7",
+            "integrated_head": "7e4bf361c98bfadc8ab23755b7e272b0d5b5f98e",
+            "recovered": false
+          }
+        }
       }
     }
   }
