@@ -863,7 +863,7 @@
     },
     "TASK_CUSTOMER_REPORT_SECTION_REVIEW_20261126": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
       "branch": "codex/customer-report-section-review-20261126",
       "resources": [],
@@ -881,48 +881,17 @@
         "risk_reasons": [],
         "activation_head": "08c031b43d2174b765ddf1bc86045f8d13b7638e",
         "started_at": "2026-11-26T10:46:28.739334Z",
-        "updated_at": "2026-11-26T11:01:41.322484Z",
-        "checkpoint": null,
-        "report": {
-          "subject": "8edfd74d62e4b08a8a84f40c64def239d9eb1cbc",
-          "changed_paths": [
-            "backend/infrastructure/office/customer_report_document_gateway.py",
-            "tests/unit/test_customer_report_document_gateway.py"
-          ],
-          "summary": "Preserve authored template text and headings, recognize equipment variants, and generate drafts with a visible missing-section checklist.",
-          "task_id": "TASK_CUSTOMER_REPORT_SECTION_REVIEW_20261126",
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Reproduced four heading failures in isolated tests before changing conversion and auditing."
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Same-agent focused review of template preservation, excluded equipment sections, disclosure checks and safe package rewrite."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Final targeted regression plus nine Word scenarios, including missing middle/last sections, approved template body and source alias; verified tables, images, output and source integrity."
-            }
-          },
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "107 customer-report unit and integration tests passed. 9 isolated Word smoke cases passed on the supplied attachment and derived fixtures. Word reopened normal and partial drafts and confirmed the checklist on page one. Original source and E-4515 template SHA256 verified. Evidence: tmp/customer-report-smoke-bd5cdf09/verified-38f04934/checks.json"
-            }
-          ],
-          "scope_ok": true,
+        "updated_at": "2026-11-26T11:06:00.238325Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
           "version": 1,
-          "schema": "connlab.sol-task-report",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "8edfd74d62e4b08a8a84f40c64def239d9eb1cbc",
-            "primary_before": "fb0e012a84c6fbd02488bccd2856e2f039336084",
-            "integrated_head": "d760b32f0ae682e9695bbb0c4e98479c47011176",
-            "recovered": false
-          }
-        }
+          "task_id": "TASK_CUSTOMER_REPORT_SECTION_REVIEW_20261126",
+          "stage": "revision",
+          "status": "running",
+          "summary": "User requested visible review flags for headings that differ from the template including accepted spelling variants.",
+          "requires_user": false
+        },
+        "report": null
       }
     }
   }
