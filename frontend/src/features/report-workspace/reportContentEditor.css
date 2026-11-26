@@ -1,5 +1,5 @@
 .report-editor, .report-entry { min-width: 0; background: var(--color-surface, #fbfdff); border: 1px solid var(--color-border, #d8e0ea); border-radius: 10px; }
-.report-editor-file, .report-entry-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.report-editor-file { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .report-editor-file { padding: 14px 16px; }
 .report-editor-filename { display: grid; gap: 2px; flex: 1 1 230px; overflow-wrap: anywhere; }
 .report-editor-tabs { display: flex; border-bottom: 1px solid var(--color-border); padding-inline: 12px; }
@@ -14,25 +14,19 @@
 .report-editor-notes { margin: 0 16px 8px; }
 .report-editor-picker { display: none; }
 .report-entry { padding: 14px 18px; }
-.report-entry h2 { margin: 0 0 10px; }
-.report-entry h3 { font-size: 1rem; margin: 0; }
-.report-entry-row { border-top: 1px solid var(--color-border); padding: 12px 0; }
-.report-entry-row p { margin: 3px 0; }
-.report-entry-row .report-workspace-current-report { overflow-wrap: anywhere; }
+.report-entry-row { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; padding: 12px 0; }
+.report-entry-row + .report-entry-row { border-top: 1px solid var(--color-border); }
+.report-entry-row p { margin: 0; }
+.report-entry-row button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.report-entry-resume { text-align: left; }
+.report-entry-confirm-file { overflow-wrap: anywhere; font-weight: 600; }
 .report-entry details > summary { cursor: pointer; padding-block: 7px; }
 .report-editor-link { color: #164aa3; background: transparent; border: 0; text-align: left; padding: 7px 0; }
-.report-entry-create { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px 12px; width: 100%; }
-.report-entry-create h3 { align-self: start; padding-block: 10px; }
-.report-entry-create > p { grid-column: 1 / -1; }
-.report-entry-create .report-workspace-report-row { justify-self: end; max-width: 100%; min-width: 0; }
 .report-editor-tabs button { white-space: nowrap; }
 .report-editor-picker select { background: var(--color-surface); color: inherit; border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 8px; }
 .report-editor-detail fieldset { min-inline-size: 0; }
 .report-editor-detail button:not([class]) { padding: 7px 12px; color: inherit; background: #eef4fc; border: 1px solid var(--color-border); border-radius: 6px; }
 @media (max-width: 540px) {
-  .report-entry-create { grid-template-columns: minmax(0, 1fr); }
-  .report-entry-create h3 { padding: 0; }
-  .report-entry-create .report-workspace-report-row { justify-self: start; }
   .report-editor-tabs { padding-inline: 4px; }
 }
 .report-source-name { overflow-wrap: anywhere; }
