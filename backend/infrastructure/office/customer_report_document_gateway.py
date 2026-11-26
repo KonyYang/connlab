@@ -19,7 +19,6 @@ from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 from docx import Document
 from docx.oxml.ns import qn
 from docx.table import Table
-from docx.text.paragraph import Paragraph
 from backend.application.customer_report_projection_service import CustomerReportReadError
 
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
@@ -54,6 +53,16 @@ _CUSTOMER_HEADINGS = (
     "TEST RESULTS",
     "REVISION RECORD",
 )
+_SOURCE_HEADINGS = (*_CUSTOMER_HEADINGS[:-1], "EQUIPMENTS", "REVISION RECORD")
+_HEADING_ALIASES = {"EQUIPMENTS": ("EQUIPMENT",), "TEST DESCRIPTION": ("TEST SEQUENCES",)}
+_REVIEW_TITLE = "Draft review required before use"
+
+
+def _matches_heading(text: str, number: int, heading: str) -> bool:
+    label = re.sub(rf"^{number}\s*\.\s*", "", _clean_text(text)).casefold()
+    return any(label == name.casefold() for name in (heading, *_HEADING_ALIASES.get(heading, ())))
+
+
 _SOURCE_SHA256_PROPERTY = "ConnLabSourceReportSHA256"
 _CUSTOM_PROPERTY_NS = (
     "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
@@ -139,12 +148,13 @@ class _NumberedHeadingIndex:
         ordered_headings = tuple(headings)
         matches: dict[tuple[int, str], tuple[object, str]] = {}
         for number, heading in ordered_headings:
-            matches[(number, heading)] = _find_heading_paragraph(
-                document,
-                number,
-                heading,
-            )
+            match = _lookup_heading(document, number, heading)
+            if match is not None:
+                matches[(number, heading)] = match
         return cls(matches)
+
+    def contains(self, number: int) -> bool:
+        return (number, _SOURCE_HEADINGS[number - 1]) in self._matches
 
     def get(self, number: int, heading: str) -> tuple[object, str]:
         try:
@@ -193,9 +203,9 @@ class CustomerReportDocumentGateway:
                 temporary,
             )
             if progress is None:
-                _generate_with_word(source, temporary)
+                notices = _generate_with_word(source, temporary)
             else:
-                _generate_with_word(source, temporary, progress=progress)
+                notices = _generate_with_word(source, temporary, progress=progress)
             _emit_progress(progress, "verifying_output")
             self._after_word_file_operation(
                 lambda: _write_source_report_sha256(temporary, source_hash),
@@ -203,7 +213,7 @@ class CustomerReportDocumentGateway:
                 path=temporary,
             )
             self._after_word_file_operation(
-                lambda: _audit_customer_report(temporary),
+                lambda: _audit_customer_report(temporary, notices or ()),
                 operation="audit generated report",
                 path=temporary,
             )
@@ -336,7 +346,7 @@ def _generate_with_word(
     target_path: Path,
     *,
     progress: Callable[[str], None] | None = None,
-) -> None:
+) -> list[str]:
     try:
         import pythoncom  # type: ignore[import-not-found]
         import win32com.client  # type: ignore[import-not-found]
@@ -403,9 +413,21 @@ def _generate_with_word(
         )
         try:
             _emit_progress(progress, "copying_content")
-            target_headings = _copy_customer_body(
+            # For an authored template, prepare and sanitize the imported material in
+            # the disposable reference document. Only insert the finished spans into
+            # the destination; its existing paragraphs and headings remain in place.
+            authored = _has_authored_body(template_reference)
+            working_body = template_reference if authored else target
+            if authored:
+                # Discard cover text only in the scratch document so it cannot be
+                # mistaken for a source heading. Retain the section break.
+                cover = working_body.Sections(1).Range.Duplicate
+                cover.End = max(int(cover.Start), int(cover.End) - 1)
+                if cover.End > cover.Start:
+                    cover.Delete()
+            target_headings, notices = _copy_customer_body(
                 source,
-                target,
+                working_body,
                 progress=progress,
             )
         except Exception as exc:
@@ -415,10 +437,12 @@ def _generate_with_word(
         try:
             _emit_progress(progress, "formatting_document")
             _normalize_customer_sections(
-                target,
-                template_reference,
+                working_body,
+                target if authored else template_reference,
                 target_headings,
             )
+            if authored:
+                _insert_into_authored_template(working_body, target, target_headings)
             _copy_customer_header(source, target)
             _refresh_customer_fields(target)
         except Exception as exc:
@@ -427,6 +451,7 @@ def _generate_with_word(
             ) from exc
         _emit_progress(progress, "saving_document")
         target.Save()
+        return notices
     except Exception as exc:
         summary = _error_summary(exc)
         raise ValueError(f"Unable to generate customer report: {summary[:320]}") from None
@@ -471,6 +496,7 @@ def _generate_with_word(
                     "Unable to quit customer-report Word automation: %s",
                     _error_summary(exc),
                 )
+        working_body = None
         template_reference = None
         target = None
         source = None
@@ -533,32 +559,49 @@ def _copy_customer_body(
     target,
     *,
     progress: Callable[[str], None] | None = None,
-) -> _NumberedHeadingIndex:
-    source_headings = _NumberedHeadingIndex.from_document(
-        source,
-        (
-            (1, "PURPOSE"),
-            (7, "EQUIPMENTS"),
-            (8, "REVISION RECORD"),
-        ),
-    )
-    purpose, _ = source_headings.get(1, "PURPOSE")
-    equipment, _ = source_headings.get(7, "EQUIPMENTS")
-    if int(equipment.Start) <= int(purpose.Start):
+) -> tuple[_NumberedHeadingIndex, list[str]]:
+    headings = _NumberedHeadingIndex.from_document(source, enumerate(_SOURCE_HEADINGS, 1))
+    notices = []
+    positions = {n: headings.get(n, name)[0] for n, name in enumerate(_SOURCE_HEADINGS, 1)
+                 if headings.contains(n)}
+    starts = [int(span.Start) for span in positions.values()]
+    if starts != sorted(starts):
         raise ValueError("Internal report section order is invalid.")
-    core = source.Range(int(purpose.Start), int(equipment.Start))
     destination = _prepare_customer_body_destination(target)
-    destination.FormattedText = core.FormattedText
-
-    revision, _ = source_headings.get(8, "REVISION RECORD")
-    revision_note = _find_text(source, _REVISION_NOTE)
-    if int(revision_note.End) <= int(revision.Start):
-        raise ValueError("Internal report revision record is incomplete.")
-    revision_content = source.Range(int(revision.Start), int(revision_note.End))
-    end = target.Content.Duplicate
-    end.End = max(int(end.Start), int(end.End) - 1)
-    end.Collapse(0)
-    end.FormattedText = revision_content.FormattedText
+    # Copy contiguous verified spans in one operation to retain tables, pictures and lists.
+    # Never extend the results span across an unverified internal-equipment boundary.
+    spans = []
+    for n, name in enumerate(_SOURCE_HEADINGS, 1):
+        if n not in positions:
+            if n == 7:
+                notices.append("Verify the equipment section boundary in the internal report.")
+            else:
+                notices.append(f"Complete section {n}. {name} from the internal report.")
+            continue
+        if n == 7:
+            continue
+        start = int(positions[n].Start)
+        if n == 8:
+            note = _find_text(source, _REVISION_NOTE, required=False)
+            if note is not None and int(note.Start) >= start:
+                end = int(note.End)
+            else:
+                end = int(positions[n].End) + 1
+                notices.append("Complete section 8. REVISION RECORD; its ending could not be verified.")
+        else:
+            next_boundary = next((positions[i] for i in range(n + 1, 8) if i in positions), None)
+            if next_boundary is None:
+                end = int(positions[n].End) + 1
+                notices.append(f"Complete section {n}. {name}; its ending could not be verified.")
+            else:
+                end = int(next_boundary.Start)
+        if spans and spans[-1][1] == start:
+            spans[-1] = (spans[-1][0], end)
+        else:
+            spans.append((start, end))
+    for start, end in spans:
+        destination.FormattedText = source.Range(start, end).FormattedText
+        destination = target.Range(int(target.Content.End) - 1, int(target.Content.End) - 1)
 
     marker = target.Content.Duplicate
     marker.End = max(int(marker.Start), int(marker.End) - 1)
@@ -575,22 +618,12 @@ def _copy_customer_body(
         for index, heading in enumerate(_CUSTOMER_HEADINGS, start=1)
     )
     target_headings = _NumberedHeadingIndex.from_document(target, target_heading_pairs)
-    for number, heading in target_heading_pairs:
-        found, matched_text = target_headings.get(number, heading)
-        if matched_text == heading:
-            found.ListFormat.RemoveNumbers()
-            continue
-        delete_prefix = target.Range(
-            int(found.Start),
-            int(found.Start) + len(matched_text) - len(heading),
-        )
-        delete_prefix.Text = ""
     _emit_progress(progress, "cleaning_content")
     _sanitize_customer_body(target)
     _normalize_customer_body_typography(target, target_headings)
     _format_customer_headings(target, target_headings)
     _merge_customer_disclaimer(target)
-    return target_headings
+    return target_headings, notices
 
 
 def _emit_progress(progress: Callable[[str], None] | None, stage: str) -> None:
@@ -605,6 +638,49 @@ def _configure_word_application(word) -> None:
     word.ScreenUpdating = False
     word.AutomationSecurity = 3
     word.Options.UpdateLinksAtOpen = False
+
+
+def _has_authored_body(document) -> bool:
+    if int(document.Sections.Count) != 2:
+        raise ValueError("E-4515 customer report must retain exactly two sections.")
+    body = document.Content
+    return bool(
+        _clean_text(body.Text) or body.Tables.Count or body.Fields.Count
+        or body.ContentControls.Count or body.InlineShapes.Count or document.Shapes.Count
+    )
+
+
+def _insert_into_authored_template(generated, target, headings: _NumberedHeadingIndex) -> None:
+    # Resolve all Word offsets before editing. Applying the insertions in reverse
+    # keeps them valid even when several missing headings share an insertion point.
+    target.Content.InsertParagraphAfter()
+    tail = int(target.Content.End) - 1
+    continuation = target.Sections(2).Range
+    template_positions = {}
+    for number, heading in enumerate(_SOURCE_HEADINGS, 1):
+        if number == 7:
+            continue
+        match = _lookup_heading(target, number, heading, within=continuation)
+        if match:
+            paragraph = match[0].Paragraphs(1).Range
+            template_positions[number] = (int(paragraph.Start), int(paragraph.End))
+    source_positions = [(n, headings.get(n, name)[0]) for n, name in enumerate(_SOURCE_HEADINGS, 1)
+                        if n != 7 and headings.contains(n)]
+    marker = _find_text(generated, _END_MARKER)
+    insertions = []
+    for i, (number, span) in enumerate(source_positions):
+        stop = int(source_positions[i + 1][1].Start) if i + 1 < len(source_positions) else int(marker.Start)
+        if number in template_positions:
+            at = template_positions[number][1]
+            start = int(span.Paragraphs(1).Range.End)
+        else:
+            at = next((start for n, (start, _) in template_positions.items() if n > number), tail)
+            start = int(span.Start)
+        if stop > start:
+            insertions.append((at, start, stop))
+    insertions.append((tail, int(marker.Start), int(generated.Content.End) - 1))
+    for at, start, stop in reversed(insertions):
+        target.Range(at, at).FormattedText = generated.Range(start, stop).FormattedText
 
 
 def _prepare_customer_body_destination(document):
@@ -665,6 +741,8 @@ def _normalize_customer_revision_page(
     document,
     headings: _NumberedHeadingIndex,
 ) -> None:
+    if not headings.contains(8):
+        return
     revision, _ = headings.get(8, "REVISION RECORD")
     protected_anchor_starts = {
         int(document.Shapes(index).Anchor.Paragraphs(1).Range.Start)
@@ -808,9 +886,22 @@ def _sanitize_customer_body(document) -> None:
 
     _remove_body_footer_artifacts(document)
 
-    sample_start, _ = _find_heading_paragraph(document, 3, "SAMPLE DESCRIPTION")
-    sample_end, _ = _find_heading_paragraph(document, 4, "TEST DESCRIPTION")
-    sample_tables = document.Range(int(sample_start.End), int(sample_end.Start)).Tables
+    # Bound inspection by the next known section even when a neighboring heading
+    # is absent. Unrelated result and sequence tables can contain merged cells.
+    start = None
+    for number in (3, 2, 1):
+        start = _lookup_heading(document, number, _SOURCE_HEADINGS[number - 1])
+        if start:
+            break
+    end = None
+    for number in (4, 5, 6, 8):
+        end = _lookup_heading(document, number, _SOURCE_HEADINGS[number - 1])
+        if end:
+            break
+    sample_tables = document.Range(
+        int(start[0].End) if start else int(document.Content.Start),
+        int(end[0].Start) if end else int(document.Content.End),
+    ).Tables
     sanitized_ranges = []
     for index in range(1, int(sample_tables.Count) + 1):
         table = sample_tables(index)
@@ -918,9 +1009,10 @@ def _format_customer_headings(
 ) -> None:
     for index, heading in enumerate(_CUSTOMER_HEADINGS, start=1):
         number = 8 if heading == "REVISION RECORD" else index
+        if not headings.contains(number):
+            continue
         found, _ = headings.get(number, heading)
         paragraph = found.Paragraphs(1)
-        paragraph.Range.Style = document.Styles(-1)
         paragraph.Format.SpaceBefore = 0
         paragraph.Format.SpaceAfter = 0
         paragraph.Format.LineSpacingRule = 1
@@ -936,10 +1028,10 @@ def _normalize_customer_body_typography(
     document,
     headings: _NumberedHeadingIndex,
 ) -> None:
-    purpose, _ = headings.get(1, "PURPOSE")
-    description, _ = headings.get(4, "TEST DESCRIPTION")
-    introduction = document.Range(int(purpose.Start), int(description.Start))
-    introduction.Font.Name = "Arial"
+    if headings.contains(1) and headings.contains(4):
+        purpose, _ = headings.get(1, "PURPOSE")
+        description, _ = headings.get(4, "TEST DESCRIPTION")
+        document.Range(int(purpose.Start), int(description.Start)).Font.Name = "Arial"
     for index in range(1, int(document.Tables.Count) + 1):
         table = document.Tables(index)
         table.Range.Font.Name = "Arial"
@@ -998,6 +1090,11 @@ def _customer_sample_material(value: str, role: str) -> str:
 
 
 def _sanitize_sample_table(table) -> bool:
+    # Word cannot index Rows(1) on vertically merged tables. Inspect cheap plain
+    # text first; the actual column mapping still requires exact recognized headers.
+    text = str(table.Range.Text).casefold()
+    if "description" not in text or "part" not in text or not ("base" in text or "housing" in text):
+        return False
     columns = _sample_table_columns(
         table.Rows(1).Cells(column).Range.Text
         for column in range(1, int(table.Rows(1).Cells.Count) + 1)
@@ -1089,37 +1186,32 @@ def _find_text(document, text: str, *, required: bool = True):
     return None
 
 
-def _find_heading_paragraph(document, number: int, heading: str):
-    content_end = int(document.Content.End)
-    search = document.Content.Duplicate
-    accepted_text = {
-        heading: heading,
-        f"{number}. {heading}": f"{number}. {heading}",
-        f"{number}.{heading}": f"{number}.{heading}",
-    }
-    while True:
-        finder = search.Find
-        finder.ClearFormatting()
-        finder.Text = heading
-        finder.Forward = True
-        finder.Wrap = 0
-        finder.MatchCase = True
-        finder.MatchWholeWord = False
-        if not finder.Execute():
-            break
-        paragraph = search.Paragraphs(1).Range
-        matched_text = accepted_text.get(_clean_text(paragraph.Text))
-        if matched_text is not None:
-            found = paragraph.Duplicate
-            found.End = max(int(found.Start), int(found.End) - 1)
-            return found, matched_text
-        next_start = int(search.End)
-        if next_start >= content_end:
-            break
-        search = document.Range(next_start, content_end)
-    raise ValueError(
-        f"Internal report is missing required content: {number}. {heading}"
-    )
+def _lookup_heading(document, number: int, heading: str, *, within=None):
+    scope = document.Content if within is None else within
+    content_end = int(scope.End)
+    for term in (heading, *_HEADING_ALIASES.get(heading, ())):
+        search = scope.Duplicate
+        while True:
+            finder = search.Find
+            finder.ClearFormatting()
+            finder.Text = term
+            finder.Forward = True
+            finder.Wrap = 0
+            finder.MatchCase = False
+            finder.MatchWholeWord = False
+            if not finder.Execute():
+                break
+            paragraph = search.Paragraphs(1).Range
+            text = _clean_text(paragraph.Text)
+            if _matches_heading(text, number, heading):
+                found = paragraph.Duplicate
+                found.End = max(int(found.Start), int(found.End) - 1)
+                return found, text
+            next_start = int(search.End)
+            if next_start >= content_end:
+                break
+            search = document.Range(next_start, content_end)
+    return None
 
 
 def _first_page_header_table(document, label: str):
@@ -1180,17 +1272,27 @@ def _customer_report_number(value: str) -> str:
     return f"{base}{suffix}"
 
 
-def _audit_customer_report(path: Path) -> None:
+def _audit_customer_report(path: Path, notices: Iterable[str] = ()) -> None:
     document = Document(path)
-    body_paragraphs = [paragraph.text.strip() for paragraph in document.paragraphs]
+    # Word text can be nested in content controls, revision insertions or hyperlinks.
+    # Exclude deleted text, field instructions, and nested paragraphs (e.g. text boxes).
+    paragraphs = document.element.body.xpath(".//w:p[not(ancestor::w:del or ancestor::w:moveFrom)]")
+    body_paragraphs = [
+        _clean_text("".join(t.text or "" for t in paragraph.xpath(
+            ".//w:t[not(ancestor::w:del or ancestor::w:moveFrom)]"
+        ) if t.xpath("ancestor::w:p[1]")[0] == paragraph))
+        for paragraph in paragraphs
+    ]
     body_text = "\n".join(body_paragraphs)
-    for heading in _CUSTOMER_HEADINGS:
-        if heading not in body_text:
-            raise ValueError(f"Generated customer report is missing {heading}.")
-    if re.search(
-        r"(?im)^\s*(?:7\s*\.\s*)?EQUIPMENTS\s*$",
-        body_text,
-    ) or re.search(r"\bAppendix\s+[A-Z]:", body_text, flags=re.IGNORECASE):
+    review = list(notices)
+    for number, heading in enumerate(_SOURCE_HEADINGS, 1):
+        if number == 7:
+            continue
+        if not any(_matches_heading(text, number, heading) for text in body_paragraphs):
+            review.append(f"Complete section {number}. {heading} from the internal report.")
+    if any(_matches_heading(text, 7, "EQUIPMENTS") for text in body_paragraphs) or re.search(
+        r"\bAppendix\s+[A-Z]:", body_text, flags=re.IGNORECASE
+    ):
         raise ValueError("Generated customer report retained internal-only sections.")
     if any(
         pattern.search(paragraph)
@@ -1228,18 +1330,51 @@ def _audit_customer_report(path: Path) -> None:
     if re.search(r"(?:WW-XXXX-YY-ZZZ|XX-YY-ZZZ)", header_text, flags=re.IGNORECASE):
         raise ValueError("Generated customer report retained a template report-number placeholder.")
 
+    if review:
+        review = list(dict.fromkeys(review))
+        title = document.add_paragraph()
+        title.add_run(_REVIEW_TITLE).bold = True
+        document.element.body.insert(0, title._p)
+        anchor = title._p
+        for item in review:
+            paragraph = document.add_paragraph(item)
+            anchor.addnext(paragraph._p)
+            anchor = paragraph._p
+        _save_review_body(path, document.part.blob)
+        _LOGGER.warning("Customer draft requires manual review: %s", " ".join(review))
+
+
+def _save_review_body(path: Path, body_xml: bytes) -> None:
+    # Preserve all other Word parts, including opaque Office parts, and leave a
+    # valid package for the existing retry loop if a transient lock occurs.
+    staged = path.with_name(f".customer-review.{uuid4().hex}.docx")
+    try:
+        with ZipFile(path) as source, ZipFile(staged, "w") as target:
+            for item in source.infolist():
+                data = body_xml if item.filename == "word/document.xml" else source.read(item)
+                target.writestr(item, data)
+        os.replace(staged, path)
+    finally:
+        staged.unlink(missing_ok=True)
+
 
 def _audit_customer_sample_materials(document) -> None:
-    in_sample_description = False
-    for element in document.element.body:
-        if element.tag == qn("w:p"):
-            text = _clean_text(Paragraph(element, document).text)
-            if re.fullmatch(r"(?:3\s*\.\s*)?SAMPLE DESCRIPTION", text, re.IGNORECASE):
-                in_sample_description = True
-            elif re.fullmatch(r"(?:4\s*\.\s*)?TEST DESCRIPTION", text, re.IGNORECASE):
-                in_sample_description = False
-            continue
-        if not in_sample_description or element.tag != qn("w:tbl"):
+    # Walk visible body blocks in document order, including content controls.
+    blocks = document.element.body.xpath(
+        ".//*[self::w:p or self::w:tbl][not(ancestor::w:tbl or ancestor::w:del or ancestor::w:moveFrom)]"
+    )
+    boundaries = {}
+    for index, block in enumerate(blocks):
+        if block.tag == qn("w:p"):
+            text = "".join(block.xpath(".//w:t[not(ancestor::w:del or ancestor::w:moveFrom)]/text()"))
+            for number, heading in enumerate(_SOURCE_HEADINGS, 1):
+                if _matches_heading(text, number, heading):
+                    boundaries.setdefault(number, index)
+                    break
+    start = next((boundaries[n] + 1 for n in (3, 2, 1) if n in boundaries), 0)
+    end = next((boundaries[n] for n in (4, 5, 6, 8) if n in boundaries), len(blocks))
+    for element in blocks[start:end]:
+        if element.tag != qn("w:tbl"):
             continue
         table = Table(element, document)
         if not table.rows:

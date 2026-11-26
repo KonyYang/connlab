@@ -687,7 +687,11 @@ class _WordRange:
         self.Find = SimpleNamespace(ClearFormatting=lambda: None, Execute=self.find)
 
     def find(self):
-        found = self.document.text().find(self.Find.Text, self.Start, self.End)
+        text = self.document.text()
+        term = self.Find.Text
+        if not getattr(self.Find, "MatchCase", True):
+            text, term = text.lower(), term.lower()
+        found = text.find(term, self.Start, self.End)
         if found == -1:
             return False
         self.Start, self.End = found, found + len(self.Find.Text)
@@ -1159,3 +1163,62 @@ def _minimal_document(path: Path, *, customer: bool) -> None:
     ):
         document.add_paragraph(heading)
     document.save(path)
+
+
+@pytest.mark.parametrize("heading", ["7. EQUIPMENT", "7. EQUIPMENTS", "4. TEST SEQUENCES", "1. Purpose"])
+def test_reads_heading_variants_without_changing_the_text(heading):
+    document = Document()
+    document.add_paragraph(heading)
+    number = int(heading[0])
+    canonical = {7: "EQUIPMENTS", 4: "TEST DESCRIPTION", 1: "PURPOSE"}[number]
+    _, text = gateway_module._lookup_heading(_WordDocument(document), number, canonical)
+    assert text == heading
+    assert document.paragraphs[0].text == heading
+
+
+def test_saved_draft_finds_purpose_in_a_content_control_and_lists_only_missing_sections(tmp_path, monkeypatch):
+    from docx.oxml import OxmlElement
+    source, template, output = (tmp_path / name for name in ("source.docx", "template.docx", "draft.docx"))
+    _minimal_document(source, customer=False)
+    _minimal_document(template, customer=True)
+    def generate(_source, target):
+        draft = Document(target)
+        purpose = draft.paragraphs[0]._p
+        control = OxmlElement("w:sdt")
+        content = OxmlElement("w:sdtContent")
+        purpose.addprevious(control)
+        control.append(content)
+        content.append(purpose)
+        missing = next(p._p for p in draft.paragraphs if p.text == "CONCLUSIONS")
+        deleted = OxmlElement("w:del")
+        missing.addprevious(deleted)
+        deleted.append(missing)
+        draft.add_paragraph("A discussion of CONCLUSIONS is not a heading.")
+        draft.save(target)
+    monkeypatch.setattr(gateway_module, "_generate_with_word", generate)
+    CustomerReportDocumentGateway().generate_customer_report(source_path=source, template_path=template, output_path=output)
+    result = Document(output)
+    lines = [p.text for p in result.paragraphs if "complete section" in p.text.lower()]
+    assert len(lines) == 1 and "CONCLUSIONS" in lines[0]
+    assert result.element.body.xpath(".//w:sdtContent//w:t")[0].text == "PURPOSE"
+
+@pytest.mark.parametrize("heading", ["7. EQUIPMENT", "7. EQUIPMENTS"])
+def test_saved_customer_report_rejects_internal_equipment_in_either_spelling(tmp_path, heading):
+    report = tmp_path / "draft.docx"
+    _minimal_document(report, customer=True)
+    document = Document(report)
+    document.add_paragraph(heading)
+    document.save(report)
+    with pytest.raises(ValueError, match="internal-only sections"):
+        gateway_module._audit_customer_report(report)
+
+
+def test_merged_test_sequence_table_does_not_require_individually_addressable_word_rows():
+    class MergedSequenceTable:
+        Range = SimpleNamespace(Text="Test item\\rGroup A\\rGroup B")
+
+        @property
+        def Rows(self):
+            raise AssertionError("Word cannot address rows of a vertically merged sequence matrix")
+
+    assert not gateway_module._sanitize_sample_table(MergedSequenceTable())
