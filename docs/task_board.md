@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LIBRARY_MAX_PATH_20261126",
-    "tier": "standard",
-    "subject": "0c0c973fa21e7c49b063c312b8714e9387100a0d",
-    "summary": "Handle Windows long material paths in library discovery, access and archival receipt",
+    "task_id": "TASK_LIBRARY_OPEN_FOLDER_RIGHT_20261126",
+    "tier": "micro",
+    "subject": "6f35e5d175e1c75dd41f3ca73d939ac6e0ea24cb",
+    "summary": "Align the reference library Open folder button at the right end of the path row",
     "disposition": "completed",
-    "decision_ref": "User accepted the verified materials long-path repair and requested closure.",
-    "closed_at": "2026-11-26T15:44:07.683527Z"
+    "decision_ref": "User explicitly requested local close only. Retain the integrated implementation and validation evidence.",
+    "closed_at": "2026-11-26T16:04:26.424727Z"
   },
   "retained_history": [
     {
@@ -831,66 +831,18 @@
       "disposition": "completed",
       "decision_ref": "User requested local-only close after verification. Edge colors.json and local master implementation d8f1e51a verified.",
       "closed_at": "2026-11-26T12:06:39.359155Z"
+    },
+    {
+      "task_id": "TASK_LIBRARY_MAX_PATH_20261126",
+      "tier": "standard",
+      "subject": "0c0c973fa21e7c49b063c312b8714e9387100a0d",
+      "summary": "Handle Windows long material paths in library discovery, access and archival receipt",
+      "disposition": "completed",
+      "decision_ref": "User accepted the verified materials long-path repair and requested closure.",
+      "closed_at": "2026-11-26T15:44:07.683527Z"
     }
   ],
-  "tasks": {
-    "TASK_LIBRARY_OPEN_FOLDER_RIGHT_20261126": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
-      "branch": "codex/library-open-folder-right-20261126",
-      "resources": [],
-      "integrated_head": "afb224859789da02a5ce206c7e56295cbb91dd73",
-      "task": {
-        "task_id": "TASK_LIBRARY_OPEN_FOLDER_RIGHT_20261126",
-        "summary": "Align the reference library Open folder button at the right end of the path row",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Move the existing icon after its path and verify alignment and activation.",
-        "scope_paths": [
-          "frontend/src/pages/ReferenceLibraryPage.tsx",
-          "frontend/src/pages/ReferenceLibraryPage.test.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "7f98207d7e3fa329db17282e2a651cd6ef89477e",
-        "started_at": "2026-11-26T15:58:53.154770Z",
-        "updated_at": "2026-11-26T16:00:55.589035Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_LIBRARY_OPEN_FOLDER_RIGHT_20261126",
-          "subject": "6f35e5d175e1c75dd41f3ca73d939ac6e0ea24cb",
-          "summary": "Open folder follows the path at the right edge of the library header row.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/pages/ReferenceLibraryPage.tsx",
-            "frontend/src/pages/ReferenceLibraryPage.test.tsx"
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Reviewed the two-line reorder and regression expectation."
-            }
-          },
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "18 library page tests passed; frontend production build passed. Isolated Edge widths 360/799/1200 all showed a 0px right gap, 10px path gap and same line. Evidence tmp/library-open-folder-right-20261126/geometry.json and 799.png."
-            }
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "6f35e5d175e1c75dd41f3ca73d939ac6e0ea24cb",
-            "primary_before": "fd31791b5ba2690acd1b816c44df52f162ec1a8a",
-            "integrated_head": "afb224859789da02a5ce206c7e56295cbb91dd73",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
