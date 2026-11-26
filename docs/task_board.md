@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LIBRARY_PROJECT_TABLE_20261126",
-    "tier": "standard",
-    "subject": "e18656da17d59e2615a047901de8738d1eac3e1d",
-    "summary": "Paginate project materials in a wider two-column registry table.",
+    "task_id": "TASK_LIBRARY_ID_WIDTH_20261126",
+    "tier": "micro",
+    "subject": "c7270bfc3147838a39ffd5a96bd9e2c979fe3475",
+    "summary": "Halve the Project ID column in Project Library.",
     "disposition": "completed",
-    "decision_ref": "User accepted and requested local close; retain implementation and verification evidence.",
-    "closed_at": "2026-11-25T23:51:07.465433Z"
+    "decision_ref": "User accepted the Project ID column width and requested the search clearing fix locally.",
+    "closed_at": "2026-11-26T00:07:26.102359Z"
   },
   "retained_history": [
     {
@@ -786,6 +786,15 @@
       "disposition": "completed",
       "decision_ref": "User accepted the library task and asked to close it first. Retain implementation and verification locally.",
       "closed_at": "2026-11-25T22:33:03.364913Z"
+    },
+    {
+      "task_id": "TASK_LIBRARY_PROJECT_TABLE_20261126",
+      "tier": "standard",
+      "subject": "e18656da17d59e2615a047901de8738d1eac3e1d",
+      "summary": "Paginate project materials in a wider two-column registry table.",
+      "disposition": "completed",
+      "decision_ref": "User accepted and requested local close; retain implementation and verification evidence.",
+      "closed_at": "2026-11-25T23:51:07.465433Z"
     }
   ],
   "tasks": {
@@ -843,58 +852,29 @@
         }
       }
     },
-    "TASK_LIBRARY_ID_WIDTH_20261126": {
+    "TASK_LIBRARY_SEARCH_CLEAR_20261126": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\library-material-tree-20261125",
-      "branch": "codex/library-id-width-20261126",
+      "branch": "codex/library-search-clear-20261126",
       "resources": [],
-      "integrated_head": "c6a93a14261b92aa4b1451bd1526cbec94e10449",
+      "integrated_head": null,
       "task": {
-        "task_id": "TASK_LIBRARY_ID_WIDTH_20261126",
-        "summary": "Halve the Project ID column in Project Library.",
+        "task_id": "TASK_LIBRARY_SEARCH_CLEAR_20261126",
+        "summary": "Update library results when the search box is cleared.",
         "tier": "micro",
         "route": "sol_direct",
-        "scope": "Only the widths of the two library table columns.",
+        "scope": "Clear the active keyword while preserving source and type filters; verify clear-all.",
         "scope_paths": [
-          "frontend/src/features/material-receipts/library-project-table.css"
+          "frontend/src/pages/ReferenceLibraryPage.tsx",
+          "frontend/src/pages/ReferenceLibraryPage.test.tsx"
         ],
         "risk_reasons": [],
-        "activation_head": "c1a145608d7f767f384a65b0b723556eac7b9d53",
-        "started_at": "2026-11-25T23:53:44.801896Z",
-        "updated_at": "2026-11-25T23:56:50.600794Z",
+        "activation_head": "15d127c91b9f27529fde5057b6109ea9d5c5b2e1",
+        "started_at": "2026-11-26T00:07:26.270969Z",
+        "updated_at": "2026-11-26T00:07:26.270969Z",
         "checkpoint": null,
-        "report": {
-          "task_id": "TASK_LIBRARY_ID_WIDTH_20261126",
-          "scope_ok": true,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "c7270bfc3147838a39ffd5a96bd9e2c979fe3475",
-            "primary_before": "b09086307916317113bc64ce7677174654bf64d2",
-            "integrated_head": "c6a93a14261b92aa4b1451bd1526cbec94e10449",
-            "recovered": false
-          },
-          "schema": "connlab.sol-task-report",
-          "changed_paths": [
-            "frontend/src/features/material-receipts/library-project-table.css"
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Self-reviewed the one-line table width change and checked browser layout."
-            }
-          },
-          "version": 1,
-          "summary": "Library Project ID column now occupies 25 percent.",
-          "subject": "c7270bfc3147838a39ffd5a96bd9e2c979fe3475",
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "TypeScript/Vite build passed. Isolated Edge at 360, 852 and 1200 px confirmed exactly half the previous measured cell width, full width gain in description, stable file pane, and no horizontal overflow. Measurements in tmp/library-id-width-20261126."
-            }
-          ]
-        }
+        "report": null
       }
     }
   }
