@@ -1,0 +1,35 @@
+{
+  "files": {
+    "internal_report": {
+      "name": "E-3707_H Laboratory Test Report -20260915.docx",
+      "sha256": "8ea5ce9702c4fa6649484d465c7c60096e3c59a8b8309676af6326ab5b643a0c"
+    },
+    "customer_feedback": {
+      "name": "E-4243_D Customer Feedback Form.xlsx",
+      "sha256": "dd76cf15217823597bf4eb5f843529957ebdf4f40f23286dc37218471579a143"
+    },
+    "customer_report": {
+      "name": "E-4515_F Customer Test Report-20260915.docx",
+      "sha256": "df64f372daafd52268c1ed159fe3c26aaaf18dc4c50ce38ad352b4e668ceb3be"
+    },
+    "ir_dwv": {
+      "name": "FDQF-E-033 IR&DWV Template.xlsx",
+      "sha256": "bdaa49bea686b7ce4c74e51a93f94d983fd09ae574d3bb7751978d7282be9723"
+    },
+    "test_record": {
+      "name": "FDQF-E-036 Test Record Template-Even.docx",
+      "sha256": "2d2bede1924b0da8ebffec0404aff6bd2cd2ff38d6f00165a069e7086817d27d"
+    },
+    "fee_evaluation": {
+      "name": "FDQF-E-176 Testing Fee Evaluation_Rev_F_20260915.xlsx",
+      "sha256": "c230445ad8620ee4d6ad178717d45f0a7d75b249342db3e98b752aa5db56d27f"
+    }
+  },
+  "directories": [
+    "DL-XXXX-YY-ZZZ project/DL-XXXX-YY-ZZZ Title/E-mail",
+    "DL-XXXX-YY-ZZZ project/DL-XXXX-YY-ZZZ Title/Photos",
+    "DL-XXXX-YY-ZZZ project/DL-XXXX-YY-ZZZ Title/Submitted Material",
+    "DL-XXXX-YY-ZZZ project/DL-XXXX-YY-ZZZ Title/Test results/Final Examination",
+    "DL-XXXX-YY-ZZZ project/Source Book"
+  ]
+}

@@ -123,7 +123,8 @@ def test_browser_release_script_builds_web_folder_without_business_changes() -> 
     assert "[System.Diagnostics.Stopwatch]::StartNew()" in script
     assert "finally {\n        try {\n            $stopwatch.Stop()" in script
     assert "[time]" in script
-    assert script.count("$LASTEXITCODE -ne 0") == 4
+    staging = script.split("py scripts/stage_browser_templates.py", 1)[1]
+    assert 'if ($LASTEXITCODE -ne 0) { throw' in staging.split("Move-Item", 1)[0]
     assert "routes_settings" not in script
     assert "ltr-workbook" not in script
     assert "LOCALAPPDATA" not in script

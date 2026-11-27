@@ -1,6 +1,7 @@
 param(
     [string]$ReleaseDate = (Get-Date -Format "yyyyMMddHHmm"),
     [string]$VersionSuffix = "",
+    [string]$TemplateSource = "D:\Source\Template",
     [switch]$SkipTests,
     [switch]$SkipFrontendBuild
 )
@@ -185,6 +186,9 @@ Invoke-TimedStep "[4/5] Running PyInstaller" {
 
 Invoke-TimedStep "[5/5] Preparing release folder" {
     Write-Host "[5/5] Preparing release folder"
+    # Validate approved inputs before replacing an existing build folder.
+    py scripts/stage_browser_templates.py $TemplateSource (Join-Path $pyinstallerOutput "_internal\browser_templates.zip")
+    if ($LASTEXITCODE -ne 0) { throw "Failed to stage approved browser release templates." }
     if (-not (Test-Path $releaseRoot)) {
         New-Item -ItemType Directory -Path $releaseRoot | Out-Null
     }
