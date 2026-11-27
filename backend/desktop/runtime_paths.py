@@ -27,12 +27,12 @@ class PackagedRuntimePaths:
     database_path: Path
     local_config_path: Path
 
-    def ensure_user_directories(self) -> None:
+    def ensure_user_directories(self, *, legacy_template_directory: bool = True) -> None:
         """Create mutable user-data directories without overwriting files."""
         for path in (
             self.user_root,
             self.data_dir,
-            self.templates_dir,
+            *((self.templates_dir,) if legacy_template_directory else ()),
             self.logs_dir,
             self.config_dir,
         ):
@@ -127,11 +127,11 @@ def apply_packaged_environment_defaults(paths: PackagedRuntimePaths) -> None:
 
 
 def prepare_packaged_runtime_environment(
-    paths: PackagedRuntimePaths | None = None,
+    paths: PackagedRuntimePaths | None = None, *, legacy_template_directory: bool = True,
 ) -> PackagedRuntimePaths:
     """Create packaged user directories and apply safe environment defaults."""
     runtime_paths = paths or build_packaged_runtime_paths()
-    runtime_paths.ensure_user_directories()
+    runtime_paths.ensure_user_directories(legacy_template_directory=legacy_template_directory)
     apply_packaged_environment_defaults(runtime_paths)
     from backend.shared.config import Settings
     from backend.shared.runtime_environment import configure_process_temporary_storage
