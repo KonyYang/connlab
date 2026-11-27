@@ -931,11 +931,11 @@
     },
     "TASK_DEV_LIBRARY_DEFAULT_20261127": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\dev-library-default-20261127",
       "branch": "codex/dev-library-default-20261127",
       "resources": [],
-      "integrated_head": "2229ecab6b7071e6332a78473d512cd24ed2413f",
+      "integrated_head": "fb9c98f16bac0a515154d50687a725ca49aaedc4",
       "task": {
         "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
         "summary": "Use Library as the development materials directory name",
@@ -953,7 +953,7 @@
         "risk_reasons": [],
         "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
         "started_at": "2026-11-27T14:18:56.637790Z",
-        "updated_at": "2026-11-27T22:13:14.206962Z",
+        "updated_at": "2026-11-27T22:15:15.986198Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -963,7 +963,43 @@
           "summary": "Restore the development Public Project locations editor for debugging; keep the other four fixed.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "summary": "Restore editable Public Project locations in development Settings for debugging.",
+          "scope_ok": true,
+          "roles": {
+            "developer": {
+              "summary": "Reviewed visibility and shared validation; other four fixed folders remain hidden.",
+              "status": "passed"
+            }
+          },
+          "validation": [
+            {
+              "name": "Settings frontend regression suite including saving and reopening (23 passed)",
+              "status": "passed"
+            },
+            {
+              "name": "TypeScript and Vite build",
+              "status": "passed"
+            }
+          ],
+          "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
+          "schema": "connlab.sol-task-report",
+          "changed_paths": [
+            "docs/development_storage_migration.md",
+            "frontend/src/features/settings/settingsSelectors.ts",
+            "frontend/src/pages/SettingsPage.test.tsx"
+          ],
+          "subject": "5c15eaf41c72fc73bdbf1a2317da8eb1db1ccfad",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "5c15eaf41c72fc73bdbf1a2317da8eb1db1ccfad",
+            "primary_before": "ceacb94e8cfd815c15735d9a05a74fb3eccaad59",
+            "integrated_head": "fb9c98f16bac0a515154d50687a725ca49aaedc4",
+            "recovered": false
+          },
+          "version": 1
+        }
       }
     }
   }
