@@ -928,6 +928,35 @@
           }
         }
       }
+    },
+    "TASK_DEV_LIBRARY_DEFAULT_20261127": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\dev-library-default-20261127",
+      "branch": "codex/dev-library-default-20261127",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
+        "summary": "Use Library as the development materials directory name",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Code default, current documentation, and regression fixtures; release default and public keys stay compatible.",
+        "scope_paths": [
+          "backend/shared/runtime_environment.py",
+          "docs/development_storage_migration.md",
+          "tests/unit/test_environment_output_defaults.py",
+          "tests/integration/test_material_receipt.py",
+          "frontend/src/api/runtime.testHelpers.ts",
+          "frontend/src/pages/SettingsPage.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
+        "started_at": "2026-11-27T14:18:56.637790Z",
+        "updated_at": "2026-11-27T14:18:56.637790Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
