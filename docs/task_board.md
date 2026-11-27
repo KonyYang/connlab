@@ -863,7 +863,7 @@
   "tasks": {
     "TASK_REPORT_CONTENT_ENTRY_20261127": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
       "branch": "codex/report-content-entry-20261127",
       "resources": [],
@@ -889,62 +889,17 @@
         "risk_reasons": [],
         "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
         "started_at": "2026-11-26T22:40:05.457358Z",
-        "updated_at": "2026-11-26T23:50:26.011696Z",
+        "updated_at": "2026-11-27T23:38:45.606887Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
           "stage": "revision",
           "status": "running",
-          "summary": "User requested fixing internal report generation for an already registered workspace when the default project location changes, with actionable path-specific blockers.",
+          "summary": "Approved report daily workflow completion and customer copy acceptance. Local only.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
-          "subject": "e69ec20859506bcada89aafadd19373a6bd4880e",
-          "summary": "Use identity-verified registered folders for internal reports after a default-location change. Explain and block unavailable, mismatched, redirected or unwritable destinations.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/routes_report_workspace.py",
-            "backend/application/internal_report_generation_service.py",
-            "backend/infrastructure/files/report_publication_gateway.py",
-            "backend/infrastructure/official_workspace_manifest.py",
-            "tests/integration/test_internal_report_generation_api.py"
-          ],
-          "validation": [
-            {
-              "name": "Report generation, workspace, publication and Word regressions",
-              "status": "passed",
-              "summary": "135 passed; isolated real Word generation and regeneration at the registered location after changing defaults, rejection at preview and write, archive integrity, write access denial.",
-              "evidence": "D:/PythonProject/connlab/tmp/report-registered-location-20261127-2/qa.log"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Reproduced prior behavior and write-access message defect before fixing, then reviewed staged diff."
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Independent reviewer confirmed the write-denial and final-path race handling after corrections."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Six affected suites passed on the final commit contents using test databases and isolated files."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "e69ec20859506bcada89aafadd19373a6bd4880e",
-            "primary_before": "d6a74879b9320584d533eee111e1a54c48a521bb",
-            "integrated_head": "363e493b1d79ff6c5fe961457aedc8ded36f8ae7",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
