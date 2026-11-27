@@ -952,15 +952,16 @@
         "route": "sol_direct",
         "scope": "Developer packaging input and isolated validation only; no installed instance or field templates.",
         "scope_paths": [
+          "packaging/browser_templates.json",
           "scripts/build_windows_browser_release.ps1",
           "scripts/stage_browser_templates.py",
-          "packaging/browser_templates.json",
-          "tests/unit/test_browser_template_bundle.py"
+          "tests/unit/test_browser_template_bundle.py",
+          "tests/unit/test_desktop_release_scripts.py"
         ],
         "risk_reasons": [],
         "activation_head": "b1f8410464fc295534854c90716d6ebcf54da7b3",
         "started_at": "2026-11-27T22:58:43.928848Z",
-        "updated_at": "2026-11-27T22:58:43.928848Z",
+        "updated_at": "2026-11-27T23:00:16.320539Z",
         "checkpoint": null,
         "report": null
       }
