@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_LIBRARY_OPEN_FOLDER_RIGHT_20261126",
+    "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
     "tier": "micro",
-    "subject": "6f35e5d175e1c75dd41f3ca73d939ac6e0ea24cb",
-    "summary": "Align the reference library Open folder button at the right end of the path row",
+    "subject": "5c15eaf41c72fc73bdbf1a2317da8eb1db1ccfad",
+    "summary": "Use Library as the development materials directory name",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested local close only. Retain the integrated implementation and validation evidence.",
-    "closed_at": "2026-11-26T16:04:26.424727Z"
+    "decision_ref": "User accepted and requested local closure only. Preserve commits and validation records. No push or release.",
+    "closed_at": "2026-11-27T22:16:14.333822Z"
   },
   "retained_history": [
     {
@@ -840,6 +840,15 @@
       "disposition": "completed",
       "decision_ref": "User accepted the verified materials long-path repair and requested closure.",
       "closed_at": "2026-11-26T15:44:07.683527Z"
+    },
+    {
+      "task_id": "TASK_LIBRARY_OPEN_FOLDER_RIGHT_20261126",
+      "tier": "micro",
+      "subject": "6f35e5d175e1c75dd41f3ca73d939ac6e0ea24cb",
+      "summary": "Align the reference library Open folder button at the right end of the path row",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested local close only. Retain the integrated implementation and validation evidence.",
+      "closed_at": "2026-11-26T16:04:26.424727Z"
     }
   ],
   "tasks": {
@@ -926,79 +935,6 @@
             "integrated_head": "363e493b1d79ff6c5fe961457aedc8ded36f8ae7",
             "recovered": false
           }
-        }
-      }
-    },
-    "TASK_DEV_LIBRARY_DEFAULT_20261127": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\dev-library-default-20261127",
-      "branch": "codex/dev-library-default-20261127",
-      "resources": [],
-      "integrated_head": "fb9c98f16bac0a515154d50687a725ca49aaedc4",
-      "task": {
-        "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
-        "summary": "Use Library as the development materials directory name",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Code default, current documentation, and regression fixtures; release default and public keys stay compatible.",
-        "scope_paths": [
-          "docs/development_storage_migration.md",
-          "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
-          "frontend/src/features/settings/settingsSelectors.ts",
-          "frontend/src/features/settings/useSettingsResources.ts",
-          "frontend/src/pages/SettingsPage.test.tsx",
-          "frontend/src/pages/SettingsPage.tsx"
-        ],
-        "risk_reasons": [],
-        "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
-        "started_at": "2026-11-27T14:18:56.637790Z",
-        "updated_at": "2026-11-27T22:15:15.986198Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
-          "stage": "revision",
-          "status": "running",
-          "summary": "Restore the development Public Project locations editor for debugging; keep the other four fixed.",
-          "requires_user": false
-        },
-        "report": {
-          "summary": "Restore editable Public Project locations in development Settings for debugging.",
-          "scope_ok": true,
-          "roles": {
-            "developer": {
-              "summary": "Reviewed visibility and shared validation; other four fixed folders remain hidden.",
-              "status": "passed"
-            }
-          },
-          "validation": [
-            {
-              "name": "Settings frontend regression suite including saving and reopening (23 passed)",
-              "status": "passed"
-            },
-            {
-              "name": "TypeScript and Vite build",
-              "status": "passed"
-            }
-          ],
-          "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
-          "schema": "connlab.sol-task-report",
-          "changed_paths": [
-            "docs/development_storage_migration.md",
-            "frontend/src/features/settings/settingsSelectors.ts",
-            "frontend/src/pages/SettingsPage.test.tsx"
-          ],
-          "subject": "5c15eaf41c72fc73bdbf1a2317da8eb1db1ccfad",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "5c15eaf41c72fc73bdbf1a2317da8eb1db1ccfad",
-            "primary_before": "ceacb94e8cfd815c15735d9a05a74fb3eccaad59",
-            "integrated_head": "fb9c98f16bac0a515154d50687a725ca49aaedc4",
-            "recovered": false
-          },
-          "version": 1
         }
       }
     }
