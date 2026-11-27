@@ -79,6 +79,33 @@ describe("SettingsPage", () => {
     clickDownload.mockRestore();
   });
 
+  it("saves and reloads a changed public project directory in development", async () => {
+    useTestRuntime("development");
+    let saved = locationResource({
+      resource_type: "official_public_drive_root", path: "D:/Debug/PublicA",
+      validation_status: "valid", validation_failure_reason: null
+    });
+    vi.mocked(listExternalResources).mockImplementation(async () => [saved]);
+    vi.mocked(validateExternalResource).mockImplementation(async () => saved);
+    vi.mocked(saveExternalResource).mockImplementation(async (_type, input) => {
+      saved = {...saved, path: input.path};
+      return saved;
+    });
+    const view = render(<SettingsPage />);
+    const label = "Public Project locations path";
+    const field = await screen.findByRole("textbox", {name: label});
+    expect(field).toHaveProperty("value", "D:/Debug/PublicA");
+    const newPath = "D:/Debug/PublicB";
+    fireEvent.change(field, {target: {value: newPath}});
+    fireEvent.keyDown(field, {key: "Enter"});
+    await waitFor(() => expect(saveExternalResource).toHaveBeenCalledWith(
+      "official_public_drive_root", {path: newPath, active: true}
+    ));
+    view.unmount();
+    render(<SettingsPage />);
+    expect(await screen.findByRole("textbox", {name: label})).toHaveProperty("value", newPath);
+  });
+
   it("does not repeat a missing file path in the validation message", async () => {
     vi.mocked(listExternalResources).mockResolvedValue([
       {
@@ -110,7 +137,7 @@ function locationResource(overrides: Partial<ExternalResource> = {}): ExternalRe
     validation_failure_reason: "Expected an existing directory: D:/Materials", worksheet_name: null, ...overrides};
 }
 
-it.each([true, false])("development shows only file settings and validates just the visible files (separate override: %s)", async independent => {
+it.each([true, false])("development exposes the public project folder and validates only visible settings (separate override: %s)", async independent => {
   useTestRuntime("development");
   const folderTypes = ["project_folder_template", "temporary_materials_root", "project_output_root", "official_public_drive_root"] as const;
   const folders = folderTypes.map(resource_type => locationResource({resource_type, path: "D:/Template"}));
@@ -125,15 +152,15 @@ it.each([true, false])("development shows only file settings and validates just 
   expect(within(recordFiles).getByLabelText("LTR registration workbook path")).toBeTruthy();
   expect(within(recordFiles).getByLabelText("Standard version file path")).toBeTruthy();
   expect(within(recordFiles).getByLabelText("Equipment calibration Excel path")).toBeTruthy();
-  expect(screen.queryByRole("heading", {name: "Default locations"})).toBeNull();
-  for (const label of ["Temporary materials folder", "Materials library folder", "Project default save location", "Template folder", "Public Project locations"]) {
+  expect(screen.getByLabelText("Public Project locations path")).toBeTruthy();
+  for (const label of ["Temporary materials folder", "Materials library folder", "Project default save location", "Template folder"]) {
     expect(screen.queryByLabelText(label + " path")).toBeNull();
   }
   const overrideInput = within(recordFiles).queryByLabelText("IR/DWV record template override path") as HTMLInputElement | null;
   if (independent) expect(overrideInput?.value).toBe(override.path);
   else expect(overrideInput).toBeNull();
   await waitFor(() => expect(validateExternalResource).toHaveBeenCalledWith("ltr_workbook"));
-  expect(vi.mocked(validateExternalResource).mock.calls.map(([type]) => type)).toEqual(independent ? ["ir_dwv_record_template", "ltr_workbook"] : ["ltr_workbook"]);
+  expect(vi.mocked(validateExternalResource).mock.calls.map(([type]) => type)).toEqual(independent ? ["official_public_drive_root", "ir_dwv_record_template", "ltr_workbook"] : ["official_public_drive_root", "ltr_workbook"]);
   expect(receipts.getReceiptRuntime).not.toHaveBeenCalled();
 });
 
