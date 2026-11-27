@@ -6,7 +6,7 @@ from backend.domain import ExternalResourceType
 
 
 @pytest.mark.parametrize(("environment", "root", "library", "temporary"), [
-    ("development", Path("D:/ConnLabDev"), "Library", "临时项目"),
+    ("development", Path("D:/ConnLabDev"), "Library", "TemporaryProjects"),
     ("release", Path("D:/ConnLab"), "Materials", "TemporaryMaterials"),
 ])
 def test_explicit_environment_defaults_are_lazy_and_keep_internal_storage(
@@ -37,7 +37,7 @@ def test_missing_default_is_created_once_but_configured_offline_is_not_recreated
     settings = Settings(data_dir=portable_tmp_path/"data", projects_dir=portable_tmp_path/"output/Projects", templates_dir=portable_tmp_path/"templates", database_path=portable_tmp_path/"data/db.sqlite3", output_root=portable_tmp_path/"output")
     defaults = DefaultStorageLocations(settings, resources, DefaultStorageDirectory())
     root = defaults.ensure(ExternalResourceType.TEMPORARY_MATERIALS_ROOT)
-    assert root == portable_tmp_path/"output/临时项目"
+    assert root == portable_tmp_path/"output/TemporaryProjects"
     assert root.is_dir()
     root.rmdir()
     with pytest.raises(ValueError, match="Settings"):
