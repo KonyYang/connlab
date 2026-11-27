@@ -940,11 +940,11 @@
     },
     "TASK_BROWSER_TEMPLATE_BUNDLE_20261128": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\browser-template-bundle-20261128",
       "branch": "codex/browser-template-bundle-20261128",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "6594b2a469a3d92d5d5cb23bbe11c3a573f4f99b",
       "task": {
         "task_id": "TASK_BROWSER_TEMPLATE_BUNDLE_20261128",
         "summary": "Stage the six approved generation templates and empty project layout for portable browser packaging",
@@ -961,9 +961,49 @@
         "risk_reasons": [],
         "activation_head": "b1f8410464fc295534854c90716d6ebcf54da7b3",
         "started_at": "2026-11-27T22:58:43.928848Z",
-        "updated_at": "2026-11-27T23:00:16.320539Z",
+        "updated_at": "2026-11-27T23:01:03.653706Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "scope_ok": true,
+          "subject": "c007b72217cb21a0d2307dead6d24ac2779d496e",
+          "version": 1,
+          "validation": [
+            {
+              "name": "Isolated packaging regressions",
+              "summary": "11 passed",
+              "status": "passed"
+            },
+            {
+              "name": "Pinned seed archive: six exact SHA256s, 3 unchanged Word headers and empty layout; excludes filled request",
+              "evidence": "D:/PythonProject/connlab-worktrees/browser-template-bundle-20261128/tmp/seed-qa-24a8ab39131e460f8848975893c838c8/browser_templates.zip",
+              "status": "passed"
+            }
+          ],
+          "task_id": "TASK_BROWSER_TEMPLATE_BUNDLE_20261128",
+          "summary": "Approved template bundle staged at build time; installed runtime bootstrap is separate pending main task.",
+          "changed_paths": [
+            "packaging/browser_templates.json",
+            "scripts/build_windows_browser_release.ps1",
+            "scripts/stage_browser_templates.py",
+            "tests/unit/test_browser_template_bundle.py",
+            "tests/unit/test_desktop_release_scripts.py"
+          ],
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "c007b72217cb21a0d2307dead6d24ac2779d496e",
+            "primary_before": "d1cf7d9223c3eab691c2c5eeeae0629f043f44c7",
+            "integrated_head": "6594b2a469a3d92d5d5cb23bbe11c3a573f4f99b",
+            "recovered": false
+          },
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Reviewed local build integration and allowlisted copies."
+            }
+          }
+        }
       }
     }
   }
