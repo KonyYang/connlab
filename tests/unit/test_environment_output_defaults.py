@@ -5,15 +5,21 @@ from backend.shared.config import Settings
 from backend.domain import ExternalResourceType
 
 
-def test_explicit_environment_defaults_are_lazy_and_keep_internal_storage(portable_tmp_path, monkeypatch):
-    monkeypatch.setenv("CONNLAB_ENVIRONMENT", "release")
+@pytest.mark.parametrize(("environment", "root", "library"), [
+    ("development", Path("D:/ConnLabDev"), "Library"),
+    ("release", Path("D:/ConnLab"), "Materials"),
+])
+def test_explicit_environment_defaults_are_lazy_and_keep_internal_storage(
+    portable_tmp_path, monkeypatch, environment, root, library,
+):
+    monkeypatch.setenv("CONNLAB_ENVIRONMENT", environment)
     for key in ["CONNLAB_DATA_DIR", "CONNLAB_PROJECTS_DIR", "CONNLAB_DATABASE_PATH", "CONNLAB_LOCAL_CONFIG_PATH", "CONNLAB_ADMIN_CONFIG_PATH"]:
         monkeypatch.delenv(key, raising=False)
     settings = Settings.load(base_dir=portable_tmp_path)
-    assert settings.environment == "release"
-    assert settings.projects_dir == Path("D:/ConnLab/Projects")
-    assert settings.output_path("Materials") == Path("D:/ConnLab/Materials")
-    assert settings.output_path("TemporaryMaterials") == Path("D:/ConnLab/TemporaryMaterials")
+    assert settings.environment == environment
+    assert settings.projects_dir == root / "Projects"
+    assert settings.output_path("Materials") == root / library
+    assert settings.output_path("TemporaryMaterials") == root / "TemporaryMaterials"
     assert settings.data_dir == portable_tmp_path / "data"
     assert settings.database_path == portable_tmp_path / "data/connlab.sqlite3"
     assert not (portable_tmp_path / "projects").exists()

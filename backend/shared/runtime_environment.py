@@ -19,7 +19,8 @@ def output_path(environment: str, purpose: str, *, root: Path | None = None) -> 
     part = Path(purpose)
     if not purpose or part.is_absolute() or len(part.parts) != 1 or purpose in {".", ".."} or any(c in purpose for c in "\\/:*"):
         raise ValueError("Use one output purpose, not an arbitrary path.")
-    return (root or OUTPUT_ROOTS[environment]) / purpose
+    folder = "Library" if environment == "development" and purpose == "Materials" else purpose
+    return (root or OUTPUT_ROOTS[environment]) / folder
 
 def apply_entry_defaults(environment: str, defaults: dict[str, object]) -> None:
     """Replace only inherited managed defaults; explicit operator overrides remain valid."""
