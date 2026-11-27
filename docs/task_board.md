@@ -943,6 +943,7 @@
         "route": "sol_direct",
         "scope": "Code default, current documentation, and regression fixtures; release default and public keys stay compatible.",
         "scope_paths": [
+          "docs/development_storage_migration.md",
           "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
           "frontend/src/features/settings/settingsSelectors.ts",
           "frontend/src/features/settings/useSettingsResources.ts",
@@ -952,7 +953,7 @@
         "risk_reasons": [],
         "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
         "started_at": "2026-11-27T14:18:56.637790Z",
-        "updated_at": "2026-11-27T15:00:44.685165Z",
+        "updated_at": "2026-11-27T15:03:51.676287Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
