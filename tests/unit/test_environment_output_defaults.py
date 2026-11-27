@@ -5,12 +5,12 @@ from backend.shared.config import Settings
 from backend.domain import ExternalResourceType
 
 
-@pytest.mark.parametrize(("environment", "root", "library"), [
-    ("development", Path("D:/ConnLabDev"), "Library"),
-    ("release", Path("D:/ConnLab"), "Materials"),
+@pytest.mark.parametrize(("environment", "root", "library", "temporary"), [
+    ("development", Path("D:/ConnLabDev"), "Library", "临时项目"),
+    ("release", Path("D:/ConnLab"), "Materials", "TemporaryMaterials"),
 ])
 def test_explicit_environment_defaults_are_lazy_and_keep_internal_storage(
-    portable_tmp_path, monkeypatch, environment, root, library,
+    portable_tmp_path, monkeypatch, environment, root, library, temporary,
 ):
     monkeypatch.setenv("CONNLAB_ENVIRONMENT", environment)
     for key in ["CONNLAB_DATA_DIR", "CONNLAB_PROJECTS_DIR", "CONNLAB_DATABASE_PATH", "CONNLAB_LOCAL_CONFIG_PATH", "CONNLAB_ADMIN_CONFIG_PATH"]:
@@ -19,7 +19,7 @@ def test_explicit_environment_defaults_are_lazy_and_keep_internal_storage(
     assert settings.environment == environment
     assert settings.projects_dir == root / "Projects"
     assert settings.output_path("Materials") == root / library
-    assert settings.output_path("TemporaryMaterials") == root / "TemporaryMaterials"
+    assert settings.output_path("TemporaryMaterials") == root / temporary
     assert settings.data_dir == portable_tmp_path / "data"
     assert settings.database_path == portable_tmp_path / "data/connlab.sqlite3"
     assert not (portable_tmp_path / "projects").exists()
@@ -37,7 +37,7 @@ def test_missing_default_is_created_once_but_configured_offline_is_not_recreated
     settings = Settings(data_dir=portable_tmp_path/"data", projects_dir=portable_tmp_path/"output/Projects", templates_dir=portable_tmp_path/"templates", database_path=portable_tmp_path/"data/db.sqlite3", output_root=portable_tmp_path/"output")
     defaults = DefaultStorageLocations(settings, resources, DefaultStorageDirectory())
     root = defaults.ensure(ExternalResourceType.TEMPORARY_MATERIALS_ROOT)
-    assert root == portable_tmp_path/"output/TemporaryMaterials"
+    assert root == portable_tmp_path/"output/临时项目"
     assert root.is_dir()
     root.rmdir()
     with pytest.raises(ValueError, match="Settings"):
