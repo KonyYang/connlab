@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
+    "task_id": "TASK_BROWSER_TEMPLATE_BUNDLE_20261128",
     "tier": "micro",
-    "subject": "5c15eaf41c72fc73bdbf1a2317da8eb1db1ccfad",
-    "summary": "Use Library as the development materials directory name",
+    "subject": "c007b72217cb21a0d2307dead6d24ac2779d496e",
+    "summary": "Stage the six approved generation templates and empty project layout for portable browser packaging",
     "disposition": "completed",
-    "decision_ref": "User accepted and requested local closure only. Preserve commits and validation records. No push or release.",
-    "closed_at": "2026-11-27T22:16:14.333822Z"
+    "decision_ref": "User accepted template packaging and authorized local close only. Keep report task. No publication.",
+    "closed_at": "2026-11-27T23:27:52.300754Z"
   },
   "retained_history": [
     {
@@ -849,6 +849,15 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested local close only. Retain the integrated implementation and validation evidence.",
       "closed_at": "2026-11-26T16:04:26.424727Z"
+    },
+    {
+      "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
+      "tier": "micro",
+      "subject": "5c15eaf41c72fc73bdbf1a2317da8eb1db1ccfad",
+      "summary": "Use Library as the development materials directory name",
+      "disposition": "completed",
+      "decision_ref": "User accepted and requested local closure only. Preserve commits and validation records. No push or release.",
+      "closed_at": "2026-11-27T22:16:14.333822Z"
     }
   ],
   "tasks": {
@@ -934,74 +943,6 @@
             "primary_before": "d6a74879b9320584d533eee111e1a54c48a521bb",
             "integrated_head": "363e493b1d79ff6c5fe961457aedc8ded36f8ae7",
             "recovered": false
-          }
-        }
-      }
-    },
-    "TASK_BROWSER_TEMPLATE_BUNDLE_20261128": {
-      "slot": "micro",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\browser-template-bundle-20261128",
-      "branch": "codex/browser-template-bundle-20261128",
-      "resources": [],
-      "integrated_head": "6594b2a469a3d92d5d5cb23bbe11c3a573f4f99b",
-      "task": {
-        "task_id": "TASK_BROWSER_TEMPLATE_BUNDLE_20261128",
-        "summary": "Stage the six approved generation templates and empty project layout for portable browser packaging",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Developer packaging input and isolated validation only; no installed instance or field templates.",
-        "scope_paths": [
-          "packaging/browser_templates.json",
-          "scripts/build_windows_browser_release.ps1",
-          "scripts/stage_browser_templates.py",
-          "tests/unit/test_browser_template_bundle.py",
-          "tests/unit/test_desktop_release_scripts.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "b1f8410464fc295534854c90716d6ebcf54da7b3",
-        "started_at": "2026-11-27T22:58:43.928848Z",
-        "updated_at": "2026-11-27T23:01:03.653706Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "scope_ok": true,
-          "subject": "c007b72217cb21a0d2307dead6d24ac2779d496e",
-          "version": 1,
-          "validation": [
-            {
-              "name": "Isolated packaging regressions",
-              "summary": "11 passed",
-              "status": "passed"
-            },
-            {
-              "name": "Pinned seed archive: six exact SHA256s, 3 unchanged Word headers and empty layout; excludes filled request",
-              "evidence": "D:/PythonProject/connlab-worktrees/browser-template-bundle-20261128/tmp/seed-qa-24a8ab39131e460f8848975893c838c8/browser_templates.zip",
-              "status": "passed"
-            }
-          ],
-          "task_id": "TASK_BROWSER_TEMPLATE_BUNDLE_20261128",
-          "summary": "Approved template bundle staged at build time; installed runtime bootstrap is separate pending main task.",
-          "changed_paths": [
-            "packaging/browser_templates.json",
-            "scripts/build_windows_browser_release.ps1",
-            "scripts/stage_browser_templates.py",
-            "tests/unit/test_browser_template_bundle.py",
-            "tests/unit/test_desktop_release_scripts.py"
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "c007b72217cb21a0d2307dead6d24ac2779d496e",
-            "primary_before": "d1cf7d9223c3eab691c2c5eeeae0629f043f44c7",
-            "integrated_head": "6594b2a469a3d92d5d5cb23bbe11c3a573f4f99b",
-            "recovered": false
-          },
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Reviewed local build integration and allowlisted copies."
-            }
           }
         }
       }
