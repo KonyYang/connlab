@@ -184,14 +184,5 @@
 }
 
 .settings-storage { gap: 8px; }
-.settings-storage summary { cursor: pointer; }
-.settings-storage-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  padding-block: 4px;
-}
-.settings-storage-line span, .settings-storage li { overflow-wrap: anywhere; }
+.settings-storage li { overflow-wrap: anywhere; }
 .settings-storage ul { margin-block: 4px; }
