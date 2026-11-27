@@ -39,6 +39,7 @@ import { useUploadedCustomerReportJob } from "./useUploadedCustomerReportJob";
 import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
 import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDialog";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
+import { LlcrSection } from "./LlcrSection";
 import { ReportContentEditor } from "./ReportContentEditor";
 import { ReportAuthoringPanel } from "./ReportAuthoringPanel";
 import { StepReportEvidence, type StepLink } from './StepReportEvidence';
@@ -86,7 +87,6 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
   const [customerReportRecovery, setCustomerReportRecovery] = useState<CustomerReportState | null>(null);
   const [customerRegenerationApproval, setCustomerRegenerationApproval] = useState<CustomerRegenerationApproval | null>(null);
   const customerRequest = useRef(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LlcrImportPreview | null>(null);
   const [decisionDrafts, setDecisionDrafts] = useState<LlcrDecisionDrafts>({});
   const [equipmentSourceOpen, setEquipmentSourceOpen] = useState(false);
@@ -171,6 +171,8 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     setSourcePickerOpen(false);
     setDirectCustomer(false);
     setCheckingSource(false);
+    setPreview(null);
+    setDecisionDrafts({});
     sourceRequest.current = false;
     customerRequest.current = false;
     customerRun.current = null;
@@ -439,18 +441,13 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     }
   }
 
-  async function handleInspect(): Promise<void> {
-    if (!selectedFile) {
-      setError("Select an LLCR result workbook first.");
-      return;
-    }
+  async function handleInspect(file: File): Promise<void> {
     await runAction("inspect", async () => {
-      const result = await inspectLlcrResultWorkbook(projectId, selectedFile);
+      const result = await inspectLlcrResultWorkbook(projectId, file);
+      if (!mounted.current || activeProject.current !== projectId) return null;
       setPreview(result);
       setDecisionDrafts(createLlcrDecisionDrafts(result));
-      return result.can_confirm
-        ? `Previewed ${result.result_count} LLCR report target${result.result_count === 1 ? "" : "s"}.`
-        : null;
+      return null;
     });
   }
 
@@ -464,6 +461,7 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
         confirmed_by: "Lab User",
         decisions: buildLlcrConfirmationDecisions(preview, decisionDrafts),
       });
+      if (!mounted.current || activeProject.current !== projectId) return null;
       setPreview(null);
       setDecisionDrafts({});
       await refresh();
@@ -479,12 +477,13 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     setError(null);
     try {
       await cancelLlcrResultPreview(projectId, preview.preview_id);
+      if (!mounted.current || activeProject.current !== projectId) return;
       setPreview(null);
       setDecisionDrafts({});
     } catch (reason) {
-      setError(errorMessage(reason, "Unable to cancel the LLCR preview."));
+      if (mounted.current && activeProject.current === projectId) setError(errorMessage(reason, "Unable to cancel the LLCR preview."));
     } finally {
-      setBusyAction(null);
+      if (mounted.current && activeProject.current === projectId) setBusyAction(null);
     }
   }
 
@@ -746,40 +745,10 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     });
   }
 
-  const llcrControls = readiness && (<div className="report-workspace-update-row">
-              <div className="report-workspace-update-content">
-                <h3>LLCR results</h3>
-                <div className="report-workspace-import-row">
-                  <label className="report-workspace-file-field">
-                    LLCR result workbook
-                    <input
-                      accept=".xlsx"
-                      disabled={Boolean(busyAction)}
-                      onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                      type="file"
-                    />
-                  </label>
-                  <button disabled={!selectedFile || Boolean(busyAction)} onClick={() => void handleInspect()} type="button">
-                    {busyAction === "inspect" ? "Inspecting..." : "Inspect LLCR Workbook"}
-                  </button>
-                </div>
-                {latestDataset ? (
-                  <p className="report-workspace-note" title={`Confirmed ${formatDateTime(latestDataset.confirmed_at)}`}>
-                    Dataset r{latestDataset.revision} · {latestDataset.entries.length} results · {latestDataset.source_file_name}
-                  </p>
-                ) : <p className="report-workspace-empty">No confirmed LLCR Result Dataset yet.</p>}
-                <p className="report-workspace-note">LLCR Result and Comment cells and Appendix A</p>
-                {latestDataset && readiness.llcrUpdateBlocker ? <p className="report-workspace-blocker">{readiness.llcrUpdateBlocker}</p> : null}
-              </div>
-              <button
-                className="primary-action"
-                disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
-                onClick={() => void handleUpdateLlcr()}
-                type="button"
-              >
-                {busyAction === "llcr" ? "Updating..." : "Update LLCR Results"}
-              </button>
-            </div>);
+  const llcrControls = readiness && <LlcrSection dataset={latestDataset} workingCopy={Boolean(workingCopy)}
+    busy={Boolean(busyAction)} inspecting={busyAction === "inspect"} updating={busyAction === "llcr"}
+    updateBlocked={!readiness.canUpdateLlcr || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
+    blocker={readiness.llcrUpdateBlocker} onInspect={file => void handleInspect(file)} onUpdate={() => void handleUpdateLlcr()} />;
   const equipmentControls = (<div className="report-workspace-update-row report-workspace-equipment-action">
               <button
                 className="primary-action"
@@ -1097,7 +1066,8 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
       {equipmentSourceOpen ? (
         <EquipmentDialog title="Provide equipment IDs" busy={pageBusyAction === "equipment-update" || draftUpdates.busy}
           returnFocusTarget={equipmentTrigger.current} onClose={() => { setEquipmentSourceOpen(false); setEquipmentFile(null); setEquipmentIds(""); }}>
-          <p>{draftMode ? "Choose an equipment document or paste equipment IDs. Only the draft copy will be updated."
+          <p>{workingCopy ? "Choose the equipment ID document or enter the IDs used for this working copy."
+            : draftMode ? "Choose an equipment document or paste equipment IDs. Only the draft copy will be updated."
             : "EquipmentID.docx was not found in the LTR folder. Choose a document or paste equipment IDs. The selection is saved there before updating the report."}</p>
           <label className="report-workspace-file-field">EquipmentID document
             <input accept=".docx" type="file" disabled={pageBusyAction === "equipment-update" || draftUpdates.busy}
@@ -1116,7 +1086,7 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
             <button type="button" className="primary-action"
               disabled={pageBusyAction === "equipment-update" || draftUpdates.busy || (!equipmentFile && !equipmentIds.trim())}
               onClick={handleEquipmentSelection}>
-              {pageBusyAction === "equipment-update" || draftUpdates.busy ? "Updating..." : draftMode ? "Update And Download" : "Save And Update"}
+              {pageBusyAction === "equipment-update" || draftUpdates.busy ? "Updating..." : workingCopy ? "Update working copy" : draftMode ? "Update And Download" : "Save And Update"}
             </button>
           </div>
         </EquipmentDialog>
@@ -1132,11 +1102,6 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
       ) : null}
     </section>
   );
-}
-
-function formatDateTime(value: string): string {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
 }
 
 async function loadReportState(projectId: string) {

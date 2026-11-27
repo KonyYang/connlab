@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from copy import deepcopy
-from dataclasses import asdict
 from datetime import datetime
 from decimal import Decimal
 from hashlib import sha256
-import json
 import os
 from pathlib import Path
 import re
@@ -36,6 +34,7 @@ from lxml.etree import XMLSyntaxError, tostring
 from backend.application.confirmed_matrix_test_record_preview_service import (
     is_llcr_test_item,
 )
+from backend.application.report_authoring.llcr_projection import dataset_sha256 as llcr_dataset_sha256
 from backend.application.test_report_draft_service import TestReportDraftData
 from backend.domain.result_dataset_models import (
     LlcrSummaryRow,
@@ -754,15 +753,6 @@ def _fill_revision_table(table: Table, report: TestReportDraftData) -> None:
     )
     for cell, value in zip(table.rows[1].cells, values, strict=True):
         _set_cell_text(cell, value)
-
-
-def llcr_dataset_sha256(dataset: ResultDatasetRevision) -> str:
-    def decimal_text(value):
-        if isinstance(value, Decimal):
-            return str(value)
-        raise TypeError(f'Unsupported dataset value: {type(value).__name__}')
-    return sha256(json.dumps(asdict(dataset), sort_keys=True, separators=(',', ':'),
-        ensure_ascii=False, allow_nan=False, default=decimal_text).encode('utf-8')).hexdigest()
 
 
 def _resolve_llcr_update(document, dataset):

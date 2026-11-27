@@ -14,15 +14,15 @@ const state = { project_id: 'P1', revision: 7, sources: [], mappings: [], contex
 it('does not save on inspection, cancellation or download; exact pair requires explicit save', async () => {
   vi.mocked(api.getReportDelivery).mockResolvedValue({ can_save: true, issues: [], preview_sha256: 'c'.repeat(64),
     output_id: 'internal', output_sha256: 'a'.repeat(64), customer_output_id: 'customer', operation: null,
-    workspace: { notice: 'History', files: [{ role: 'internal', file_name: 'Current.docx', replaces_existing: true, archive_required: true }] } });
+    workspace: { notice: 'History', files: [{ role: 'internal', file_name: 'Current.docx', destination: 'D:/Isolated/Report/Current.docx', replaces_existing: true, archive_required: true }] } });
   vi.mocked(api.saveReviewedReports).mockResolvedValue(state);
   render(<ReportDelivery projectId="P1" state={state} disabled={false} onChanged={vi.fn()} />);
-  expect(api.getReportDelivery).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Inspect delivery checks' }));
   await screen.findByText('Delivery checks passed for the selected pair.');
   expect(api.saveReviewedReports).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Save reviewed reports to project folder' }));
   expect(screen.getByRole('dialog', { name: 'Confirm saving reviewed reports' })).toBeTruthy();
+  expect(screen.getByRole('dialog').textContent).toContain('D:/Isolated/Report/Current.docx');
+  expect(screen.getByRole('dialog').textContent).toContain('History/Report');
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }));
   fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
   expect(screen.queryByRole('dialog')).toBeNull();
@@ -42,9 +42,8 @@ it('shows precise blockers instead of enabling save for a generated but unchecke
   vi.mocked(api.getReportDelivery).mockResolvedValue({ can_save: false, issues: [{ code: 'coverage_incomplete', message: 'Group A evidence missing' }],
     preview_sha256: null, operation: null });
   render(<ReportDelivery projectId="P1" state={state} disabled={false} onChanged={vi.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Inspect delivery checks' }));
   await screen.findByText('Group A evidence missing');
-  expect(screen.getByRole('button', { name: 'Save reviewed reports to project folder' })).toHaveProperty('disabled', true);
+  expect(screen.queryByRole('button', { name: 'Save reviewed reports to project folder' })).toBeNull();
 });
 
 it('does not present an earlier completed pair as the currently selected version', async () => {
@@ -53,7 +52,16 @@ it('does not present an earlier completed pair as the currently selected version
     operation: { operation_id: 'old', status: 'completed', output_id: 'previous', output_sha256: 'e'.repeat(64),
       customer_output_id: 'old-customer', customer_sha256: 'f'.repeat(64), items: [] } });
   render(<ReportDelivery projectId="P1" state={state} disabled={false} onChanged={vi.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Inspect delivery checks' }));
   await screen.findByText('An earlier report version was saved; current delivery checks are separate.');
   expect(screen.queryByText('Selected report pair saved — not formally issued.')).toBeNull();
+});
+
+it('shows the verified saved pair without asking for a second save', async () => {
+  vi.mocked(api.getReportDelivery).mockResolvedValue({ can_save: true, issues: [], preview_sha256: 'd'.repeat(64),
+    customer_output_id: 'customer', operation_matches_current: true, operation: { operation_id: 'done', status: 'completed',
+      items: [{ role: 'customer', file_name: 'Reviewed.docx', status: 'saved' }] } });
+  render(<ReportDelivery projectId="P1" state={state} disabled={false} onChanged={vi.fn()} />);
+  await screen.findByText('Selected report pair saved — not formally issued.');
+  expect(screen.getByText(/Reviewed.docx/)).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Save reviewed reports to project folder' })).toBeNull();
 });

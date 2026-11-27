@@ -11,7 +11,6 @@ import { ReportFactUpdates } from "./ReportFactUpdates";
 import { ReportResultUpdate } from "./ReportResultUpdate";
 import { ReportPhotoSlots } from "./ReportPhotoSlots";
 import { ReportCustomerCopy } from "./ReportCustomerCopy";
-import { ReportDelivery } from "./ReportDelivery";
 import "./reportContentEditor.css";
 
 const sections = {
@@ -19,6 +18,8 @@ const sections = {
   facts: "Project information", sources: "Sources and decisions", batch: "Batch updates", review: "Document review",
 };
 type Section = keyof typeof sections;
+const dailySections: Section[] = ["llcr", "equipment", "photos", "results", "facts"];
+const moreTools: Section[] = ["sources", "batch", "review"];
 function isSection(value: string | null): value is Section {
   return value !== null && Object.prototype.hasOwnProperty.call(sections, value);
 }
@@ -40,17 +41,36 @@ export function ReportContentEditor({ projectId, state, disabled, beginOperation
     } catch { return "llcr"; }
   });
   const [customer, setCustomer] = useState(false);
+  const [showTools, setShowTools] = useState(() => moreTools.includes(section));
   function choose(value: string) {
     if (!isSection(value)) return;
     setSection(value);
+    if (moreTools.includes(value)) setShowTools(true);
     try { runtimeLocalStorage.setItem(storageKey, value); } catch { /* Browsing still works without local storage. */ }
   }
   const props = { projectId, state, disabled, beginOperation, onChanged };
+  function sectionButton(id: Section) {
+    return <button key={id} type="button" disabled={disabled}
+      aria-current={section === id ? "true" : undefined} onClick={() => choose(id)}>{sections[id]}</button>;
+  }
   function content() {
     switch (section) {
       case "llcr": return llcr;
-      case "equipment": return equipment;
-      case "photos": return <ReportPhotoSlots {...props} />;
+      case "equipment": {
+        const evidence = output.evidence;
+        const stats = evidence?.statistics;
+        const source = evidence?.selection_sha256 ? "Project EquipmentID.docx"
+          : state.sources.find(item => item.source_id === evidence?.equipment_source_id)?.file_name
+            || (evidence?.references_text ? "Entered equipment IDs" : undefined);
+        return <><h3>Equipment list</h3>{stats && <div>
+          {source && <p>Source: {source}</p>}
+          <p>Equipment rows filled: {stats.filled}</p>
+          {stats.unmatched.length > 0 && <p>Missing from the calibration workbook: {stats.unmatched.join(", ")}</p>}
+          {stats.incomplete.length > 0 && <p>Incomplete equipment details: {stats.incomplete.join(", ")}</p>}
+          {stats.expired.length > 0 && <p>Calibration expired: {stats.expired.join(", ")}</p>}
+        </div>}{equipment}</>;
+      }
+      case "photos": return <ReportPhotoSlots {...props} onChooseSources={() => choose("sources")} />;
       case "facts": return <ReportFactUpdates {...props} />;
       case "sources": return <ReportAuthoringPanel projectId={projectId} sharedState={state} disabled={disabled} onOperationStart={beginOperation} onChanged={onChanged} />;
       case "batch": return <ReportBatchPreparation {...props} />;
@@ -72,16 +92,18 @@ export function ReportContentEditor({ projectId, state, disabled, beginOperation
       <button type="button" aria-pressed={!customer} disabled={disabled} onClick={() => setCustomer(false)}>Report content</button>
       <button type="button" aria-pressed={customer} disabled={disabled} onClick={() => setCustomer(true)}>Customer copy</button>
     </nav>
-    {customer ? <div className="report-editor-detail"><ReportCustomerCopy {...props} />
-      {directCustomerAction}
-      {Boolean(state.customer_outputs?.length) && <ReportDelivery {...props} />}</div>
+    {customer ? <div className="report-editor-detail"><ReportCustomerCopy {...props} onOpenSection={value => { choose(value); setCustomer(false); }} />
+      {directCustomerAction}</div>
       : <div className="report-editor-columns">
         <nav className="report-editor-list" aria-label="Report sections">
-          {Object.entries(sections).map(([id, label]) => <button key={id} type="button" disabled={disabled}
-            aria-current={section === id ? "true" : undefined} onClick={() => choose(id)}>{label}</button>)}
+          {dailySections.map(sectionButton)}
+          <details open={showTools} onToggle={event => setShowTools(event.currentTarget.open)}>
+            <summary>More tools</summary>{moreTools.map(sectionButton)}
+          </details>
         </nav>
         <label className="report-editor-picker">Report section<select aria-label="Report section" value={section} disabled={disabled} onChange={e => choose(e.target.value)}>
-          {Object.entries(sections).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+          <optgroup label="Report content">{dailySections.map(id => <option key={id} value={id}>{sections[id]}</option>)}</optgroup>
+          <optgroup label="More tools">{moreTools.map(id => <option key={id} value={id}>{sections[id]}</option>)}</optgroup>
         </select></label>
         <section className="report-editor-detail" aria-label={sections[section]}>{content()}</section>
       </div>}

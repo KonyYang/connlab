@@ -1,33 +1,33 @@
 .report-customer-copy {
   min-width: 0;
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--color-border);
   color: var(--color-ink);
   font-size: 14px;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
 
-.report-customer-copy h4 {
+.report-customer-copy h3, .report-delivery h3 {
   margin: 0 0 8px;
 }
 
-.report-customer-copy-note {
-  margin: 0 0 16px;
+.report-customer-copy-source {
   color: var(--color-ink-muted);
 }
+.report-customer-copy-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.report-customer-copy summary, .report-delivery summary { cursor: pointer; }
+.report-customer-copy-form legend { font-weight: 700; font-size: 16px; padding: 0; }
+.report-customer-copy-form > button { justify-self: start; }
+.report-customer-copy-form details > div { margin-top: 8px; }
 
 .report-customer-copy-form {
   display: grid;
-  gap: 20px;
+  gap: 12px;
   min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-.report-customer-copy-status,
 .report-customer-copy-checks,
 .report-customer-copy-issue-review {
   display: grid;
@@ -35,7 +35,6 @@
   min-width: 0;
 }
 
-.report-customer-copy-status p,
 .report-customer-copy-checks p,
 .report-customer-copy-issues p {
   margin: 0;

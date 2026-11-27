@@ -175,6 +175,15 @@ def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: P
     assert inspected.status_code == 200
     assert inspected.json()["can_confirm"] is True
     assert inspected.json()["entries"][0]["report_target"] == "Group 1 / Step 2 / Result + Comment"
+    expected_readings = [{
+        "group_label": "1", "stage_label": "Initial LLCR", "step_token": "2",
+        "stage": "initial", "sample_index": 1, "position": "SIG1",
+        "raw_status": "present", "raw_value": "0.248", "raw_unit": "mΩ", "raw_source_cell": "D10",
+        "source_sheet": "SIG", "source_cell": "K10", "value": "0.198", "unit": "mΩ",
+    }]
+    assert inspected.json()["readings"] == expected_readings
+    assert confirmed.json()["readings"] == expected_readings
+    assert state.json()["datasets"][0]["readings"] == expected_readings
     assert cancelled.status_code == 204
     assert llcr_service.cancelled == ("P1", "preview-1")
     assert confirmed.status_code == 200
@@ -195,6 +204,25 @@ def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: P
     assert workspace_service.customer_command.template_path == (
         templates / "E-4515_F Customer Test Report.docx"
     )
+
+
+def test_workspace_loads_readings_for_current_revision_without_inventing_old_raw_values():
+    older = _dataset("earlier", 1)
+    entry = older.payload.entries[0]
+    legacy = replace(entry.measurements[0], raw_value=None, raw_unit="", raw_source_cell="")
+    current = replace(older, dataset_id="current", revision=2,
+                      payload=replace(older.payload, entries=(replace(entry, measurements=(legacy,)),)))
+    state = replace(_WorkspaceService(None, current).get_state("P1"), datasets=(older, current))
+    app.dependency_overrides[get_report_workspace_service] = lambda: SimpleNamespace(get_state=lambda _: state)
+    try:
+        response = TestClient(app).get("/api/projects/P1/report-workspace")
+    finally:
+        app.dependency_overrides.clear()
+    previous, latest = response.json()["datasets"]
+    assert previous["dataset_id"] == "earlier" and not previous.get("readings")
+    reading = latest["readings"][0]
+    assert (reading["raw_status"], reading["raw_value"], reading["raw_source_cell"]) == ("unavailable", None, "")
+    assert (reading["value"], reading["source_cell"]) == ("0.198", "K10")
 
 
 def test_current_report_llcr_preview_update_and_download(tmp_path: Path) -> None:

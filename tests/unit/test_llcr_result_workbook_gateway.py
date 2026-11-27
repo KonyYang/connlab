@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+from unittest.mock import Mock
 
 import pytest
 
@@ -20,6 +21,11 @@ from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway i
 )
 from backend.infrastructure.office.llcr_result_workbook_gateway import (
     LlcrResultWorkbookGateway,
+    LocalLlcrImportSourceStore,
+)
+from backend.application.llcr_result_dataset_service import (
+    ConfirmLlcrImportCommand, InspectLlcrImportCommand, LlcrImportConflictError,
+    LlcrImportPreviewRegistry, LlcrResultDatasetService,
 )
 
 
@@ -199,6 +205,115 @@ def test_inspect_blocks_confirmation_when_required_measurement_is_missing(tmp_pa
     assert inspection.entries == ()
     assert any(item.code == "required_measurement_missing" for item in inspection.diagnostics)
     assert any(item.severity == "blocked" for item in inspection.diagnostics)
+
+
+def test_partial_readings_identify_every_missing_sample_and_preserve_later_values(tmp_path) -> None:
+    source = tmp_path / "partial.xlsx"
+    projection = _projection()
+    section = replace(projection.sections[0], sample_count=2)
+    projection = replace(projection, sections=(section,))
+    LlcrCrSpecializedRecordWorkbookGateway().write(output_path=source, projection=projection)
+    workbook = load_workbook(source)
+    sheet = workbook["SIG"]
+    sheet["B2"], sheet["B3"], sheet["B4"] = 0.05, 0.05, 0.05
+    sheet["D10"], sheet["E10"] = None, 2.01
+    sheet["D11"], sheet["E11"] = 1.11, 2.11
+    sheet["D12"], sheet["E12"] = 1.21, "?"
+    sheet["D13"], sheet["E13"] = 1.31, 0
+    workbook.save(source)
+    workbook.close()
+    original = source.read_bytes()
+
+    repository = Mock()
+    service = LlcrResultDatasetService(
+        preview_service=Mock(preview=Mock(return_value=projection)),
+        workbook_gateway=LlcrResultWorkbookGateway(),
+        source_store=LocalLlcrImportSourceStore(tmp_path / "staged"),
+        preview_registry=LlcrImportPreviewRegistry(),
+        repository=repository,
+        clock=lambda: "2026-01-01T00:00:00Z",
+    )
+    inspection = service.inspect(InspectLlcrImportCommand("P1", source.name, original, "Tester"))
+    assert not inspection.can_confirm
+    with pytest.raises(LlcrImportConflictError, match="blockers"):
+        service.confirm(ConfirmLlcrImportCommand("P1", inspection.preview_id, "Tester", ()))
+    repository.create_dataset.assert_not_called()
+    assert source.read_bytes() == original
+    messages = [item.message for item in inspection.diagnostics if item.severity == "blocked"]
+    for cell, stage, sample in [("D10", "Initial LLCR", 1), ("E12", "Final LLCR", 2)]:
+        assert any(all(token in message for token in
+                       (f"SIG!{cell}", stage, f"sample {sample}", "SIG1", "Group 1"))
+                   for message in messages), messages
+    observations = {r.measurement.raw_source_cell: r for r in inspection.partial_readings}
+    assert len(observations) == 8
+    assert observations["D10"].measurement.raw_value is None
+    assert observations["E12"].measurement.raw_value is None
+    assert observations["D10"].raw_status == "missing"
+    assert observations["E12"].raw_status == "invalid"
+    assert observations["D12"].raw_status == "present"
+    assert observations["D12"].measurement.raw_value == Decimal("1.21")
+    assert observations["D12"].measurement.value is None
+    last = observations["E13"]
+    assert (last.group_label, last.stage_label, last.step_token, last.stage) == (
+        "1", "Final LLCR", "4", "delta",
+    )
+    assert (last.measurement.sample_index, last.measurement.position,
+            last.measurement.raw_value, last.measurement.value) == (2, "SIG2", 0, Decimal("-2.11"))
+
+
+@pytest.mark.parametrize("initial_points", [("SIG1", "SIG2"), ("SIG2",)])
+def test_stage_specific_points_distinguish_unused_cells_from_missing_baselines(tmp_path, initial_points):
+    source = tmp_path / "stage-points.xlsx"
+    projection = _projection()
+    section = projection.sections[0]
+    initial, final = section.stages
+    stages = (replace(initial, point_ids=initial_points), replace(final, point_ids=("SIG1",)))
+    projection = replace(projection, sections=(replace(section, stages=stages),))
+    LlcrCrSpecializedRecordWorkbookGateway().write(output_path=source, projection=projection)
+    workbook = load_workbook(source)
+    sheet = workbook["SIG"]
+    sheet["B2"], sheet["B3"], sheet["B4"] = 0.05, 0.05, 0.05
+    if "SIG1" in initial_points:
+        sheet["D10"] = 2.01
+    sheet["D11"], sheet["D12"] = 3.1, 2.11
+    workbook.save(source)
+    workbook.close()
+
+    inspection = LlcrResultWorkbookGateway().inspect(source_path=source, projection=projection)
+    if "SIG1" in initial_points:
+        assert not inspection.diagnostics
+        assert [m.value for m in inspection.entries[1].measurements] == [Decimal("0.10")]
+    else:
+        assert not inspection.entries
+        assert [d.code for d in inspection.diagnostics] == ["initial_measurement_missing"]
+        assert "SIG!D12" in inspection.diagnostics[0].message
+        assert all(r.measurement.raw_value is not None for r in inspection.partial_readings)
+
+
+@pytest.mark.parametrize(("sheet_name", "cell", "code"), [
+    ("SIG", "B12", "stage_mapping_conflict"),
+    ("SIG", "C13", "point_mapping_conflict"),
+    ("Summary", "B4", "summary_mapping_conflict"),
+])
+@pytest.mark.parametrize("blank_first", [False, True])
+def test_late_layout_conflict_returns_diagnostics_only(tmp_path, sheet_name, cell, code, blank_first):
+    source = tmp_path / "misaligned.xlsx"
+    projection = _projection()
+    LlcrCrSpecializedRecordWorkbookGateway().write(output_path=source, projection=projection)
+    workbook = load_workbook(source)
+    sheet = workbook["SIG"]
+    sheet["B2"], sheet["B3"], sheet["B4"] = 0.05, 0.05, 0.05
+    sheet["D10"], sheet["D11"], sheet["D12"], sheet["D13"] = 2.1, 2.2, 2.3, 2.4
+    if blank_first:
+        sheet["D10"] = None
+    workbook[sheet_name][cell] = "unexpected"
+    workbook.save(source)
+    workbook.close()
+
+    inspection = LlcrResultWorkbookGateway().inspect(source_path=source, projection=projection)
+    assert any(item.code == code and item.severity == "blocked" for item in inspection.diagnostics)
+    assert not inspection.entries
+    assert not inspection.partial_readings
 
 
 def test_inspect_selects_initial_and_delta_clauses_from_combined_requirement(tmp_path) -> None:

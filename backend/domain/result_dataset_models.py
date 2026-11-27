@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 import re
+from typing import Literal
 
 
 RESULT_OUTCOMES = {"pass", "fail", "not_determined"}
@@ -20,18 +21,35 @@ class ResultDatasetSourceIdentity:
 
 
 @dataclass(frozen=True, slots=True)
-class LlcrMeasurement:
-    """One original-precision LLCR measurement with source lineage."""
+class LlcrObservedMeasurement:
+    """A workbook position which may lack a numeric reading or a usable baseline."""
 
     sample_index: int
     position: str
-    value: Decimal
+    value: Decimal | None
     unit: str
     source_sheet: str
     source_cell: str
-    raw_value: Decimal
+    raw_value: Decimal | None
     raw_unit: str
     raw_source_cell: str
+
+
+@dataclass(frozen=True, slots=True)
+class LlcrMeasurement(LlcrObservedMeasurement):
+    """Calculated result; older revisions may not retain the raw workbook reading."""
+
+    value: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class LlcrStageReading:
+    group_label: str
+    step_token: str
+    stage: str
+    stage_label: str
+    measurement: LlcrObservedMeasurement
+    raw_status: Literal["present", "missing", "invalid", "unavailable"] = "present"
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,6 +187,7 @@ class LlcrImportPreview:
     entries: tuple[LlcrResultEntry, ...]
     summary_rows: tuple[LlcrSummaryRow, ...] = field(default_factory=tuple)
     diagnostics: tuple[LlcrImportDiagnostic, ...] = field(default_factory=tuple)
+    partial_readings: tuple[LlcrStageReading, ...] = ()
 
     @property
     def can_confirm(self) -> bool:
