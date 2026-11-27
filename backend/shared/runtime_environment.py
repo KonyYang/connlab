@@ -6,6 +6,7 @@ import tomllib
 
 ENVIRONMENT_VARIABLE = "CONNLAB_ENVIRONMENT"
 OUTPUT_ROOTS = {"development": Path("D:/ConnLabDev"), "release": Path("D:/ConnLab")}
+DEVELOPMENT_OUTPUT_FOLDERS = {"Materials": "Library", "TemporaryMaterials": "临时项目"}
 
 def runtime_environment() -> str:
     value = os.environ.get(ENVIRONMENT_VARIABLE, "development")
@@ -19,7 +20,7 @@ def output_path(environment: str, purpose: str, *, root: Path | None = None) -> 
     part = Path(purpose)
     if not purpose or part.is_absolute() or len(part.parts) != 1 or purpose in {".", ".."} or any(c in purpose for c in "\\/:*"):
         raise ValueError("Use one output purpose, not an arbitrary path.")
-    folder = "Library" if environment == "development" and purpose == "Materials" else purpose
+    folder = DEVELOPMENT_OUTPUT_FOLDERS.get(purpose, purpose) if environment == "development" else purpose
     return (root or OUTPUT_ROOTS[environment]) / folder
 
 def apply_entry_defaults(environment: str, defaults: dict[str, object]) -> None:
