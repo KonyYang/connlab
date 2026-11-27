@@ -15,7 +15,7 @@ vi.mock("../api/client", async (importOriginal) => ({
 
 vi.mock("../api/materialReceipts", () => ({ getReceiptRuntime: vi.fn(), setReceiptDestination: vi.fn(), pickReceiptFolder: vi.fn() }));
 function useTestRuntime(environment: "development" | "release") {
-  const root = environment === "release" ? "D:/ConnLab" : "D:/ConnLabDev";
+  const root = environment === "release" ? "D:/ConnLab" : "D:/ConnLabDevFiles";
   bindRuntime({schema_version: 1, environment, instance_id: "settings-test",
     default_output_paths: {Projects: root + "/Projects", TemporaryMaterials: root + "/temp"}});
 }

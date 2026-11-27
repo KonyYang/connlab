@@ -5,7 +5,7 @@ import os
 import tomllib
 
 ENVIRONMENT_VARIABLE = "CONNLAB_ENVIRONMENT"
-OUTPUT_ROOTS = {"development": Path("D:/ConnLabDev"), "release": Path("D:/ConnLab")}
+OUTPUT_ROOTS = {"development": Path("D:/ConnLabDevFiles"), "release": Path("D:/ConnLab")}
 DEVELOPMENT_OUTPUT_FOLDERS = {"Materials": "Library", "TemporaryMaterials": "TemporaryProjects"}
 
 def runtime_environment() -> str:

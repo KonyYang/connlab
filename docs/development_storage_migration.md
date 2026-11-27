@@ -7,9 +7,9 @@ the built HTML expects release. A mismatched first connection does not mount bus
 
 | Current purpose | Development default | Release default |
 | --- | --- | --- |
-| Project output | `D:\ConnLabDev\Projects` | `D:\ConnLab\Projects` |
-| Materials library | `D:\ConnLabDev\Library` | `D:\ConnLab\Materials` |
-| Temporary materials | `D:\ConnLabDev\TemporaryProjects` | `D:\ConnLab\TemporaryMaterials` |
+| Project output | `D:\ConnLabDevFiles\Projects` | `D:\ConnLab\Projects` |
+| Materials library | `D:\ConnLabDevFiles\Library` | `D:\ConnLab\Materials` |
+| Temporary materials | `D:\ConnLabDevFiles\TemporaryProjects` | `D:\ConnLab\TemporaryMaterials` |
 
 `Settings.output_path(purpose)` supplies the common output-root rule. New actual output
 purposes should reuse that rule when implemented; this change predefines no future classes

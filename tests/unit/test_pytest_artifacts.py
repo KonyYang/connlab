@@ -66,7 +66,7 @@ def test_unmanaged_root_is_never_adopted_or_cleaned(tmp_path: Path) -> None:
 
 def test_default_is_on_d_even_for_a_c_checkout(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("CONNLAB_PYTEST_ARTIFACT_ROOT", raising=False)
-    assert str(configured_root()).replace("\\", "/") == "D:/ConnLabDev/TestArtifacts/pytest"
+    assert str(configured_root()).replace("\\", "/") == "D:/ConnLabDevFiles/TestArtifacts/pytest"
 
 
 def test_recent_completion_or_new_file_preserves_the_run(tmp_path: Path) -> None:

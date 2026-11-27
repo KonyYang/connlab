@@ -699,7 +699,7 @@ SQLite and filesystem fixtures, with Office ports stubbed where required.
 ### Environment-specific default output and browser state
 
 The explicit development and packaged entries select separate environments. Unconfigured
-business output defaults use `D:\ConnLabDev` and `D:\ConnLab` respectively, with lazy
+business output defaults use `D:\ConnLabDevFiles` and `D:\ConnLab` respectively, with lazy
 `Projects`, `Materials`, and `TemporaryMaterials` children. Explicit saved locations remain
 authoritative, including temporarily offline ones. Existing internal database/config/index/
 log/cache locations stay in place. Runtime upload/temp files and browser drafts/recovery
