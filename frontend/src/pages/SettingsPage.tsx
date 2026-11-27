@@ -17,7 +17,8 @@ import "../settings.css";
 import { useSettingsResources } from "../features/settings/useSettingsResources";
 
 export function SettingsPage(): ReactElement {
-  const {resources, loading, error, setError, savingType, pathValidationMessages, handleSave, handlePathChange} = useSettingsResources();
+  const showDefaultLocations = getRuntimeEnvironment()?.environment === "release";
+  const {resources, loading, error, setError, savingType, pathValidationMessages, handleSave, handlePathChange} = useSettingsResources(showDefaultLocations);
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [diagnosticsMessage, setDiagnosticsMessage] = useState<string | null>(null);
 
@@ -63,8 +64,9 @@ export function SettingsPage(): ReactElement {
 
       {!loading && (
         <SettingsExternalResourcesPanel
-          receiveLocation={<ReceiveSaveLocation />}
-          resources={withDefaultLocations(resources)}
+          showDefaultLocations={showDefaultLocations}
+          receiveLocation={showDefaultLocations && <ReceiveSaveLocation />}
+          resources={showDefaultLocations ? withDefaultLocations(resources) : resources}
           savingType={savingType}
           onSave={handleSave}
           browseEnabled={hasDesktopPathPickerBridge()}

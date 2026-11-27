@@ -16,8 +16,10 @@ purposes should reuse that rule when implemented; this change predefines no futu
 or Settings. Explicit operator output locations remain authoritative. First related use
 creates an unconfigured default and records its binding. Startup and opening unrelated
 pages do not create these three business directories. A saved offline location is not an
-unconfigured location. Missing drives and access failures direct the operator to the existing
-Settings location controls, without C-drive fallback or blocking unrelated functions.
+unconfigured location. Development Settings omits the five directory controls for the materials library, temporary
+projects, project output, templates and public projects. Development uses its registered
+locations. To resolve an unavailable location, restore access to the registered directory
+or arrange a controlled configuration change. Release Settings retains its directory controls.
 
 Existing internal storage stays where it is: development uses its repository data/config/log
 locations, release uses its existing per-user ConnLab locations or explicit managed library.

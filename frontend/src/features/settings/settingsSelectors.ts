@@ -11,11 +11,17 @@ export type SettingsResourceRow = SettingsResourceConfig & {
   worksheetName: string | null;
 };
 
-export function visibleSettingsResourceConfigs(resources: ExternalResource[]): SettingsResourceConfig[] {
+export function visibleSettingsResourceConfigs(resources: ExternalResource[], showDefaultLocations: boolean): SettingsResourceConfig[] {
   const override = resources.find(resource => resource.resource_type === "ir_dwv_record_template" && resource.active);
   const folder = resources.find(resource => resource.resource_type === "project_folder_template" && resource.active);
   const keepOverride = override?.path.trim() && !isDiscoverableIrDwvTemplate(override.path, folder?.path);
-  return SHARED_RESOURCE_CONFIGS.filter(config => config.resourceType !== "ir_dwv_record_template" || keepOverride);
+  const visible = SHARED_RESOURCE_CONFIGS.filter(config => config.resourceType !== "ir_dwv_record_template" || keepOverride);
+  if (showDefaultLocations) return visible;
+  return visible
+    .filter(config => config.expectedKind !== "Folder")
+    .map(config => config.resourceType === "ir_dwv_record_template"
+      ? {...config, category: "Public registration and record files"}
+      : config);
 }
 
 function isDiscoverableIrDwvTemplate(file: string, folder: string | undefined): boolean {
@@ -33,13 +39,13 @@ function normalizeLocation(path: string): string {
 }
 
 export function buildSettingsResourceRows(
-  resources: ExternalResource[]
+  resources: ExternalResource[], showDefaultLocations: boolean
 ): SettingsResourceRow[] {
   const byType = new Map<ExternalResourceType, ExternalResource>(
     resources.map((resource) => [resource.resource_type, resource])
   );
 
-  return visibleSettingsResourceConfigs(resources).map((config) => {
+  return visibleSettingsResourceConfigs(resources, showDefaultLocations).map((config) => {
     const resource = byType.get(config.resourceType) ?? null;
     return {
       ...config,
