@@ -943,17 +943,16 @@
         "route": "sol_direct",
         "scope": "Code default, current documentation, and regression fixtures; release default and public keys stay compatible.",
         "scope_paths": [
-          "backend/shared/runtime_environment.py",
-          "docs/development_storage_migration.md",
-          "tests/unit/test_environment_output_defaults.py",
-          "tests/integration/test_material_receipt.py",
-          "frontend/src/api/runtime.testHelpers.ts",
-          "frontend/src/pages/SettingsPage.test.tsx"
+          "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
+          "frontend/src/features/settings/settingsSelectors.ts",
+          "frontend/src/features/settings/useSettingsResources.ts",
+          "frontend/src/pages/SettingsPage.test.tsx",
+          "frontend/src/pages/SettingsPage.tsx"
         ],
         "risk_reasons": [],
         "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
         "started_at": "2026-11-27T14:18:56.637790Z",
-        "updated_at": "2026-11-27T15:00:00.687146Z",
+        "updated_at": "2026-11-27T15:00:44.685165Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
