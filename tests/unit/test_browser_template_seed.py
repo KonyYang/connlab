@@ -148,3 +148,19 @@ def test_interrupted_file_copy_can_resume_in_a_new_process(tmp_path):
     subprocess.run(cmd + [resume] + args, check=True)
     for spec in manifest["files"].values():
         assert hashlib.sha256((target / spec["name"]).read_bytes()).hexdigest() == spec["sha256"]
+
+
+def test_explicit_word_and_ir_templates_take_precedence_over_seed_folder(tmp_path):
+    manifest, bundle = make_bundle(tmp_path)
+    folder = tmp_path / "Managed templates"
+    folder.mkdir()
+    record = tmp_path / "Site record.docx"
+    Document().save(record)
+    existing = record.read_bytes()
+    missing = tmp_path / "Site IR.xlsx"
+    warnings = seed_browser_templates(folder, bundle, overrides={"test_record": record, "ir_dwv": missing})
+    assert len(warnings) == 1 and str(missing) in warnings[0]
+    assert record.read_bytes() == existing
+    assert not (folder / manifest["files"]["test_record"]["name"]).exists()
+    assert not (folder / manifest["files"]["ir_dwv"]["name"]).exists()
+    assert (folder / manifest["files"]["fee_evaluation"]["name"]).is_file()

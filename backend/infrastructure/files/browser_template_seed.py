@@ -123,7 +123,7 @@ def _check_office_file(file: Path, purpose: str) -> None:
         IrDwvRecordWorkbookGateway(file).template_fingerprint()
     else:
         # Check the primary OOXML part without Office automation or editing.
-        part = "word/document.xml" if file.suffix.lower() == ".docx" else "xl/workbook.xml"
+        part = "word/document.xml" if purpose in {"internal_report", "customer_report", "test_record"} else "xl/workbook.xml"
         with ZipFile(file) as document:
             document.read(part)
 
@@ -188,7 +188,8 @@ def _seed_layout(folder: Path, directories: list[Path], identity: os.stat_result
             parent = dest
 
 
-def seed_browser_templates(template_dir: Path, bundle: Path) -> list[str]:
+def seed_browser_templates(template_dir: Path, bundle: Path, *,
+                           overrides: dict[str, Path] | None = None) -> list[str]:
     """Return actionable setup warnings; retain all previously registered destinations."""
     try:
         require_safe_output_path(template_dir)
@@ -204,6 +205,13 @@ def seed_browser_templates(template_dir: Path, bundle: Path) -> list[str]:
 
     warnings = []
     for purpose, (name, data) in templates.items():
+        override = (overrides or {}).get(purpose)
+        if override is not None:
+            try:
+                _check_office_file(override, purpose)
+            except (OSError, BadZipFile, KeyError, RuntimeError, ValueError) as exc:
+                warnings.append(f"{_PURPOSES[purpose]}: check the configured template {override}: {exc}")
+            continue
         try:
             _check_folder(template_dir, identity)
             _seed_file(template_dir, purpose, name, data, identity)
