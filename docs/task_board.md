@@ -931,7 +931,7 @@
     },
     "TASK_DEV_LIBRARY_DEFAULT_20261127": {
       "slot": "micro",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\dev-library-default-20261127",
       "branch": "codex/dev-library-default-20261127",
       "resources": [],
@@ -953,60 +953,17 @@
         "risk_reasons": [],
         "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
         "started_at": "2026-11-27T14:18:56.637790Z",
-        "updated_at": "2026-11-27T15:04:35.775446Z",
+        "updated_at": "2026-11-27T22:13:14.206962Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
           "stage": "revision",
           "status": "running",
-          "summary": "User requests hiding the five fixed locations in development Settings only; retain active registrations and editable release Settings.",
+          "summary": "Restore the development Public Project locations editor for debugging; keep the other four fixed.",
           "requires_user": false
         },
-        "report": {
-          "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
-          "changed_paths": [
-            "docs/development_storage_migration.md",
-            "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
-            "frontend/src/features/settings/settingsSelectors.ts",
-            "frontend/src/features/settings/useSettingsResources.ts",
-            "frontend/src/pages/SettingsPage.test.tsx",
-            "frontend/src/pages/SettingsPage.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Settings and related frontend tests (26 passed)",
-              "status": "passed"
-            },
-            {
-              "name": "TypeScript and Vite production build",
-              "status": "passed"
-            },
-            {
-              "name": "Diff review and whitespace check",
-              "status": "passed"
-            }
-          ],
-          "version": 1,
-          "subject": "3fa7c9d4ea3449108311646535476c10d47b8b36",
-          "roles": {
-            "developer": {
-              "summary": "Targeted development and release tests passed; no backend or stored location changes.",
-              "status": "passed"
-            }
-          },
-          "schema": "connlab.sol-task-report",
-          "summary": "Development Settings omits five preset directory controls and their automatic checks; Release keeps existing directory settings. Storage guidance updated.",
-          "scope_ok": true,
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "3fa7c9d4ea3449108311646535476c10d47b8b36",
-            "primary_before": "3438893d2fc9d8ea9616ef9f394e13d651492493",
-            "integrated_head": "2229ecab6b7071e6332a78473d512cd24ed2413f",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
