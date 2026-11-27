@@ -15,7 +15,7 @@ function sameConfiguration(a: ExternalResource, b?: ExternalResource): boolean {
   return !!b && a.resource_type === b.resource_type && a.resource_id === b.resource_id && a.path === b.path && a.active === b.active && a.worksheet_name === b.worksheet_name;
 }
 
-export function useSettingsResources() {
+export function useSettingsResources(showDefaultLocations: boolean) {
   const [resources, setResources] = useState<ExternalResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +80,7 @@ export function useSettingsResources() {
         return next;
       });
       // Queue each probe separately so an operator save can run before the next Office check.
-      const displayedTypes = new Set(visibleSettingsResourceConfigs(loaded).map(row => row.resourceType));
+      const displayedTypes = new Set(visibleSettingsResourceConfigs(loaded, showDefaultLocations).map(row => row.resourceType));
       const probes = [...loaded].sort((a, b) => {
         const isFolder = (type: ExternalResourceType) => SHARED_RESOURCE_CONFIGS.find(row => row.resourceType === type)?.expectedKind === "Folder";
         return Number(isFolder(b.resource_type)) - Number(isFolder(a.resource_type));

@@ -11,6 +11,7 @@ import { SHARED_RESOURCE_CONFIGS } from "./settingsResourceConfig";
 import { buildSettingsResourceRows, type SettingsResourceRow } from "./settingsSelectors";
 
 type SettingsExternalResourcesPanelProps = {
+  showDefaultLocations?: boolean;
   receiveLocation?: ReactNode;
   resources: ExternalResource[];
   savingType: ExternalResourceType | null;
@@ -30,6 +31,7 @@ type DraftValue = {
 };
 
 export function SettingsExternalResourcesPanel({
+  showDefaultLocations = true,
   receiveLocation,
   resources,
   savingType,
@@ -39,7 +41,7 @@ export function SettingsExternalResourcesPanel({
   onSave,
   onBrowse
 }: SettingsExternalResourcesPanelProps): ReactElement {
-  const rows = useMemo(() => buildSettingsResourceRows(resources), [resources]);
+  const rows = useMemo(() => buildSettingsResourceRows(resources, showDefaultLocations), [resources, showDefaultLocations]);
   const categoryOrder = useMemo(
     () => [...new Set(SHARED_RESOURCE_CONFIGS.map((item) => item.category))],
     []

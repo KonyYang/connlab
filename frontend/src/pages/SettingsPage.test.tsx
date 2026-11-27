@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { downloadSupportDiagnosticBundle, listExternalResources, validateExternalResource, saveExternalResource, type ExternalResource } from "../api/client";
 import * as receipts from "../api/materialReceipts";
 import { SettingsPage } from "./SettingsPage";
+import { bindRuntime, clearRuntimeBinding } from "../runtimeEnvironment";
 
 vi.mock("../api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/client")>()),
@@ -13,7 +14,18 @@ vi.mock("../api/client", async (importOriginal) => ({
 }));
 
 vi.mock("../api/materialReceipts", () => ({ getReceiptRuntime: vi.fn(), setReceiptDestination: vi.fn(), pickReceiptFolder: vi.fn() }));
-beforeEach(() => { vi.mocked(receipts.getReceiptRuntime).mockResolvedValue({ root_path: "D:/received", revision: 1, configured: true, available: true }); });
+function useTestRuntime(environment: "development" | "release") {
+  const root = environment === "release" ? "D:/ConnLab" : "D:/ConnLabDev";
+  bindRuntime({schema_version: 1, environment, instance_id: "settings-test",
+    default_output_paths: {Projects: root + "/Projects", TemporaryMaterials: root + "/temp"}});
+}
+beforeEach(() => {
+  useTestRuntime("release");
+  vi.mocked(receipts.getReceiptRuntime).mockClear().mockResolvedValue({
+    root_path: "D:/received", revision: 1, configured: true, available: true
+  });
+});
+afterEach(clearRuntimeBinding);
 
 describe("SettingsPage", () => {
   beforeEach(() => {
@@ -97,6 +109,43 @@ function locationResource(overrides: Partial<ExternalResource> = {}): ExternalRe
     active: true, validation_status: "invalid", last_validated_at: null,
     validation_failure_reason: "Expected an existing directory: D:/Materials", worksheet_name: null, ...overrides};
 }
+
+it.each([true, false])("development shows only file settings and validates just the visible files (separate override: %s)", async independent => {
+  useTestRuntime("development");
+  const folderTypes = ["project_folder_template", "temporary_materials_root", "project_output_root", "official_public_drive_root"] as const;
+  const folders = folderTypes.map(resource_type => locationResource({resource_type, path: "D:/Template"}));
+  const override = locationResource({resource_type: "ir_dwv_record_template",
+    path: independent ? "D:/Custom/override.xlsx" : "D:/Template/IR&DWV Template.xlsx"});
+  const workbook = locationResource({resource_type: "ltr_workbook", path: "D:/Source/register.xlsx"});
+  const rows = [...folders, override, workbook];
+  vi.mocked(listExternalResources).mockResolvedValue(rows);
+  vi.mocked(validateExternalResource).mockReset().mockImplementation(async type => rows.find(row => row.resource_type === type)!);
+  render(<SettingsPage />);
+  const recordFiles = (await screen.findByRole("heading", {name: "Public registration and record files"})).parentElement!;
+  expect(within(recordFiles).getByLabelText("LTR registration workbook path")).toBeTruthy();
+  expect(within(recordFiles).getByLabelText("Standard version file path")).toBeTruthy();
+  expect(within(recordFiles).getByLabelText("Equipment calibration Excel path")).toBeTruthy();
+  expect(screen.queryByRole("heading", {name: "Default locations"})).toBeNull();
+  for (const label of ["Temporary materials folder", "Materials library folder", "Project default save location", "Template folder", "Public Project locations"]) {
+    expect(screen.queryByLabelText(label + " path")).toBeNull();
+  }
+  const overrideInput = within(recordFiles).queryByLabelText("IR/DWV record template override path") as HTMLInputElement | null;
+  if (independent) expect(overrideInput?.value).toBe(override.path);
+  else expect(overrideInput).toBeNull();
+  await waitFor(() => expect(validateExternalResource).toHaveBeenCalledWith("ltr_workbook"));
+  expect(vi.mocked(validateExternalResource).mock.calls.map(([type]) => type)).toEqual(independent ? ["ir_dwv_record_template", "ltr_workbook"] : ["ltr_workbook"]);
+  expect(receipts.getReceiptRuntime).not.toHaveBeenCalled();
+});
+
+it("release keeps all five folder settings and loads the receiver location", async () => {
+  vi.mocked(listExternalResources).mockResolvedValue([]);
+  render(<SettingsPage />);
+  const locations = (await screen.findByRole("heading", {name: "Default locations"})).parentElement!;
+  for (const label of ["Temporary materials folder", "Materials library folder", "Project default save location", "Template folder", "Public Project locations"]) {
+    expect(await within(locations).findByLabelText(label + " path")).toBeTruthy();
+  }
+  expect(receipts.getReceiptRuntime).toHaveBeenCalledTimes(1);
+});
 
 describe("Automatic location validation", () => {
   beforeEach(() => {vi.mocked(listExternalResources).mockReset(); vi.mocked(validateExternalResource).mockReset(); vi.mocked(saveExternalResource).mockReset();});
@@ -270,10 +319,10 @@ it("can retry loading the receive destination without saving a path",async()=>{
 
 it("shows an unconfigured lazy materials default without a false offline warning",async()=>{
  vi.mocked(listExternalResources).mockResolvedValue([]);
- vi.mocked(receipts.getReceiptRuntime).mockResolvedValue({root_path:"D:/ConnLabDev/Library",revision:0,configured:false,available:false});
+ vi.mocked(receipts.getReceiptRuntime).mockResolvedValue({root_path:"D:/ConnLab/Materials",revision:0,configured:false,available:false});
  render(<SettingsPage/>);
  const input=await screen.findByLabelText("Materials library folder path");
- await waitFor(()=>expect((input as HTMLInputElement).value).toBe("D:/ConnLabDev/Library"));
+ await waitFor(()=>expect((input as HTMLInputElement).value).toBe("D:/ConnLab/Materials"));
  expect(input.getAttribute("aria-invalid")).toBe("false");
  expect(screen.queryByText("Choose an available Materials library folder.")).toBeNull();
 });
