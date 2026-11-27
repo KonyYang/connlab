@@ -8,7 +8,7 @@ the built HTML expects release. A mismatched first connection does not mount bus
 | Current purpose | Development default | Release default |
 | --- | --- | --- |
 | Project output | `D:\ConnLabDev\Projects` | `D:\ConnLab\Projects` |
-| Materials library | `D:\ConnLabDev\Materials` | `D:\ConnLab\Materials` |
+| Materials library | `D:\ConnLabDev\Library` | `D:\ConnLab\Materials` |
 | Temporary materials | `D:\ConnLabDev\TemporaryMaterials` | `D:\ConnLab\TemporaryMaterials` |
 
 `Settings.output_path(purpose)` supplies the common output-root rule. New actual output
@@ -56,7 +56,7 @@ The fixed candidates are four project members from `D:\ConnLabProjectsDev` (DL-2
 DL-2025-02-054, DL-2026-01-072, DL-2026-11-013), two archives from `D:\ConnLabMaterials`
 (DL-2026-04-032, DL-2026-05-001), and the three reviewed directories from
 `D:\ConnLabProjectsTemporary`. Each goes to the corresponding child under `D:\ConnLabDev`.
-The old empty materials configuration is rebound to `D:\ConnLabDev\Materials`.
+During the 2026-11-17 relocation, the old empty materials configuration was rebound to `D:\ConnLabDev\Materials`.
 
 Keep `DL-2026-11-003` at its old location: its business folder is missing and it has no
 library member with a supported complete-root rebind. Seven old development workspace

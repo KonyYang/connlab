@@ -987,7 +987,7 @@ def test_unconfigured_material_library_is_lazy_and_keeps_its_saved_location(rece
     original = documents / 'personal.txt'
     original.write_bytes(b'personal document retained')
     files.settings = __import__('dataclasses').replace(files.settings, output_root=documents / 'ConnLab')
-    expected = documents / 'ConnLab' / 'Materials'
+    expected = documents / 'ConnLab' / 'Library'
     if already_exists:
         expected.mkdir(parents=True)
         (expected / 'retained.txt').write_bytes(b'existing materials')
@@ -1025,7 +1025,7 @@ def test_first_receipt_preview_can_use_default_library_without_changing_source(r
     source.mkdir()
     (source / 'manual.txt').write_bytes(b'manual content')
     plan = service.preview(str(source), product_name='Connector')
-    assert Path(plan['target_path']).parent == documents / 'ConnLab' / 'Materials'
+    assert Path(plan['target_path']).parent == documents / 'ConnLab' / 'Library'
     assert not Path(plan['target_path']).exists()
     assert (source / 'manual.txt').read_bytes() == b'manual content'
     assert store.catalog() == []
@@ -1072,7 +1072,7 @@ def test_default_library_creation_failure_does_not_save_a_setting(receipt, tmp_p
     documents = tmp_path / 'Documents'
     documents.mkdir()
     files.settings = __import__('dataclasses').replace(files.settings, output_root=documents / 'ConnLab')
-    expected = documents / 'ConnLab' / 'Materials'
+    expected = documents / 'ConnLab' / 'Library'
     expected.parent.write_bytes(b'existing user file')
     with pytest.raises(ValueError, match='Settings'):
         service.runtime(ensure_default=True)
