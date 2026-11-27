@@ -5,6 +5,8 @@ from backend.application.ir_dwv_template_discovery import is_ir_dwv_template_nam
 
 
 def matches_generation_template(path: Path, purpose: str) -> bool:
+    if path.name.startswith("~$"):
+        return False
     name = path.name.upper()
     suffix = path.suffix.lower()
     if purpose == "test_record":
@@ -18,7 +20,7 @@ def matches_generation_template(path: Path, purpose: str) -> bool:
         "customer_report": (".docx", "E-4515"),
         "fee_evaluation": (".xlsx", "FDQF-E-176"),
     }[purpose]
-    return suffix == suffix_expected and token in name and not name.startswith("~$")
+    return suffix == suffix_expected and token in name
 
 
 def matching_generation_templates(folder: Path, purpose: str) -> list[Path]:

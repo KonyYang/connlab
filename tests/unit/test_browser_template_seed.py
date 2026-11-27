@@ -164,3 +164,16 @@ def test_explicit_word_and_ir_templates_take_precedence_over_seed_folder(tmp_pat
     assert not (folder / manifest["files"]["test_record"]["name"]).exists()
     assert not (folder / manifest["files"]["ir_dwv"]["name"]).exists()
     assert (folder / manifest["files"]["fee_evaluation"]["name"]).is_file()
+
+
+def test_office_owner_files_are_not_candidates_for_missing_or_existing_templates(tmp_path):
+    manifest, bundle = make_bundle(tmp_path)
+    target = tmp_path / "Template"
+    target.mkdir()
+    for purpose in ("test_record", "customer_feedback"):
+        (target / ("~$" + manifest["files"][purpose]["name"])).write_bytes(b"Office owner")
+    assert not seed_browser_templates(target, bundle)
+    assert not seed_browser_templates(target, bundle)
+    for purpose in ("test_record", "customer_feedback"):
+        assert (target / manifest["files"][purpose]["name"]).is_file()
+        assert (target / ("~$" + manifest["files"][purpose]["name"])).read_bytes() == b"Office owner"
