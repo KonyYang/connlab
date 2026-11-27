@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from backend.application.generation_template_names import matching_generation_templates
+
 from backend.domain import ExternalResource, ExternalResourceType
 
 
@@ -55,14 +57,7 @@ def discover_test_report_template(template_folder: Path) -> Path:
         raise TestReportTemplateResourceError(
             f"Template folder does not exist: {folder}"
         )
-    matches = sorted(
-        path
-        for path in folder.iterdir()
-        if path.is_file()
-        and not path.name.startswith("~$")
-        and path.suffix.lower() == ".docx"
-        and "E-3707_H" in path.name.upper()
-    )
+    matches = matching_generation_templates(folder, "internal_report")
     if not matches:
         raise TestReportTemplateResourceError(
             "E-3707_H test report template not found in Template folder."
@@ -82,14 +77,7 @@ def discover_customer_report_template(template_folder: Path) -> Path:
         raise TestReportTemplateResourceError(
             f"Template folder does not exist: {folder}"
         )
-    matches = sorted(
-        path
-        for path in folder.iterdir()
-        if path.is_file()
-        and not path.name.startswith("~$")
-        and path.suffix.lower() == ".docx"
-        and "E-4515" in path.name.upper()
-    )
+    matches = matching_generation_templates(folder, "customer_report")
     if not matches:
         raise TestReportTemplateResourceError(
             "E-4515 customer report template not found in Template folder."

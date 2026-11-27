@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from backend.application.generation_template_names import matching_generation_templates
+
 
 class CustomerFeedbackTemplateDiscoveryError(RuntimeError):
     """Base error for Customer Feedback template discovery failures."""
@@ -19,16 +21,7 @@ class CustomerFeedbackTemplateAmbiguousError(CustomerFeedbackTemplateDiscoveryEr
 
 def discover_customer_feedback_template(template_folder: Path) -> Path:
     """Return the unique E-4243 `.xlsx` Customer Feedback template."""
-    candidates = sorted(
-        (
-            path
-            for path in Path(template_folder).iterdir()
-            if path.is_file()
-            and path.suffix.lower() == ".xlsx"
-            and "e-4243" in path.name.lower()
-        ),
-        key=lambda path: path.name.lower(),
-    )
+    candidates = sorted(matching_generation_templates(template_folder, "customer_feedback"), key=lambda path: path.name.lower())
     if not candidates:
         raise CustomerFeedbackTemplateMissingError(
             "Customer Feedback template was not found in Template folder. "
