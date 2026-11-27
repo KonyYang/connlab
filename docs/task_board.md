@@ -931,7 +931,7 @@
     },
     "TASK_DEV_LIBRARY_DEFAULT_20261127": {
       "slot": "micro",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\dev-library-default-20261127",
       "branch": "codex/dev-library-default-20261127",
       "resources": [],
@@ -953,58 +953,17 @@
         "risk_reasons": [],
         "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
         "started_at": "2026-11-27T14:18:56.637790Z",
-        "updated_at": "2026-11-27T14:42:39.317614Z",
+        "updated_at": "2026-11-27T14:45:18.601694Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
           "stage": "revision",
           "status": "running",
-          "summary": "User extended development folder naming: rename the TemporaryMaterials directory to 临时项目, preserving explicit configuration and release path.",
+          "summary": "User requests English name TemporaryProjects for the same development folder.",
           "requires_user": false
         },
-        "report": {
-          "scope_ok": true,
-          "subject": "136a7c18d9290fbf28ea010fdc73516f4ce584e8",
-          "changed_paths": [
-            "backend/shared/runtime_environment.py",
-            "docs/development_storage_migration.md",
-            "frontend/src/api/runtime.testHelpers.ts",
-            "tests/unit/test_environment_output_defaults.py"
-          ],
-          "validation": [
-            {
-              "name": "90 Python tests passed, 2 Windows symlink-permission skips",
-              "status": "passed"
-            },
-            {
-              "name": "20 frontend tests passed",
-              "status": "passed"
-            },
-            {
-              "name": "Explicit registration, runtime metadata for both environments, real same-volume rename and seven hashes verified",
-              "status": "passed"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Old development path failed regression, new default and first-use cases passed."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "136a7c18d9290fbf28ea010fdc73516f4ce584e8",
-            "primary_before": "be165b928c2d1e5242b917e3cb07f92d82e2ae8f",
-            "integrated_head": "fc66b781e04ad561e9e28e52773d1d83cb92348d",
-            "recovered": false
-          },
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
-          "summary": "Use 临时项目 for the development temporary materials folder and retain explicit and release paths."
-        }
+        "report": null
       }
     }
   }
