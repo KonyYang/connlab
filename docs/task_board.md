@@ -931,11 +931,11 @@
     },
     "TASK_DEV_LIBRARY_DEFAULT_20261127": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\dev-library-default-20261127",
       "branch": "codex/dev-library-default-20261127",
       "resources": [],
-      "integrated_head": "fc66b781e04ad561e9e28e52773d1d83cb92348d",
+      "integrated_head": "3dc994e6f32a56dbfb401661f116c0c2d8553dce",
       "task": {
         "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
         "summary": "Use Library as the development materials directory name",
@@ -953,7 +953,7 @@
         "risk_reasons": [],
         "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
         "started_at": "2026-11-27T14:18:56.637790Z",
-        "updated_at": "2026-11-27T14:45:18.601694Z",
+        "updated_at": "2026-11-27T14:46:21.486377Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -963,7 +963,44 @@
           "summary": "User requests English name TemporaryProjects for the same development folder.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "version": 1,
+          "summary": "Name the local development temporary projects folder TemporaryProjects.",
+          "validation": [
+            {
+              "name": "12 isolated output-default regressions passed",
+              "status": "passed"
+            },
+            {
+              "name": "Live dev registration and seven SHA-256 hashes verified",
+              "status": "passed"
+            }
+          ],
+          "scope_ok": true,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "0f45d39db9f7b8fa75b6c2481bf95a1c8e1cfac7",
+            "primary_before": "e04c41495615c25aeb8d27b5ff9c4d049e01568a",
+            "integrated_head": "3dc994e6f32a56dbfb401661f116c0c2d8553dce",
+            "recovered": false
+          },
+          "changed_paths": [
+            "backend/shared/runtime_environment.py",
+            "docs/development_storage_migration.md",
+            "frontend/src/api/runtime.testHelpers.ts",
+            "tests/unit/test_environment_output_defaults.py"
+          ],
+          "schema": "connlab.sol-task-report",
+          "subject": "0f45d39db9f7b8fa75b6c2481bf95a1c8e1cfac7",
+          "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Checked the scoped default-name change, preserved release and registered paths."
+            }
+          }
+        }
       }
     }
   }
