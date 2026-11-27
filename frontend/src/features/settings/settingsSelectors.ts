@@ -18,7 +18,7 @@ export function visibleSettingsResourceConfigs(resources: ExternalResource[], sh
   const visible = SHARED_RESOURCE_CONFIGS.filter(config => config.resourceType !== "ir_dwv_record_template" || keepOverride);
   if (showDefaultLocations) return visible;
   return visible
-    .filter(config => config.expectedKind !== "Folder")
+    .filter(config => config.expectedKind !== "Folder" || config.resourceType === "official_public_drive_root")
     .map(config => config.resourceType === "ir_dwv_record_template"
       ? {...config, category: "Public registration and record files"}
       : config);
