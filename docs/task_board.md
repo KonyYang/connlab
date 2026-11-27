@@ -937,6 +937,33 @@
           }
         }
       }
+    },
+    "TASK_BROWSER_TEMPLATE_BUNDLE_20261128": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-worktrees\\browser-template-bundle-20261128",
+      "branch": "codex/browser-template-bundle-20261128",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_BROWSER_TEMPLATE_BUNDLE_20261128",
+        "summary": "Stage the six approved generation templates and empty project layout for portable browser packaging",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Developer packaging input and isolated validation only; no installed instance or field templates.",
+        "scope_paths": [
+          "scripts/build_windows_browser_release.ps1",
+          "scripts/stage_browser_templates.py",
+          "packaging/browser_templates.json",
+          "tests/unit/test_browser_template_bundle.py"
+        ],
+        "risk_reasons": [],
+        "activation_head": "b1f8410464fc295534854c90716d6ebcf54da7b3",
+        "started_at": "2026-11-27T22:58:43.928848Z",
+        "updated_at": "2026-11-27T22:58:43.928848Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
