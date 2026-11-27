@@ -883,6 +883,7 @@
           "backend/application/report_authoring/llcr_projection.py",
           "backend/domain/result_dataset_models.py",
           "backend/infrastructure/files/report_publication_gateway.py",
+          "backend/infrastructure/office/customer_report_document_gateway.py",
           "backend/infrastructure/office/llcr_result_workbook_gateway.py",
           "backend/infrastructure/office/test_report_document_gateway.py",
           "backend/infrastructure/official_workspace_manifest.py",
@@ -897,6 +898,7 @@
           "tests/integration/test_internal_report_generation_api.py",
           "tests/integration/test_report_delivery_api.py",
           "tests/integration/test_report_workspace_api.py",
+          "tests/unit/test_customer_report_document_gateway.py",
           "tests/unit/test_llcr_result_dataset_service.py",
           "tests/unit/test_llcr_result_workbook_gateway.py",
           "tests/unit/test_result_dataset_repository.py"
@@ -904,7 +906,7 @@
         "risk_reasons": [],
         "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
         "started_at": "2026-11-26T22:40:05.457358Z",
-        "updated_at": "2026-11-27T23:52:14.714495Z",
+        "updated_at": "2026-11-27T23:57:13.883893Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
