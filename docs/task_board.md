@@ -931,11 +931,11 @@
     },
     "TASK_DEV_LIBRARY_DEFAULT_20261127": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-worktrees\\dev-library-default-20261127",
       "branch": "codex/dev-library-default-20261127",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "2300da49a54a43677d922584d88c28b3cda1e9c2",
       "task": {
         "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127",
         "summary": "Use Library as the development materials directory name",
@@ -953,9 +953,52 @@
         "risk_reasons": [],
         "activation_head": "d6526ce9d144fd95fc7836e950d00ff9a3eb20de",
         "started_at": "2026-11-27T14:18:56.637790Z",
-        "updated_at": "2026-11-27T14:18:56.637790Z",
+        "updated_at": "2026-11-27T14:22:27.681017Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "version": 1,
+          "subject": "b82ec440f518d59d2154279a4e4758e767a9f7d7",
+          "schema": "connlab.sol-task-report",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "b82ec440f518d59d2154279a4e4758e767a9f7d7",
+            "primary_before": "d803c1ed2a79987484f43222ce3d83b8e8fb0082",
+            "integrated_head": "2300da49a54a43677d922584d88c28b3cda1e9c2",
+            "recovered": false
+          },
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Backend defaults, registry and receipt tests: 79 passed, 2 symlink-permission skips"
+            },
+            {
+              "status": "passed",
+              "name": "Settings and runtime frontend: 20 passed"
+            },
+            {
+              "status": "passed",
+              "name": "Isolated development/release API metadata and independent review"
+            }
+          ],
+          "changed_paths": [
+            "backend/shared/runtime_environment.py",
+            "docs/development_storage_migration.md",
+            "frontend/src/api/runtime.testHelpers.ts",
+            "frontend/src/pages/SettingsPage.test.tsx",
+            "tests/integration/test_material_receipt.py",
+            "tests/unit/test_environment_output_defaults.py"
+          ],
+          "scope_ok": true,
+          "summary": "Development receipt default resolves to Library. Public API purpose and explicit or release paths preserved.",
+          "roles": {
+            "developer": {
+              "summary": "Regression caught the old development path, then targeted backend and frontend checks passed.",
+              "status": "passed"
+            }
+          },
+          "task_id": "TASK_DEV_LIBRARY_DEFAULT_20261127"
+        }
       }
     }
   }
