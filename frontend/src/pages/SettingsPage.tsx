@@ -13,11 +13,14 @@ import {
 } from "../desktop/pathPickerBridge";
 import { SettingsExternalResourcesPanel } from "../features/settings/SettingsExternalResourcesPanel";
 import { ReceiveSaveLocation } from "../features/settings/ReceiveSaveLocation";
+import { PortableStorageLocations } from "../features/settings/PortableStorageLocations";
 import "../settings.css";
 import { useSettingsResources } from "../features/settings/useSettingsResources";
 
 export function SettingsPage(): ReactElement {
-  const showDefaultLocations = getRuntimeEnvironment()?.environment === "release";
+  const runtime = getRuntimeEnvironment();
+  const portableLocations = runtime?.storage_locations;
+  const showDefaultLocations = runtime?.environment === "release" && !portableLocations;
   const {resources, loading, error, setError, savingType, pathValidationMessages, handleSave, handlePathChange} = useSettingsResources(showDefaultLocations);
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [diagnosticsMessage, setDiagnosticsMessage] = useState<string | null>(null);
@@ -59,6 +62,8 @@ export function SettingsPage(): ReactElement {
         </div>
       </div>
 
+      {portableLocations && <PortableStorageLocations locations={portableLocations}
+        root={runtime?.storage_root} warnings={runtime?.storage_warnings ?? []} />}
       {loading && <LoadingState label="Loading settings" />}
       {error && <ErrorMessage message={error} />}
 

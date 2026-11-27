@@ -19,8 +19,7 @@ pages do not create these three business directories. A saved offline location i
 unconfigured location. Development Settings exposes **Default locations → Public Project locations** so the public
 project directory can be changed for debugging. The materials library, temporary projects,
 project output and templates use their registered directories. To resolve an unavailable
-fixed location, restore access or arrange a controlled configuration change. Release Settings
-retains its directory controls.
+fixed location, restore access or arrange a controlled configuration change. The portable browser release displays its managed locations and keeps the public project directory editable. Other release launchers retain their existing controls.
 
 Existing internal storage stays where it is: development uses its repository data/config/log
 locations, release uses its existing per-user ConnLab locations or explicit managed library.

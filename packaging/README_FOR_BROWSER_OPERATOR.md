@@ -2,7 +2,7 @@
 
 ## How To Start
 
-1. Copy the whole folder to your computer.
+1. Extract the archive and copy the whole folder named `ConnLab` to a local drive.
 2. Open the copied folder.
 3. Double-click `Start_ConnLab.bat`.
 
@@ -21,8 +21,15 @@ If the browser does not open automatically, type that address into Microsoft Edg
 
 ## Important Data Rule
 
-The default location for project files is `D:\ConnLab\Projects`. ConnLab uses
-your configured project save location if you choose a different default in Settings.
+On a new computer, the first launch creates `ConnLabFiles` at the root of the drive
+containing the program. Its four folders are `Projects`, `Library`, `TemporaryProjects`
+and `Template`. Keep these business files when replacing the application folder.
+Upgrades use the registered locations, even when the program moves to another drive.
+
+Settings shows the business file locations and lets you change the public project directory.
+For a missing registered folder, restore access to the location shown. If several templates
+serve the same purpose, review them and keep the intended one in the template folder.
+The supplied standard templates fill missing purposes and preserve existing documents.
 
 ConnLab stores the local database, configuration, and logs under `%LOCALAPPDATA%\ConnLab`.
 
@@ -33,7 +40,7 @@ Keep your project folder and `%LOCALAPPDATA%\ConnLab` when replacing the release
 
 ## First Run
 
-On first run, ConnLab creates its local data folders automatically. External business paths such as LTR workbook, public drive folders, and official templates may still show as not configured until they are set in ConnLab Settings.
+On first run, ConnLab creates its local data folders automatically. Set the LTR workbook and public project directory in ConnLab Settings as needed.
 
 Before applying LTR numbers on a new computer:
 

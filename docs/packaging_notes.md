@@ -133,7 +133,8 @@ Expected output:
 
 ```text
 dist_release\
-  ConnLab_Web_YYYYMMDDHHMM_v0.1.0\
+  ConnLab_Web_YYYYMMDDHHMM_v0.1.0.zip  (contains ConnLab\)
+  ConnLab_Web_YYYYMMDDHHMM_v0.1.0\ConnLab\
     Start_ConnLab.bat
     ConnLab_Server.exe
     README_FOR_OPERATOR.md
@@ -143,7 +144,7 @@ dist_release\
     _internal\
 ```
 
-Copy the whole `ConnLab_Web_YYYYMMDDHHMM_v...` folder to the operator computer and
+Extract the versioned archive and copy its entire `ConnLab` folder to the operator computer, then
 run `Start_ConnLab.bat`. The target computer does not need Python, Node, npm,
 Vite, or manual backend/frontend startup. Microsoft Office and a browser such as
 Microsoft Edge are expected.

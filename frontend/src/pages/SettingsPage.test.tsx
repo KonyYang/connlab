@@ -39,6 +39,22 @@ describe("SettingsPage", () => {
     });
   });
 
+  it("shows registered portable locations and warnings while leaving only the public folder editable", async () => {
+    bindRuntime({
+      schema_version: 1, environment: "release", instance_id: "portable", default_output_paths: {},
+      storage_locations: {Projects: "P:/work", TemporaryProjects: "T:/incoming", Library: "L:/archives", Template: "F:/forms"},
+      storage_warnings: ["Multiple fee templates in F:/forms: fee-A.xlsx, fee-B.xlsx."]
+    });
+    render(<SettingsPage />);
+    expect(await screen.findByLabelText("Public Project locations path")).toBeTruthy();
+    expect(screen.getByText("Multiple fee templates in F:/forms: fee-A.xlsx, fee-B.xlsx.")).toBeTruthy();
+    expect(screen.getByText("F:/forms")).toBeTruthy();
+    for (const label of ["Template folder", "Project default save location", "Materials library folder", "Temporary materials folder"]) {
+      expect(screen.queryByLabelText(label + " path")).toBeNull();
+    }
+    expect(receipts.getReceiptRuntime).not.toHaveBeenCalled();
+  });
+
   it("loads only non-secret external resource settings", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
