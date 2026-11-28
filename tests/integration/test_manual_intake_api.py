@@ -4,6 +4,7 @@ from collections.abc import Generator
 from datetime import date
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -12,6 +13,7 @@ from docx.shared import Inches
 
 from backend.api.dependencies import get_session, get_settings
 from backend.api.routes_intake import router as intake_router
+from backend.api.routes_external_resources import router as external_resources_router
 from backend.api.routes_intake_review import router as intake_review_router
 from backend.api.main import app
 from backend.infrastructure.storage.database import (
@@ -422,16 +424,77 @@ def test_unsaved_creation_draft_discard_removes_records_and_files(tmp_path: Path
         engine.dispose()
 
 
-def _create_application_docx(path: Path) -> Path:
+@pytest.mark.parametrize(("incoming", "expected"), [("H", "J"), ("J", "H")])
+def test_word_draft_checks_the_current_template_folder(tmp_path: Path, incoming: str, expected: str) -> None:
+    settings, engine, session_factory = _test_database(tmp_path)
+    test_app = FastAPI()
+    for router in (intake_router, intake_review_router, external_resources_router):
+        test_app.include_router(router)
+    test_app.dependency_overrides[get_session] = _override_session(session_factory)
+    test_app.dependency_overrides[get_settings] = lambda: settings
+    client = TestClient(test_app)
+    template_setting = "/api/external-resources/project_folder_template"
+    try:
+        received = _create_application_docx(tmp_path / "request.docx", revision=incoming)
+        package = client.post(
+            "/api/intake-packages/import-docx", files={"file": (received.name, received.read_bytes())}
+        )
+        assert package.is_success, package.text
+        package_url = f"/api/intake-packages/{package.json()['package_id']}"
+        assert client.post(f"{package_url}/application-draft").is_success
+
+        def revision_warnings() -> list[str]:
+            review = client.get(f"{package_url}/case-review")
+            assert review.is_success, review.text
+            case = review.json()["cases"][0]
+            assert "revision" not in case["missing_required_fields"]
+            return [
+                issue["message"] for issue in case["precheck_issues"]
+                if issue["field_key"] == "revision" and issue["level"] == "warning"
+            ]
+
+        approved = tmp_path / "approved"
+        approved.mkdir()
+        _create_application_docx(approved / "E-3718_old-name.docx", revision=expected)
+        assert client.put(template_setting, json={"path": str(approved), "active": True}).is_success
+        message, = revision_warnings()
+        assert f"Request is E-3718 Rev {incoming}" in message
+        assert f"E-3718_old-name.docx is Rev {expected}" in message
+
+        replacement = tmp_path / "replacement"
+        replacement.mkdir()
+        assert client.put(template_setting, json={"path": str(replacement), "active": True}).is_success
+        missing, = revision_warnings()
+        assert str(replacement) in missing and "E-3718" in missing
+        _create_application_docx(replacement / "E-3718_current.docx", revision=incoming)
+        _create_application_docx(replacement / "~$E-3718_current.docx", revision="J")
+        assert revision_warnings() == []
+        _create_application_docx(replacement / "E-3718_other.docx", revision="K")
+        ambiguous, = revision_warnings()
+        assert "E-3718_current.docx" in ambiguous and "E-3718_other.docx" in ambiguous
+
+        (replacement / "E-3718_other.docx").unlink()
+        current = replacement / "E-3718_current.docx"
+        _create_application_docx(current, form_number="E-4523", revision=incoming)
+        unverified, = revision_warnings()
+        assert str(current) in unverified and "form number" in unverified
+        current.write_bytes(b"unreadable document")
+        unreadable, = revision_warnings()
+        assert str(current) in unreadable and "Cannot read" in unreadable
+    finally:
+        engine.dispose()
+
+
+def _create_application_docx(path: Path, *, form_number: str = "E-3718", revision: str = "H") -> Path:
     """Create a small real application form for endpoint tests."""
     document = Document()
     header = document.sections[0].header.add_table(rows=1, cols=2, width=Inches(6))
     header.cell(0, 1).text = "Laboratory Testing Request"
     footer = document.sections[0].footer
-    footer.paragraphs[0].text = "Form No. E-3718 Rev H"
+    footer.paragraphs[0].text = f"Form No. {form_number} Rev {revision}"
     table = document.add_table(rows=2, cols=2)
     table.cell(0, 0).text = "Form No."
-    table.cell(0, 1).text = "E-3718"
+    table.cell(0, 1).text = form_number
     table.cell(1, 0).text = "Requested By"
     table.cell(1, 1).text = "Alice Requestor"
     document.save(path)

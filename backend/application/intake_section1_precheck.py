@@ -43,7 +43,9 @@ SAMPLE_REQUIRED_FIELDS: tuple[tuple[str, str], ...] = (
 )
 
 
-def evaluate_section1_precheck(data: dict[str, Any]) -> tuple[DraftPrecheckIssue, ...]:
+def evaluate_section1_precheck(
+    data: dict[str, Any], *, revision_warning: str | None = None
+) -> tuple[DraftPrecheckIssue, ...]:
     """Return deterministic SECTION 1 blockers and warnings."""
     issues: list[DraftPrecheckIssue] = []
     for key, label in REQUIRED_SECTION1_FIELDS:
@@ -57,14 +59,8 @@ def evaluate_section1_precheck(data: dict[str, Any]) -> tuple[DraftPrecheckIssue
             )
 
     _append_expected_value_issue(issues, data, "form_no", "Form No.", "E-3718")
-    _append_expected_value_issue(
-        issues,
-        data,
-        "revision",
-        "Revision",
-        "H",
-        level="warning",
-    )
+    if revision_warning:
+        issues.append(DraftPrecheckIssue("warning", "revision", revision_warning))
 
     if not _text(data.get("project_no")):
         issues.append(

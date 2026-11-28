@@ -9,9 +9,14 @@ import {
   ApiRequestError,
   completeNewProject,
   createTemporaryProject,
+  ensureNewProjectApplicationDraft,
   getIntakeCaseReview,
+  getIntakePackageDetail,
   getIntakePrecheckLookupOptions,
   getNewProjectCompletionOptions,
+  selectIntakeApplicationForm,
+  uploadEmailPackageApplicationForm,
+  validateIntakeAssetApplicationForm,
   updateIntakeCaseReviewFields,
   previewSpecifiedLtrWorkbookAuthority,
   type IntakeCaseReview,
@@ -33,9 +38,14 @@ vi.mock("../api/client", async (importOriginal) => {
     ...actual,
     completeNewProject: vi.fn(),
     createTemporaryProject: vi.fn(),
+    ensureNewProjectApplicationDraft: vi.fn(),
     getIntakeCaseReview: vi.fn(),
+    getIntakePackageDetail: vi.fn(),
     getIntakePrecheckLookupOptions: vi.fn(),
     getNewProjectCompletionOptions: vi.fn(),
+    selectIntakeApplicationForm: vi.fn(),
+    uploadEmailPackageApplicationForm: vi.fn(),
+    validateIntakeAssetApplicationForm: vi.fn(),
     previewSpecifiedLtrWorkbookAuthority: vi.fn(),
     updateIntakeCaseReviewFields: vi.fn()
   };
@@ -73,6 +83,167 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("imports the first recognized request in mail order and displays its revision warning separately", async () => {
+    const mail = testMail(["specification.docx", "Z first request.docx", "A later request.docx", "Another request.DOC"]);
+    vi.mocked(validateIntakeAssetApplicationForm).mockImplementation(async id => eligibility(id !== "doc-0"));
+    vi.mocked(selectIntakeApplicationForm).mockImplementation(async (_packageId, id) => {
+      if (id !== "doc-1") throw new Error("Wrong attachment selected");
+      return { package_id: mail.package_id, selected_form_asset_id: id, case_id: "case-1",
+        draft_id: "draft-1", package_status: "reviewed", next_action: "review" };
+    });
+    vi.mocked(getIntakePackageDetail).mockResolvedValue({ ...mail, assets: [...mail.assets].reverse(), source_stored: true,
+      case_count: 1, candidate_assets: [], cases: [] });
+    const warning = "Application form revision G differs from the E-3718 template revision H.";
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{ ...activeCase,
+      selected_form_asset_id: "doc-1", selected_asset_name: "Z first request.docx",
+      precheck_issues: [{ field_key: "revision", level: "warning", message: warning }] }] });
+    render(<Harness initialSession={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+    await screen.findByText("Application information");
+    expect(await screen.findByText(warning)).toBeTruthy();
+    expect(vi.mocked(validateIntakeAssetApplicationForm).mock.calls.map(([id]) => id)).toEqual(["doc-0", "doc-1"]);
+    expect(selectIntakeApplicationForm).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/not recognized|no .*request .*found/i)).toBeNull();
+    expect(screen.queryByText(/save .*as.*\.docx/i)).toBeNull();
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: /Apply LTR Number/ }).disabled).toBe(false);
+    expect(within(screen.getByRole("list")).getAllByRole("button", {name: /DOC /}).map(button => button.textContent))
+      .toEqual(["DOCspecification.docx", "DOCZ first request.docx", "DOCA later request.docx", "DOCAnother request.DOC"]);
+  });
+
+  it("shows one actionable notice after all Word attachments fail recognition", async () => {
+    const mail = testMail(["A.docx", "B.docx"]);
+    vi.mocked(validateIntakeAssetApplicationForm).mockResolvedValue(eligibility(false));
+    render(<Harness initialSession={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+    expect(await screen.findByText(/no .*laboratory testing request .*found/i)).toBeTruthy();
+    expect(validateIntakeAssetApplicationForm).toHaveBeenCalledTimes(2);
+    expect(selectIntakeApplicationForm).not.toHaveBeenCalled();
+    expect(screen.queryByText(/CATEGORY/)).toBeNull();
+    expect(screen.getByRole<HTMLButtonElement>("button", {name: "Save materials"}).disabled).toBe(false);
+  });
+
+  it("identifies unreadable attachments if no request matched and lets the user attach a readable form to the same email", async () => {
+    const mail = testMail(["Spec.docx", "Damaged request.docx"]);
+    const request = { ...mail.assets[1], asset_id: "supplement", original_name: "Completed.docx" };
+    vi.mocked(validateIntakeAssetApplicationForm).mockImplementation(async id => ({
+      ...eligibility(false), reason_code: id === "doc-1" ? "word_header_unreadable" : "header_cell_mismatch"
+    }));
+    vi.mocked(uploadEmailPackageApplicationForm).mockResolvedValue({ package_id: mail.package_id,
+      selected_form_asset_id: request.asset_id, case_id: "case-1", draft_id: "draft-1", package_status: "reviewed", next_action: "review" });
+    vi.mocked(getIntakePackageDetail).mockResolvedValue({ ...mail, source_stored: true,
+      assets: [...mail.assets, request], case_count: 1, candidate_assets: [], cases: [] });
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{
+      ...activeCase, selected_form_asset_id: request.asset_id, selected_asset_name: request.original_name
+    }] });
+    const user = userEvent.setup();
+    render(<Harness initialSession={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+    expect(await screen.findByText(/could not verify.*Damaged request\.docx/i)).toBeTruthy();
+    const chooser = screen.getByLabelText<HTMLInputElement>("Completed request form");
+    const click = vi.spyOn(chooser, "click");
+    await user.click(screen.getByRole("button", {name: "Choose request form…"}));
+    expect(click).toHaveBeenCalledOnce();
+    const file = new File(["stand-in"], request.original_name);
+    await user.upload(chooser, file);
+    await screen.findByText("Application information");
+    expect(uploadEmailPackageApplicationForm).toHaveBeenCalledWith(mail.package_id, file);
+    expect(screen.queryByText(/could not verify/i)).toBeNull();
+    expect(screen.queryByRole("button", {name: "Choose request form…"})).toBeNull();
+    expect(screen.getByRole("button", {name: /DOC Spec\.docx/})).toBeTruthy();
+  });
+
+  it("keeps a selection conflict on the first matching request and preserves the duplicate choices", async () => {
+    const mail = testMail(["A spec.docx", "B request.docx", "C request.docx"]);
+    vi.mocked(validateIntakeAssetApplicationForm).mockImplementation(async id => eligibility(id !== "doc-0"));
+    vi.mocked(selectIntakeApplicationForm).mockRejectedValue(new ApiRequestError("Duplicate", 409, {
+      classification: "exact_existing_application_draft", existing_case_id: "old-case",
+      incoming_application_form_name: "B request.docx", allowed_actions: ["open_existing", "replace_existing"]
+    }));
+    render(<Harness initialSession={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+    expect(await screen.findByRole("button", {name: "Load existing"})).toBeTruthy();
+    expect(screen.getByRole("button", {name: "Reinitialize"})).toBeTruthy();
+    expect(selectIntakeApplicationForm).toHaveBeenCalledWith(mail.package_id, "doc-1");
+    expect(vi.mocked(validateIntakeAssetApplicationForm).mock.calls.map(([id]) => id)).toEqual(["doc-0", "doc-1"]);
+  });
+
+  it("keeps an editable blank draft for email without a Word attachment", async () => {
+    const mail = testMail([]);
+    vi.mocked(ensureNewProjectApplicationDraft).mockResolvedValue({ package_id: mail.package_id,
+      case_id: "case-1", draft_id: "blank", selected_form_asset_id: null, package_status: "reviewed", next_action: "review" });
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{
+      ...activeCase, fields: [], selected_form_asset_id: null, selected_asset_name: null
+    }] });
+    render(<Harness initialSession={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+    await screen.findByText(/no .*laboratory testing request .*found/i);
+    expect(screen.getByText("Application information")).toBeTruthy();
+    expect(screen.getByRole<HTMLButtonElement>("button", {name: "Save materials"}).disabled).toBe(false);
+    expect(validateIntakeAssetApplicationForm).not.toHaveBeenCalled();
+    expect(selectIntakeApplicationForm).not.toHaveBeenCalled();
+  });
+
+  it.each([["Old request.DOC"], ["Old request.DOC", "Specification.docx"]])(
+    "names an unchecked legacy Word attachment and explains how to supply a readable copy (%s)",
+    async (...names: string[]) => {
+      const mail = testMail(names);
+      vi.mocked(validateIntakeAssetApplicationForm).mockResolvedValue(eligibility(false));
+      vi.mocked(ensureNewProjectApplicationDraft).mockResolvedValue({ package_id: mail.package_id,
+        case_id: "case-1", draft_id: "blank", selected_form_asset_id: null, package_status: "reviewed", next_action: "review" });
+      vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{
+        ...activeCase, selected_form_asset_id: null, selected_asset_name: null, fields: []
+      }] });
+      render(<Harness initialSession={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+      expect(await screen.findByText(/Old request\.DOC.*save .*as .*\.docx/i)).toBeTruthy();
+      expect(screen.getByRole("button", {name: "Choose request form…"})).toBeTruthy();
+      expect(validateIntakeAssetApplicationForm).not.toHaveBeenCalledWith("doc-0");
+      expect(selectIntakeApplicationForm).not.toHaveBeenCalled();
+    }
+  );
+
+  it("uses the same supplemental file for an explicit duplicate decision and allows cancelling first", async () => {
+    const mail = testMail(["Spec.docx"]);
+    const user = userEvent.setup();
+    vi.mocked(validateIntakeAssetApplicationForm).mockResolvedValue(eligibility(false));
+    const conflict = new ApiRequestError("Duplicate draft", 409, { classification: "exact_existing_application_draft",
+      existing_case_id: "case-1", incoming_application_form_name: "Extra.docx", allowed_actions: ["open_existing", "replace_existing"] });
+    vi.mocked(uploadEmailPackageApplicationForm).mockRejectedValueOnce(conflict).mockRejectedValueOnce(conflict)
+      .mockResolvedValueOnce({ package_id: mail.package_id, selected_form_asset_id: "doc-supplement", case_id: "case-1",
+        draft_id: "draft-1", package_status: "reviewed", next_action: "review" });
+    vi.mocked(getIntakePackageDetail).mockResolvedValue({ ...mail, source_stored: true, case_count: 1, candidate_assets: [], cases: [] });
+    render(<Harness initialSession={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+    await screen.findByText(/no .*laboratory testing request .*found/i);
+    const chooser = screen.getByLabelText<HTMLInputElement>("Completed request form");
+    const file = new File(["test"], "Extra.docx");
+    await user.upload(chooser, file);
+    await user.click(await screen.findByRole("button", {name: "Cancel"}));
+    expect(screen.queryByRole("button", {name: "Load existing"})).toBeNull();
+    await user.upload(chooser, file);
+    await user.click(await screen.findByRole("button", {name: "Load existing"}));
+    await screen.findByText("Application information");
+    expect(uploadEmailPackageApplicationForm).toHaveBeenLastCalledWith(mail.package_id, file, { action: "open_existing", caseId: "case-1" });
+    expect(selectIntakeApplicationForm).not.toHaveBeenCalled();
+  });
+
+  it("distinguishes a service failure from an unrecognized attachment", async () => {
+    const mail = testMail(["A.docx", "B.docx"]);
+    vi.mocked(validateIntakeAssetApplicationForm).mockRejectedValue(new Error("Connection interrupted"));
+    render(<Harness initialSession={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+    expect(await screen.findByText(/A\.docx.*Connection interrupted/)).toBeTruthy();
+    expect(screen.queryByText(/no .*laboratory testing request .*found/i)).toBeNull();
+    expect(selectIntakeApplicationForm).not.toHaveBeenCalled();
+  });
+
+  it("does not select a stale request when a different draft is restored during inspection", async () => {
+    const mail = testMail(["A.docx"]);
+    let finish!: (result: ReturnType<typeof eligibility>) => void;
+    vi.mocked(validateIntakeAssetApplicationForm).mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    const onSessionChange = vi.fn();
+    const callbacks = { onSessionChange, onProjectCreated: vi.fn(), onExit: vi.fn() };
+    const view = render(<IntakeInboxPage {...callbacks} session={{ ...EMPTY_INTAKE_SESSION, packageImport: mail }} />);
+    await waitFor(() => expect(validateIntakeAssetApplicationForm).toHaveBeenCalledTimes(1));
+    view.rerender(<IntakeInboxPage {...callbacks} session={loadedSession} />);
+    await screen.findByText("Application information");
+    await act(async () => finish(eligibility(true)));
+    expect(selectIntakeApplicationForm).not.toHaveBeenCalled();
+    expect(onSessionChange).not.toHaveBeenCalled();
   });
 
   it('saves materials without navigating away or discarding current form edits', async () => {
@@ -542,11 +713,13 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 });
 
 function Harness({
-  onSessionChangeSpy
+  onSessionChangeSpy,
+  initialSession = loadedSession
 }: {
   onSessionChangeSpy?: (session: IntakeSessionState) => void;
+  initialSession?: IntakeSessionState;
 }) {
-  const [session, setSession] = useState<IntakeSessionState>(loadedSession);
+  const [session, setSession] = useState<IntakeSessionState>(initialSession);
   const handleSessionChange = (nextSession: IntakeSessionState) => {
     onSessionChangeSpy?.(nextSession);
     setSession(nextSession);
@@ -572,6 +745,18 @@ function Harness({
       />
     </>
   );
+}
+
+function testMail(names: string[]): IntakePackageImport {
+  return { ...packageImport, source_type: "outlook_msg", assets: names.map((name, index) => ({
+    ...packageImport.assets[0], asset_id: "doc-" + index, original_name: name,
+    extension: name.slice(name.lastIndexOf("."))
+  })) };
+}
+
+function eligibility(eligible: boolean) {
+  return { eligible, expected_text: "Laboratory Testing Request", reason_code: eligible ? "ok" : "header_cell_mismatch",
+    message: eligible ? "Ready" : 'Header cell (1,2): "CATEGORY"' };
 }
 
 const packageImport: IntakePackageImport = {

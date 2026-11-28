@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from datetime import date, datetime, timezone
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
 from threading import RLock
 
@@ -19,6 +19,7 @@ from backend.application.matrix_method_version_sync_service import (
 )
 from backend.application.local_path_picker_service import LocalPathPickerService
 from backend.application.external_resource_service import ExternalResourceService
+from backend.application.intake_template_revision import request_revision_warning
 from backend.application.frozen_field_revision_request_service import (
     FrozenFieldRevisionRequestService,
 )
@@ -2421,6 +2422,11 @@ def get_duplicate_draft_history_cleanup_service(
     )
 
 
+def _request_revision_check(session: Session):
+    folder = _active_resource_path(ExternalResourceRepository(session), ExternalResourceType.PROJECT_FOLDER_TEMPLATE)
+    return partial(request_revision_warning, folder)
+
+
 def get_intake_precheck_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
@@ -2433,6 +2439,7 @@ def get_intake_precheck_service(
         file_asset_repository=FileAssetRepository(session),
         precheck_repository=PrecheckResultRepository(session),
         settings=settings,
+        revision_check=_request_revision_check(session),
     )
 
 
@@ -2726,6 +2733,7 @@ def get_intake_case_review_service(
         case_store=IntakeCaseRepository(session),
         draft_store=IntakeDraftRepository(session),
         ltr_store=LtrRecordRepository(session),
+        revision_check=_request_revision_check(session),
     )
 
 
@@ -2751,13 +2759,7 @@ def get_frozen_field_revision_request_service(
     """Build a frozen-field revision request service for API routes."""
     return FrozenFieldRevisionRequestService(
         request_store=FrozenFieldRevisionRequestRepository(session),
-        review_service=IntakeCaseReviewService(
-            package_store=IntakePackageRepository(session),
-            asset_store=IntakeAssetRepository(session),
-            case_store=IntakeCaseRepository(session),
-            draft_store=IntakeDraftRepository(session),
-            ltr_store=LtrRecordRepository(session),
-        ),
+        review_service=get_intake_case_review_service(session),
         ltr_store=LtrRecordRepository(session),
     )
 

@@ -529,6 +529,25 @@ def test_select_form_api_reports_existing_application_draft_duplicate(
         assert payload["package_id"] == "pkg-existing"
         assert payload["case_id"] == "case-existing"
         assert payload["selected_form_asset_id"] == "form-existing"
+
+        supplemental_url = "/api/intake-packages/pkg-incoming/application-form"
+        uploaded_form = {"file": (docx_path.name, docx_path.read_bytes())}
+        conflict = client.post(supplemental_url, files=uploaded_form)
+        assert conflict.status_code == 409
+        uploaded_copies = settings.data_dir.rglob(f"*__{docx_path.name}")
+        assert not list(uploaded_copies)
+        reopened = client.post(
+            supplemental_url,
+            files=uploaded_form,
+            data={"resolution_action": "open_existing", "resolution_case_id": "case-existing"},
+        )
+        assert reopened.status_code == 201
+        assert reopened.json()["case_id"] == "case-existing"
+        assert reopened.json()["selected_form_asset_id"] == "form-existing"
+        assert not list(settings.data_dir.rglob(f"*__{docx_path.name}"))
+        with session_factory() as session:
+            remaining = IntakeAssetRepository(session).list_by_package("pkg-incoming")
+            assert {asset.asset_id for asset in remaining} == {"email-pkg-incoming", "form-incoming"}
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

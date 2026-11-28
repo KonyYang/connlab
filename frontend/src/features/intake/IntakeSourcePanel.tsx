@@ -89,6 +89,7 @@ export function IntakeSourcePanel({
         <input
           ref={wordInputRef}
           accept=".docx"
+          aria-label="Completed request form"
           className="file-input-hidden"
           disabled={importDisabled}
           type="file"

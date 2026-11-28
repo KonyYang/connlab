@@ -20,6 +20,7 @@ import {
   selectIntakeApplicationForm,
   updateIntakeCaseReviewFields,
   uploadEmailPackageApplicationForm,
+  validateIntakeAssetApplicationForm,
   type DraftDuplicateAction,
   type DraftDuplicateCheck,
   type IntakeCaseReview,
@@ -50,6 +51,7 @@ import {
 } from "../features/intake/intakeSession";
 import {
   buildAttachmentViewModels,
+  isWordAsset,
   type IntakeAttachmentViewModel,
   visibleIntakeAttachments
 } from "../features/intake/intakeSelectors";
@@ -84,6 +86,7 @@ type DuplicateImportState = {
   check: DraftDuplicateCheck;
   packageId: string;
   asset?: IntakeAsset | null;
+  supplementalFile?: File;
 };
 
 type DuplicateDecisionMemo = {
@@ -124,6 +127,7 @@ export function IntakeInboxPage({
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [editorLoading, setEditorLoading] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
+  const [unmatchedEmail, setUnmatchedEmail] = useState<{ packageId: string; unreadable: string[] } | null>(null);
   const [lookupOptions, setLookupOptions] = useState<IntakePrecheckLookupOptions | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -159,12 +163,13 @@ export function IntakeInboxPage({
   useEffect(() => { void bootstrapCurrentProfile(); }, []);
   const localDuplicateCancelSnapshotRef = useRef<LocalDuplicateCancelSnapshot | null>(null);
   const { packageImport, selectedAssetId, sourceMode, directWordName } = session;
+  useEffect(() => { setDuplicateDraft(null); }, [packageImport?.package_id]);
   const visibleAttachmentAssets = useMemo(
     () => visibleIntakeAttachments(packageImport),
     [packageImport]
   );
-  const defaultApplicationFormAsset = useMemo(
-    () => visibleAttachmentAssets.find((asset) => asset.extension.toLowerCase() === ".docx") ?? null,
+  const wordAttachments = useMemo(
+    () => visibleAttachmentAssets.filter(isWordAsset),
     [visibleAttachmentAssets]
   );
   const attachmentViewModels = useMemo(
@@ -237,6 +242,7 @@ export function IntakeInboxPage({
   const localDuplicateActive = Boolean(localDuplicateConflict);
   const intakeInteractionLocked =
     ltrApplyBusy || localDuplicateActive || specifiedLtrPreviewActive;
+  const preparingSource = editorLoading || importing || Boolean(importingAssetId) || Boolean(resolvingDuplicateAction);
   const intakeInteractionLockedReason = specifiedLtrPreviewActive
     ? "Confirm or close the LTR workbook preview before continuing."
     : localDuplicateActive
@@ -406,6 +412,7 @@ export function IntakeInboxPage({
       return;
     }
     const packageId = packageImport.package_id;
+    const isEmailPackage = packageImport.source_type === "outlook_msg";
     if (session.selectedPrecheckCaseId) {
       let cancelled = false;
       async function loadSelectedReview(): Promise<void> {
@@ -451,78 +458,68 @@ export function IntakeInboxPage({
         cancelled = true;
       };
     }
-    const defaultFormAsset = defaultApplicationFormAsset;
-    const shouldSelectDefaultApplicationForm =
-      packageImport.source_type === "outlook_msg"
-      && defaultFormAsset
-      && !session.selectedWordAssetId
-      && !session.selectedPrecheckCaseId;
-    if (shouldSelectDefaultApplicationForm) {
-      if (!defaultFormAsset) {
-        return;
-      }
-      const selectedDefaultFormAsset = defaultFormAsset;
+    if (isEmailPackage && wordAttachments.length > 0 && !session.selectedWordAssetId) {
       let cancelled = false;
-      async function selectDefaultApplicationForm(): Promise<void> {
+      async function selectFirstRecognizedForm(): Promise<void> {
         setEditorLoading(true);
         setEditorError(null);
-        setImportingAssetId(selectedDefaultFormAsset.asset_id);
+        setReview(null);
+        setSelectedCaseId(null);
+        setUnmatchedEmail(null);
+        const unreadable: string[] = [];
+        let candidate: IntakeAsset | undefined;
         try {
-          const selection = await selectIntakeApplicationForm(
-            packageId,
-            selectedDefaultFormAsset.asset_id,
-            true
-          );
-          if (!cancelled) {
-            await applySelectedDraft(selection, selectedDefaultFormAsset.original_name);
+          for (const attachment of wordAttachments) {
+            candidate = attachment;
+            const result = await validateIntakeAssetApplicationForm(attachment.asset_id);
+            if (cancelled) return;
+            if (!result.eligible) {
+              if (result.reason_code === "word_header_unreadable") unreadable.push(attachment.original_name);
+              continue;
+            }
+            const selection = await selectIntakeApplicationForm(packageId, attachment.asset_id);
+            if (!cancelled) {
+              await applySelectedDraft(selection, attachment.original_name, () => !cancelled);
+            }
+            return;
           }
+          setUnmatchedEmail({ packageId, unreadable });
         } catch (error) {
-          if (!cancelled) {
+          if (!cancelled && candidate) {
             const duplicate = draftDuplicateConflictFromError(error);
             if (duplicate) {
               const reused = await tryResolveDuplicateWithMemo(
                 duplicate,
                 packageId,
-                selectedDefaultFormAsset,
-                selectedDefaultFormAsset.original_name
+                candidate,
+                candidate.original_name,
+                () => !cancelled
               );
-              if (reused) {
+              if (reused || cancelled) {
                 return;
               }
               setDuplicateDraft({
                 check: duplicate,
                 packageId,
-                asset: selectedDefaultFormAsset
+                asset: candidate
               });
               onSessionChange({
                 ...session,
-                selectedAssetId: selectedDefaultFormAsset.asset_id
+                selectedAssetId: candidate.asset_id
               });
-              setReview(null);
-              setSelectedCaseId(null);
-              setEditorError(null);
             } else {
-              setReview(null);
-              setSelectedCaseId(null);
-              setEditorError(
-                error instanceof Error ? error.message : "Unable to select the first application form."
-              );
+              const reason = error instanceof Error ? error.message : "Please retry the import.";
+              setEditorError(`Could not import ${candidate.original_name}. ${reason}`);
             }
           }
         } finally {
-          if (!cancelled) {
-            setImportingAssetId(null);
-            setEditorLoading(false);
-          }
+          if (!cancelled) setEditorLoading(false);
         }
       }
-      void selectDefaultApplicationForm();
+      void selectFirstRecognizedForm();
       return () => {
         cancelled = true;
       };
-    }
-    if (packageImport.source_type === "outlook_msg" && defaultApplicationFormAsset) {
-      return;
     }
     let cancelled = false;
     async function prepareEditor(): Promise<void> {
@@ -532,6 +529,9 @@ export function IntakeInboxPage({
         const draft = await ensureNewProjectApplicationDraft(packageId);
         const nextReview = await getIntakeCaseReview(packageId);
         if (!cancelled) {
+          if (isEmailPackage && !draft.selected_form_asset_id) {
+            setUnmatchedEmail({ packageId, unreadable: [] });
+          }
           setReview(nextReview);
           setSelectedCaseId((current) =>
             preferredCaseId(nextReview, session.selectedPrecheckCaseId ?? draft.case_id, current)
@@ -550,9 +550,10 @@ export function IntakeInboxPage({
               duplicate,
               packageId,
               null,
-              null
+              null,
+              () => !cancelled
             );
-            if (reused) {
+            if (reused || cancelled) {
               return;
             }
             setDuplicateDraft({ check: duplicate, packageId });
@@ -574,10 +575,10 @@ export function IntakeInboxPage({
       cancelled = true;
     };
   }, [
-    defaultApplicationFormAsset?.asset_id,
+    wordAttachments,
     packageImport?.package_id,
     packageImport?.source_type,
-    selectedCaseId,
+    session.selectedPrecheckCaseId ? selectedCaseId : null,
     session.selectedPrecheckCaseId,
     session.selectedWordAssetId
   ]);
@@ -695,7 +696,12 @@ export function IntakeInboxPage({
     setImportError(null);
     try {
       const resolution = { action, caseId: duplicateDraft.check.existing_case_id };
-      if (duplicateDraft.asset) {
+      if (duplicateDraft.supplementalFile) {
+        const selection = await uploadEmailPackageApplicationForm(
+          duplicateDraft.packageId, duplicateDraft.supplementalFile, resolution
+        );
+        await applySelectedDraft(selection, duplicateDraft.supplementalFile.name);
+      } else if (duplicateDraft.asset) {
         const selection = await selectIntakeApplicationForm(
           duplicateDraft.packageId,
           duplicateDraft.asset.asset_id,
@@ -707,7 +713,7 @@ export function IntakeInboxPage({
         const draft = await ensureNewProjectApplicationDraft(duplicateDraft.packageId, resolution);
         await applyPreparedDraft(draft);
       }
-      setLastDuplicateDecision({
+      setLastDuplicateDecision(duplicateDraft.supplementalFile ? null : {
         caseId: duplicateDraft.check.existing_case_id,
         assetId: duplicateDraft.asset?.asset_id ?? null,
         action,
@@ -726,11 +732,9 @@ export function IntakeInboxPage({
   }
 
   function applyImportedMsgPackage(imported: IntakePackageImport): void {
-    const firstApplicationForm = visibleIntakeAttachments(imported)
-      .find((asset) => asset.extension.toLowerCase() === ".docx");
     onSessionChange({
       packageImport: imported,
-      selectedAssetId: firstApplicationForm?.asset_id ?? null,
+      selectedAssetId: null,
       selectedWordAssetId: null,
       selectedPrecheckCaseId: null,
       sourceMode: "msg",
@@ -738,14 +742,14 @@ export function IntakeInboxPage({
     });
   }
 
-  async function applyPreparedDraft(draft: {
-    package_id: string;
-    case_id: string;
-    selected_form_asset_id?: string | null;
-  }): Promise<void> {
+  async function applyPreparedDraft(
+    draft: { package_id: string; case_id: string; selected_form_asset_id?: string | null },
+    isCurrent = () => true
+  ): Promise<void> {
     const detail = await getIntakePackageDetail(draft.package_id);
-    const refreshed = packageDetailToImport(detail);
+    const refreshed = packageDetailToImport(detail, packageImport);
     const nextReview = await getIntakeCaseReview(draft.package_id);
+    if (!isCurrent()) return;
     setDuplicateDraft(null);
     setHasDraftEditsSinceDecision(false);
     setReview(nextReview);
@@ -762,16 +766,19 @@ export function IntakeInboxPage({
 
   async function applySelectedDraft(
     selection: { package_id: string; case_id: string; selected_form_asset_id: string },
-    importMessageText: string
+    importMessageText: string,
+    isCurrent = () => true
   ): Promise<void> {
     const detail = await getIntakePackageDetail(selection.package_id);
-    const refreshed = packageDetailToImport(detail);
+    const refreshed = packageDetailToImport(detail, packageImport);
     const nextReview = await getIntakeCaseReview(selection.package_id);
+    if (!isCurrent()) return;
     setDuplicateDraft(null);
     setHasDraftEditsSinceDecision(false);
     setReview(nextReview);
     setSelectedCaseId(selection.case_id);
     setImportMessage(importMessageText);
+    setUnmatchedEmail(null);
     setImportVersion((current) => current + 1);
     onSessionChange({
       packageImport: refreshed,
@@ -797,16 +804,7 @@ export function IntakeInboxPage({
     try {
       if (packageImport?.source_type === "outlook_msg") {
         const selection = await uploadEmailPackageApplicationForm(packageImport.package_id, file);
-        const detail = await getIntakePackageDetail(packageImport.package_id);
-        const refreshed = packageDetailToImport(detail);
-        onSessionChange({
-          packageImport: refreshed,
-          selectedAssetId: selection.selected_form_asset_id,
-          selectedWordAssetId: null,
-          selectedPrecheckCaseId: session.selectedPrecheckCaseId,
-          sourceMode: "msg",
-          directWordName: null
-        });
+        await applySelectedDraft(selection, file.name);
       } else {
         const imported = await importDirectWordApplicationForm(file);
         onSessionChange({
@@ -819,8 +817,13 @@ export function IntakeInboxPage({
         });
       }
     } catch (error) {
-      if (!packageImport) onSessionChange(EMPTY_INTAKE_SESSION);
-      setImportError(error instanceof Error ? error.message : "Application form upload failed.");
+      const duplicate = draftDuplicateConflictFromError(error);
+      if (duplicate && packageImport?.source_type === "outlook_msg") {
+        setDuplicateDraft({ check: duplicate, packageId: packageImport.package_id, supplementalFile: file });
+      } else {
+        if (!packageImport) onSessionChange(EMPTY_INTAKE_SESSION);
+        setImportError(error instanceof Error ? error.message : "Application form upload failed.");
+      }
     } finally {
       setImporting(false);
     }
@@ -902,8 +905,8 @@ export function IntakeInboxPage({
             directWordName={directWordName}
             importError={importError}
             importing={importing}
-            interactionLocked={intakeInteractionLocked}
-            interactionLockedReason={importInteractionLockedReason}
+            interactionLocked={intakeInteractionLocked || preparingSource}
+            interactionLockedReason={intakeInteractionLocked ? importInteractionLockedReason : "Preparing the application draft."}
             msgInputRef={msgInputRef}
             packageImport={packageImport}
             sourceMode={sourceMode}
@@ -918,13 +921,14 @@ export function IntakeInboxPage({
           />
           <AttachmentList
             attachments={attachmentViewModels}
-            disabled={intakeInteractionLocked}
-            disabledReason={intakeInteractionLockedReason}
+            disabled={intakeInteractionLocked || preparingSource}
+            disabledReason={intakeInteractionLocked ? intakeInteractionLockedReason : "Preparing the application draft."}
             duplicateDraft={duplicateDraft?.check ?? null}
             importingAssetId={importingAssetId}
             packageLoaded={Boolean(packageImport)}
             resolvingDuplicateAction={resolvingDuplicateAction}
             onDuplicateAction={(action) => void handleResolveDuplicateDraft(action)}
+            onDismissDuplicate={duplicateDraft?.supplementalFile ? () => setDuplicateDraft(null) : undefined}
             onImport={(attachment) => void handleImportApplicationForm(attachment.asset)}
             onOpen={(attachment) => void handleOpenAttachment(attachment)}
             onSelect={(attachment) => {
@@ -967,6 +971,18 @@ export function IntakeInboxPage({
             </section>
           ) : null}
           {editorError ? <p className="intake-error">{editorError}</p> : null}
+          {unmatchedEmail && unmatchedEmail.packageId === packageImport?.package_id && !editorLoading && !editorError && !duplicateDraft &&
+            !activeCase?.selected_form_asset_id && !hasDraftEditsSinceDecision ? (
+            <div>
+              <p className="precheck-issue-warning" role="status">
+                {missingRequestMessage(visibleAttachmentAssets, unmatchedEmail.unreadable)}
+              </p>
+              <button className="secondary-action ui-secondary-action" type="button"
+                disabled={intakeInteractionLocked || preparingSource} onClick={() => wordInputRef.current?.click()}>
+                Choose request form…
+              </button>
+            </div>
+          ) : null}
           {packageImport && activeCase != null ? (
             <NewProjectApplicationEditor
               {...applicationEditorCompatibilityProps(displayedCompletionError)}
@@ -1080,7 +1096,8 @@ export function IntakeInboxPage({
     duplicate: DraftDuplicateCheck,
     packageId: string,
     asset: IntakeAsset | null,
-    importMessageText: string | null
+    importMessageText: string | null,
+    isCurrent = () => true
   ): Promise<boolean> {
     if (!lastDuplicateDecision || hasDraftEditsSinceDecision) {
       return false;
@@ -1105,10 +1122,10 @@ export function IntakeInboxPage({
           true,
           resolution
         );
-        await applySelectedDraft(selection, importMessageText);
+        if (isCurrent()) await applySelectedDraft(selection, importMessageText, isCurrent);
       } else {
         const draft = await ensureNewProjectApplicationDraft(packageId, resolution);
-        await applyPreparedDraft(draft);
+        if (isCurrent()) await applyPreparedDraft(draft, isCurrent);
       }
       return true;
     } catch {
@@ -1128,6 +1145,19 @@ function draftDuplicateConflictFromError(error: unknown): DraftDuplicateCheck | 
     return null;
   }
   return error.detail as DraftDuplicateCheck;
+}
+
+function missingRequestMessage(attachments: IntakeAsset[], unreadable: string[]): string {
+  const messages: string[] = [];
+  if (unreadable.length) {
+    messages.push(`Could not verify the request form in ${unreadable.join(", ")}. Open the file in Word or choose a readable E-3718 .docx request form.`);
+  }
+  const legacyFiles = attachments.filter(asset => asset.extension.toLowerCase() === ".doc");
+  if (legacyFiles.length) {
+    const names = legacyFiles.map(asset => asset.original_name).join(", ");
+    messages.push(`Legacy Word files could not be checked (${names}). If one contains the request, save it as a .docx in Word and choose that copy.`);
+  }
+  return messages.join(" ") || "No E-3718 Laboratory Testing Request was found in the email attachments. Choose the completed .docx request form.";
 }
 
 function emptySetupValues(defaultProjectLeader = ""): NewProjectSetupConfirmationValues {
@@ -1236,7 +1266,15 @@ function stringValue(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-function packageDetailToImport(detail: IntakePackageDetail): IntakePackageImport {
+function packageDetailToImport(detail: IntakePackageDetail, previous: IntakePackageImport | null): IntakePackageImport {
+  const assets = [...detail.assets];
+  if (previous?.package_id === detail.package_id) {
+    // Reloads include updated roles but older stored packages don't record attachment order.
+    const positions = new Map(previous.assets.map((asset, index) => [asset.asset_id, index]));
+    assets.sort((left, right) =>
+      (positions.get(left.asset_id) ?? positions.size) - (positions.get(right.asset_id) ?? positions.size)
+    );
+  }
   return {
     package_id: detail.package_id,
     source_type: detail.source_type,
@@ -1249,6 +1287,6 @@ function packageDetailToImport(detail: IntakePackageDetail): IntakePackageImport
     asset_count: detail.asset_count,
     candidate_count: detail.candidate_count,
     next_action: detail.next_action,
-    assets: detail.assets
+    assets
   };
 }

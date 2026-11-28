@@ -76,6 +76,7 @@ def test_intake_precheck_api_flow(tmp_path: Path) -> None:
         assert precheck_response.status_code == 200
         precheck = precheck_response.json()
         assert precheck["status"] == "warning"
+        assert any(issue["field_name"] == "form_rev" and "Template folder" in issue["message"] for issue in precheck["issues"])
         assert precheck["issues"][0]["resolved"] is False
 
         latest_response = client.get(f"/api/projects/{project_id}/prechecks/latest")
@@ -126,6 +127,12 @@ def test_precheck_uses_registered_supporting_attachments(tmp_path: Path) -> None
         )
         project_id = project_response.json()["project_id"]
         docx_path = _create_docx(tmp_path / "form.docx")
+        approved = tmp_path / "approved"
+        approved.mkdir()
+        _create_docx(approved / "E-3718_request.docx")
+        assert client.put("/api/external-resources/project_folder_template", json={
+            "path": str(approved), "active": True,
+        }).is_success
 
         with docx_path.open("rb") as handle:
             upload_response = client.post(

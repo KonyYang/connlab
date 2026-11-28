@@ -3739,10 +3739,15 @@ export function importDirectWordApplicationForm(file: File): Promise<IntakePacka
 
 export function uploadEmailPackageApplicationForm(
   packageId: string,
-  file: File
+  file: File,
+  resolution?: { action: DraftDuplicateAction; caseId: string }
 ): Promise<SelectedApplicationForm> {
   const formData = new FormData();
   formData.append("file", file);
+  if (resolution) {
+    formData.append("resolution_action", resolution.action);
+    formData.append("resolution_case_id", resolution.caseId);
+  }
   return requestJson<SelectedApplicationForm>(
     `/api/intake-packages/${encodeURIComponent(packageId)}/application-form`,
     {

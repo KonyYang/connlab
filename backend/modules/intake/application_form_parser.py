@@ -148,6 +148,16 @@ class ApplicationFormParser:
             requested_testing_rows=requested_testing_rows,
         )
 
+    def read_form_identity(self, path: Path) -> tuple[str | None, str | None]:
+        """Read only the official metadata needed to compare a template with a request."""
+        with self._protected_package_gateway.readable_copy(path) as readable_path:
+            document = Document(readable_path)
+            values: dict[str, str] = {}
+            _merge_footer_form_metadata(values, document)
+            if not (values.get("form_no") and values.get("form_rev")):
+                values = {**_extract_label_values(document), **values}
+            return _get(values, "form_no"), _get(values, "form_rev")
+
     def table_outline(self, path: Path, limit: int = 8) -> tuple[tuple[str, str], ...]:
         """Return a compact outline of non-empty Word tables."""
         with self._protected_package_gateway.readable_copy(path) as readable_path:

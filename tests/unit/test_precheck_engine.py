@@ -64,9 +64,9 @@ def test_attachment_reference_without_registered_attachment_produces_warning() -
 def test_wrong_revision_produces_form_metadata_issue() -> None:
     form = _valid_form(form_rev="G")
 
-    result = PrecheckEngine().run(form)
+    result = PrecheckEngine().run(form, revision_warning="Expected Rev J, received Rev G.")
 
-    assert result.status is PrecheckStatus.FAILED
+    assert result.status is PrecheckStatus.WARNING
     assert any(
         issue.category is IssueCategory.FORM_METADATA
         and issue.field_name == "form_rev"

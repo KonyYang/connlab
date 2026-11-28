@@ -119,7 +119,7 @@ class MsgPackageIntakeService:
                 body_text=imported.body_text,
             )
         )
-        self._asset_store.create(
+        email_asset = self._asset_store.create(
             IntakeAsset(
                 asset_id=f"asset-{uuid4().hex}",
                 package_id=package.package_id,
@@ -132,8 +132,9 @@ class MsgPackageIntakeService:
                 asset_role=IntakeAssetRole.EMAIL_SOURCE,
             )
         )
+        mail_asset_ids = [email_asset.asset_id]
         for attachment in imported.attachments:
-            self._asset_store.create(
+            asset = self._asset_store.create(
                 IntakeAsset(
                     asset_id=f"asset-{uuid4().hex}",
                     package_id=package.package_id,
@@ -147,6 +148,7 @@ class MsgPackageIntakeService:
                     content_id=attachment.content_id,
                 )
             )
+            mail_asset_ids.append(asset.asset_id)
 
         detection = ApplicationFormCandidateDetector(self._asset_store).detect_for_package(
             package.package_id
@@ -161,9 +163,12 @@ class MsgPackageIntakeService:
                 ),
             )
         )
+        classified_assets = {
+            asset.asset_id: asset for asset in self._asset_store.list_by_package(package.package_id)
+        }
         return MsgPackageIntakeResult(
             package=updated_package,
-            assets=tuple(self._asset_store.list_by_package(package.package_id)),
+            assets=tuple(classified_assets[asset_id] for asset_id in mail_asset_ids),
             candidates=detection.candidates,
             resolution_action=None,
         )

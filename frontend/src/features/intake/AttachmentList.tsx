@@ -12,6 +12,7 @@ type AttachmentListProps = {
   importingAssetId?: string | null;
   resolvingDuplicateAction?: string | null;
   onDuplicateAction?: (action: DraftDuplicateAction) => void;
+  onDismissDuplicate?: () => void;
   onImport?: (attachment: IntakeAttachmentViewModel) => void;
   onOpen?: (attachment: IntakeAttachmentViewModel) => void;
   onSelect: (attachment: IntakeAttachmentViewModel) => void;
@@ -26,6 +27,7 @@ export function AttachmentList({
   importingAssetId,
   resolvingDuplicateAction,
   onDuplicateAction,
+  onDismissDuplicate,
   onImport,
   onOpen,
   onSelect,
@@ -43,6 +45,7 @@ export function AttachmentList({
           duplicate={duplicateDraft}
           resolvingAction={resolvingDuplicateAction ?? null}
           onAction={onDuplicateAction}
+          onDismiss={onDismissDuplicate}
         />
       ) : null}
       {packageLoaded ? (
@@ -113,6 +116,7 @@ type DraftDuplicateResolutionProps = {
   duplicate: DraftDuplicateCheck;
   resolvingAction: string | null;
   onAction: (action: DraftDuplicateAction) => void;
+  onDismiss?: () => void;
 };
 
 function DraftDuplicateResolution({
@@ -121,6 +125,7 @@ function DraftDuplicateResolution({
   duplicate,
   resolvingAction,
   onAction,
+  onDismiss,
 }: DraftDuplicateResolutionProps): ReactElement {
   const formName = duplicate.incoming_application_form_name
     || duplicate.existing_application_form_name
@@ -161,6 +166,11 @@ function DraftDuplicateResolution({
         >
           {resolvingAction === "open_existing" ? "Loading..." : "Load existing"}
         </button>
+        {onDismiss && (
+          <button className="ui-secondary-action" disabled={disabled || Boolean(resolvingAction)} type="button" onClick={onDismiss}>
+            Cancel
+          </button>
+        )}
       </div>
     </section>
   );

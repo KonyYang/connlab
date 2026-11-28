@@ -105,6 +105,13 @@ class IntakeAssetRepository:
         self._session.flush()
         return asset
 
+    def delete(self, asset_id: str) -> None:
+        """Discard a provisional supplemental asset when the existing draft is reopened."""
+        row = self._session.get(IntakeAssetModel, asset_id)
+        if row is not None:
+            self._session.delete(row)
+            self._session.flush()
+
     def delete_by_package(self, package_id: str) -> int:
         """Delete all intake assets for one package and return the row count."""
         rows = self._session.scalars(

@@ -64,6 +64,9 @@ export function NewProjectApplicationEditor({
         <h3 className="ui-panel-title">Application information</h3>
         {importMessage ? <p className="new-project-imported-form-message">{importMessage}</p> : null}
       </div>
+      {activeCase?.precheck_issues.filter(issue => issue.field_key === "revision" && issue.level === "warning").map(issue => (
+        <p className="precheck-issue-warning" key={issue.message} role="status">{issue.message}</p>
+      ))}
 
       {autoSaveError ? <p className="intake-error">{autoSaveError}</p> : null}
 
