@@ -331,8 +331,9 @@ Do not use a dated snapshot as a substitute for the code.
   source observations and project acceptance are separate. Missing data never supplies Pass.
 - Related reports require scoped source/version/location and applicability decisions. Selected DOCX
   temperature regions retain only their safe relationship closure; complete externally linked chart
-  caches may be explicitly frozen without opening their workbook. Customer conversion preserves the
-  same adopted region and audits references only within the exact retained visible text. Date fact
+  caches may be explicitly frozen without opening their workbook. For customer copies, explicitly
+  authorized linked temperature evidence contributes the measured maxima and its reviewed source
+  attribution. Reference exemptions are bound to the exact retained visible text. Date fact
   updates can bind an exact paragraph fingerprint rather than replacing identical text globally.
 
 - Report Workspace shares the global page title/action bar, showing the registered LTR and latest
@@ -340,12 +341,11 @@ Do not use a dated snapshot as a substitute for the code.
   drafts never supply that label. Optional label lookups do not block report operations.
 - Authority version counters are not displayed in a permanent strip. Existing contextual blockers
   still explain missing confirmation or mismatched sources; authority checks remain unchanged.
-- Two compact cards organize report generation and Update Internal Report (LLCR import/update
-  and Equipment List update). The generation card places Internal Report on the left and Customer
-  Report on the right, with each filename below its action in green, normal-weight text. There is no
-  numbered wizard, repeated report heading, or page-wide Confirm.
-  LLCR import remains available before the initial report exists. Section updates preserve unrelated
-  report content and manual edits; existing LLCR preview/confirmation and publication safeguards remain.
+- Report Workspace opens the current Word working copy on its last selected section. Daily
+  section navigation uses a sidebar on wide screens and a selector on narrow screens.
+  Confirming LLCR workbook readings and writing them to Word are distinct actions. Missing
+  measurements identify the sample and source cell and offer a corrected workbook in place.
+  File actions contain working-copy replacement/download and deliberate project delivery.
   - Equipment List uses one `Update Equipment List` action with no normal preview or calibration
     acknowledgement. It reads `EquipmentID.docx` in the registered pure-LTR folder, deduplicates IDs
     in source order, joins the Settings calibration workbook in read order (first match wins), and
@@ -370,41 +370,21 @@ Do not use a dated snapshot as a substitute for the code.
     staging (including no-op) and before publication. Changed report revisions retain `History/Report`;
     unchanged content and due-date colors do not create an archive. Legacy preview/update APIs remain
     compatible, but the UI no longer exposes external-row corrections or expired-calibration consent.
-- The initial report card has no repeated title. Its left-aligned generation action is followed by
-  the current filename in green, without its directory path. The always-visible `Generate
-  Internal Report` action initializes an empty slot or asks explicitly to `Archive and regenerate`.
-  Cancel does not write files or metadata. A fresh report uses only the approved E-3707_H template,
-  latest confirmed Basic Information and active confirmed Matrix; old manual content, results,
-  equipment and photos remain in `History/Report` and are never copied into the new report. LLCR and
-  Equipment List updates remain separate actions.
-- `Generate customer report` normally uses the current project's Internal Report with existing
-  publication, History and recovery safeguards. An existing Customer Report requires `Archive and
-  regenerate` or Cancel before starting; approval binds the displayed Internal/Customer file hashes.
-  Explicit regeneration archives even identical output into `History/Report`, while unchanged LLCR
-  and Equipment List section updates retain their no-op behavior. A fresh customer report is staged
-  and source/target hashes are rechecked before archival and atomic replacement; conversion or
-  publication failure leaves the old current report in place. Cancel/Esc never starts generation,
-  and project changes discard the pending approval. Only an explicitly missing Internal Report opens
-  the source picker for another existing Internal Report `.docx`; ambiguous or unavailable state
-  does not bypass project blockers. The missing-source state is rechecked before uploading.
-  This fallback reuses the Tools conversion API and downloads a copy, leaving the selected original
-  and project report authority unchanged. Its filename is session-local and identified as a downloaded
-  copy. Both managed-source and selected-source download-only customer reports use a ` draft` filename
-  suffix (an existing Draft suffix is retained, not duplicated). The generic Tools converter's naming
-  is unchanged. Downloads use the browser's configured download location, normally system Downloads.
-  Cancel never uploads; progress, status/download retries and expired-operation errors remain
-  visible, and late responses after project changes or unmount cannot trigger downloads.
-- Customer reports apply fixed material disclosure rules only to recognized sample tables in
-  `SAMPLE DESCRIPTION`: copper-alloy Base Material cells become exactly `Copper Alloy`, with
-  proprietary grades, prefixes and suffixes removed; substantive Housing Material cells become
-  exactly `High Temperature Resin`. Blank/NA-style placeholders and non-copper base materials are
-  retained. Column roles come from headers (including `Base Mat’l`, wrapped labels and layouts
-  without Lot), not column numbers. Existing PCB/fixture exclusion and contact-plating cleanup are
-  retained; other sections and source Internal Report/template bytes remain untouched. A saved-package
-  audit shares those same header/material rules and blocks publication if sensitive sample material
-  remains. Acceptance covers exact labels, current/legacy layouts, placeholders, non-copper material,
-  section isolation, source preservation and failed-output cleanup; unreadable or ambiguous sample
-  layouts fail generation rather than publishing an unverified customer report.
+- Without a working copy, an empty project offers to create its internal report or continue an
+  existing Word file for its registered LTR. An existing official report is offered by name.
+  Regeneration requires explicit confirmation of the existing report's archival.
+- Customer generation defaults to the displayed working Word, then the registered internal
+  report when there is no working copy. Tools and the file menu also accept a finished internal
+  report. Downloading a customer Word uses the registered E-4515 template. Formal delivery is a
+  separate action with project-specific content checks, named destinations and history safeguards.
+- The customer content check asks for a decision only when the document contains an ambiguous
+  sample, a material without a recognized public name, or an unclear measured maximum. Busbar
+  and PCB descriptions can denote either tested parts or auxiliary equipment. Each affected
+  sample must be explicitly kept or omitted. Choices are bound to the exact source document.
+  Copper-alloy base materials and known plastic housings use the public labels `Copper Alloy` and
+  `High Temperature Resin`. Customer temperature tables retain measured maxima per condition and
+  their currents/units. Internal channel readings, sample maxima and averages stay in the working
+  Word. Conversion notices identify content to check in Word and formal saving retains its own review.
 - Generation approval binds the operation, expected report/absence, source record identities and
   content, Matrix revision, template bytes, workspace identities and latest report revision. Fresh
   independent database reads recheck that context after writing and before publication; a changed

@@ -5,9 +5,10 @@ import {
   downloadStandaloneCustomerReport,
   encryptLocalFile,
   readStandaloneCustomerReportJob,
-  startStandaloneCustomerReport,
   updateStandaloneEquipmentList,
 } from "../api/client";
+import { inspectUploadedCustomerSource, startInspectedCustomerReport } from "../api/customerContent";
+vi.mock("../api/customerContent", () => ({inspectUploadedCustomerSource: vi.fn(),startInspectedCustomerReport:vi.fn(),discardCustomerInput:vi.fn().mockResolvedValue(undefined)}));
 import { ToolsPage } from "./ToolsPage";
 
 vi.mock("../api/client", () => ({
@@ -26,7 +27,7 @@ vi.mock("../api/mechanicalSummary", () => ({
   generateMechanicalFolder: vi.fn(),
 }));
 
-const startCustomerReportMock = vi.mocked(startStandaloneCustomerReport);
+const startCustomerReportMock = vi.mocked(startInspectedCustomerReport);
 const readCustomerReportMock = vi.mocked(readStandaloneCustomerReportJob);
 const downloadCustomerReportMock = vi.mocked(downloadStandaloneCustomerReport);
 const encryptCopyMock = vi.mocked(encryptLocalFile);
@@ -68,6 +69,7 @@ describe("ToolsPage", () => {
       createObjectURL: vi.fn(() => "blob:tools"),
       revokeObjectURL: vi.fn(),
     });
+    vi.mocked(inspectUploadedCustomerSource).mockResolvedValue({source_sha256:'sha',input_id:'input',fields:[],decisions:{},samples:[],temperatures:[]});
     startCustomerReportMock.mockResolvedValue({
       operation_id: "operation-1",
       status: "queued",
@@ -106,7 +108,8 @@ describe("ToolsPage", () => {
 
     expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample-CR.docx");
     expect(screen.queryByText(/seconds elapsed/)).toBeNull();
-    expect(startCustomerReportMock).toHaveBeenCalledWith(file);
+    expect(inspectUploadedCustomerSource).toHaveBeenCalledWith(file);
+    expect(startCustomerReportMock).toHaveBeenCalledWith('input',{});
     expect(readCustomerReportMock).toHaveBeenCalledWith("operation-1");
     expect(downloadCustomerReportMock).toHaveBeenCalledWith("operation-1");
   });
@@ -221,7 +224,7 @@ describe("ToolsPage", () => {
   });
 
   it("allows choosing the same report again after failure and preserves feedback when cancelled", async () => {
-    startCustomerReportMock.mockRejectedValueOnce(new Error("Choose a compatible Internal Report."));
+    startCustomerReportMock.mockRejectedValueOnce(Object.assign(new Error("Choose a compatible Internal Report."),{status:422}));
     const user = userEvent.setup();
     render(<ToolsPage />);
     const picker = screen.getByLabelText("Select Internal Report") as HTMLInputElement;
@@ -236,11 +239,12 @@ describe("ToolsPage", () => {
     expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample-CR.docx");
     expect(screen.queryByRole("alert")).toBeNull();
     expect(startCustomerReportMock).toHaveBeenCalledTimes(2);
-    expect(startCustomerReportMock).toHaveBeenLastCalledWith(file);
+    expect(inspectUploadedCustomerSource).toHaveBeenLastCalledWith(file);
+    expect(startCustomerReportMock).toHaveBeenLastCalledWith('input',{});
   });
 
   it("blocks repeated selections while starting and discards report completion after leaving Tools", async () => {
-    let complete!: (value: Awaited<ReturnType<typeof startStandaloneCustomerReport>>) => void;
+    let complete!: (value: Awaited<ReturnType<typeof startInspectedCustomerReport>>) => void;
     startCustomerReportMock.mockReturnValueOnce(new Promise(done => { complete = done; }));
     const user = userEvent.setup();
     const rendered = render(<ToolsPage />);
@@ -248,7 +252,7 @@ describe("ToolsPage", () => {
     const file = new File(["internal"], "sample.docx");
     await user.upload(picker, file);
     expect(picker.disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Starting..." }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Generate Customer Report" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(picker, { target: { files: [file] } });
     expect(startCustomerReportMock).toHaveBeenCalledTimes(1);
     rendered.unmount();

@@ -11,6 +11,7 @@ import { ReportFactUpdates } from "./ReportFactUpdates";
 import { ReportResultUpdate } from "./ReportResultUpdate";
 import { ReportPhotoSlots } from "./ReportPhotoSlots";
 import { ReportCustomerCopy } from "./ReportCustomerCopy";
+import { CustomerReportDownload } from "./CustomerReportDownload";
 import "./reportContentEditor.css";
 
 const sections = {
@@ -27,10 +28,10 @@ function isSection(value: string | null): value is Section {
 type Props = {
   projectId: string; state: ReportAuthoringState; disabled: boolean; llcr: ReactNode; equipment: ReactNode;
   onChanged: (state: ReportAuthoringState) => void; beginOperation: () => (() => void) | null;
-  fileActions: ReactNode; directCustomerAction: ReactNode;
+  fileActions: ReactNode; openForProjectSave: boolean;
 };
 
-export function ReportContentEditor({ projectId, state, disabled, beginOperation, onChanged, llcr, equipment, fileActions, directCustomerAction }: Props) {
+export function ReportContentEditor({ projectId, state, disabled, beginOperation, onChanged, llcr, equipment, fileActions, openForProjectSave }: Props) {
   const output = state.outputs[state.outputs.length - 1];
   const originalName = state.sources.find(source => source.source_id === output.base_source_id)?.file_name;
   const storageKey = `report-section:${projectId}:${output.base_source_id}`;
@@ -40,7 +41,8 @@ export function ReportContentEditor({ projectId, state, disabled, beginOperation
       return isSection(saved) ? saved : "llcr";
     } catch { return "llcr"; }
   });
-  const [customer, setCustomer] = useState(false);
+  const interruptedSave = !!state.delivery && state.delivery.status !== 'completed';
+  const [customer, setCustomer] = useState(interruptedSave || openForProjectSave);
   const [showTools, setShowTools] = useState(() => moreTools.includes(section));
   function choose(value: string) {
     if (!isSection(value)) return;
@@ -84,18 +86,28 @@ export function ReportContentEditor({ projectId, state, disabled, beginOperation
     }
   }
   return <section className="report-editor" aria-label="Selected report working copy">
-    <header className="report-editor-file"><div className="report-editor-filename"><strong>{output.file_name}</strong>
-      {originalName && originalName !== output.file_name && <small>From {originalName}</small>}</div>{fileActions}</header>
+    <header className="report-editor-file"><div className="report-editor-filename"><small>Working copy</small><strong title={originalName ? 'From ' + originalName : undefined}>{output.file_name}</strong></div>
+      <div className="report-editor-file-actions"><CustomerReportDownload key={output.output_id} disabled={disabled || interruptedSave || !output.artifact} begin={beginOperation} changed={onChanged}
+        source={output.artifact ? {kind:'working',project:projectId,name:output.file_name, identity:{expected_revision:state.revision,
+          output_id:output.output_id,output_sha256:output.artifact.sha256,temperature_result_ids:(state.results || []).filter(r =>
+            r.kind === 'temperature' && r.result_id && state.applied_result_ids?.includes(r.result_id)).map(r => r.result_id!)}} : undefined}
+        extraActions={pick => <details className="report-file-options"
+          onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.open = false; }}
+          onKeyDown={e => { if (e.key === 'Escape') { e.currentTarget.open = false; e.currentTarget.querySelector('summary')?.focus(); } }}>
+          <summary aria-label="Report file actions" title="Report file actions">•••</summary>
+          <div onClick={e => { if ((e.target as HTMLElement).closest('button')) e.currentTarget.closest('details')?.removeAttribute('open'); }}>
+            {fileActions}
+            <button type="button" disabled={disabled} className="report-editor-link" onClick={pick}>Use another finished Word for a customer report…</button>
+            <button type="button" disabled={disabled} className="report-editor-link" onClick={() => setCustomer(true)}>Review and save to project…</button>
+          </div></details>}/>
+      </div></header>
     {output.issues.length > 0 && <details className="report-editor-notes"><summary>Review notes ({output.issues.length})</summary>
       <ul>{output.issues.map((issue, i) => <li key={i}>{issue}</li>)}</ul></details>}
-    <nav className="report-editor-tabs" aria-label="Report view">
-      <button type="button" aria-pressed={!customer} disabled={disabled} onClick={() => setCustomer(false)}>Report content</button>
-      <button type="button" aria-pressed={customer} disabled={disabled} onClick={() => setCustomer(true)}>Customer copy</button>
-    </nav>
-    {customer ? <div className="report-editor-detail"><ReportCustomerCopy {...props} onOpenSection={value => { choose(value); setCustomer(false); }} />
-      {directCustomerAction}</div>
+    {customer ? <div className="report-editor-detail"><button type="button" className="report-editor-link" disabled={disabled} onClick={() => setCustomer(false)}>Back to report content</button>
+      <ReportCustomerCopy {...props} onOpenSection={value => { choose(value); setCustomer(false); }} /></div>
       : <div className="report-editor-columns">
         <nav className="report-editor-list" aria-label="Report sections">
+          <strong>Report content</strong>
           {dailySections.map(sectionButton)}
           <details open={showTools} onToggle={event => setShowTools(event.currentTarget.open)}>
             <summary>More tools</summary>{moreTools.map(sectionButton)}

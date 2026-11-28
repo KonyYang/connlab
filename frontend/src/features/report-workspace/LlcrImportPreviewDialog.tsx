@@ -16,6 +16,8 @@ type LlcrImportPreviewDialogProps = {
   onDraftChange: (resultId: string, outcome: LlcrOutcome, overrideReason: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
+  onReplace?: (file: File) => void;
+  inspecting?: boolean;
 };
 
 export function LlcrImportPreviewDialog({
@@ -26,29 +28,35 @@ export function LlcrImportPreviewDialog({
   onDraftChange,
   onCancel,
   onConfirm,
+  onReplace,
+  inspecting = false,
 }: LlcrImportPreviewDialogProps): ReactElement {
-  const busy = confirming || canceling;
+  const inline = Boolean(onReplace);
+  const busy = confirming || canceling || inspecting;
+  const replacePicker = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLElement>(null);
   useEffect(() => {
+    if (inline) return;
     const trigger = document.activeElement;
     dialog.current?.focus();
     return () => { if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus(); };
-  }, []);
+  }, [inline]);
   const validationErrors = useMemo(
     () => validateLlcrConfirmation(preview, drafts),
     [drafts, preview]
   );
 
   return (
-    <div className="report-workspace-dialog-backdrop">
+    <div className={inline ? "llcr-inline-preview" : "report-workspace-dialog-backdrop"}>
       <section
         aria-labelledby="llcr-preview-title"
-        aria-modal="true"
-        className="report-workspace-dialog llcr-preview"
-        role="dialog"
+        aria-modal={inline ? undefined : true}
+        className={inline ? "llcr-section" : "report-workspace-dialog llcr-preview"}
+        role={inline ? "region" : "dialog"}
         ref={dialog}
         tabIndex={-1}
         onKeyDown={event => {
+          if (inline) return;
           if (event.key === "Escape" && !busy) onCancel();
           if (event.key !== "Tab") return;
           const controls = event.currentTarget.querySelectorAll<HTMLElement>("button:enabled, select:enabled, input:enabled, [tabindex='0']");
@@ -63,12 +71,12 @@ export function LlcrImportPreviewDialog({
       >
         <header className="report-workspace-dialog-header">
           <div>
-            <h2 id="llcr-preview-title">LLCR import preview</h2>
+            {inline ? <h3 id="llcr-preview-title">LLCR results</h3> : <h2 id="llcr-preview-title">LLCR import preview</h2>}
             <p>
-              {preview.source.file_name} · {preview.sample_count} samples · {preview.test_point_count} test points
+              {preview.source.file_name} · {preview.sample_count} {preview.sample_count === 1 ? "sample" : "samples"} · {preview.test_point_count} {preview.test_point_count === 1 ? "test point" : "test points"}
             </p>
           </div>
-          <button disabled={busy} onClick={onCancel} type="button">Close</button>
+          {!inline && <button disabled={busy} onClick={onCancel} type="button">Close</button>}
         </header>
 
         {preview.diagnostics.length > 0 ? (
@@ -132,25 +140,37 @@ export function LlcrImportPreviewDialog({
           </div>
         )}
 
-        {validationErrors.length > 0 ? (
+        {validationErrors.length > 0 && (!inline || preview.can_confirm) ? (
           <ul className="report-workspace-confirm-errors">
             {validationErrors.map((message) => <li key={message}>{message}</li>)}
           </ul>
         ) : null}
 
         <footer className="report-workspace-dialog-actions">
+          {onReplace && !preview.can_confirm && <>
+            <input hidden type="file" ref={replacePicker} accept=".xlsx" aria-label="Corrected LLCR workbook" disabled={busy}
+              onChange={event => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (file) onReplace(file);
+              }} />
+            <button className="primary-action" disabled={busy} onClick={() => replacePicker.current?.click()} type="button">
+              {inspecting ? "Reading workbook…" : "Choose corrected workbook…"}
+            </button>
+          </>}
           <button disabled={busy} onClick={onCancel} type="button">
             {canceling ? "Cancelling..." : "Cancel"}
           </button>
-          <button
+          {(!inline || preview.can_confirm) && <button
             className="primary-action"
             disabled={busy || validationErrors.length > 0}
             onClick={onConfirm}
             type="button"
           >
-            {confirming ? "Confirming..." : "Confirm LLCR Dataset"}
-          </button>
+            {confirming ? "Confirming..." : inline ? "Confirm readings" : "Confirm LLCR Dataset"}
+          </button>}
         </footer>
+        {inline && <small>Report location · LLCR results and Appendix A</small>}
       </section>
     </div>
   );

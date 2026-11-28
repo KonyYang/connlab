@@ -156,7 +156,7 @@ _INTERNAL_DISCLOSURE_PATTERNS = (
     ),
 )
 _NON_PRODUCT_SAMPLE_PATTERN = re.compile(
-    r"\b(?:PCB|BUS\s*BAR|BUSBAR|TEST\s+FIXTURE|FIXTURE|ADAPTER)\b",
+    r"\b(?:PCBA?s?|BUS[\s_-]*BARs?|(?:TEST\s+)?FIXTUREs?|ADAPTERs?)\b",
     flags=re.IGNORECASE,
 )
 _COPPER_MATERIAL_PATTERN = re.compile(
@@ -250,18 +250,21 @@ class CustomerReportDocumentGateway:
         template_path: Path,
         output_path: Path,
         progress: Callable[[str], None] | None = None,
+        lineage_sha256: str | None = None,
     ) -> Path:
         source = Path(source_path)
         template = Path(template_path)
         output = Path(output_path)
         _validate_paths(source, template, output)
         source_hash = _file_hash(source)
+        if lineage_sha256 is not None and not re.fullmatch(r"[a-f0-9]{64}", lineage_sha256):
+            raise ValueError("Invalid original internal-report fingerprint.")
         temporary = output.with_name(
             f".customer-report.{uuid4().hex}.tmp{output.suffix}"
         )
         try:
             with _word_generation_paths(source, temporary, source_hash) as (word_source, working):
-                self._build_customer_document(word_source, template, working, source_hash, progress)
+                self._build_customer_document(word_source, template, working, source_hash, progress, lineage_sha256)
                 if working != temporary:
                     self._after_word_file_operation(
                         lambda: shutil.copyfile(working, temporary),
@@ -291,14 +294,14 @@ class CustomerReportDocumentGateway:
                 )
         return output
 
-    def _build_customer_document(self, source, template, working, source_hash, progress):
+    def _build_customer_document(self, source, template, working, source_hash, progress, lineage_sha256):
         _emit_progress(progress, "preparing_template")
         protection_state = self._protected_package_gateway.stage_editable_copy(template, working)
         customer_titles = _template_headings(working)
-        if progress is None:
-            generated = _generate_with_word(source, working)
-        else:
-            generated = _generate_with_word(source, working, progress=progress)
+        options = {"progress": progress} if progress is not None else {}
+        if lineage_sha256 is not None:
+            options["reviewed_samples"] = True
+        generated = _generate_with_word(source, working, **options)
         notices, observed = generated or ([], {})
         internal_titles = {}
         if observed and any(n not in customer_titles or n == 7 for n in observed):
@@ -312,7 +315,7 @@ class CustomerReportDocumentGateway:
         differences = _heading_differences(observed, customer_titles, internal_titles)
         _emit_progress(progress, "verifying_output")
         self._after_word_file_operation(
-            lambda: _write_source_report_sha256(working, source_hash),
+            lambda: _write_source_report_sha256(working, lineage_sha256 or source_hash),
             operation="record source fingerprint", path=working,
         )
         self._after_word_file_operation(
@@ -449,6 +452,7 @@ def _generate_with_word(
     target_path: Path,
     *,
     progress: Callable[[str], None] | None = None,
+    reviewed_samples: bool = False,
 ) -> tuple[list[str], dict[int, str]]:
     try:
         import pythoncom  # type: ignore[import-not-found]
@@ -530,6 +534,7 @@ def _generate_with_word(
                 source,
                 working_body,
                 progress=progress,
+                reviewed_samples=reviewed_samples,
             )
         except Exception as exc:
             raise ValueError(
@@ -660,6 +665,7 @@ def _copy_customer_body(
     target,
     *,
     progress: Callable[[str], None] | None = None,
+    reviewed_samples: bool = False,
 ) -> tuple[_NumberedHeadingIndex, list[str], dict[int, str]]:
     headings = _NumberedHeadingIndex.from_document(source, enumerate(_SOURCE_HEADINGS, 1))
     notices = []
@@ -720,7 +726,7 @@ def _copy_customer_body(
     )
     target_headings = _NumberedHeadingIndex.from_document(target, target_heading_pairs)
     _emit_progress(progress, "cleaning_content")
-    _sanitize_customer_body(target)
+    _sanitize_customer_body(target, reviewed_samples=reviewed_samples)
     _normalize_customer_body_typography(target, target_headings)
     _format_customer_headings(target, target_headings)
     _merge_customer_disclaimer(target)
@@ -942,7 +948,7 @@ def _labeled_cell_value(table, label: str, *, preserve_paragraphs: bool = False)
     raise ValueError(f"Internal report header value is missing: {label}")
 
 
-def _sanitize_customer_body(document) -> None:
+def _sanitize_customer_body(document, *, reviewed_samples=False) -> None:
     protected_anchor_starts = {
         int(document.Shapes(index).Anchor.Paragraphs(1).Range.Start)
         for index in range(1, int(document.Shapes.Count) + 1)
@@ -1007,7 +1013,7 @@ def _sanitize_customer_body(document) -> None:
     sanitized_ranges = []
     for index in range(1, int(sample_tables.Count) + 1):
         table = sample_tables(index)
-        if _sanitize_sample_table(table):
+        if _sanitize_sample_table(table, reviewed_samples=reviewed_samples):
             sanitized_ranges.append(table.Range.Duplicate)
 
     for index in range(1, int(document.Tables.Count) + 1):
@@ -1142,7 +1148,7 @@ def _normalize_customer_body_typography(
         table.Range.ParagraphFormat.LineSpacingRule = 0
 
 
-def _sample_table_columns(headers: Iterable[str]) -> dict[str, int]:
+def _sample_table_columns(headers: Iterable[str], *, material_required=True) -> dict[str, int]:
     """Share header recognition between Word conversion and the saved-package audit."""
     aliases = {
         "description": "description",
@@ -1152,6 +1158,7 @@ def _sample_table_columns(headers: Iterable[str]) -> dict[str, int]:
         "basemat": "base",
         "basematl": "base",
         "basematerial": "base",
+        "contactbasematerial": "base",
         "housingmat": "housing",
         "housingmaterial": "housing",
         "contactplating": "plating",
@@ -1166,7 +1173,7 @@ def _sample_table_columns(headers: Iterable[str]) -> dict[str, int]:
             columns[role] = index
     if (
         not {"description", "part"} <= columns.keys()
-        or not {"base", "housing"} & columns.keys()
+        or material_required and not {"base", "housing"} & columns.keys()
     ):
         return {}
     return columns
@@ -1180,7 +1187,7 @@ def _customer_sample_material(value: str, role: str) -> str:
         # A housing is not necessarily polymer. Retain metals, ceramics and
         # unclassified descriptions rather than inventing a resin identity.
         if re.search(
-            r"\b(?:LCP|PPS|HTN|PPA|PBT|PET|PEEK|PA(?:6T|9T|46|66|6|12)?|"
+            r"\b(?:LCP|PPS|HTN|PPA|PBT|PET|PEEK|PA(?:6T|9T|46|66|6|12)(?:[A-Z][A-Z0-9-]*)?|PA|"
             r"nylon|polyamide|liquid\s+crystal\s+polymer|high\s+temperature\s+resin)\b",
             cleaned, re.IGNORECASE,
         ):
@@ -1191,31 +1198,32 @@ def _customer_sample_material(value: str, role: str) -> str:
     return value
 
 
-def _sanitize_sample_table(table) -> bool:
+def _sanitize_sample_table(table, *, reviewed_samples=False) -> bool:
     # Word cannot index Rows(1) on vertically merged tables. Inspect cheap plain
     # text first; the actual column mapping still requires exact recognized headers.
     text = str(table.Range.Text).casefold()
-    if "description" not in text or "part" not in text or not ("base" in text or "housing" in text):
+    if "description" not in text or "part" not in text:
         return False
     columns = _sample_table_columns(
-        table.Rows(1).Cells(column).Range.Text
-        for column in range(1, int(table.Rows(1).Cells.Count) + 1)
+        (table.Rows(1).Cells(column).Range.Text
+         for column in range(1, int(table.Rows(1).Cells.Count) + 1)),
+        material_required=False,
     )
     if not columns:
         return False
     has_generic_housing = False
     for row_index in range(int(table.Rows.Count), 1, -1):
         row = table.Rows(row_index)
-        description = _clean_text(row.Cells(columns["description"]).Range.Text)
-        if _NON_PRODUCT_SAMPLE_PATTERN.search(description):
-            row.Delete()
-            continue
+        if not reviewed_samples and _NON_PRODUCT_SAMPLE_PATTERN.search(
+            _clean_text(row.Cells(columns["description"]).Range.Text)
+        ):
+            raise ValueError("Choose Generate customer report and confirm which sample parts to keep.")
         for role in ("base", "housing"):
             if role not in columns:
                 continue
             cell = row.Cells(columns[role])
             material = str(cell.Range.Text).removesuffix("\r\x07")
-            customer_material = _customer_sample_material(material, role)
+            customer_material = material if reviewed_samples else _customer_sample_material(material, role)
             if role == "housing" and customer_material == "High Temperature Resin":
                 has_generic_housing = True
             if customer_material != material:
@@ -1292,9 +1300,22 @@ def _lookup_heading(document, number: int, heading: str, *, within=None):
     scope = document.Content if within is None else within
     content_end = int(scope.End)
     names = (heading, *_HEADING_ALIASES.get(heading, ()))
+    # An explicit "6. TEST RESULT" identifies the section even when a later,
+    # unnumbered "TEST RESULTS" introduces a table. Word Find still supplies
+    # actual range offsets for documents containing drawings and field codes.
+    raw = getattr(scope, "Text", "")
+    numbered = tuple(match.group().strip() for match in re.finditer(
+        rf"(?:^|(?<=[\r\n\x07]))[ \t]*{number}[ \t]*\.[^\r\n\x07]{{1,90}}(?=[\r\n\x07]|$)", raw
+    ) if _matches_heading(match.group(), number, heading))
+    contents = getattr(document, "TablesOfContents", None)
+    excluded = []
+    if contents is not None:
+        for i in range(1, int(contents.Count) + 1):
+            span = contents(i).Range
+            excluded.append((int(span.Start), int(span.End)))
     fragments = [part for name in names for part in (name[:3], name[-3:])]
     candidates = {}
-    for term in dict.fromkeys((*names, *fragments)):
+    for term in dict.fromkeys((*numbered, *names, *fragments)):
         search = scope.Duplicate
         while True:
             finder = search.Find
@@ -1308,10 +1329,10 @@ def _lookup_heading(document, number: int, heading: str, *, within=None):
                 break
             paragraph = search.Paragraphs(1).Range
             text = _clean_text(paragraph.Text)
-            if _matches_heading(text, number, heading):
+            if _matches_heading(text, number, heading) and not any(lo <= int(paragraph.Start) < hi for lo, hi in excluded):
                 found = paragraph.Duplicate
                 found.End = max(int(found.Start), int(found.End) - 1)
-                if _heading_label(text, number).casefold() in {name.casefold() for name in names}:
+                if term in numbered or _heading_label(text, number).casefold() in {name.casefold() for name in names}:
                     return found, text
                 candidates[int(found.Start)] = (found, text)
             next_start = int(search.End)

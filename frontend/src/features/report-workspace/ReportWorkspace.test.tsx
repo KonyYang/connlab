@@ -3,6 +3,8 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as authoring from "../../api/reportAuthoring";
+import * as customerContent from "../../api/customerContent";
+vi.mock("../../api/customerContent", () => ({inspectUploadedCustomerSource:vi.fn(),inspectProjectCustomerSource:vi.fn(),startInspectedCustomerReport:vi.fn(),discardCustomerInput:vi.fn().mockResolvedValue(undefined)}));
 import * as api from "../../api/client";
 import { ReportWorkspace } from "./ReportWorkspace";
 import { AppShell } from "../../components/layout/AppShell";
@@ -372,19 +374,17 @@ describe("ReportWorkspace", () => {
     expect(screen.queryByText(/Downloaded draft:/)).toBeNull();
   });
 
-  it("uses the downloaded internal draft for a customer job instead of opening the file picker", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.fetchCurrentReport).mockResolvedValue({...currentReport, status: "missing", mode: null,
-      file_name: null, file_path: null, file_sha256: null});
-    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({...customerReport, status: "missing", mode: "managed_download",
-      file_name: null, file_sha256: null, internal_report_sha256: "e".repeat(64), blockers: [], warnings: [], can_generate: true});
-    vi.mocked(api.startProjectCustomerReportJob).mockResolvedValue({...completedJob, status: "queued"});
+  it("uses the retained draft fingerprint for one-click download when no official internal report exists", async () => {
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({...currentReport, status:"missing",mode:null,file_name:null,file_sha256:null});
+    vi.mocked(api.fetchReportUpdateSource).mockResolvedValue({...currentReport,status:"ready",mode:"download_draft",file_name:"Manual draft.docx",file_sha256:"e".repeat(64)});
+    vi.mocked(customerContent.inspectProjectCustomerSource).mockResolvedValue(inspection);
+    vi.mocked(customerContent.startInspectedCustomerReport).mockResolvedValue({operation_id:"j",status:"completed",stage:"done",elapsed_seconds:0,message:null});
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", {name: "Generate Customer Report"}));
-    await waitFor(() => expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
-      expected_internal_report_sha256: "e".repeat(64), expected_customer_report_sha256: null,
-    }));
-    expect(screen.queryByRole("dialog", {name: /Internal Report/})).toBeNull();
+    await screen.findByText("Manual draft.docx");
+    fireEvent.click(screen.getByRole("button",{name:"Generate customer report"}));
+    await waitFor(() => expect(customerContent.inspectProjectCustomerSource).toHaveBeenCalledWith("project-1",{source_sha256:"e".repeat(64)}));
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button",{name:"Review and save to project…"})).toBeNull();
   });
 
   it("updates and downloads equipment from an available draft even when there is no current official report", async () => {
@@ -480,7 +480,7 @@ describe("ReportWorkspace", () => {
     expect(within(updates).getByRole("button", { name: "Update Equipment List" })).toBeTruthy();
     const generation = screen.getByRole("region", { name: "Report generation" });
     expect(within(generation).getByRole("button", { name: "Regenerate internal report…" })).toBeTruthy();
-    expect(within(generation).getByRole("button", { name: "Generate Customer Report" })).toBeTruthy();
+    expect(within(generation).getByRole("button", { name: "Review and save to project…" })).toBeTruthy();
     expect(within(generation).getByText(customerReport.file_name!)).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Customer Report" })).toBeNull();
     expect(screen.queryByText("Project project-1")).toBeNull();
@@ -488,103 +488,56 @@ describe("ReportWorkspace", () => {
     expect(onBack).toHaveBeenCalledOnce();
   });
 
-  it("generates directly from the selected finished report when an official version exists", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.startStandaloneCustomerReport).mockResolvedValue({ operation_id: "direct", status: "completed",
-      stage: "completed", elapsed_seconds: 0, message: null });
-    vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({ blob: new Blob(["customer"]), fileName: "Customer.docx" });
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: /from a finished internal report/ }));
-    const dialog = await screen.findByRole("dialog", { name: "Create customer copy" });
-    const file = new File(["manually finished"], "Reviewed Word.docx");
-    await user.upload(within(dialog).getByLabelText("Internal Report file"), file);
-    expect(within(dialog).getByText(file.name)).toBeTruthy();
-    await user.click(within(dialog).getByRole("button", { name: "Generate review copy" }));
-    await waitFor(() => expect(api.downloadStandaloneCustomerReport).toHaveBeenCalledWith("direct"));
-    expect(api.startStandaloneCustomerReport).toHaveBeenCalledWith(file);
-    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
-    expect(authoring.selectReportBase).not.toHaveBeenCalled();
-  });
-
-  it("chooses an existing internal DOCX only when the current report is missing and downloads a copy", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null,
-      file_name: null, file_path: null, file_sha256: null, download_url: null });
-    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({ ...customerReport,
-      status: "blocked", can_generate: false, file_name: null, warnings: [],
-      blockers: ["A single current Internal Report is required."] });
-    vi.mocked(api.startStandaloneCustomerReport).mockResolvedValue({ operation_id: "uploaded-1",
-      status: "completed", stage: "completed", elapsed_seconds: 1, message: null });
-    vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({ blob: new Blob(["docx"]), fileName: "Other-CR Report.docx" });
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-    const dialog = await screen.findByRole("dialog", { name: "Select Internal Report" });
-    const file = new File(["existing report"], "Other Report.docx");
-    fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [file] } });
-    await user.click(within(dialog).getByRole("button", { name: "Generate Customer Report" }));
-    expect(await screen.findByText("Other-CR Report draft.docx")).toBeTruthy();
-    expect(screen.queryByText("Customer report generation completed.")).toBeNull();
-    expect(screen.queryByText(/seconds elapsed/)).toBeNull();
-    expect(api.startStandaloneCustomerReport).toHaveBeenCalledWith(file);
-    expect(api.downloadStandaloneCustomerReport).toHaveBeenCalledWith("uploaded-1");
-    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
-    expect(api.generateInternalReport).not.toHaveBeenCalled();
-    expect(screen.queryByRole("dialog", { name: "Select Internal Report" })).toBeNull();
-  });
-
-  it("cancels the source picker, rejects non-DOCX files, and keeps the source file local", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null, file_name: null });
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-    const dialog = screen.getByRole("dialog", { name: "Select Internal Report" });
-    fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [new File(["bad"], "report.pdf")] } });
-    expect(within(dialog).getByRole("alert").textContent).toContain(".docx");
-    expect(within(dialog).getByRole("button", { name: "Generate Customer Report" })).toHaveProperty("disabled", true);
-    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  const inspection = {input_id:"checked", source_sha256:"sha", decisions:{}, fields:[], samples:[], temperatures:[]};
+  it.each(["registered", "uploaded"] as const)("downloads the %s report in one action and leaves the official files alone", async kind => {
+    vi.mocked(customerContent.inspectProjectCustomerSource).mockResolvedValue(inspection);
+    vi.mocked(customerContent.inspectUploadedCustomerSource).mockResolvedValue(inspection);
+    vi.mocked(customerContent.startInspectedCustomerReport).mockResolvedValue({ operation_id:"job", status:"completed",
+      stage:"completed", message:null, elapsed_seconds:1, notices:["Check the missing test description."] });
+    vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({blob:new Blob(["report"]),fileName:"Customer.docx"});
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()}/>);
+    const action = await screen.findByRole("button", {name:"Generate customer report"});
+    if (kind === "registered") {
+      fireEvent.click(action);
+      await waitFor(() => expect(customerContent.inspectProjectCustomerSource).toHaveBeenCalledWith("project-1",{source_sha256:currentReport.file_sha256}));
+    } else {
+      const file = new File(["hand-reviewed"],"Finished Word.docx");
+      fireEvent.change(screen.getByLabelText("Select Internal Report"), {target:{files:[file]}});
+      await waitFor(() => expect(customerContent.inspectUploadedCustomerSource).toHaveBeenCalledWith(file));
+    }
+    expect((await screen.findByRole("status",{name:"Downloaded File"})).textContent).toBe("Customer.docx");
+    expect(screen.getByText("1 item to review in Word")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(api.startStandaloneCustomerReport).not.toHaveBeenCalled();
+    expect(customerContent.startInspectedCustomerReport).toHaveBeenCalledWith("checked",{});
     expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
   });
 
-  it("does not offer an uploaded source to bypass ambiguous internal reports", async () => {
-    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "ambiguous", file_name: null });
-    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({ ...customerReport, status: "blocked", can_generate: false });
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    expect(await screen.findByRole("button", { name: "Generate Customer Report" })).toHaveProperty("disabled", true);
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(api.startStandaloneCustomerReport).not.toHaveBeenCalled();
+  it("shows a specific Word format error before uploading", async () => {
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()}/>);
+    await screen.findByRole("button",{name:"Generate customer report"});
+    fireEvent.change(screen.getByLabelText("Select Internal Report"),{target:{files:[new File(["bad"],"report.pdf")]}});
+    expect(await screen.findByText("Select an internal Word report in .docx format.")).toBeTruthy();
+    expect(customerContent.inspectUploadedCustomerSource).not.toHaveBeenCalled();
   });
 
-  it("rechecks the default source and does not upload if a project report appeared", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.fetchCurrentReport).mockResolvedValueOnce({ ...currentReport, status: "missing", file_name: null }).mockResolvedValue(currentReport);
+  it("refuses a changed default source without silently switching to an upload or an official write", async () => {
+    vi.mocked(customerContent.inspectProjectCustomerSource).mockRejectedValue(new Error("Internal report changed. Refresh and try again."));
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-    const dialog = screen.getByRole("dialog", { name: "Select Internal Report" });
-    fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [new File(["source"], "Other.docx")] } });
-    await user.click(within(dialog).getByRole("button", { name: "Generate Customer Report" }));
-    expect(await screen.findByText("The current Internal Report changed. Review the current report before generating.")).toBeTruthy();
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(api.startStandaloneCustomerReport).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button",{name:"Generate customer report"}));
+    expect(await screen.findByText("Internal report changed. Refresh and try again.")).toBeTruthy();
+    expect(customerContent.inspectUploadedCustomerSource).not.toHaveBeenCalled();
     expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
   });
 
-  it("ignores a missing-source check that finishes after changing project", async () => {
-    const user = userEvent.setup();
-    const missing: api.CurrentReport = { ...currentReport, status: "missing", file_name: null };
-    let resolve!: (value: api.CurrentReport) => void;
-    vi.mocked(api.fetchCurrentReport).mockResolvedValueOnce(missing)
-      .mockImplementationOnce(() => new Promise(r => { resolve = r; })).mockResolvedValue(currentReport);
-    const { rerender } = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-    const dialog = screen.getByRole("dialog", { name: "Select Internal Report" });
-    fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [new File(["source"], "Other.docx")] } });
-    await user.click(within(dialog).getByRole("button", { name: "Generate Customer Report" }));
-    rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
-    await act(async () => { resolve(missing); });
-    expect(api.startStandaloneCustomerReport).not.toHaveBeenCalled();
-    expect(screen.queryByRole("dialog")).toBeNull();
+  it("discards a late source inspection after changing projects", async () => {
+    let complete!: (value: typeof inspection) => void;
+    vi.mocked(customerContent.inspectProjectCustomerSource).mockReturnValueOnce(new Promise(r => { complete=r; }));
+    const {rerender}=render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button",{name:"Generate customer report"}));
+    rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()}/>);
+    await act(async () => complete(inspection));
+    expect(customerContent.discardCustomerInput).toHaveBeenCalledWith("checked");
+    expect(customerContent.startInspectedCustomerReport).not.toHaveBeenCalled();
   });
 
   it("shows the registered LTR and confirmed Basic Information, not draft or stale project descriptions", async () => {
@@ -1004,272 +957,18 @@ describe("ReportWorkspace", () => {
     expect(screen.queryByText("Equipment update failed")).toBeNull();
   });
 
-  it.each(["ready", "stale", "untracked"] as const)("asks before replacing a %s customer report and Cancel or Escape never generates", async (status) => {
-    const user = userEvent.setup();
-    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({ ...customerReport, status });
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    const generate = await screen.findByRole("button", { name: "Generate Customer Report" });
-    await user.click(generate);
-    const dialog = await screen.findByRole("dialog", { name: "Archive and regenerate Customer Report" });
-    expect(within(dialog).getByText(customerReport.file_name!)).toBeTruthy();
-    const cancel = within(dialog).getByRole("button", { name: "Cancel" });
-    expect(document.activeElement).toBe(cancel);
-    await user.tab({ shift: true });
-    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Archive And Regenerate" }));
-    await user.tab();
-    expect(document.activeElement).toBe(cancel);
-    await user.click(cancel);
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).toBe(generate);
-    await user.click(generate);
-    await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog")).toBeNull();
+  it.each(["ready","stale","untracked"] as const)("uses a reviewed working copy when saving over a %s customer report", async status => {
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({...customerReport,status});
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()}/>);
+    const menu = await screen.findByText('Report file actions');
+    expect(menu.closest('details')?.open).toBe(false);
+    fireEvent.click(menu);
+    const save = screen.getByRole('button',{name:'Review and save to project…'});
+    fireEvent.click(save);
+    await waitFor(() => expect(authoring.adoptCurrentReportWorkingCopy).toHaveBeenCalledWith("project-1",
+      expect.objectContaining({source_mode:"official",source_sha256:currentReport.file_sha256})));
     expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
-  });
-
-  it.each(["Cancel", "Escape"])("restores the generating button after %s even when opening the modal leaves focus on the page", async (cancelMethod) => {
-    const user = userEvent.setup();
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    const generate = await screen.findByRole("button", { name: "Generate Customer Report" });
-    // Native browsers can blur the trigger as soon as the modal disables it.
-    fireEvent.click(generate);
-    const dialog = await screen.findByRole("dialog", { name: "Archive and regenerate Customer Report" });
-    if (cancelMethod === "Cancel") await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
-    else await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).toBe(generate);
-    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
-  });
-
-  it("discards a pending customer archive approval when the project changes", async () => {
-    const user = userEvent.setup();
-    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-    expect(await screen.findByRole("dialog", { name: "Archive and regenerate Customer Report" })).toBeTruthy();
-    view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
-  });
-
-  it("binds archive approval to the reviewed fingerprints and shows source-drift rejection", async () => {
-    const user = userEvent.setup();
-    let latest!: (value: api.ProjectCustomerReportJob | null) => void;
-    vi.mocked(api.fetchLatestProjectCustomerReportJob).mockImplementationOnce(() => new Promise(resolve => { latest = resolve; }));
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await screen.findByRole("region", { name: "Customer Report" });
-    // Resolve the initial lookup before approving; start is never permitted while its result is unknown.
-    await act(async () => { latest(null); });
-    await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
-    vi.mocked(api.startProjectCustomerReportJob).mockRejectedValueOnce(new api.ApiRequestError("The source changed. Preview again.", 409));
-    await user.click(await screen.findByRole("button", { name: "Archive And Regenerate" }));
-    expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
-      expected_internal_report_sha256: "a".repeat(64), expected_customer_report_sha256: "b".repeat(64),
-    });
-    expect(await screen.findByText("The source changed. Preview again.")).toBeTruthy();
-    expect(screen.queryByRole("dialog")).toBeNull();
-  });
-
-  it("starts one regeneration on repeated confirmation and ignores its late error after a project switch", async () => {
-    const user = userEvent.setup();
-    let reject!: (reason: Error) => void;
-    vi.mocked(api.startProjectCustomerReportJob).mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
-    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-    const confirm = await screen.findByRole("button", { name: "Archive And Regenerate" });
-    await act(async () => { fireEvent.click(confirm); fireEvent.click(confirm); });
-    expect(api.startProjectCustomerReportJob).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", true);
-    view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
-    await act(async () => { reject(new api.ApiRequestError("Old project source changed", 409)); });
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.queryByText("Old project source changed")).toBeNull();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Generate Customer Report" })).toHaveProperty("disabled", false));
-  });
-
-  it("updates a stale customer report from the current internal report with both fingerprints", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.startProjectCustomerReportJob).mockResolvedValue({
-      ...completedJob,
-      result: {
-        project_id: "project-1",
-        mode: "official",
-        file_name: customerReport.file_name!,
-        file_sha256: "d".repeat(64),
-        source_report_sha256: "a".repeat(64),
-        changed: true,
-        archive_path: "D:\\Test Project\\DL-001\\History\\Report\\old.docx",
-      },
-    });
-
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-
-    expect(await screen.findByRole("region", { name: "Customer Report" })).toBeTruthy();
-    expect(screen.getByText(customerReport.warnings[0])).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
-
-    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
-    await user.click(await screen.findByRole("button", { name: "Archive And Regenerate" }));
-
-    expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
-      expected_internal_report_sha256: "a".repeat(64),
-      expected_customer_report_sha256: "b".repeat(64),
-    });
-    expect(await screen.findByText(/Updated the customer report/)).toBeTruthy();
-  });
-
-  it("refreshes and asks before regenerating a customer report deleted after preview", async () => {
-    const user = userEvent.setup();
-    const missingCustomerReport: api.CustomerReportState = {
-      ...customerReport,
-      status: "missing",
-      file_name: null,
-      file_sha256: null,
-      generated_from_internal_sha256: null,
-      warnings: [],
-      download_url: null,
-    };
-    vi.mocked(api.fetchCurrentCustomerReport)
-      .mockResolvedValueOnce(customerReport)
-      .mockResolvedValue(missingCustomerReport);
-    vi.mocked(api.startProjectCustomerReportJob).mockReset();
-    vi.mocked(api.startProjectCustomerReportJob)
-      .mockResolvedValueOnce({
-        ...completedJob, status: "failed", result: null,
-        message: "The customer report was deleted or moved after the page was loaded.",
-        error_code: "customer_report_missing_after_preview", can_regenerate: true,
-      })
-      .mockResolvedValueOnce({
-        ...completedJob, operation_id: "operation-2",
-        result: {
-          project_id: "project-1",
-          mode: "official",
-          file_name: customerReport.file_name!,
-          file_sha256: "d".repeat(64),
-          source_report_sha256: "a".repeat(64),
-          changed: true,
-          archive_path: null,
-        },
-      });
-
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-
-    expect(
-      await screen.findByRole("dialog", { name: "Archive and regenerate Customer Report" })
-    ).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Archive And Regenerate" }));
-    expect(await screen.findByRole("alertdialog", { name: "Customer report not found" })).toBeTruthy();
-    expect(
-      screen.getByText(/deleted or moved from the project folder/i)
-    ).toBeTruthy();
-    expect(screen.queryByText("Report workflow failed.")).toBeNull();
-
-    await user.click(screen.getByRole("button", { name: "Generate New Customer Report" }));
-
-    expect(api.startProjectCustomerReportJob).toHaveBeenNthCalledWith(2, "project-1", {
-      expected_internal_report_sha256: "a".repeat(64),
-      expected_customer_report_sha256: null,
-    });
-    expect(
-      await screen.findByText(/Generated a new customer report.*No previous file was archived/)
-    ).toBeTruthy();
-  });
-
-  it("cancels customer report regeneration without creating a replacement", async () => {
-    const user = userEvent.setup();
-    const missingCustomerReport: api.CustomerReportState = {
-      ...customerReport,
-      status: "missing",
-      file_name: null,
-      file_sha256: null,
-      generated_from_internal_sha256: null,
-      warnings: [],
-      download_url: null,
-    };
-    vi.mocked(api.fetchCurrentCustomerReport)
-      .mockResolvedValueOnce(customerReport)
-      .mockResolvedValue(missingCustomerReport);
-    vi.mocked(api.startProjectCustomerReportJob).mockReset();
-    vi.mocked(api.startProjectCustomerReportJob).mockRejectedValueOnce(
-      new api.ApiRequestError(
-        "The customer report was deleted or moved after the page was loaded.",
-        409,
-        {
-          code: "customer_report_missing_after_preview",
-          message: "The customer report was deleted or moved after the page was loaded.",
-          can_regenerate: true,
-        }
-      )
-    );
-
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-    await user.click(await screen.findByRole("button", { name: "Archive And Regenerate" }));
-    await screen.findByRole("alertdialog", { name: "Customer report not found" });
-    await user.click(
-      await screen.findByRole("button", { name: "Cancel" })
-    );
-
-    expect(screen.queryByRole("alertdialog", { name: "Customer report not found" })).toBeNull();
-    expect(api.startProjectCustomerReportJob).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Generate Customer Report" })).toBeTruthy();
-  });
-
-  it("does not claim that an unchanged customer report was archived", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.startProjectCustomerReportJob).mockResolvedValue({
-      ...completedJob,
-      result: {
-        project_id: "project-1",
-        mode: "official",
-        file_name: customerReport.file_name!,
-        file_sha256: customerReport.file_sha256!,
-        source_report_sha256: customerReport.internal_report_sha256!,
-        changed: false,
-        archive_path: null,
-      },
-    });
-
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-
-    await user.click(await screen.findByRole("button", { name: "Archive And Regenerate" }));
-    expect(await screen.findByText(/was already current/)).toBeTruthy();
-    expect(screen.queryByText(/archived automatically/)).toBeNull();
-  });
-
-  it("downloads the generated customer report when no official project folder exists", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({
-      ...customerReport,
-      status: "missing",
-      mode: "managed_download",
-      file_name: null,
-      file_sha256: null,
-      generated_from_internal_sha256: null,
-      warnings: ["No official project folder is available; generation will download a copy."],
-      download_url: null,
-    });
-    vi.mocked(api.startProjectCustomerReportJob).mockResolvedValue({
-      ...completedJob,
-      result: { mode: "managed_download", file_name: "Customer draft.docx", changed: true, archive_path: null },
-    });
-    vi.mocked(api.downloadProjectCustomerReportJob).mockResolvedValue({ blob: new Blob(["customer"]), fileName: "Customer draft.docx" });
-
-    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate Customer Report" }));
-
-    expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
-      expected_internal_report_sha256: "a".repeat(64),
-      expected_customer_report_sha256: null,
-    });
-    expect(await screen.findByText("Customer draft.docx")).toBeTruthy();
-    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
-    const anchor = vi.mocked(HTMLAnchorElement.prototype.click).mock.instances.at(-1) as HTMLAnchorElement;
-    expect(anchor.download).toBe("Customer draft.docx");
-    expect(screen.queryByText("Generated and downloaded the customer report.")).toBeNull();
-    expect(screen.queryByText("Customer report generation completed.")).toBeNull();
+    expect(api.generateCurrentCustomerReport).not.toHaveBeenCalled();
   });
 
   it("recovers real progress above the disabled generation button", async () => {
@@ -1279,7 +978,7 @@ describe("ReportWorkspace", () => {
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     expect(await screen.findByText("Applying customer-report layout and headers...")).toBeTruthy();
     expect(screen.getByText("19 seconds elapsed")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Generating Customer Report..." }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Generate customer report" }) as HTMLButtonElement).disabled).toBe(true);
     expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
   });
 
@@ -1290,7 +989,7 @@ describe("ReportWorkspace", () => {
     });
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     expect(await screen.findByText("Publication failed: The target file changed.")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Generate Customer Report" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Review and save to project…" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("restores an official result without repeating its filename in a permanent success notice", async () => {

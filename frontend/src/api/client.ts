@@ -3315,7 +3315,7 @@ async function blobDownloadFromResponse(
   return { blob, fileName };
 }
 
-async function requestNoContent(path: string, init?: RequestInit): Promise<void> {
+export async function requestNoContent(path: string, init?: RequestInit): Promise<void> {
   const response = await boundFetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
@@ -5659,6 +5659,7 @@ export function generateStandaloneCustomerReport(file: File): Promise<BlobDownlo
 }
 
 export type StandaloneCustomerReportJob = {
+  file_name?: string; notices?: string[];
   operation_id: string;
   status: "queued" | "running" | "completed" | "failed";
   stage: string;

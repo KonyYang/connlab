@@ -19,7 +19,6 @@ import {
   downloadInternalReportDraft,
   previewInternalReportGeneration,
   inspectLlcrResultWorkbook,
-  isCustomerReportMissingAfterPreviewError,
   publishManagedReport,
   previewCurrentReportLlcrUpdate,
   updateCurrentReportLlcr,
@@ -35,9 +34,7 @@ import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { CustomerReportProgress } from "../../components/common/CustomerReportProgress";
 import { useCustomerReportJob } from "./useCustomerReportJob";
 import { useReportDraftUpdates } from "./useReportDraftUpdates";
-import { useUploadedCustomerReportJob } from "./useUploadedCustomerReportJob";
-import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
-import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDialog";
+import { CustomerReportDownload } from "./CustomerReportDownload";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import { LlcrSection } from "./LlcrSection";
 import { ReportContentEditor } from "./ReportContentEditor";
@@ -65,14 +62,6 @@ type ReportWorkspaceProps = {
 
 type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-update" | "publish" | "download" | "customer" | "customer-source" | "authoring" | null;
 
-type CustomerRegenerationApproval = {
-  projectId: string;
-  internalSha: string;
-  customerSha: string | null;
-  fileName: string | null;
-  returnFocusTarget: HTMLButtonElement;
-};
-
 export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, identityLabel = "Connector Project", evidenceStep }: ReportWorkspaceProps): ReactElement {
   const topBarRoot = useTopBarActionsRoot();
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
@@ -80,13 +69,12 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
   const [authoringState, setAuthoringState] = useState<ReportAuthoringState | null>(null);
   const [authoringReadFailed, setAuthoringReadFailed] = useState(false);
   const wordPicker = useRef<HTMLInputElement>(null);
-  const [directCustomer, setDirectCustomer] = useState(false);
+  const finishedWordPicker = useRef<HTMLInputElement>(null);
+
   const workingCopy = authoringState?.outputs.at(-1);
   const [customerReport, setCustomerReport] = useState<CustomerReportState | null>(null);
   const [customerReadFailed, setCustomerReadFailed] = useState(false);
-  const [customerReportRecovery, setCustomerReportRecovery] = useState<CustomerReportState | null>(null);
-  const [customerRegenerationApproval, setCustomerRegenerationApproval] = useState<CustomerRegenerationApproval | null>(null);
-  const customerRequest = useRef(false);
+  const [projectSaveBase, setProjectSaveBase] = useState<string | null>(null);
   const [preview, setPreview] = useState<LlcrImportPreview | null>(null);
   const [decisionDrafts, setDecisionDrafts] = useState<LlcrDecisionDrafts>({});
   const [equipmentSourceOpen, setEquipmentSourceOpen] = useState(false);
@@ -120,21 +108,14 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [internalGenerationPreview, setInternalGenerationPreview] = useState<InternalReportGenerationPreview | null>(null);
-  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
-  const [checkingSource, setCheckingSource] = useState(false);
-  const sourceRequest = useRef(false);
   const mounted = useRef(true);
   const internalRequest = useRef(0);
   const customerJob = useCustomerReportJob(projectId, (response) => {
     downloadBlob(response.blob, response.fileName || "Customer Report.docx");
   });
-  const uploadedCustomerJob = useUploadedCustomerReportJob(projectId, (response) => {
-    downloadBlob(response.blob, response.fileName || "Customer Report.docx");
-  });
   const legacyBusyAction = pageBusyAction ?? (draftUpdates.busy ? (draftUpdates.action === "equipment" ? "equipment-update" : "llcr")
-    : customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || directCustomer || customerRegenerationApproval || equipmentSourceOpen || equipmentResult || draftUpdates.selectOpen ? "customer-source" : null);
+    : customerJob.busy ? "customer" : equipmentSourceOpen || equipmentResult || draftUpdates.selectOpen ? "customer-source" : null);
   const busyAction = legacyBusyAction ?? (authoringBusy ? "authoring" : !authoringState ? "load" : null);
-  const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
   const refreshedDelivery = useRef('');
   activeProject.current = projectId;
@@ -168,15 +149,9 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     internalRequest.current += 1;
     setInternalGenerationPreview(null);
     setMessage(null);
-    setSourcePickerOpen(false);
-    setDirectCustomer(false);
-    setCheckingSource(false);
     setPreview(null);
     setDecisionDrafts({});
-    sourceRequest.current = false;
-    customerRequest.current = false;
-    customerRun.current = null;
-    setCustomerRegenerationApproval(null);
+    setProjectSaveBase(null);
     equipmentSequence.current += 1;
     equipmentRequest.current = false;
     setEquipmentSourceOpen(false);
@@ -234,31 +209,8 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     const job = customerJob.job;
     if (!job || job.project_id !== projectId || (job.status !== "completed" && job.status !== "failed")) return;
     let active = true;
-    if (job.status === "failed" && job.error_code !== "customer_report_missing_after_preview") return;
-    void refresh().then(({ customerReport: next }) => {
-      if (!active) return;
-      if (job.status === "failed") {
-        if (job.can_regenerate && next?.status === "missing" && next.mode === "official" && next.can_generate && next.internal_report_sha256) {
-          setCustomerReportRecovery(next);
-        } else {
-          setError("The customer report state changed again. Review the current state before continuing.");
-        }
-        return;
-      }
-      const result = job.result;
-      if (result?.mode !== "official") return;
-      if (!customerRun.current) return;
-      if (customerRun.current.regenerating) {
-        setMessage("Generated a new customer report. No previous file was archived.");
-      } else if (!result.changed) {
-        setMessage("The customer report was already current.");
-      } else if (!customerRun.current.hadFile) {
-        setMessage("Generated the customer report.");
-      } else {
-        setMessage(`Updated the customer report.${result.archive_path ? " The previous customer report was archived automatically." : ""}`);
-      }
-      customerRun.current = null;
-    }).catch((reason: unknown) => {
+    if (job.status !== "completed") return;
+    void refresh().catch((reason: unknown) => {
       if (active) setError(errorMessage(reason, "Unable to refresh report status. The generation result is retained; reload to check it."));
     });
     return () => { active = false; };
@@ -268,10 +220,9 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     let active = true;
     setBusyAction("load");
     setError(null);
-    setCustomerReportRecovery(null);
     setState(null);
     setCurrentReport(null);
-    setAuthoringState(null); setAuthoringReadFailed(false); setDirectCustomer(false);
+    setAuthoringState(null); setAuthoringReadFailed(false);
     setCustomerReport(null);
     setCustomerReadFailed(false);
     loadReportState(projectId)
@@ -312,9 +263,27 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
   const resumeSource = officialReport ?? (currentReport?.status !== "ambiguous" && draftUpdates.source?.status === "ready" && draftUpdates.source.mode === "download_draft"
     ? draftUpdates.source : null);
   const hasDraft = !officialReport && (Boolean(resumeSource) || currentReport?.status === "ready");
+  const [newReportDestination, setNewReportDestination] = useState("");
+  useEffect(() => {
+    let active = true;
+    setNewReportDestination("");
+    if (!workingCopy && currentReport?.status === "missing" && readiness?.canGenerateInitialDraft) {
+      void (async () => {
+        // A missing report may still have a registered folder. Use the generation service's actual mode.
+        try {
+          const target = await previewInternalReportGeneration(projectId);
+          if (active && target?.status === "ready") {
+            setNewReportDestination(target.mode === "official" && target.target_path
+              ? "Saves to " + target.target_path : "Downloads a Word draft.");
+          }
+        } catch { /* The create action refreshes the preview and reports any actionable error. */ }
+      })();
+    }
+    return () => { active = false; };
+  }, [projectId, currentReport, workingCopy, readiness?.canGenerateInitialDraft]);
   const generationLabel = officialReport ? "Regenerate internal report…" : hasDraft ? "Generate another internal report…" : "Create a new internal report";
 
-  async function continueReport() {
+  async function continueReport(forProjectSave = false) {
     if (!resumeSource || !authoringState) return;
     await runAction("authoring", async () => {
       const selected = resumeSource;
@@ -329,6 +298,8 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
       const next = await adoptCurrentReportWorkingCopy(projectId, {
         expected_revision: authoringState.revision, source_sha256: current.file_sha256, source_mode: current.mode,
       });
+      if (!mounted.current || activeProject.current !== projectId) return null;
+      setProjectSaveBase(forProjectSave ? next.outputs.at(-1)?.base_source_id || null : null);
       acceptAuthoringState(next);
       return null;
     });
@@ -444,6 +415,14 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
   async function handleInspect(file: File): Promise<void> {
     await runAction("inspect", async () => {
       const result = await inspectLlcrResultWorkbook(projectId, file);
+      if (preview && preview.preview_id !== result.preview_id) {
+        try {
+          await cancelLlcrResultPreview(projectId, preview.preview_id);
+        } catch (reason) {
+          await cancelLlcrResultPreview(projectId, result.preview_id);
+          throw reason;
+        }
+      }
       if (!mounted.current || activeProject.current !== projectId) return null;
       setPreview(result);
       setDecisionDrafts(createLlcrDecisionDrafts(result));
@@ -495,143 +474,6 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     });
   }
 
-  async function handleGenerateCustomerReport(trigger: HTMLButtonElement): Promise<void> {
-    if (workingCopy || !authoringState) return;
-    if (authoringOperation.current) return;
-    if (!busyAction && !customerReportRecovery && currentReport?.status === "missing" &&
-        !(customerReport?.mode === "managed_download" && customerReport.can_generate)) {
-      setError(null);
-      setSourcePickerOpen(true);
-      return;
-    }
-    if (
-      busyAction ||
-      customerReportRecovery ||
-      !customerReport?.can_generate ||
-      !customerReport.internal_report_sha256
-    ) {
-      return;
-    }
-    const approval = {
-      projectId,
-      internalSha: customerReport.internal_report_sha256,
-      customerSha: customerReport.file_sha256,
-      fileName: customerReport.file_name,
-      returnFocusTarget: trigger,
-    };
-    if (approval.fileName) {
-      if (!approval.customerSha) {
-        setError("The customer report state is incomplete. Reload the latest report before generating.");
-        return;
-      }
-      setError(null);
-      setCustomerRegenerationApproval(approval);
-      return;
-    }
-    await performCustomerGeneration(approval);
-  }
-
-  async function performCustomerGeneration(approval: CustomerRegenerationApproval): Promise<void> {
-    if (workingCopy || !authoringState) return;
-    if (authoringOperation.current) return;
-    if (customerRequest.current || customerJob.busy || approval.projectId !== activeProject.current) return;
-    customerRequest.current = true;
-    const token = internalRequest.current;
-    const isCurrent = () => mounted.current && activeProject.current === approval.projectId && internalRequest.current === token;
-    setBusyAction("customer");
-    setError(null);
-    setMessage(null);
-    try {
-      customerRun.current = { regenerating: false, hadFile: Boolean(approval.fileName) };
-      await customerJob.start({
-        expected_internal_report_sha256: approval.internalSha,
-        expected_customer_report_sha256: approval.customerSha,
-      });
-      if (isCurrent()) setCustomerRegenerationApproval(null);
-    } catch (reason) {
-      if (!isCurrent()) return;
-      setCustomerRegenerationApproval(null);
-      if (isCustomerReportMissingAfterPreviewError(reason)) {
-        try {
-          const refreshed = await refresh();
-          if (!isCurrent()) return;
-          if (
-            refreshed.customerReport?.status === "missing" &&
-            refreshed.customerReport.mode === "official" &&
-            refreshed.customerReport.can_generate &&
-            refreshed.customerReport.internal_report_sha256
-          ) {
-            setCustomerReportRecovery(refreshed.customerReport);
-          } else {
-            setError(
-              "The customer report state changed again. Review the current state before continuing."
-            );
-          }
-        } catch (refreshReason) {
-          if (isCurrent()) setError(errorMessage(refreshReason, "Unable to refresh the customer report state."));
-        }
-      } else {
-        setError(errorMessage(reason, "Unable to generate the customer report."));
-      }
-    } finally {
-      if (isCurrent()) { customerRequest.current = false; setBusyAction(null); }
-    }
-  }
-
-  async function handleGenerateFromUploadedSource(file: File): Promise<boolean> {
-    if (authoringOperation.current) return false;
-    if (sourceRequest.current || uploadedCustomerJob.busy) return false;
-    sourceRequest.current = true;
-    setCheckingSource(true);
-    const token = internalRequest.current;
-    const isCurrent = () => mounted.current && activeProject.current === projectId && internalRequest.current === token;
-    try {
-      // The report may have appeared since the picker opened. Never silently replace the default source.
-      const latest = await fetchCurrentReport(projectId);
-      if (!isCurrent()) return false;
-      if (latest.status !== "missing") {
-        await refresh();
-        if (isCurrent()) {
-          setSourcePickerOpen(false);
-          setError("The current Internal Report changed. Review the current report before generating.");
-        }
-        return false;
-      }
-      const started = await uploadedCustomerJob.start(file);
-      if (isCurrent() && started) setSourcePickerOpen(false);
-      return started;
-    } catch (reason) {
-      if (isCurrent()) setError(errorMessage(reason, "Unable to check the current Internal Report. Try again."));
-      return false;
-    } finally {
-      if (isCurrent()) { sourceRequest.current = false; setCheckingSource(false); }
-    }
-  }
-
-  async function handleConfirmCustomerReportRegeneration(): Promise<void> {
-    if (workingCopy || !authoringState) return;
-    if (authoringOperation.current) return;
-    const recovery = customerReportRecovery;
-    if (busyAction || !recovery?.internal_report_sha256) {
-      return;
-    }
-    setBusyAction("customer");
-    setError(null);
-    setMessage(null);
-    try {
-      customerRun.current = { regenerating: true, hadFile: false };
-      await customerJob.start({
-        expected_internal_report_sha256: recovery.internal_report_sha256,
-        expected_customer_report_sha256: null,
-      });
-      setCustomerReportRecovery(null);
-    } catch (reason) {
-      setError(errorMessage(reason, "Unable to regenerate the customer report."));
-    } finally {
-      setBusyAction(null);
-    }
-  }
-
   async function handleUpdateLlcr(): Promise<void> {
     if (authoringOperation.current) return;
     if (!latestDataset || !authoringState) {
@@ -674,7 +516,7 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
   async function handleEquipmentUpdate(input?: { file?: File; referencesText?: string }): Promise<void> {
     if (authoringOperation.current || !authoringState) return;
     if (draftMode) { await draftUpdates.updateEquipment(input); return; }
-    if (equipmentRequest.current || pageBusyAction || customerJob.busy || uploadedCustomerJob.busy) return;
+    if (equipmentRequest.current || pageBusyAction || customerJob.busy) return;
     equipmentRequest.current = true;
     const sequence = ++equipmentSequence.current;
     const isCurrent = () => mounted.current && activeProject.current === projectId && equipmentSequence.current === sequence;
@@ -745,7 +587,15 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     });
   }
 
-  const llcrControls = readiness && <LlcrSection dataset={latestDataset} workingCopy={Boolean(workingCopy)}
+  const llcrPreview = preview && <LlcrImportPreviewDialog
+    preview={preview} drafts={decisionDrafts}
+    confirming={busyAction === "confirm"} canceling={busyAction === "cancel"} inspecting={busyAction === "inspect"}
+    onReplace={workingCopy ? file => void handleInspect(file) : undefined}
+    onCancel={() => void handleCancelPreview()} onConfirm={() => void handleConfirm()}
+    onDraftChange={(resultId: string, outcome: LlcrOutcome, overrideReason: string) => setDecisionDrafts(current => ({
+      ...current, [resultId]: { outcome, overrideReason },
+    }))} />;
+  const llcrControls = workingCopy && llcrPreview ? llcrPreview : readiness && <LlcrSection dataset={latestDataset} workingCopy={Boolean(workingCopy)}
     busy={Boolean(busyAction)} inspecting={busyAction === "inspect"} updating={busyAction === "llcr"}
     updateBlocked={!readiness.canUpdateLlcr || (!workingCopy && currentReport?.status !== "ready" && !draftMode)}
     blocker={readiness.llcrUpdateBlocker} onInspect={file => void handleInspect(file)} onUpdate={() => void handleUpdateLlcr()} />;
@@ -774,11 +624,18 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
     </div>
   );
 
-  const directCustomerAction = (
-    <button type="button" className="report-editor-link" disabled={Boolean(legacyBusyAction || authoringBusy)} onClick={() => { setDirectCustomer(true); }}>
-          Create customer copy from a finished internal report…
-        </button>
-  );
+  const generateInternalAction = <div className="report-entry-create"><button className={officialReport || hasDraft ? "ui-secondary-action" : "ui-primary-action"} type="button"
+              disabled={!readiness?.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
+              onClick={() => void handleGenerateInternalReport()}>
+              {busyAction === "initial" ? "Generating…" : generationLabel}
+            </button>
+            {officialReport ? <small>Archives the existing report before replacing it.</small>
+              : newReportDestination && <small>{newReportDestination}</small>}</div>;
+  const directCustomerAction = <CustomerReportDownload key={projectId + ":" + (resumeSource?.file_sha256 || "upload")}
+    begin={beginAuthoringOperation} disabled={Boolean(legacyBusyAction || authoringBusy)}
+    source={resumeSource?.file_sha256 && resumeSource.file_name ? {kind: "project", project: projectId, name: resumeSource.file_name,
+      identity: {source_sha256: resumeSource.file_sha256}} : undefined}
+    entryPicker={finishedWordPicker} />;
   return (
     <section className="report-workspace-page" aria-busy={!state && busyAction === "load" && !error}>
       {topBarRoot ? createPortal(commandbar, topBarRoot) : (
@@ -806,8 +663,8 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
           });
         }} />
       {workingCopy && authoringState ? <ReportContentEditor key={projectId + ":" + workingCopy.base_source_id}
-        projectId={projectId} state={authoringState} disabled={Boolean(busyAction)}
-        directCustomerAction={directCustomerAction} onChanged={acceptAuthoringState} beginOperation={beginAuthoringOperation} llcr={llcrControls} equipment={equipmentControls}
+        projectId={projectId} state={authoringState} openForProjectSave={projectSaveBase === workingCopy.base_source_id} disabled={Boolean(busyAction)}
+        onChanged={acceptAuthoringState} beginOperation={beginAuthoringOperation} llcr={llcrControls} equipment={equipmentControls}
         fileActions={<div className="report-workspace-action-row">
           <button type="button" className="report-editor-link" disabled={Boolean(busyAction)} onClick={() => wordPicker.current?.click()}>Change file…</button>
           <button type="button" className="secondary-action" disabled={Boolean(busyAction)} onClick={() => void runAction("download", async () => {
@@ -817,6 +674,7 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
           })}>Download working copy</button>
         </div>} /> : state && readiness && <section className="report-entry" aria-label="Report generation">
         <section aria-label="Internal Report">
+          <h2>{resumeSource ? "Continue your report" : "Internal report"}</h2>
           {resumeSource?.file_name && resumeSource.file_sha256 && <div className="report-entry-row">
             <button className="ui-primary-action report-entry-resume" type="button"
               disabled={Boolean(busyAction) || !authoringState?.context.dl_number} onClick={() => void continueReport()}>
@@ -824,11 +682,12 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
             </button>
           </div>}
           <div className="report-entry-row">
-            <button className={officialReport || hasDraft ? "ui-secondary-action" : "ui-primary-action"} type="button"
-              disabled={!readiness.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
-              onClick={() => void handleGenerateInternalReport()}>
-              {busyAction === "initial" ? "Generating…" : generationLabel}
-            </button>
+            {resumeSource ? <details className="report-entry-file-options"><summary>Report file actions</summary>
+              {generateInternalAction}
+              <button type="button" className="report-editor-link" disabled={Boolean(legacyBusyAction || authoringBusy)}
+                onClick={() => finishedWordPicker.current?.click()}>Create customer copy from another finished Word…</button>
+              {officialReport && <button type="button" className="report-editor-link" disabled={Boolean(busyAction) || !authoringState?.context.dl_number}
+                onClick={() => void continueReport(true)}>Review and save to project…</button>}</details> : generateInternalAction}
             {state.basic_information_status !== "confirmed" && onOpenBasicInformation &&
               <button className="ui-secondary-action" type="button" onClick={onOpenBasicInformation}>Open Basic Information</button>}
             {readiness.initialDraftBlocker && <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p>}
@@ -851,24 +710,11 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
               : "Register this project’s LTR number before selecting a report."}</p>}
           </div>
         </section>
-        {directCustomerAction}
-        <details open={Boolean(customerReportRecovery || customerJob.busy || customerJob.error || customerJob.job?.status === 'failed') || undefined}>
-          <summary>Project report actions</summary>
+        <div className="report-entry-customer">{directCustomerAction}</div>
+        <details open={Boolean(customerJob.busy || customerJob.error || customerJob.job?.status === 'failed') || undefined}>
+          <summary>Project folder actions</summary>
             <section className="report-workspace-customer-generation" aria-label="Customer Report">
               <div className="report-workspace-action-row">
-                <button
-                  className="primary-action"
-                  disabled={
-                    (currentReport?.status !== "missing" && !customerReport?.can_generate) ||
-                    Boolean(busyAction) ||
-                    customerJob.downloading ||
-                    Boolean(customerReportRecovery)
-                  }
-                  onClick={(event) => void handleGenerateCustomerReport(event.currentTarget)}
-                  type="button"
-                >
-                  {busyAction === "customer" ? "Generating Customer Report..." : "Generate Customer Report"}
-                </button>
                 {customerJob.job?.status === "completed" && customerJob.job.result?.mode === "managed_download" ? (
                   <button type="button" disabled={customerJob.downloading || Boolean(busyAction)} onClick={() => void customerJob.download()}>
                     {customerJob.downloading ? "Downloading..." : customerJob.downloadError ? "Retry Download" : "Download Generated Copy"}
@@ -905,46 +751,12 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
                 <p>{customerJob.queryWarning}</p>
                 <button type="button" onClick={() => void customerJob.retryQuery()}>Retry Status Check</button>
               </div> : null}
-              {customerJob.job?.status === "failed" && customerJob.job.error_code !== "customer_report_missing_after_preview" ?
+              {customerJob.job?.status === "failed" ?
                 <p role="alert" className="report-workspace-blocker">
                   {customerJob.job.error_code === "customer_report_publication_failed" ? "Publication failed: " : "Generation failed: "}
                   {customerJob.job.message || "Unable to generate the customer report."}
                 </p> : null}
               {customerJob.downloadError ? <p role="alert" className="report-workspace-blocker">{customerJob.downloadError}</p> : null}
-              {customerReportRecovery ? (
-                <div
-                  aria-labelledby="customer-report-recovery-title"
-                  className="report-workspace-owned-regions"
-                  role="alertdialog"
-                >
-                  <strong id="customer-report-recovery-title">Customer report not found</strong>
-                  <span>
-                    The customer report was deleted or moved from the project folder. Generate a new
-                    report from the current Internal Report?
-                  </span>
-                  <small>No previous file exists, so no History copy will be created.</small>
-                  <div className="report-workspace-action-row">
-                    <button
-                      autoFocus
-                      className="primary-action"
-                      disabled={Boolean(busyAction)}
-                      onClick={() => void handleConfirmCustomerReportRegeneration()}
-                      type="button"
-                    >
-                      {busyAction === "customer"
-                        ? "Generating Customer Report..."
-                        : "Generate New Customer Report"}
-                    </button>
-                    <button
-                      disabled={Boolean(busyAction)}
-                      onClick={() => setCustomerReportRecovery(null)}
-                      type="button"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : null}
             </section>
 
         </details>
@@ -979,52 +791,8 @@ export function ReportWorkspace({ projectId, onBack, onOpenBasicInformation, ide
             onChanged={acceptAuthoringState} onOperationStart={beginAuthoringOperation} />}
         </details>
       </section>}
-              {uploadedCustomerJob.job?.status === "queued" || uploadedCustomerJob.job?.status === "running" ? <CustomerReportProgress stage={uploadedCustomerJob.job.stage}
-                elapsedSeconds={uploadedCustomerJob.job.elapsed_seconds} running={uploadedCustomerJob.busy} /> : null}
-              {uploadedCustomerJob.error ? <p role="alert" className="report-workspace-blocker">{uploadedCustomerJob.error}</p> : null}
-              {uploadedCustomerJob.job?.status === "failed" ? <p role="alert" className="report-workspace-blocker">
-                {uploadedCustomerJob.job.message || "Unable to generate the customer report. Select the source and try again."}
-              </p> : null}
-              {uploadedCustomerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
-                <p>{uploadedCustomerJob.queryWarning}</p>
-                <button type="button" onClick={() => void uploadedCustomerJob.retryQuery()}>Retry Status Check</button>
-              </div> : null}
-              {uploadedCustomerJob.downloadError ? <div role="alert" className="report-workspace-blocker">
-                <p>{uploadedCustomerJob.downloadError}</p>
-                <button type="button" disabled={uploadedCustomerJob.busy} onClick={() => void uploadedCustomerJob.retryDownload()}>Retry Download</button>
-              </div> : null}
-      {uploadedCustomerJob.fileName && <p role="status">Downloaded customer copy: <strong>{uploadedCustomerJob.fileName}</strong></p>}
       {!state && error && directCustomerAction}
-      {directCustomer && <CustomerReportSourceDialog direct busy={uploadedCustomerJob.busy} error={uploadedCustomerJob.error}
-        onCancel={() => setDirectCustomer(false)} onGenerate={async file => {
-          const ok = await uploadedCustomerJob.start(file);
-          if (ok && mounted.current && activeProject.current === projectId) setDirectCustomer(false);
-          return ok;
-        }} />}
-      {sourcePickerOpen ? <CustomerReportSourceDialog busy={checkingSource || uploadedCustomerJob.busy} error={error || uploadedCustomerJob.error}
-        onCancel={() => setSourcePickerOpen(false)} onGenerate={handleGenerateFromUploadedSource} /> : null}
-
-      {customerRegenerationApproval?.fileName ? <CustomerReportRegenerationDialog
-        fileName={customerRegenerationApproval.fileName}
-        busy={pageBusyAction === "customer" || customerJob.busy}
-        returnFocusTarget={customerRegenerationApproval.returnFocusTarget}
-        onCancel={() => setCustomerRegenerationApproval(null)}
-        onConfirm={() => void performCustomerGeneration(customerRegenerationApproval)} /> : null}
-
-      {preview ? (
-        <LlcrImportPreviewDialog
-          canceling={busyAction === "cancel"}
-          confirming={busyAction === "confirm"}
-          drafts={decisionDrafts}
-          onCancel={() => void handleCancelPreview()}
-          onConfirm={() => void handleConfirm()}
-          onDraftChange={(resultId, outcome: LlcrOutcome, overrideReason) => setDecisionDrafts((current) => ({
-            ...current,
-            [resultId]: { outcome, overrideReason },
-          }))}
-          preview={preview}
-        />
-      ) : null}
+      {!workingCopy && llcrPreview}
 
       {internalGenerationPreview ? (
         <div className="report-workspace-dialog-backdrop">

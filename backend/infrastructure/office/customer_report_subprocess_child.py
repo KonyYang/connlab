@@ -56,6 +56,7 @@ def _execute(command_json: Path) -> dict[str, Any]:
                 template_path=template,
                 output_path=output,
                 progress=reporter.write if reporter.enabled else None,
+                **({"lineage_sha256": payload["lineage_sha256"]} if payload.get("lineage_sha256") else {}),
             )
         return {"status": "success"}
     except Exception as exc:

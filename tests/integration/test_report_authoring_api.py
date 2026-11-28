@@ -301,7 +301,7 @@ def test_customer_copy_is_separate_and_package_checks_require_explicit_scope(lab
     template = lab['settings'].templates_dir/'E-4515 Customer Report.docx'
     template.write_bytes(docx_bytes())
     class Converter:
-        def generate_customer_report(self, *, source_path, template_path, output_path):
+        def generate_customer_report(self, *, source_path, template_path, output_path, lineage_sha256):
             output_path.write_bytes(source_path.read_bytes())
     monkeypatch.setattr(dependencies, 'CustomerReportDocumentGateway', Converter)
     state = upload(lab).json()
@@ -348,7 +348,7 @@ def test_temperature_region_requires_explicit_confirmation_and_customer_does_not
     template = lab['settings'].templates_dir/'E-4515 Customer Report.docx'
     template.write_bytes(docx_bytes())
     class Converter:
-        def generate_customer_report(self, *, source_path, template_path, output_path):
+        def generate_customer_report(self, *, source_path, template_path, output_path, lineage_sha256):
             output_path.write_bytes(source_path.read_bytes())
     monkeypatch.setattr(dependencies, 'CustomerReportDocumentGateway', Converter)
     state = upload(lab, role='temperature', name='temperature.csv', content=

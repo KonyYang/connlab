@@ -25,6 +25,7 @@ class CustomerReportWriterPort(Protocol):
         template_path: Path,
         output_path: Path,
         progress: Callable[[str], None] | None = None,
+        lineage_sha256: str | None = None,
     ) -> Path: ...
 
 
@@ -58,6 +59,7 @@ class ToolsService:
         template_path: Path,
         output_path: Path,
         progress: Callable[[str], None] | None = None,
+        lineage_sha256: str | None = None,
     ) -> Path:
         """Convert one compatible Internal Report into a new customer report."""
         source = Path(source_path)
@@ -79,6 +81,7 @@ class ToolsService:
                 template_path=template,
                 output_path=output,
                 progress=progress,
+                **({"lineage_sha256": lineage_sha256} if lineage_sha256 else {}),
             )
         except ToolsError:
             raise

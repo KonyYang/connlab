@@ -1,6 +1,7 @@
-"""Existing E-4515 conversion plus explicitly selected editable temperature evidence."""
+"""Project working-copy adapter for reviewed E-4515 customer downloads."""
 from dataclasses import asdict
-from io import BytesIO
+from hashlib import sha256
+from contextlib import contextmanager
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
@@ -9,89 +10,78 @@ from lxml import etree
 from backend.infrastructure.office.office_protected_document_gateway import ProtectedWordPackageGateway
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 from backend.infrastructure.office.report_authoring.customer_audit import audit_customer_package
-from backend.infrastructure.office.report_authoring.results_document import measurement_table, result_notes, style_generated_section, node, set_text
+from backend.infrastructure.office.report_authoring.results_document import measurement_table, result_notes
+from backend.infrastructure.office.customer_content_review import inspect_document, prepare_document
+from backend.infrastructure.office.customer_report_notices import read_customer_notices
+from backend.infrastructure.office.report_authoring.customer_measurements import (
+    customer_reference, insert_customer_supplements, project_supplements, stage_project_evidence,
+)
 from backend.infrastructure.office.report_authoring.word_copy import NS, text
 from backend.infrastructure.office.report_authoring.pagination import protect_table_starts
 
 
 class CustomerReportCopy:
-    def __init__(self, *, converter, template, temperature_chart, protected=None):
-        self.converter, self.template, self.temperature_chart = converter, template, temperature_chart
+    def __init__(self, *, converter, template, protected=None):
+        self.converter, self.template = converter, template
         self.protected = protected or ProtectedWordPackageGateway()
 
+    @contextmanager
+    def _project_input(self, source, results, directory, expected_sha256=None):
+        # The same immutable snapshot binds choices, generated lineage and project evidence.
+        snapshot = Path(directory) / 'internal.docx'
+        raw = Path(source).read_bytes()
+        digest = sha256(raw).hexdigest()
+        if expected_sha256 is not None and digest != expected_sha256:
+            raise ValueError('The internal report changed. Reopen it before generating.')
+        snapshot.write_bytes(raw)
+        if not results:
+            yield snapshot, digest
+            return
+        with self.protected.readable_copy(snapshot) as readable:
+            staged = stage_project_evidence(readable, Path(directory) / 'project.docx', results)
+            yield staged, digest
+
+    def inspect_content(self, source, temperature_results=()):
+        with TemporaryDirectory(prefix='connlab-customer-') as directory:
+            with self._project_input(source, temperature_results, directory) as (staged, digest):
+                review = inspect_document(staged)
+                extra, _ = project_supplements(temperature_results)
+                review['fields'].extend(extra.fields)
+                review['temperatures'].extend(extra.temperatures)
+                return {**review, 'source_sha256': digest}
+
+    review_notices = staticmethod(read_customer_notices)
+
     def generate(self, source, output, temperature_results):
+        self.generate_reviewed(source, output, temperature_results, {}, None)
+
+    def generate_reviewed(self, source, output, temperature_results, decisions, source_sha256):
         if output.exists():
             raise ValueError('Customer report output exists; originals are never overwritten.')
         with TemporaryDirectory(prefix='connlab-customer-') as directory:
-            converted = Path(directory)/'customer.docx'
-            try:
-                self.converter.generate_customer_report(source_path=source, template_path=self.template(), output_path=converted)
-            except OfficeAutomationUnavailable as exc:
-                raise ValueError('Customer conversion requires a working Microsoft Word installation on the server computer. No original was changed.') from exc
-            plain = Path(directory)/'editable.docx'
+            root = Path(directory)
+            with self._project_input(source, temperature_results, directory, source_sha256) as (staged, digest):
+                supplement_choices = {k: v for k, v in decisions.items() if k.startswith('tsupp-')}
+                body_choices = {k: v for k, v in decisions.items() if k not in supplement_choices}
+                reviewed = prepare_document(staged, root / 'reviewed.docx', body_choices)
+                _, sections = project_supplements(temperature_results, supplement_choices)
+                converted = root / 'customer.docx'
+                try:
+                    self.converter.generate_customer_report(source_path=reviewed, template_path=self.template(),
+                        output_path=converted, lineage_sha256=digest)
+                except OfficeAutomationUnavailable as exc:
+                    raise ValueError('Customer conversion requires Microsoft Word on this computer.') from exc
+            plain = root / 'editable.docx'
             protection = self.protected.stage_editable_copy(converted, plain)
-            for index, result in enumerate(temperature_results):
-                if result['kind'] not in {'temperature', 'linked_temperature', 'external_reference'}:
-                    raise ValueError('Only selected temperature measurements belong in the customer temperature supplement.')
-                if self._contains_complete_temperature(plain, result):
-                    continue
-                tag = 'connlab-customer-temperature:' + result['result_id']
-                if result['kind'] == 'linked_temperature':
-                    from backend.infrastructure.office.report_authoring.linked_region import LinkedReportRegion
-                    LinkedReportRegion().append(plain, result['data'], tag)
-                    continue
-                self._append_temperature(plain, result, tag)
-                if result['kind'] == 'external_reference':
-                    continue
-                charted = Path(directory)/f'chart-{index}.docx'
-                self.temperature_chart(plain, charted, result['data']['analysis'], tag)
-                plain = charted
-            paginated = Path(directory)/'paginated.docx'
+            if sections:
+                supplemented = root / 'supplemented.docx'
+                insert_customer_supplements(plain, supplemented, sections)
+                plain = supplemented
+            paginated = root / 'paginated.docx'
             preserve_customer_table_starts(plain, paginated)
-            plain = paginated
-            output.write_bytes(plain.read_bytes())
-            self.protected.restore_password_protection(output, protection)
-
-    @staticmethod
-    def _contains_complete_temperature(path, result):
-        with ZipFile(path) as package:
-            root = etree.fromstring(package.read('word/document.xml'))
-            markers = {f"connlab-report-result:{result['result_id']}", f"connlab-customer-temperature:{result['result_id']}"}
-            matches = [section for section in root.xpath('//w:sdt', namespaces=NS)
-                if (tag := section.find('w:sdtPr/w:tag', NS)) is not None and tag.get(f'{{{NS["w"]}}}val') in markers]
-            if len(matches) > 1:
-                raise ValueError('Customer conversion duplicated a temperature evidence region. Review the generated copy before continuing.')
-            if not matches:
-                return False
-            section = matches[0]
-            charts = section.xpath('.//*[local-name()="chart"]')
-            if not section.xpath('.//w:tbl', namespaces=NS) or (result['kind'] != 'external_reference' and not charts):
-                raise ValueError('The converted temperature evidence is incomplete. Its editable table and curve must both be retained.')
-            return True
-
-    @staticmethod
-    def _append_temperature(path, result, tag):
-        with ZipFile(path) as source:
-            root = etree.fromstring(source.read('word/document.xml'))
-            body = root.find('w:body', NS)
-            section = node('sdt'); properties = node('sdtPr'); marker = node('tag')
-            marker.set(f'{{{NS["w"]}}}val', tag); properties.append(marker); section.append(properties)
-            content = node('sdtContent')
-            heading = node('p'); set_text(heading, f"{'Related report evidence' if result['kind'] == 'external_reference' else 'Temperature rise'} — Group {result['target']['group_label']}, Step {result['target']['step_token']}")
-            content.append(heading); content.append(measurement_table(result))
-            for line in result_notes(result):
-                paragraph = node('p'); set_text(paragraph, line); content.append(paragraph)
-            section.append(content)
-            style_generated_section(section, body.find('w:tbl', NS))
-            index = next((i for i, block in enumerate(body) if 'End of Report' in text(block)),
-                         len(body)-1 if len(body) and body[-1].tag == node('sectPr').tag else len(body))
-            body.insert(index, section)
-            buffer = BytesIO()
-            with ZipFile(buffer, 'w', ZIP_DEFLATED) as target:
-                for info in source.infolist():
-                    target.writestr(info, etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
-                        if info.filename == 'word/document.xml' else source.read(info.filename))
-        path.write_bytes(buffer.getvalue())
+            self.protected.restore_password_protection(paginated, protection)
+            with output.open('xb') as target:
+                target.write(paginated.read_bytes())
 
     def audit(self, source, *, sensitive_terms, forbidden_project_ids, reviewed_parts, expected_project_dl=None, scoped_references=()):
         allowed_regions = {}
@@ -104,7 +94,8 @@ class CustomerReportCopy:
             else:
                 expected = text(measurement_table(result)) + ''.join(result_notes(result))
             allowed_regions['connlab-report-result:' + result['result_id']] = expected
-            # Customer-only reference supplements have their own visible heading.
+            allowed_regions['connlab-customer-reference:' + result['result_id']] = text(customer_reference(result))
+            # Also recognize already-retained reports generated before customer summaries.
             customer_expected = expected if result['kind'] == 'linked_temperature' else f"Related report evidence — Group {result['target']['group_label']}, Step {result['target']['step_token']}" + expected
             allowed_regions['connlab-customer-temperature:' + result['result_id']] = customer_expected
         with self.protected.readable_copy(source) as readable:

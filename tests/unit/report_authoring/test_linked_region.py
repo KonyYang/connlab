@@ -142,7 +142,7 @@ def test_region_rejects_document_level_references_without_copying_or_remapping(r
     assert stream.getvalue() == original
 
 
-def test_linked_region_result_writer_and_customer_supplement_use_same_native_evidence(tmp_path):
+def test_linked_region_internal_keeps_native_evidence_and_customer_gets_scoped_maximum(tmp_path):
     from tests.unit.report_authoring.test_results_document import fixture_report, mechanical
     from backend.infrastructure.office.report_authoring.results_document import ReportResultsDocument
     from backend.infrastructure.office.report_authoring.customer_copy import CustomerReportCopy
@@ -155,15 +155,13 @@ def test_linked_region_result_writer_and_customer_supplement_use_same_native_evi
     ReportResultsDocument().update(source, output, result, result_table=0, result_row=1, appendix_table=1, appendix_title='Appendix B')
     assert source.read_bytes() == before
     class RemoveAppendixConverter:
-        def generate_customer_report(self, *, source_path, template_path, output_path):
+        def generate_customer_report(self, *, source_path, template_path, output_path, lineage_sha256):
             document = Document(); document.add_paragraph('Customer report'); document.save(output_path)
     customer = tmp_path/'customer.docx'
-    def no_recalculation(*args):
-        raise AssertionError('An adopted native chart must not be recalculated')
-    CustomerReportCopy(converter=RemoveAppendixConverter(), template=lambda: source, temperature_chart=no_recalculation).generate(output, customer, [result])
+    CustomerReportCopy(converter=RemoveAppendixConverter(), template=lambda: source).generate(output, customer, [result])
     with ZipFile(output) as internal, ZipFile(customer) as external:
         chart = next(internal.read(name) for name in internal.namelist() if name.endswith('/chart1.xml'))
-        assert chart == next(external.read(name) for name in external.namelist() if name.endswith('/chart1.xml'))
+        assert chart and not any(name.startswith('word/charts/') for name in external.namelist())
         text = ''.join(etree.fromstring(external.read('word/document.xml')).xpath('//*[local-name()="t"]/text()'))
         assert '26' in text and 'temperature only' in text
 

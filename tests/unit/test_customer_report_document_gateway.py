@@ -534,7 +534,7 @@ def test_customer_report_preserves_non_copper_material_and_absent_housing(
     ]
 
 
-def test_customer_report_filters_non_product_samples_and_keeps_other_sections(
+def test_customer_report_uses_reviewed_sample_decisions_and_preserves_original_lineage(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source = tmp_path / "internal.docx"
@@ -566,15 +566,29 @@ def test_customer_report_filters_non_product_samples_and_keeps_other_sections(
     before = source.read_bytes(), template.read_bytes()
     monkeypatch.setattr(gateway_module, "_generate_with_word", _generate_samples_with_fake_word)
 
+    with pytest.raises(ValueError, match="confirm which sample parts"):
+        CustomerReportDocumentGateway().generate_customer_report(
+            source_path=source, template_path=template, output_path=output,
+        )
+    from backend.infrastructure.office.customer_content_review import inspect_document, prepare_document
+    reviewed = inspect_document(source)
+    choices = {
+        f["id"]: "keep" if f["label"] == "Test Fixture" else "omit"
+        for f in reviewed["fields"] if f["kind"] == "sample"
+    }
+    prepared = prepare_document(source, tmp_path / "prepared.docx", choices)
     CustomerReportDocumentGateway().generate_customer_report(
-        source_path=source, template_path=template, output_path=output,
+        source_path=prepared, template_path=template, output_path=output,
+        lineage_sha256=reviewed["source_sha256"],
     )
 
     result = Document(output)
     assert [[cell.text for cell in row.cells] for row in result.tables[0].rows[1:]] == [
         ["Plug", "P-1", "L-1", "Copper Alloy", "Gold Lubricant", "PE456", "High Temperature Resin"],
         ["Receptacle", "P-2", "L-2", "Copper Alloy", "Gold", "PE456", "High Temperature Resin"],
+        ["Test Fixture", "Fixture-1", "L-4", "Steel", "N/A", "N/A", "N/A"],
     ]
+    assert CustomerReportDocumentGateway().read_source_report_sha256(output) == sha256(before[0]).hexdigest()
     assert [[cell.text for cell in row.cells] for row in result.tables[1].rows[1:]] == rows
     assert (source.read_bytes(), template.read_bytes()) == before
 
@@ -632,7 +646,7 @@ def test_customer_report_allocates_space_for_generic_housing_without_widening_ta
     assert (source.read_bytes(), template.read_bytes()) == before
 
 
-def _generate_samples_with_fake_word(source_path, target_path):
+def _generate_samples_with_fake_word(source_path, target_path, *, reviewed_samples=False):
     """Copy raw source body as Word would, then use production sanitization against mutable cells."""
     source = Document(source_path)
     target = Document(target_path)
@@ -642,7 +656,7 @@ def _generate_samples_with_fake_word(source_path, target_path):
     for element in source.element.body:
         if element.tag != qn("w:sectPr"):
             target.element.body.sectPr.addprevious(deepcopy(element))
-    gateway_module._sanitize_customer_body(_WordDocument(target))
+    gateway_module._sanitize_customer_body(_WordDocument(target), reviewed_samples=reviewed_samples)
     target.save(target_path)
 
 
@@ -1227,6 +1241,19 @@ def test_reads_heading_variants_without_changing_the_text(heading):
     _, text = gateway_module._lookup_heading(_WordDocument(document), number, canonical)
     assert text == heading
     assert document.paragraphs[0].text == heading
+
+
+def test_numbered_section_precedes_unnumbered_subheading_and_ignores_a_contents_entry():
+    document = Document()
+    document.add_paragraph("6. TEST RESULTS")
+    document.add_paragraph("Contents end")
+    document.add_paragraph("6. TEST RESULT")
+    document.add_paragraph("TEST RESULTS")
+    word = _WordDocument(document)
+    word.TablesOfContents = _WordCollection([SimpleNamespace(Range=word.Range(0, len("6. TEST RESULTS\r")))])
+    matched, text = gateway_module._lookup_heading(word, 6, "TEST RESULTS")
+    assert text == "6. TEST RESULT"
+    assert matched.Start == len("6. TEST RESULTS\rContents end\r")
 
 
 def test_saved_draft_finds_purpose_in_a_content_control_and_lists_only_missing_sections(tmp_path, monkeypatch):

@@ -1430,6 +1430,19 @@ def get_customer_report_source_reader(session, settings=None):
     )
 
 
+@lru_cache(maxsize=1)
+def get_customer_download_inputs():
+    from backend.application.customer_download_inputs import CustomerDownloadInputs
+    from backend.infrastructure.office.customer_content_review import inspect_document, prepare_document
+    return CustomerDownloadInputs(inspect_document, prepare_document)
+
+
+def get_customer_report_choices(settings: Settings = Depends(get_settings)):
+    from backend.api.runtime_binding import RuntimeBinding
+    from backend.infrastructure.files.customer_report_choices import CustomerReportChoices
+    return CustomerReportChoices(settings.data_dir / "customer_report_choices" / RuntimeBinding(settings).instance_id)
+
+
 def get_customer_report_projection_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
@@ -1521,8 +1534,7 @@ def get_report_authoring_service(session: Session = Depends(get_session), settin
         inventory=ReportInventory(ReportEvidenceInventory(LibraryFiles(settings), ProjectLibraryRepository(session))),
         photos=ReportPhotoEditor(),
         customer=CustomerReportCopy(converter=CustomerReportDocumentGateway(),
-            template=lambda: resolve_customer_report_template_path(get_test_report_template_resource_store(session)),
-            temperature_chart=insert_temperature_chart),
+            template=lambda: resolve_customer_report_template_path(get_test_report_template_resource_store(session))),
         results=ReportResultReader(TemperatureWorkbookGateway(), ToolsTemperatureService(TemperatureWorkbookGateway()), LinkedReportRegion()))
 
 
@@ -2520,6 +2532,7 @@ def get_tools_equipment_report_service(
 def get_tools_customer_report_job_service() -> ToolsCustomerReportJobService:
     """Own standalone Word-job state independently of one browser request."""
     from concurrent.futures import ThreadPoolExecutor
+    from backend.infrastructure.office.customer_report_notices import read_customer_notices
 
     settings = get_settings()
     pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="tools-customer-report")
@@ -2531,6 +2544,7 @@ def get_tools_customer_report_job_service() -> ToolsCustomerReportJobService:
             office_protector=OfficeFilePasswordGateway(),
         ),
         dispatch=pool.submit,
+        read_notices=read_customer_notices,
     )
 
 

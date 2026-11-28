@@ -404,6 +404,14 @@ def apply_photos(project_id: str, request: PhotoUpdateRequest, service=Depends(g
         raise _error(exc) from exc
 
 
+@router.post('/customer/inspect')
+def inspect_customer(project_id: str, request: CustomerCopyRequest, service=Depends(get_report_authoring_service)):
+    try:
+        return service.inspect_customer(project_id, request.model_dump())
+    except (LookupError, ValueError, OSError) as exc:
+        raise _error(exc) from exc
+
+
 @router.post('/customer/generate', dependencies=[Depends(require_project_folder_write_slot)])
 def generate_customer(project_id: str, request: CustomerCopyRequest, service=Depends(get_report_authoring_service)):
     try:
