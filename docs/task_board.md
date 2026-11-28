@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_INTAKE_EMAIL_FORM_20261128",
+    "task_id": "TASK_INTAKE_REQUIRED_ACTIONS_20261128",
     "tier": "standard",
-    "subject": "937ea4e8fd249fd3cb21f7db5f330600017d4ac1",
-    "summary": "Recognize the first laboratory request in an email and compare its form revision with the configured E-3718 template",
+    "subject": "b7b1736c9d71082a51ff7bd749c039921e26dba0",
+    "summary": "Show actionable missing fields before applying an LTR number",
     "disposition": "completed",
-    "decision_ref": "User explicitly authorized local closure of the email request auto-detection and E-3718 template revision task. Retain implementation and isolated verification, no publication.",
-    "closed_at": "2026-11-28T03:08:13.034812Z"
+    "decision_ref": "User accepted intake required-field actions and requested local closure only, 2026-11-28",
+    "closed_at": "2026-11-28T03:21:44.583020Z"
   },
   "retained_history": [
     {
@@ -885,86 +885,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly authorized local close and retention of the report work, then registration of the intake fix. Local only.",
       "closed_at": "2026-11-28T02:42:33.296005Z"
+    },
+    {
+      "task_id": "TASK_INTAKE_EMAIL_FORM_20261128",
+      "tier": "standard",
+      "subject": "937ea4e8fd249fd3cb21f7db5f330600017d4ac1",
+      "summary": "Recognize the first laboratory request in an email and compare its form revision with the configured E-3718 template",
+      "disposition": "completed",
+      "decision_ref": "User explicitly authorized local closure of the email request auto-detection and E-3718 template revision task. Retain implementation and isolated verification, no publication.",
+      "closed_at": "2026-11-28T03:08:13.034812Z"
     }
   ],
-  "tasks": {
-    "TASK_INTAKE_REQUIRED_ACTIONS_20261128": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
-      "branch": "codex/intake-required-actions-20261128",
-      "resources": [],
-      "integrated_head": "703c8840921afb39d7b45eb1949e9a8db1e4d904",
-      "task": {
-        "task_id": "TASK_INTAKE_REQUIRED_ACTIONS_20261128",
-        "summary": "Show actionable missing fields before applying an LTR number",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Intake required field summary, direct navigation to editable fields and narrow-screen validation",
-        "scope_paths": [
-          "frontend/src"
-        ],
-        "risk_reasons": [],
-        "activation_head": "c46074d49734a6938ff6349f6023648c416f6aac",
-        "started_at": "2026-11-28T03:10:12.443677Z",
-        "updated_at": "2026-11-28T03:18:12.928644Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_INTAKE_REQUIRED_ACTIONS_20261128",
-          "subject": "b7b1736c9d71082a51ff7bd749c039921e26dba0",
-          "summary": "List the required actions for LTR application and focus the corresponding project field or sample cell.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/new-project/NewProjectCompletionDock.test.tsx",
-            "frontend/src/features/new-project/NewProjectCompletionDock.tsx",
-            "frontend/src/features/new-project/NewProjectSetupConfirmationPanel.tsx",
-            "frontend/src/features/new-project/newProjectRequiredState.test.ts",
-            "frontend/src/features/new-project/newProjectRequiredState.ts",
-            "frontend/src/features/precheck/PrecheckFieldGrid.tsx",
-            "frontend/src/features/precheck/PrecheckLowerPanels.tsx",
-            "frontend/src/features/precheck/PrecheckSampleTable.tsx",
-            "frontend/src/features/precheck/precheckFieldConfig.ts",
-            "frontend/src/intake-inbox.css",
-            "frontend/src/pages/IntakeInboxPage.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "41 targeted frontend tests, TypeScript and Vite compile, and diff whitespace check passed."
-            },
-            {
-              "status": "passed",
-              "summary": "Isolated original email reproduced the four missing fields. Edge at 810 and 390 px verified click and keyboard focus, row 2 off-screen Quantity, specified LTR, cleared list and enabled Apply. No actual registration. Saved screenshots, original baseline and verified.json in retained_archives/intake-required-actions-20261128."
-            }
-          ],
-          "roles": {
-            "qa": {
-              "status": "passed",
-              "summary": "Independent local Edge smoke with isolated mail, responsive screenshots and final text/opaque dock verified."
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Independent review of the affected code and validation found no introduced blocker. Existing date input handling is unchanged."
-            },
-            "developer": {
-              "status": "passed",
-              "summary": "Observed the old generic alert, recorded failing tests before the change and linked each action to the actual field."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "b7b1736c9d71082a51ff7bd749c039921e26dba0",
-            "primary_before": "5370543762710fdc40d9cc11a0ea62a4ad0f3630",
-            "integrated_head": "703c8840921afb39d7b45eb1949e9a8db1e4d904",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
