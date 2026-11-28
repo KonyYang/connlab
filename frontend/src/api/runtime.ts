@@ -8,15 +8,41 @@ export async function bootstrapRuntime():Promise<RuntimeEnvironment> {
  if(!expected || value.environment!==expected)throw new Error("The frontend is connected to a different environment. Start the corresponding backend and retry.");
  bindRuntime(value);return value;
 }
-export async function boundFetch(input:RequestInfo|URL,init:RequestInit={}):Promise<Response>{
- const binding=requireRuntimeEnvironment();
- const headers=new Headers(init.headers);headers.set("X-ConnLab-Instance",binding.instance_id);headers.set("X-ConnLab-Environment",binding.environment);
- const response=await fetch(input,{...init,headers});
- const now=getRuntimeEnvironment();
- if(!now || now.instance_id!==binding.instance_id || now.environment!==binding.environment || response.headers.get("X-ConnLab-Instance")!==binding.instance_id || response.headers.get("X-ConnLab-Environment")!==binding.environment){
-  invalidateRuntimeBinding();throw new Error("The connected data instance changed. Reload ConnLab before continuing.");
- }
- return response;
+async function isRuntimeRejection(response: Response): Promise<boolean> {
+  if ((response.status !== 409 && response.status !== 503) ||
+      !response.headers.get("Content-Type")?.includes("application/json")) return false;
+  // These two middleware responses are sent before the backend can stamp a response.
+  const error = await response.json().catch(() => null);
+  return (response.status === 409 && error?.detail?.code === "RUNTIME_INSTANCE_MISMATCH") ||
+    (response.status === 503 && error?.detail?.code === "RUNTIME_INSTANCE_CHANGED");
+}
+
+export async function boundFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const binding = requireRuntimeEnvironment();
+  const headers = new Headers(init.headers);
+  headers.set("X-ConnLab-Instance", binding.instance_id);
+  headers.set("X-ConnLab-Environment", binding.environment);
+  const response = await fetch(input, {...init, headers});
+  const instance = response.headers.get("X-ConnLab-Instance");
+  const environment = response.headers.get("X-ConnLab-Environment");
+  const identified = instance === binding.instance_id && environment === binding.environment;
+  const mismatch = (instance !== null && instance !== binding.instance_id) ||
+    (environment !== null && environment !== binding.environment);
+  const rejected = !identified && !mismatch && await isRuntimeRejection(response);
+
+  if (getRuntimeEnvironment() !== binding) {
+    throw new Error("This request belongs to a previous ConnLab connection.");
+  }
+  if (mismatch || rejected) {
+    invalidateRuntimeBinding();
+    throw new Error("The connected data instance changed. Reload ConnLab before continuing.");
+  }
+  if (!identified) {
+    throw new Error(response.ok
+      ? `ConnLab could not verify the source of this response (HTTP ${response.status}).`
+      : `The ConnLab request failed (HTTP ${response.status}).`);
+  }
+  return response;
 }
 
 export function boundResourceUrl(path:string):string{

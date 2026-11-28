@@ -108,6 +108,8 @@ def backend_command(repo_root: Path) -> tuple[str, ...]:
         "--port",
         "8000",
         "--reload",
+        "--reload-dir",
+        str(repo_root / "backend"),
     )
 
 

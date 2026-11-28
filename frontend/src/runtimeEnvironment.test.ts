@@ -28,3 +28,42 @@ it("rejects a first connection to a backend from a different explicit frontend e
  await expect(bootstrapRuntime()).rejects.toThrow(/different environment/);
  expect(()=>storageNamespace("draft")).toThrow();meta.remove();
 });
+
+it.each([
+  [500, "Internal Server Error"],
+  [503, "Service unavailable"],
+  [409, '{"detail":{"code":"REPORT_CONFLICT"}}'],
+  [200, '{"private":"unverified result"}'],
+])("rejects an unidentified HTTP %i response without disconnecting the project", async (status, body) => {
+  bindRuntime(runtime("development", "a"));
+  runtimeSessionStorage.setItem("draft", "work in progress");
+  const fetcher = vi.fn()
+    .mockResolvedValueOnce(new Response(String(body), {status: Number(status), headers: {"Content-Type": "application/json"}}))
+    .mockResolvedValueOnce(new Response("project", {headers: {"X-ConnLab-Instance": "a", "X-ConnLab-Environment": "development"}}));
+  vi.stubGlobal("fetch", fetcher);
+
+  await expect(boundFetch("/api/report-status")).rejects.toThrow(String(status));
+  expect(runtimeSessionStorage.getItem("draft")).toBe("work in progress");
+  expect(await (await boundFetch("/api/project")).text()).toBe("project");
+});
+
+it.each([[409, "RUNTIME_INSTANCE_MISMATCH"], [503, "RUNTIME_INSTANCE_CHANGED"]] as const)(
+  "stops the session for an explicit HTTP %i instance guard", async (status, code) => {
+    bindRuntime(runtime("development", "a"));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({detail: {code}}, {status})));
+    await expect(boundFetch("/api/project")).rejects.toThrow(/changed/);
+    expect(() => storageNamespace("draft")).toThrow();
+  },
+);
+
+it("discards a delayed response from an old session without disconnecting the new one", async () => {
+  bindRuntime(runtime("development", "a"));
+  let complete!: (result: Response) => void;
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { complete = resolve; })));
+  const pending = boundFetch("/api/project");
+  bindRuntime(runtime("development", "b"));
+  runtimeSessionStorage.setItem("draft", "new instance draft");
+  complete(new Response("old instance data", {headers: {"X-ConnLab-Instance": "a", "X-ConnLab-Environment": "development"}}));
+  await expect(pending).rejects.toThrow();
+  expect(runtimeSessionStorage.getItem("draft")).toBe("new instance draft");
+});
