@@ -73,6 +73,8 @@ class ManagedDevelopmentRuntime:
             "--port",
             "8000",
             "--reload",
+            "--reload-dir",
+            str(self.repo_root / "backend"),
         )
 
     def _frontend_command(self) -> tuple[str, ...]:

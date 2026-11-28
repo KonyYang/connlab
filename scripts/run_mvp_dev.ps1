@@ -15,7 +15,7 @@ Write-Host "===================================="
 if (-not $SeparateWindows) {
     Write-Host "Opening one managed ConnLab desktop session."
     Write-Host "Closing the ConnLab window stops its backend and frontend process trees."
-    py -m backend.desktop.managed_development_launcher
+    & (Join-Path $PSScriptRoot "run_backend.ps1") -ManagedDesktop
     exit $LASTEXITCODE
 }
 
