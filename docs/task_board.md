@@ -878,7 +878,38 @@
       "closed_at": "2026-11-28T00:05:56.281043Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_INTAKE_EMAIL_FORM_20261128": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
+      "branch": "codex/intake-email-form-20261128",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_INTAKE_EMAIL_FORM_20261128",
+        "summary": "Recognize the first laboratory request in an email and compare its form revision with the configured E-3718 template",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Sequential email Word attachment discovery, request revision review, regression coverage and isolated acceptance",
+        "scope_paths": [
+          "frontend/src",
+          "backend/application",
+          "backend/api",
+          "backend/infrastructure",
+          "backend/modules",
+          "tests/unit",
+          "tests/integration"
+        ],
+        "risk_reasons": [],
+        "activation_head": "07681672544ecd718524953ba2f635e0fe902121",
+        "started_at": "2026-11-28T02:43:03.697003Z",
+        "updated_at": "2026-11-28T02:43:03.697003Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
