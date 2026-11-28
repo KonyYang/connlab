@@ -887,7 +887,32 @@
       "closed_at": "2026-11-28T02:42:33.296005Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_INTAKE_REQUIRED_ACTIONS_20261128": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
+      "branch": "codex/intake-required-actions-20261128",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_INTAKE_REQUIRED_ACTIONS_20261128",
+        "summary": "Show actionable missing fields before applying an LTR number",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Intake required field summary, direct navigation to editable fields and narrow-screen validation",
+        "scope_paths": [
+          "frontend/src"
+        ],
+        "risk_reasons": [],
+        "activation_head": "c46074d49734a6938ff6349f6023648c416f6aac",
+        "started_at": "2026-11-28T03:10:12.443677Z",
+        "updated_at": "2026-11-28T03:10:12.443677Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
