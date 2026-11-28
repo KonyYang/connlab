@@ -890,13 +890,14 @@
           "backend/infrastructure/office",
           "docs/PROJECT_CONTEXT.md",
           "frontend/src",
+          "scripts/run_backend.ps1",
           "tests/integration",
           "tests/unit"
         ],
         "risk_reasons": [],
         "activation_head": "5fdc1c92bf0bd71f0be3e4fb395c39bf64b79bc1",
         "started_at": "2026-11-28T01:01:32.730755Z",
-        "updated_at": "2026-11-28T02:18:13.992376Z",
+        "updated_at": "2026-11-28T02:23:59.520962Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
