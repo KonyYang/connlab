@@ -115,6 +115,59 @@ def test_generated_customer_report_records_current_internal_fingerprint(
     assert gateway.read_source_report_sha256(template) is None
 
 
+@pytest.mark.parametrize("event", ["success", "changed_source", "output_appeared", "word_failed"])
+def test_long_customer_paths_use_private_copies_and_publish_only_completed_outputs(
+    portable_tmp_path, monkeypatch, event,
+):
+    root = portable_tmp_path
+    source_parent = root / "internal"
+    source_parent.mkdir()
+    source = (source_parent / "short.docx" if event == "word_failed" else
+              source_parent / ("s" * (265 - len(str(source_parent)) - 6) + ".docx"))
+    output_parent = root / "review"
+    while len(str(output_parent)) < 225:
+        output_parent /= "nested-report-cache"
+    output_parent.mkdir(parents=True)
+    output = output_parent / "Customer Project Qualification Report Rev A.docx"
+    template = root / "E-4515.docx"
+    _minimal_document(source, customer=False)
+    _minimal_document(template, customer=True)
+    source_bytes, template_bytes = source.read_bytes(), template.read_bytes()
+    used = []
+
+    def generate(word_source, word_target):
+        used.extend([word_source, word_target])
+        assert len(str(word_source.resolve())) < 240
+        assert len(str(word_target.resolve())) < 240
+        assert word_source.read_bytes() == source_bytes
+        assert word_target.read_bytes() == template_bytes
+        if event == "changed_source":
+            source.write_bytes(b"new operator edits")
+        elif event == "output_appeared":
+            output.write_bytes(b"operator draft")
+        elif event == "word_failed":
+            raise ValueError("Word stopped")
+
+    monkeypatch.setattr(gateway_module, "_generate_with_word", generate)
+    gateway = CustomerReportDocumentGateway()
+    args = dict(source_path=source, template_path=template, output_path=output)
+    if event == "success":
+        assert gateway.generate_customer_report(**args) == output
+        assert gateway.read_source_report_sha256(output) == sha256(source_bytes).hexdigest()
+    elif event == "output_appeared":
+        with pytest.raises(FileExistsError):
+            gateway.generate_customer_report(**args)
+        assert output.read_bytes() == b"operator draft"
+    else:
+        with pytest.raises(ValueError, match="changed during" if event == "changed_source" else "Word stopped"):
+            gateway.generate_customer_report(**args)
+        assert not output.exists()
+    assert template.read_bytes() == template_bytes
+    assert source.read_bytes() == (b"new operator edits" if event == "changed_source" else source_bytes)
+    assert all(not path.exists() for path in used)
+    assert not list(output_parent.glob(".customer-report.*"))
+
+
 def test_customer_report_gateway_retries_transient_word_file_lock(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -226,14 +279,14 @@ def test_customer_report_restores_template_password_protection_after_audit(
 
 
 def test_customer_report_gateway_uses_short_word_working_copy_names(
-    tmp_path: Path,
+    portable_tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    source = tmp_path / "internal.docx"
+    source = portable_tmp_path / "internal.docx"
     _minimal_document(source, customer=False)
-    template = tmp_path / "E-4515_F.docx"
+    template = portable_tmp_path / "E-4515_F.docx"
     _minimal_document(template, customer=True)
-    output = tmp_path / ("DL-001-CR " + "Long qualification report name " * 5 + ".docx")
+    output = portable_tmp_path / ("DL-001-CR " + "Long qualification report name " * 5 + ".docx")
     opened_targets: list[Path] = []
 
     def capture_word_target(_source_path: Path, target_path: Path) -> None:
