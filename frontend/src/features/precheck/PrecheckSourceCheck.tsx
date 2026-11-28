@@ -26,8 +26,8 @@ export function PrecheckSourceCheck({
           <UiIcon name="clock" />
         </div>
         <div className="metadata-card">
-          <FieldBadge label="Form No." value={fallbackValue("form_no", activeCase.fields) || "E-7818"} />
-          <FieldBadge label="Revision" value={fallbackValue("revision", activeCase.fields) || "H"} />
+          <FieldBadge label="Form No." value={fallbackValue("form_no", activeCase.fields) || "Not detected"} />
+          <FieldBadge label="Revision" value={fallbackValue("revision", activeCase.fields) || "Not detected"} />
           <FieldBadge label="Reference doc." value={fallbackValue("reference_doc", activeCase.fields) || "QS-03-008"} />
         </div>
         <div className="template-warning-card">

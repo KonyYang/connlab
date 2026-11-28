@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -107,6 +108,7 @@ class IntakePrecheckService:
         file_asset_repository: FileAssetRepositoryPort,
         precheck_repository: PrecheckResultRepositoryPort,
         settings: Settings,
+        revision_check: Callable[[str | None, str | None], str | None] | None = None,
     ) -> None:
         """Create an intake/precheck service with storage dependencies."""
         self._projects = project_repository
@@ -117,6 +119,7 @@ class IntakePrecheckService:
         self._settings = settings
         self._parser = ApplicationFormParser()
         self._engine = PrecheckEngine()
+        self._revision_check = revision_check
 
     def upload_application_form(
         self,
@@ -152,6 +155,7 @@ class IntakePrecheckService:
         result = self._engine.run(
             parsed,
             registered_attachments=self._registered_supporting_attachments(form.project_id),
+            revision_warning=self._revision_check(parsed.form_no, parsed.form_rev) if self._revision_check else None,
         )
         persisted = with_persistent_ids(result, application_form_id)
         return self._prechecks.create(persisted)

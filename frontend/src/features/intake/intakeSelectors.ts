@@ -236,10 +236,13 @@ function assetKindLabelFromKind(kind: IntakeAttachmentKind, extension: string): 
 }
 
 function compareAttachments(left: IntakeAsset, right: IntakeAsset): number {
-  const kindRankDiff = attachmentKindRank(left) - attachmentKindRank(right);
+  const leftRank = attachmentKindRank(left);
+  const kindRankDiff = leftRank - attachmentKindRank(right);
   if (kindRankDiff !== 0) {
     return kindRankDiff;
   }
+  // Keep Word files in email order, including when several request forms are attached.
+  if (leftRank === 0) return 0;
 
   const nameDiff = left.original_name.localeCompare(right.original_name, undefined, {
     sensitivity: "base",

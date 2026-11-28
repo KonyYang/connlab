@@ -476,6 +476,8 @@ def import_direct_word_application_form(
 def upload_email_package_application_form(
     package_id: str,
     file: UploadFile = File(...),
+    resolution_action: str | None = Form(default=None),
+    resolution_case_id: str | None = Form(default=None),
     service: EmailPackageApplicationFormService = Depends(
         get_email_package_application_form_service
     ),
@@ -488,7 +490,10 @@ def upload_email_package_application_form(
             shutil.copyfileobj(file.file, handle)
         try:
             return _form_selection_response(
-                service.upload_application_form(package_id, temporary_path)
+                service.upload_application_form(
+                    package_id, temporary_path,
+                    resolution_action=resolution_action, resolution_case_id=resolution_case_id,
+                )
             )
         except EmailPackageApplicationFormNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc

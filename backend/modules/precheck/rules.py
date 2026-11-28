@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 
 EXPECTED_FORM_NO = "E-3718"
-EXPECTED_FORM_REV = "H"
 
 
 def check_form_number(context: "RuleContext") -> list[PrecheckIssue]:
@@ -24,9 +23,9 @@ def check_form_number(context: "RuleContext") -> list[PrecheckIssue]:
 
 def check_form_revision(context: "RuleContext") -> list[PrecheckIssue]:
     """Validate expected form revision."""
-    if _normalize(context.form.form_rev) == _normalize(EXPECTED_FORM_REV):
+    if not context.revision_warning:
         return []
-    return [_make_issue("FORM-002: Form Rev must be H.", "form_rev")]
+    return [_make_issue(f"FORM-002: {context.revision_warning}", "form_rev", level=IssueLevel.WARNING)]
 
 
 def check_requestor_fields(context: "RuleContext") -> list[PrecheckIssue]:

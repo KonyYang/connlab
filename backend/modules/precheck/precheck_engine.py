@@ -18,6 +18,7 @@ class RuleContext:
 
     form: ParsedApplicationForm
     registered_attachments: tuple[str, ...] = ()
+    revision_warning: str | None = None
 
 
 Rule = Callable[[RuleContext], list[PrecheckIssue]]
@@ -34,11 +35,14 @@ class PrecheckEngine:
         self,
         form: ParsedApplicationForm,
         registered_attachments: Sequence[str] = (),
+        *,
+        revision_warning: str | None = None,
     ) -> PrecheckResult:
         """Run precheck rules and return a domain result."""
         context = RuleContext(
             form=form,
             registered_attachments=tuple(registered_attachments),
+            revision_warning=revision_warning,
         )
         issues: list[PrecheckIssue] = []
         for rule in self._rules:

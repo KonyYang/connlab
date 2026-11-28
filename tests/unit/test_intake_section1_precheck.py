@@ -6,7 +6,7 @@ from backend.application.intake_section1_precheck import (
 
 def test_revision_mismatch_is_warning_not_blocker() -> None:
     """Revision mismatch stays visible but does not block project creation."""
-    issues = evaluate_section1_precheck(_base_payload(revision="A"))
+    issues = evaluate_section1_precheck(_base_payload(revision="A"), revision_warning="Expected Rev J, received Rev A.")
 
     revision = [issue for issue in issues if issue.field_key == "revision"]
     assert revision

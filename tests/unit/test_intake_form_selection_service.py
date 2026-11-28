@@ -794,6 +794,63 @@ def test_selection_reinitialize_same_package_form_clears_manual_overrides() -> N
     assert "draft-a" not in draft_store.drafts
 
 
+@pytest.mark.parametrize("shared_original", [False, True])
+def test_reinitializing_with_a_new_upload_rebinds_only_the_selected_case(tmp_path: Path, shared_original: bool) -> None:
+    original = _asset("original", IntakeAssetRole.SELECTED_APPLICATION_FORM)
+    upload = tmp_path / original.original_name
+    document = Document()
+    document.add_paragraph("Requested By: New Requester")
+    document.save(upload)
+    incoming = _asset_with_path("new-upload", IntakeAssetRole.APPLICATION_FORM_CANDIDATE, upload)
+    existing = IntakeCase(
+        case_id="case-a", package_id="pkg-1", selected_form_asset_id=original.asset_id,
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    other = replace(existing, case_id="case-b", selected_form_asset_id=original.asset_id if shared_original else "other")
+    other_draft = IntakeDraft(draft_id="draft-b", case_id=other.case_id, parsed_fields_json='{"requester":"Other"}')
+    service, assets, cases, drafts = _service(
+        [_email_asset(), original, incoming, _asset("other", IntakeAssetRole.SELECTED_APPLICATION_FORM)],
+        cases=[existing, other],
+        drafts=[IntakeDraft(draft_id="draft-a", case_id=existing.case_id, parsed_fields_json="{}",
+                           manual_overrides_json='{"requester":"Old edits"}'), other_draft],
+    )
+
+    result = service.select_form_asset("pkg-1", incoming.asset_id, resolution_action="replace_existing",
+                                       resolution_case_id=existing.case_id)
+
+    assert result.case.case_id == existing.case_id
+    assert result.case.selected_form_asset_id == incoming.asset_id
+    assert result.draft.manual_overrides_json is None and result.draft.draft_id != "draft-a"
+    assert '"requester": "New Requester"' in result.draft.parsed_fields_json
+    assert len(cases.list_by_package("pkg-1")) == 2
+    assert drafts.get_by_case(other.case_id) == other_draft
+    assert assets.get(incoming.asset_id).asset_role is IntakeAssetRole.SELECTED_APPLICATION_FORM
+    expected_role = IntakeAssetRole.SELECTED_APPLICATION_FORM if shared_original else IntakeAssetRole.APPLICATION_FORM_CANDIDATE
+    assert assets.get(original.asset_id).asset_role is expected_role
+
+
+@pytest.mark.parametrize("action", ["open_existing", "replace_existing"])
+@pytest.mark.parametrize("original_confirmed", [False, True])
+def test_stale_duplicate_decision_does_not_create_another_draft(action: str, original_confirmed: bool) -> None:
+    original = _asset("old-form", IntakeAssetRole.SELECTED_APPLICATION_FORM)
+    incoming = replace(_asset("new-form", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+                       original_name=original.original_name)
+    case = IntakeCase(case_id="previous", package_id="pkg-1", selected_form_asset_id=original.asset_id,
+                      status=IntakeCaseStatus.CONFIRMED, confirmed_project_id="confirmed-project")
+    draft = IntakeDraft(draft_id="previous-draft", case_id=case.case_id, parsed_fields_json="{}")
+    service, assets, cases, drafts = _service(
+        [_email_asset(), original, incoming],
+        cases=[case] if original_confirmed else [], drafts=[draft] if original_confirmed else [],
+    )
+
+    with pytest.raises(IntakeSelectionError, match="Reload"):
+        service.select_form_asset("pkg-1", incoming.asset_id, resolution_action=action, resolution_case_id=case.case_id)
+
+    assert cases.list_by_package("pkg-1") == ([case] if original_confirmed else [])
+    assert list(drafts.drafts.values()) == ([draft] if original_confirmed else [])
+    assert assets.get(incoming.asset_id) == incoming
+
+
 def test_selection_creates_separate_case_for_same_email_different_form() -> None:
     existing_package = replace(_package(), package_id="pkg-existing")
     incoming_package = _package()

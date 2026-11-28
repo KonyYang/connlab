@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -169,6 +170,7 @@ class IntakeCaseReviewService:
         case_store: IntakeCaseStore,
         draft_store: IntakeDraftStore,
         ltr_store: LtrRecordStore | None = None,
+        revision_check: Callable[[str | None, str | None], str | None] | None = None,
     ) -> None:
         """Create the service from explicit repository ports."""
         self._packages = package_store
@@ -176,6 +178,7 @@ class IntakeCaseReviewService:
         self._cases = case_store
         self._drafts = draft_store
         self._ltrs = ltr_store
+        self._revision_check = revision_check
 
     def get_package_review(self, package_id: str) -> IntakeCaseReview:
         """Return review data for all cases in one package."""
@@ -429,7 +432,16 @@ class IntakeCaseReviewService:
             if isinstance(raw_project_setup, dict)
             else self._default_project_setup(draft_fields)
         )
-        precheck_issues = evaluate_section1_precheck(draft_fields)
+        revision_warning = None
+        if self._revision_check and selected_asset and (
+            selected_asset.extension or selected_asset.stored_path.suffix
+        ).lower().lstrip(".") == "docx":
+            # Compare the revision read from the received file, including after manual field edits.
+            source_fields = self._json_object(draft.parsed_fields_json)
+            revision_warning = self._revision_check(
+                self._text(source_fields.get("form_no")), self._text(source_fields.get("revision"))
+            )
+        precheck_issues = evaluate_section1_precheck(draft_fields, revision_warning=revision_warning)
         parsed_fields = clear_disallowed_section1_values(draft_fields)
         freeze_state = self._freeze_state(intake_case)
         return IntakeCaseReviewItem(

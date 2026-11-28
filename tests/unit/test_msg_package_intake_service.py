@@ -129,6 +129,29 @@ def test_msg_package_import_marks_no_form_package_for_selection(
     assert result.candidates == ()
 
 
+def test_import_returns_attachments_in_mail_order_after_role_detection(tmp_path: Path) -> None:
+    class ReverseListingStore(AssetStore):
+        def list_by_package(self, package_id: str) -> list[IntakeAsset]:
+            return list(reversed(super().list_by_package(package_id)))
+
+    source = _msg_bytes([
+        "Subject: Mixed attachments",
+        "Attachment: Z-request.docx; content=first Word",
+        "Attachment: drawing.pdf; content=drawing",
+        "Attachment: A-request.docx; content=second Word",
+    ])
+    result = _service(tmp_path, asset_store=ReverseListingStore()).import_msg_package(
+        "request.msg", BytesIO(source)
+    )
+
+    assert [(asset.original_name, asset.asset_role) for asset in result.assets] == [
+        ("request.msg", IntakeAssetRole.EMAIL_SOURCE),
+        ("Z-request.docx", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+        ("drawing.pdf", IntakeAssetRole.SUPPORTING_ATTACHMENT),
+        ("A-request.docx", IntakeAssetRole.APPLICATION_FORM_CANDIDATE),
+    ]
+
+
 def test_msg_package_import_allows_same_email_until_draft_identity_is_known(tmp_path: Path) -> None:
     package_store = PackageStore()
     asset_store = AssetStore()

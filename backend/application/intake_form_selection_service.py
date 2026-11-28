@@ -177,10 +177,9 @@ class IntakeFormSelectionService:
         if asset.package_id != package.package_id:
             raise IntakeSelectionError("Selected asset does not belong to the intake package.")
 
-        # Check if this asset is already selected for an unconfirmed case
-        # This prevents duplicate detection when user re-clicks the same attachment
-        # Skip this optimization when explicitly requesting replace/reinitialize
-        if not replace_existing and resolution_action != "replace_existing":
+        # A duplicate decision must recheck its target before returning any draft.
+        resolving_existing = resolution_action in {"open_existing", "replace_existing"}
+        if not replace_existing and not resolving_existing:
             existing_cases = self._case_store.list_by_package(package_id)
             for case in existing_cases:
                 if (
@@ -204,11 +203,9 @@ class IntakeFormSelectionService:
             raise IntakeSelectionError(eligibility.message)
 
         duplicate = self._find_selected_form_duplicate(package, asset)
-        reinitialize_same_package_draft = (
-            duplicate is not None
-            and duplicate.existing_package_id == package.package_id
-            and resolution_action == "replace_existing"
-        )
+        if duplicate is None and resolving_existing and resolution_case_id:
+            raise IntakeSelectionError("The original draft is no longer available. Reload the package and check its current drafts.")
+        replace_case_id = None
         if duplicate is not None:
             resolved = self._resolve_duplicate(
                 duplicate,
@@ -218,10 +215,14 @@ class IntakeFormSelectionService:
             )
             if resolved is not None:
                 return resolved
+            if resolution_action == "replace_existing" and duplicate.existing_package_id == package.package_id:
+                replace_case_id = duplicate.existing_case_id
         selected_asset = self._asset_store.update(
             replace(asset, asset_role=IntakeAssetRole.SELECTED_APPLICATION_FORM)
         )
-        case_selection = self._create_or_update_case(package.package_id, selected_asset.asset_id)
+        case_selection = self._create_or_update_case(
+            package.package_id, selected_asset.asset_id, replace_case_id=replace_case_id
+        )
         draft_payload, parser_warnings = self._parse_selected_asset(selected_asset)
         draft = self._create_or_update_draft(
             case_selection.case.case_id,
@@ -229,7 +230,7 @@ class IntakeFormSelectionService:
             parser_warnings,
             keep_manual_overrides=case_selection.same_selected_asset
             and not replace_existing,
-            reinitialize=reinitialize_same_package_draft,
+            reinitialize=replace_case_id is not None,
         )
 
         return FormSelectionResult(
@@ -388,23 +389,30 @@ class IntakeFormSelectionService:
             return True
         return self._normalized_extension(asset) in self._word_extensions
 
-    def _create_or_update_case(self, package_id: str, selected_asset_id: str) -> _CaseSelection:
+    def _create_or_update_case(
+        self, package_id: str, selected_asset_id: str, *, replace_case_id: str | None
+    ) -> _CaseSelection:
         existing_cases = self._case_store.list_by_package(package_id)
         for current in existing_cases:
-            if (
-                current.selected_form_asset_id == selected_asset_id
-                and self._can_reuse_case(current)
+            same_asset = current.selected_form_asset_id == selected_asset_id
+            matches = current.case_id == replace_case_id if replace_case_id else same_asset
+            if not matches or not self._can_reuse_case(current):
+                continue
+            if not same_asset and current.selected_form_asset_id and not any(
+                other.case_id != current.case_id and other.selected_form_asset_id == current.selected_form_asset_id
+                for other in existing_cases
             ):
-                return _CaseSelection(
-                    case=self._case_store.update(
-                        replace(
-                            current,
-                            status=IntakeCaseStatus.NEEDS_REVIEW,
-                            confirmed_project_id=None,
-                        )
-                    ),
-                    same_selected_asset=True,
-                )
+                previous = self._asset_store.get(current.selected_form_asset_id)
+                if previous and previous.asset_role is IntakeAssetRole.SELECTED_APPLICATION_FORM:
+                    self._asset_store.update(replace(previous, asset_role=IntakeAssetRole.APPLICATION_FORM_CANDIDATE))
+            return _CaseSelection(
+                case=self._case_store.update(
+                    replace(current, selected_form_asset_id=selected_asset_id, status=IntakeCaseStatus.NEEDS_REVIEW)
+                ),
+                same_selected_asset=same_asset,
+            )
+        if replace_case_id is not None:
+            raise IntakeSelectionError("The selected draft is no longer available to reinitialize. Reload the package.")
         return _CaseSelection(
             case=self._case_store.create(
                 IntakeCase(
