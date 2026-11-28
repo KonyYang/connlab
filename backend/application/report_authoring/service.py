@@ -522,17 +522,34 @@ class ReportAuthoringService:
         return self._updated_copy(state, context, output, 'photo_replacement', request['expected_revision'],
             lambda source, target: self.photos.update(source, target, replacements), revalidate, {'assignments': evidence})
 
-    def generate_customer(self, project_id, request):
+    def _customer_source(self, project_id, request):
         state, context = self._editable(project_id, request['expected_revision'])
         output = self._current_output(state, request['output_id'])
         artifact = ReportSource(**output['artifact'])
         if artifact.sha256 != request['output_sha256']:
             raise ReportAuthoringConflict('The reviewed Internal Report copy changed. Reload before customer conversion.')
         self.assets.read(project_id, artifact)
-        temperatures = [self._confirmed_result(state, context, key) for key in request['temperature_result_ids']]
+        return state, context, output, artifact
+
+    def inspect_customer(self, project_id, request):
+        state, context, _, artifact = self._customer_source(project_id, request)
+        source = self.assets.path(project_id, artifact)
+        temperatures = self._customer_results(state, context, source, request['temperature_result_ids'], reviewed=True)
+        review = self.customer.inspect_content(source, temperatures)
+        if review['source_sha256'] != artifact.sha256:
+            raise ReportAuthoringConflict('The internal report changed during inspection. Reload it before continuing.')
+        choices = next((item['customer_decisions'] for item in reversed(state.customer_outputs)
+                        if item.get('review_source_sha256') == artifact.sha256), {})
+        return {**review, 'decisions': choices}
+
+    def _customer_results(self, state, context, source, selected_ids, *, reviewed):
+        applied = set(self.active_result_ids(state))
+        if reviewed:
+            selected_ids = list(dict.fromkeys([*selected_ids, *(result['result_id'] for result in state.results
+                if result['kind'] == 'temperature' and result['result_id'] in applied)]))
+        temperatures = [self._confirmed_result(state, context, key) for key in selected_ids]
         if any(item['kind'] not in {'temperature', 'linked_temperature'} for item in temperatures):
             raise ValueError('Choose temperature results for the complete customer measurement supplement.')
-        applied = set(self.active_result_ids(state))
         # Adopted native regions are already reviewed evidence, not a request to
         # recalculate them through the temperature Tools adapter.
         for retained in state.results:
@@ -542,11 +559,19 @@ class ReportAuthoringService:
             raise ValueError('Confirm customer disclosure permission for each adopted related-report region before conversion.')
         if any(result['result_id'] not in applied for result in temperatures):
             raise ValueError('Apply each selected temperature result to the current Internal Report copy first.')
-        if any(result['kind'] == 'temperature' and result['result_id'] in applied and result['result_id'] not in request['temperature_result_ids'] for result in state.results):
+        if any(result['kind'] == 'temperature' and result['result_id'] in applied and result['result_id'] not in selected_ids for result in state.results):
             raise ValueError('Include all temperature results applied to this Internal Report; a customer copy must not omit their measurement tables or curves.')
         for result in temperatures:
-            if self.result_writer.inspect(self.assets.path(project_id, artifact), result)['unreconciled_temperature_evidence']:
+            if self.result_writer.inspect(source, result)['unreconciled_temperature_evidence']:
                 raise ValueError('Old temperature evidence remains in the result Group. Explicitly replace its complete table, curve and conclusion before customer conversion.')
+        return temperatures
+
+    def generate_customer(self, project_id, request):
+        state, context, output, artifact = self._customer_source(project_id, request)
+        decisions = request.get('customer_decisions')
+        source_path = self.assets.path(project_id, artifact)
+        temperatures = self._customer_results(state, context, source_path, request['temperature_result_ids'],
+                                             reviewed=decisions is not None)
         def revalidate():
             current, now = self._editable(project_id, request['expected_revision'])
             if now != context:
@@ -554,8 +579,13 @@ class ReportAuthoringService:
             self.assets.read(project_id, artifact)
             for result in temperatures:
                 self._confirmed_result(current, now, result['result_id'])
-        generated = self.drafts.update(project_id, context['dl_number'], self.assets.path(project_id, artifact),
-            lambda source, target: self.customer.generate(source, target, temperatures), revalidate,
+        def write_copy(source, target):
+            if decisions is None:
+                return self.customer.generate(source, target, temperatures)
+            return self.customer.generate_reviewed(source, target, temperatures, decisions, artifact.sha256)
+
+        generated = self.drafts.update(project_id, context['dl_number'], source_path,
+            write_copy, revalidate,
             matrix_id=context['matrix_id'], make_current=False)
         content = generated.file_path.read_bytes()
         customer = ReportSource(uuid4().hex, 'customer_copy', f"{context['dl_number']}-CR-review.docx",
@@ -564,6 +594,9 @@ class ReportAuthoringService:
         record = {'output_id': customer.source_id, 'artifact': asdict(customer), 'base_source_id': state.base_source_id,
             'parent_output_id': output['output_id'], 'operation': 'customer_projection', 'status': 'needs_review',
             'issues': ['Customer review copy only. Not formally released.'], 'temperature_result_ids': [item['result_id'] for item in temperatures]}
+        if decisions is not None:
+            record.update(review_source_sha256=artifact.sha256, customer_decisions=decisions,
+                          review_notices=self.customer.review_notices(generated.file_path))
         return self.repository.save(replace(state, customer_outputs=(*state.customer_outputs, record)), request['expected_revision'])
 
     def customer_check(self, project_id, request):

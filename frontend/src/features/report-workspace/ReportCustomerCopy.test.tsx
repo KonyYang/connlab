@@ -20,14 +20,13 @@ beforeEach(() => {
   vi.mocked(api.checkCustomerReviewCopy).mockResolvedValue(state);
 });
 
-it('offers generation for the current working version and keeps an outdated copy separately downloadable', async () => {
+it('keeps an older copy downloadable without offering to save it as the current version', async () => {
   render(<ReportCustomerCopy {...props} state={{ ...state, customer_outputs: [{ ...customer, parent_output_id: 'older' }] }} />);
   expect(screen.getByRole('button', { name: 'Download previous customer copy' })).toBeTruthy();
   expect(screen.queryByRole('checkbox')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Save reviewed reports to project folder' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Generate updated customer copy' }));
-  await waitFor(() => expect(api.generateCustomerReviewCopy).toHaveBeenCalledWith('P1', expect.objectContaining({
-    output_id: 'internal', output_sha256: internal.artifact.sha256 })));
+  expect(screen.getByText(/Generate a customer report from the current working copy/)).toBeTruthy();
+  expect(api.generateCustomerReviewCopy).not.toHaveBeenCalled();
 });
 
 it('requires review of this version with optional search terms tucked away, and sends exact review choices', async () => {

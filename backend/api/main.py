@@ -96,6 +96,7 @@ from backend.api.routes_test_report_draft import router as test_report_draft_rou
 from backend.api.routes_report_workspace import router as report_workspace_router
 from backend.api.routes_report_authoring import router as report_authoring_router
 from backend.api.routes_tools import router as tools_router
+from backend.api.routes_customer_download import router as customer_download_router
 from backend.api.routes_tools_temperature import router as tools_temperature_router
 from backend.api.routes_tools_mechanical_summary import router as tools_mechanical_summary_router
 from backend.api.routes_local_identity import router as local_identity_router
@@ -279,6 +280,7 @@ _include_project_router(test_report_draft_router)
 _include_project_router(report_workspace_router)
 _include_project_router(report_authoring_router)
 _include_project_router(tools_router)
+app.include_router(customer_download_router)
 _include_project_router(tools_matrix_router)
 app.include_router(project_library_router)
 app.include_router(material_receipts_router)

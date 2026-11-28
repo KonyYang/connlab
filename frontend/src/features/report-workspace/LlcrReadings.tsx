@@ -30,11 +30,13 @@ export function LlcrReadings({ readings }: { readings: LlcrSampleReading[] }) {
   const stages = Array.from(group.stages.values()).sort((a, b) => a.step_token.localeCompare(b.step_token, "en", { numeric: true }));
   const rows = Array.from(group.rows.entries()).sort(([, a], [, b]) => a.sample - b.sample);
   const showSheets = new Set(rows.map(([, row]) => row.sheet)).size > 1;
+  const showPoints = showSheets || new Set(rows.map(([, row]) => row.point)).size > 1;
   return <div className="llcr-readings">
     <div className="llcr-reading-controls">
       {groups.size > 1 ? <label>Group <select aria-label="Group" value={groupLabel} onChange={event => setSelection(event.target.value)}>
         {Array.from(groups.keys(), label => <option key={label} value={label}>{label}</option>)}
       </select></label> : <strong>Group {groupLabel}</strong>}
+      {!showPoints && <span>{rows[0][1].sheet} · Point {rows[0][1].point}</span>}
       <label>Values <select aria-label="Values" value={reportValues ? "report" : "workbook"} onChange={event => setReportValues(event.target.value === "report")}>
         <option value="workbook">Workbook readings</option>
         <option value="report">Report values</option>
@@ -42,13 +44,13 @@ export function LlcrReadings({ readings }: { readings: LlcrSampleReading[] }) {
     </div>
     <div className="llcr-reading-scroll" tabIndex={0} role="region" aria-label={`Group ${groupLabel} readings`}>
       <table aria-label={`Group ${groupLabel} sample readings`}>
-        <thead><tr><th scope="col">Sample</th><th scope="col">Point</th>
+        <thead><tr><th scope="col">Sample</th>{showPoints && <th scope="col">Point</th>}
           {stages.map(stage => <th scope="col" key={stage.step_token}>{stage.stage_label}
             <small>Step {stage.step_token}{reportValues && (stage.stage === "initial" ? " · Corrected" : " · ΔR")}</small>
           </th>)}
         </tr></thead>
         <tbody>{rows.map(([key, row]) => <tr key={key}>
-          <th scope="row">{String(row.sample).padStart(2, "0")}</th><td>{row.point}{showSheets && <small>{row.sheet}</small>}</td>
+          <th scope="row">{String(row.sample).padStart(2, "0")}</th>{showPoints && <td>{row.point}{showSheets && <small>{row.sheet}</small>}</td>}
           {stages.map(stage => <ReadingCell key={stage.step_token} reading={row.byStep.get(stage.step_token)} reportValues={reportValues} />)}
         </tr>)}</tbody>
       </table>

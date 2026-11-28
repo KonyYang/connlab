@@ -1,0 +1,19 @@
+.customer-content-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:12px; background:#17203355; }
+.customer-content-dialog { box-sizing:border-box; width:min(100%,620px); max-height:90vh; overflow:auto; background:var(--color-surface,#fbfdff); color:var(--color-ink,#172033); padding:20px; border:1px solid #d8e0ea; border-radius:12px; overflow-wrap:anywhere; }
+.customer-content-dialog h2, .customer-content-dialog h3, .customer-content-dialog p { margin:0 0 8px; }
+.customer-content-dialog .customer-content-source { color:#566477; margin-bottom:16px; }
+.customer-sample-choice { display:flex; flex-wrap:wrap; gap:12px; margin:8px 0; padding:7px 12px; min-width:0; border:1px solid #d8e0ea; border-radius:6px; }
+.customer-sample-choice label { display:inline-flex; flex:0 0 auto; align-items:center; gap:6px; white-space:nowrap; }
+.customer-sample-choice input[type="radio"] { flex:0 0 16px; width:16px; height:16px; min-height:0; margin:0; padding:0; accent-color:var(--color-primary); }
+.customer-sample-choice small { color:#566477; }
+.customer-detail-choice { display:grid; gap:5px; margin:12px 0; }
+.customer-detail-choice input, .customer-detail-choice select { box-sizing:border-box; width:100%; min-width:0; padding:8px; }
+.customer-content-preview { margin-top:14px; border-block:1px solid #d8e0ea; padding-block:10px; }
+.customer-content-preview summary { cursor:pointer; color:#164aa3; }
+.customer-content-preview section { overflow:auto; }
+.customer-content-preview table { border-collapse:collapse; width:100%; margin:10px 0; }
+.customer-content-preview caption { text-align:left; font-weight:600; }
+.customer-content-preview td, .customer-content-preview th { border-bottom:1px solid #d8e0ea; padding:6px; text-align:left; }
+.customer-content-dialog footer { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.customer-download-feedback { display:grid; gap:6px; min-width:0; overflow-wrap:anywhere; }
+.customer-download-feedback:empty { display:none; }

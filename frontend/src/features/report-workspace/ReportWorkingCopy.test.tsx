@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
+import {inspectProjectCustomerSource} from '../../api/customerContent';
+vi.mock('../../api/customerContent', () => ({inspectProjectCustomerSource:vi.fn()}));
 import * as api from '../../api/client';
 import * as authoring from '../../api/reportAuthoring';
 import { ReportWorkspace } from './ReportWorkspace';
@@ -10,11 +12,11 @@ vi.mock('../../api/client', async () => ({
   fetchReportWorkspace: vi.fn(), fetchCurrentReport: vi.fn(), fetchCurrentCustomerReport: vi.fn(),
   fetchLatestProjectCustomerReportJob: vi.fn(), fetchReportUpdateSource: vi.fn(),
   updateCurrentReportLlcr: vi.fn(), updateEquipmentListOneClick: vi.fn(),
-  generateInternalReport: vi.fn(), startProjectCustomerReportJob: vi.fn(),
+  previewInternalReportGeneration: vi.fn(), generateInternalReport: vi.fn(), startProjectCustomerReportJob: vi.fn(),
 }));
 vi.mock('../../api/reportAuthoring', async () => ({
   ...await vi.importActual<typeof import('../../api/reportAuthoring')>('../../api/reportAuthoring'),
-  getReportAuthoring: vi.fn(), updateWorkingCopyLlcr: vi.fn(), updateWorkingCopyEquipment: vi.fn(),
+  downloadReportArtifact: vi.fn(), getReportAuthoring: vi.fn(), updateWorkingCopyLlcr: vi.fn(), updateWorkingCopyEquipment: vi.fn(),
   adoptCurrentReportWorkingCopy: vi.fn(), generateCustomerReviewCopy: vi.fn(), selectReportBase: vi.fn(), uploadReportSource: vi.fn(),
 }));
 
@@ -67,12 +69,20 @@ it('puts creation before the Word chooser and its LTR when the project has no re
   vi.mocked(authoring.getReportAuthoring).mockResolvedValue({ ...retained, outputs: [], base_source_id: null });
   vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...(await api.fetchCurrentReport('P1')), status: 'missing',
     mode: null, file_name: null, file_sha256: null, file_path: null });
+  vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({project_id:'P1',mode:'official',status:'ready',preview_token:'read-only',
+    requires_confirmation:false,target_path:'isolated/First Word.docx',current_path:null,blockers:[]});
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
   const create = await screen.findByRole('button', { name: 'Create a new internal report' });
   const choose = screen.getByRole('button', { name: 'Continue this project’s Word report…', description: 'Expected project LTR: DL-001' });
   expect(create.compareDocumentPosition(choose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(await screen.findByText('Saves to isolated/First Word.docx')).toBeTruthy();
+  expect(api.generateInternalReport).not.toHaveBeenCalled();
   expect(screen.queryByText('Start a report')).toBeNull();
-  expect(screen.getByRole('button', { name: /from a finished internal report/ })).toBeTruthy();
+  expect(screen.queryByRole('button', {name:'Generate customer report'})).toBeNull();
+  const upload = screen.getByRole('button',{name:'Create customer copy from a finished Word…'});
+  const nativePicker = vi.spyOn(screen.getByLabelText('Select Internal Report'),'click');
+  fireEvent.click(upload);
+  expect(nativePicker).toHaveBeenCalledOnce();
 });
 
 it('puts the official file first and continues the displayed file even when the update source snapshot is stale', async () => {
@@ -85,6 +95,14 @@ it('puts the official file first and continues the displayed file even when the 
   const regenerate = screen.getByRole('button', { name: 'Regenerate internal report…' });
   expect(resume.compareDocumentPosition(regenerate) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Create a new internal report' })).toBeNull();
+  const menu = screen.getByText('Report file actions').closest('details');
+  expect(menu?.open).toBe(false);
+  const another = screen.getByText('Create customer copy from another finished Word…');
+  expect(another.closest('details')).toBe(menu);
+  const nativePicker = vi.spyOn(screen.getByLabelText('Select Internal Report'),'click');
+  fireEvent.click(screen.getByText('Report file actions'));
+  fireEvent.click(another);
+  expect(nativePicker).toHaveBeenCalledOnce();
   fireEvent.click(resume);
   await screen.findByText('Reviewed Working.docx');
   expect(authoring.adoptCurrentReportWorkingCopy).toHaveBeenCalledWith('P1', {
@@ -161,12 +179,21 @@ it('does not fall back to official writes when the saved working-copy state cann
 });
 
 it('creates a customer review copy from the selected working version instead of the official report', async () => {
+  vi.mocked(inspectProjectCustomerSource).mockResolvedValue({source_sha256:'w'.repeat(64),decisions:{},fields:[],samples:[],temperatures:[]});
+  vi.mocked(authoring.generateCustomerReviewCopy).mockResolvedValue({...retained,revision:5,customer_outputs:[
+    {...retained.outputs[0],output_id:'C1',parent_output_id:'W1',file_name:'Customer.docx',download_url:'/customer'}
+  ]});
+  vi.mocked(authoring.downloadReportArtifact).mockResolvedValue({blob:new Blob(['customer']),fileName:'Customer.docx'});
+  vi.stubGlobal('URL',{createObjectURL:vi.fn(() => 'blob:customer'),revokeObjectURL:vi.fn()});
+  vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(() => undefined);
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Customer copy' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Generate customer review copy' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Generate customer report' }));
   await waitFor(() => expect(authoring.generateCustomerReviewCopy).toHaveBeenCalledWith('P1', {
-    expected_revision: 4, output_id: 'W1', output_sha256: 'w'.repeat(64), temperature_result_ids: [],
+    expected_revision: 4, output_id: 'W1', output_sha256: 'w'.repeat(64), temperature_result_ids: [],customer_decisions:{}
   }));
+  expect((await screen.findByRole('status',{name:'Downloaded File'})).textContent).toBe('Customer.docx');
+  expect(authoring.downloadReportArtifact).toHaveBeenCalledWith('/customer');
+  expect(screen.queryByRole('dialog')).toBeNull();
   expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
 });
 
@@ -217,4 +244,15 @@ it('reopens the uploaded Word source even if its retained spelling differs and a
     await waitFor(() => expect(authoring.selectReportBase).toHaveBeenCalledWith("P1", "chosen", 4));
     expect(api.generateInternalReport).not.toHaveBeenCalled();
   } finally { vi.unstubAllGlobals(); }
+});
+
+it('opens the formal review of the adopted version and requires its customer copy before saving', async () => {
+  vi.mocked(authoring.getReportAuthoring).mockResolvedValue({...retained,outputs:[]});
+  vi.mocked(authoring.adoptCurrentReportWorkingCopy).mockResolvedValue(retained);
+  render(<ReportWorkspace projectId="P1" onBack={vi.fn()}/>);
+  fireEvent.click(await screen.findByText('Report file actions'));
+  fireEvent.click(screen.getByRole('button',{name:'Review and save to project…'}));
+  expect(await screen.findByText(/Generate a customer report from the current working copy/)).toBeTruthy();
+  expect(screen.getByRole('button',{name:'Generate customer report'})).toBeTruthy();
+  expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
 });

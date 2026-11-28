@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
@@ -46,6 +46,8 @@ class CustomerReportJobResponse(BaseModel):
     stage: str
     elapsed_seconds: float
     message: str | None
+    file_name: str | None = None
+    notices: list[str] = Field(default_factory=list)
 
 
 @router.post(
@@ -113,7 +115,7 @@ def download_customer_report_job(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return FileResponse(
         output,
-        filename=output.name,
+        filename=jobs.read(operation_id).get("file_name") or output.name,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         background=BackgroundTask(jobs.complete_download, operation_id),
     )

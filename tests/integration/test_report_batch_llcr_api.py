@@ -211,7 +211,7 @@ def customer_check(lab, state, monkeypatch):
     (lab['settings'].templates_dir / 'E-4515 Customer Report.docx').write_bytes(docx_bytes())
 
     class Converter:
-        def generate_customer_report(self, *, source_path, template_path, output_path):
+        def generate_customer_report(self, *, source_path, template_path, output_path, lineage_sha256):
             output_path.write_bytes(source_path.read_bytes())
 
     monkeypatch.setattr(dependencies, 'CustomerReportDocumentGateway', Converter)

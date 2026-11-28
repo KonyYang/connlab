@@ -2,7 +2,6 @@ from io import BytesIO
 from zipfile import ZipFile
 from docx import Document
 from backend.infrastructure.office.report_authoring.customer_copy import CustomerReportCopy
-from backend.infrastructure.office.report_authoring.temperature_chart import insert_temperature_chart
 from backend.application.tools_temperature_service import ToolsTemperatureService
 from backend.infrastructure.office.temperature_workbook_gateway import TemperatureWorkbookGateway
 from backend.domain.temperature_data import DataSelection
@@ -10,13 +9,13 @@ from dataclasses import asdict
 import pytest
 
 
-def test_customer_copy_keeps_complete_temperature_table_and_editable_curve(tmp_path):
+def test_customer_copy_exports_only_measured_maxima_and_retains_internal_evidence(tmp_path):
     source, template, output = (tmp_path/name for name in ('source.docx', 'template.docx', 'customer.docx'))
     for path in (source, template):
         doc = Document(); doc.add_paragraph('Fixed customer wording'); doc.add_paragraph('*** End of Report ***'); doc.save(path)
     originals = source.read_bytes(), template.read_bytes()
     class Converter:
-        def generate_customer_report(self, *, source_path, template_path, output_path):
+        def generate_customer_report(self, *, source_path, template_path, output_path, lineage_sha256):
             output_path.write_bytes(template_path.read_bytes())
     workbook = TemperatureWorkbookGateway()
     table = workbook.read_upload(b'Ambient,I,T1,T2\n20,100,26,28\n20,100,26,28\n20,200,41,45\n20,200,41,45\n', 'data.csv')
@@ -26,21 +25,21 @@ def test_customer_copy_keeps_complete_temperature_table_and_editable_curve(tmp_p
     result = {'kind': 'temperature', 'result_id': 'r1', 'target': {'group_label': '1', 'step_token': '2'},
         'data': {'analysis': asdict(analysis), 'selection': {'ambient_column': 1, 'temperature_columns': [3, 4]},
             'raw_rows': [{'source_row': index + 1, 'values': list(values)} for index, values in enumerate(table.rows)]}}
-    adapter = CustomerReportCopy(converter=Converter(), template=lambda: template, temperature_chart=insert_temperature_chart)
+    adapter = CustomerReportCopy(converter=Converter(), template=lambda: template)
     adapter.generate(source, output, [result])
     with ZipFile(output) as archive:
         body = archive.read('word/document.xml').decode()
-        assert 'Channel 1' in body and 'Avg of Max' in body and '25' in body
-        assert 'Ambient (°C)' in body and 'Channel 1 measured' in body and '41' in body
-        assert 'zero-intercept: yes' in body and 'R²=' in body
+        assert 'Max T-Rise' in body and '25' in body and '200 A' in body
+        assert 'Channel 1' not in body and 'Avg of Max' not in body and 'Ambient' not in body
+        assert 'zero-intercept' not in body and 'R²=' not in body
         assert 'tblBorders' in body and 'rFonts' in body
         assert body.index('Temperature rise') < body.index('End of Report')
         assert 'Figure' not in body
-        assert any(name.startswith('word/charts/') for name in archive.namelist())
-        assert any(name.startswith('word/embeddings/') and name.endswith('.xlsx') for name in archive.namelist())
+        assert not any(name.startswith('word/charts/') for name in archive.namelist())
+        assert not any(name.startswith('word/embeddings/') and name.endswith('.xlsx') for name in archive.namelist())
     audit = adapter.audit(output, sensitive_terms=[], forbidden_project_ids=[], reviewed_parts={})
     assert not audit['passed']
-    assert any(item['code'] == 'unreviewed_embedding' for item in audit['issues'])
+    assert all(item['code'] != 'unreviewed_embedding' for item in audit['issues'])
     assert (source.read_bytes(), template.read_bytes()) == originals
 
 
@@ -61,9 +60,9 @@ def test_customer_pagination_keeps_group_heading_header_and_first_row_without_ch
     document.add_paragraph('Fixed ending'); document.save(source)
     before = source.read_bytes()
     class Converter:
-        def generate_customer_report(self, *, source_path, template_path, output_path):
+        def generate_customer_report(self, *, source_path, template_path, output_path, lineage_sha256):
             output_path.write_bytes(source_path.read_bytes())
-    CustomerReportCopy(converter=Converter(), template=lambda: source, temperature_chart=None).generate(source, output, [])
+    CustomerReportCopy(converter=Converter(), template=lambda: source).generate(source, output, [])
     with ZipFile(source) as old, ZipFile(output) as new:
         old_root = etree.fromstring(old.read('word/document.xml'))
         root = etree.fromstring(new.read('word/document.xml'))
@@ -83,7 +82,7 @@ def test_customer_pagination_keeps_group_heading_header_and_first_row_without_ch
 def test_customer_audit_requires_actual_current_identity_not_a_review_checkbox(tmp_path):
     source = tmp_path/'customer.docx'
     document = Document(); document.add_paragraph('Fixed approved wording'); document.save(source)
-    adapter = CustomerReportCopy(converter=None, template=None, temperature_chart=None)
+    adapter = CustomerReportCopy(converter=None, template=None)
     audit = adapter.audit(source, sensitive_terms=[], forbidden_project_ids=[], reviewed_parts={},
         expected_project_dl='DL-2026-10-099')
     assert not audit['passed']
@@ -103,7 +102,7 @@ def test_customer_audit_requires_actual_current_identity_not_a_review_checkbox(t
 def test_customer_identity_accepts_only_exact_current_number_and_standard_customer_suffix(tmp_path, number, accepted):
     path = tmp_path/'customer.docx'
     document = Document(); document.sections[0].header.paragraphs[0].text = number; document.save(path)
-    audit = CustomerReportCopy(converter=None, template=None, temperature_chart=None).audit(path,
+    audit = CustomerReportCopy(converter=None, template=None).audit(path,
         sensitive_terms=[], forbidden_project_ids=[], reviewed_parts={}, expected_project_dl='DL-2026-05-001')
     missing = any(item['code'] == 'missing_current_project_identity' for item in audit['issues'])
     assert missing is not accepted

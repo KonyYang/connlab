@@ -277,6 +277,7 @@ class CustomerCopyRequest(BaseModel):
     output_id: str = Field(min_length=1, max_length=64)
     output_sha256: str = Field(min_length=64, max_length=64)
     temperature_result_ids: list[str] = Field(default_factory=list, max_length=100)
+    customer_decisions: dict[str, str] | None = Field(default=None, max_length=2048)
 
 
 class DeliveryPreviewRequest(DocumentReviewRequest):

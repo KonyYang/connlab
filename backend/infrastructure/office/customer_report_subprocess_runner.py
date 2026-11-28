@@ -67,6 +67,7 @@ class CustomerReportSubprocessRunner:
         template_path: Path,
         output_path: Path,
         progress: Callable[[str], None] | None = None,
+        lineage_sha256: str | None = None,
     ) -> Path:
         output_root = self._output_root.resolve()
         run_id = uuid4().hex
@@ -101,6 +102,7 @@ class CustomerReportSubprocessRunner:
                 json.dumps(
                     {
                         "source_path": str(staged_source.resolve()),
+                        "lineage_sha256": lineage_sha256,
                         "template_path": str(staged_template.resolve()),
                         "output_path": str(staged_output.resolve()),
                         "progress_path": str(progress_json.resolve()),

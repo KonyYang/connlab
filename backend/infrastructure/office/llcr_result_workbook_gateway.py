@@ -359,7 +359,7 @@ def _extract_entries(workbook, projection: LlcrCrRecordProjection):
                                 code,
                                 f"{issue} at {sheet_name}!{raw_cell.coordinate} "
                                 f"(Group {section.group_label}, Step {stage.source_step}, "
-                                f"{expected_stage_label}, sample {sample_index}, {point}).",
+                                f"{expected_stage_label}, sample {sample_index}, point {point}).",
                                 section.group_label, stage.source_step,
                             ))
                 if diagnostics:

@@ -25,6 +25,7 @@ class CustomerReportGeneratorPort(Protocol):
         template_path: Path,
         output_path: Path,
         progress: Callable[[str], None] | None = None,
+        lineage_sha256: str | None = None,
     ) -> Path: ...
 
 
@@ -40,6 +41,9 @@ class _CustomerReportJob:
     message: str | None
     started_at: float
     finished_at: float | None = None
+    download_name: str | None = None
+    lineage_sha256: str | None = None
+    notices: tuple[str, ...] = ()
 
 
 class ToolsCustomerReportJobService:
@@ -52,11 +56,13 @@ class ToolsCustomerReportJobService:
         dispatch: Callable[[Callable[[], None]], object],
         clock: Callable[[], float] = time.monotonic,
         retention_seconds: float = 3600,
+        read_notices=None,
     ) -> None:
         self._generator = generator
         self._dispatch = dispatch
         self._clock = clock
         self._retention_seconds = retention_seconds
+        self._read_notices = read_notices
         self._jobs: dict[str, _CustomerReportJob] = {}
         self._lock = RLock()
 
@@ -67,6 +73,8 @@ class ToolsCustomerReportJobService:
         source_path: Path,
         template_path: Path,
         output_path: Path,
+        download_name: str | None = None,
+        lineage_sha256: str | None = None,
     ) -> dict[str, object]:
         self._prune_expired()
         operation_root = Path(root).resolve()
@@ -86,6 +94,8 @@ class ToolsCustomerReportJobService:
             stage="queued",
             message=None,
             started_at=self._clock(),
+            download_name=download_name,
+            lineage_sha256=lineage_sha256,
         )
         with self._lock:
             self._jobs[job.operation_id] = job
@@ -113,6 +123,8 @@ class ToolsCustomerReportJobService:
 
     def complete_download(self, operation_id: str) -> None:
         with self._lock:
+            if self._jobs.get(operation_id) and self._jobs[operation_id].download_name:
+                return
             job = self._jobs.pop(operation_id, None)
         if job is not None:
             shutil.rmtree(job.root, ignore_errors=True)
@@ -132,7 +144,10 @@ class ToolsCustomerReportJobService:
                 template_path=job.template_path,
                 output_path=job.output_path,
                 progress=lambda value: self._record_stage(operation_id, value),
+                **({"lineage_sha256": job.lineage_sha256} if job.lineage_sha256 else {}),
             )
+            if job.download_name and self._read_notices:
+                job.notices = tuple(self._read_notices(job.output_path))
         except Exception as exc:
             with self._lock:
                 failed_stage = job.stage
@@ -152,6 +167,11 @@ class ToolsCustomerReportJobService:
             )
             shutil.rmtree(job.root, ignore_errors=True)
             return
+        if job.download_name:
+            try:
+                job.source_path.unlink(missing_ok=True)
+            except OSError:
+                _LOGGER.info("Temporary customer input retained for normal job cleanup: %s", operation_id)
         with self._lock:
             job.status = "completed"
             job.stage = "completed"
@@ -206,4 +226,5 @@ class ToolsCustomerReportJobService:
             "stage": job.stage,
             "elapsed_seconds": round(max(0.0, end - job.started_at), 2),
             "message": job.message,
+            **({"file_name": job.download_name, "notices": list(job.notices)} if job.download_name else {}),
         }

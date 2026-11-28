@@ -210,10 +210,10 @@ export const applyReportPhotos = (projectId: string, request: { expected_revisio
   requestJson<ReportAuthoringState>(base(projectId) + '/photos/apply', { method: 'POST', body: JSON.stringify(request) });
 
 export type CustomerReportIssue = { code: string; location: string; message: string; sha256: string | null };
-export type CustomerReportOutput = ReportAuthoringOutput & { audit?: { passed: boolean; issues: CustomerReportIssue[];
+export type CustomerReportOutput = ReportAuthoringOutput & { review_notices?: string[]; audit?: { passed: boolean; issues: CustomerReportIssue[];
   sensitive_terms: string[]; forbidden_project_ids: string[]; reviewed_parts: Record<string, string>; disclosure_scope_confirmed: boolean; content_review_sha256?: string | null } };
 export const generateCustomerReviewCopy = (projectId: string, request: { expected_revision: number; output_id: string;
-  output_sha256: string; temperature_result_ids: string[] }) => requestJson<ReportAuthoringState>(base(projectId) + '/customer/generate', { method: 'POST', body: JSON.stringify(request) });
+  output_sha256: string; temperature_result_ids: string[]; customer_decisions?: Record<string, string> }) => requestJson<ReportAuthoringState>(base(projectId) + '/customer/generate', { method: 'POST', body: JSON.stringify(request) });
 export const checkCustomerReviewCopy = (projectId: string, request: { expected_revision: number; output_id: string;
   output_sha256: string; sensitive_terms: string[]; forbidden_project_ids: string[]; reviewed_parts: Record<string, string>;
   disclosure_scope_confirmed: boolean; content_review_sha256?: string | null }) => requestJson<ReportAuthoringState>(base(projectId) + '/customer/check', { method: 'POST', body: JSON.stringify(request) });
