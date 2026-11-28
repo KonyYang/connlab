@@ -1,12 +1,13 @@
 import type { ReactElement } from "react";
 
 import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirmationPanel";
+import type { RequiredAction } from "./newProjectRequiredState";
 
 type NewProjectCompletionDockProps = {
   completionDisabled: boolean;
   completionError?: string | null;
   completionLoading: boolean;
-  completionText: string;
+  requiredActions: RequiredAction[];
   disabled: boolean;
   missingKeys: Set<string>;
   values: NewProjectSetupConfirmationValues;
@@ -19,7 +20,7 @@ export function NewProjectCompletionDock({
   completionDisabled,
   completionError,
   completionLoading,
-  completionText,
+  requiredActions,
   disabled,
   missingKeys,
   values,
@@ -29,12 +30,8 @@ export function NewProjectCompletionDock({
 }: NewProjectCompletionDockProps): ReactElement {
   const update = (patch: Partial<NewProjectSetupConfirmationValues>) =>
     onChange({ ...values, ...patch });
-  const specifiedInputInvalid =
-    values.ltrMode === "specified" && !isValidSpecifiedLtrInput(values.specifiedLtrNumber);
-  const requiredInformationBlocked =
-    completionDisabled &&
-    !completionLoading &&
-    completionText !== "Required project information complete";
+  const specifiedInputInvalid = missingKeys.has("specified_ltr_number");
+  const showRequiredActions = !disabled && !completionLoading && requiredActions.length > 0;
 
   return (
     <footer className="step-footer new-project-completion-dock">
@@ -63,6 +60,7 @@ export function NewProjectCompletionDock({
         </div>
         <div className="new-project-specified-ltr-field">
           <input
+            id="intake-setup-specified_ltr_number"
             aria-describedby="specified-ltr-help"
             aria-invalid={specifiedInputInvalid}
             aria-label="Specified LTR number"
@@ -102,10 +100,25 @@ export function NewProjectCompletionDock({
         <p className="new-project-dock-error" role="alert">{completionError}</p>
       ) : null}
 
-      {requiredInformationBlocked ? (
-        <p className="new-project-dock-error" role="status">
-          {completionText}. Complete the highlighted fields above before applying an LTR number.
-        </p>
+      {showRequiredActions ? (
+        <div className="new-project-dock-error">
+          <div id="intake-required-heading" role="status">
+            Complete {requiredActions.length} {requiredActions.length === 1 ? "field" : "fields"} to apply for an LTR number
+          </div>
+          <ul className="new-project-required-list" aria-labelledby="intake-required-heading">
+            {requiredActions.map(({ targetId, label }) => (
+              <li key={targetId}>
+                <button
+                  className="new-project-required-link"
+                  type="button"
+                  onClick={() => focusRequiredField(targetId)}
+                >
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       <div className="new-project-dock-summary">
@@ -123,7 +136,7 @@ export function NewProjectCompletionDock({
         <button
           className="new-project-primary-action ui-primary-action"
           disabled={completionDisabled}
-          title={completionDisabled && !completionLoading ? completionText : undefined}
+          aria-describedby={showRequiredActions ? "intake-required-heading" : undefined}
           type="button"
           onClick={onComplete}
         >
@@ -135,17 +148,10 @@ export function NewProjectCompletionDock({
   );
 }
 
-export function isValidSpecifiedLtrInput(value: string): boolean {
-  const input = value.trim();
-  if (!input) {
-    return false;
+function focusRequiredField(targetId: string): void {
+  const control = document.getElementById(targetId);
+  if (control) {
+    control.focus({ preventScroll: true });
+    control.scrollIntoView?.({ block: "center", inline: "nearest" });
   }
-  const baseOrFull = /^DL-(\d{4})-(\d{2})-(\d{3})([A-Z][A-Z0-9]*)?$/i.exec(input);
-  if (baseOrFull) {
-    const year = Number(baseOrFull[1]);
-    const month = Number(baseOrFull[2]);
-    const sequence = Number(baseOrFull[3]);
-    return year >= 2000 && month >= 1 && month <= 12 && sequence >= 1;
-  }
-  return /^[A-Z][A-Z0-9]*$/i.test(input);
 }

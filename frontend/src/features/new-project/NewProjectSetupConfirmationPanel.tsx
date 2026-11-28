@@ -1,5 +1,13 @@
 import type { ReactElement } from "react";
 
+export const NEW_PROJECT_SETUP_LABELS = {
+  sample_description: "Sample Description",
+  test_item: "Test Item",
+  test_type_in_sheet: "Test Type in sheet",
+  project_leader: "Project Leader",
+  lab_performing_tests: "Lab Performing the Tests"
+} as const;
+
 export type NewProjectSetupConfirmationValues = {
   ltrMode: "auto" | "specified";
   specifiedLtrNumber: string;
@@ -37,10 +45,11 @@ export function NewProjectSetupConfirmationPanel({
       </div>
 
       <label className="new-project-setup-field">
-        <span>Sample Description*</span>
+        <span>{NEW_PROJECT_SETUP_LABELS.sample_description}*</span>
         <input
           className={missingKeys.has("sample_description") ? "setup-field-missing" : ""}
           disabled={disabled}
+          id="intake-setup-sample_description"
           type="text"
           value={values.sampleDescription}
           onChange={(event) => update({ sampleDescription: event.target.value })}
@@ -48,10 +57,11 @@ export function NewProjectSetupConfirmationPanel({
       </label>
 
       <label className="new-project-setup-field">
-        <span>Test Item*</span>
+        <span>{NEW_PROJECT_SETUP_LABELS.test_item}*</span>
         <input
           className={missingKeys.has("test_item") ? "setup-field-missing" : ""}
           disabled={disabled}
+          id="intake-setup-test_item"
           type="text"
           value={values.testItem}
           onChange={(event) => update({ testItem: event.target.value })}
@@ -59,10 +69,11 @@ export function NewProjectSetupConfirmationPanel({
       </label>
 
       <label className="new-project-setup-field">
-        <span>Test Type in sheet*</span>
+        <span>{NEW_PROJECT_SETUP_LABELS.test_type_in_sheet}*</span>
         <select
           className={missingKeys.has("test_type_in_sheet") ? "setup-field-missing" : ""}
           disabled={disabled}
+          id="intake-setup-test_type_in_sheet"
           value={values.testTypeInSheet}
           onChange={(event) => update({ testTypeInSheet: event.target.value })}
         >
@@ -76,10 +87,11 @@ export function NewProjectSetupConfirmationPanel({
       </label>
 
       <label className="new-project-setup-field">
-        <span>Project Leader*</span>
+        <span>{NEW_PROJECT_SETUP_LABELS.project_leader}*</span>
         <input
           className={missingKeys.has("project_leader") ? "setup-field-missing" : ""}
           disabled={disabled}
+          id="intake-setup-project_leader"
           type="text"
           value={values.projectLeader}
           onChange={(event) => update({ projectLeader: event.target.value })}
@@ -87,10 +99,11 @@ export function NewProjectSetupConfirmationPanel({
       </label>
 
       <label className="new-project-setup-field">
-        <span>Lab Performing the Tests*</span>
+        <span>{NEW_PROJECT_SETUP_LABELS.lab_performing_tests}*</span>
         <select
           className={missingKeys.has("lab_performing_tests") ? "setup-field-missing" : ""}
           disabled={disabled}
+          id="intake-setup-lab_performing_tests"
           value={values.labPerformingTests}
           onChange={(event) => update({ labPerformingTests: event.target.value })}
         >

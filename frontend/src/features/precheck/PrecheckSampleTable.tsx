@@ -154,6 +154,7 @@ function AutoGrowTextarea({
       data-sample-column={columnKey}
       data-sample-row={rowIndex}
       disabled={disabled}
+      id={`intake-sample-${rowIndex}-${columnKey}`}
       rows={1}
       value={value}
       onChange={(event) => onChange(event.target.value)}

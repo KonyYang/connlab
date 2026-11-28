@@ -31,13 +31,10 @@ import {
   type NewProjectCompletionOptions
 } from "../api/client";
 import { NewProjectApplicationEditor } from "../features/new-project/NewProjectApplicationEditor";
-import {
-  NewProjectCompletionDock,
-  isValidSpecifiedLtrInput
-} from "../features/new-project/NewProjectCompletionDock";
+import { NewProjectCompletionDock } from "../features/new-project/NewProjectCompletionDock";
 import { LocalLtrDuplicateConflictPanel } from "../features/new-project/LocalLtrDuplicateConflictPanel";
 import { SpecifiedLtrWorkbookAuthorityPreviewPanel } from "../features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel";
-import { buildNewProjectRequiredState } from "../features/new-project/newProjectRequiredState";
+import { buildNewProjectRequiredState, buildSetupRequiredActions } from "../features/new-project/newProjectRequiredState";
 import {
   NewProjectSetupConfirmationPanel,
   type NewProjectSetupConfirmationValues
@@ -189,30 +186,12 @@ export function IntakeInboxPage({
     [lookupOptions]
   );
   const requiredState = useMemo(
-    () => buildRequiredState(projectFields, activeCase?.fields ?? [], fieldValues, sampleRows, requestedTestingRows),
+    () => buildNewProjectRequiredState(projectFields, activeCase?.fields ?? [], fieldValues, sampleRows, requestedTestingRows),
     [activeCase, fieldValues, projectFields, requestedTestingRows, sampleRows]
   );
-  const setupMissingKeys = useMemo(() => {
-    const missing = new Set<string>();
-    if (
-      setupValues.ltrMode === "specified" &&
-      !isValidSpecifiedLtrInput(setupValues.specifiedLtrNumber)
-    ) {
-      missing.add("specified_ltr_number");
-    }
-    if (!setupValues.testItem.trim()) missing.add("test_item");
-    if (!setupValues.sampleDescription.trim()) missing.add("sample_description");
-    if (!setupValues.testTypeInSheet.trim()) missing.add("test_type_in_sheet");
-    if (!setupValues.projectLeader.trim()) missing.add("project_leader");
-    if (!setupValues.labPerformingTests.trim()) missing.add("lab_performing_tests");
-    return missing;
-  }, [setupValues]);
-  const completionText = useMemo(() => {
-    const missingCount = requiredState.missingCount + setupMissingKeys.size;
-    return missingCount === 0
-      ? "Required project information complete"
-      : `${missingCount} required fields remaining`;
-  }, [requiredState.missingCount, setupMissingKeys.size]);
+  const setupActions = useMemo(() => buildSetupRequiredActions(setupValues), [setupValues]);
+  const setupMissingKeys = new Set(setupActions.map(({ key }) => key));
+  const requiredActions = [...setupActions, ...requiredState.actions];
   const {
     complete: completeProject,
     completionError,
@@ -260,8 +239,7 @@ export function IntakeInboxPage({
     || specifiedLtrPreviewActive
     || localDuplicateActive
     || Boolean(activeCase?.confirmed_project_id)
-    || requiredState.missingCount > 0
-    || setupMissingKeys.size > 0;
+    || requiredActions.length > 0;
 
   useEffect(() => {
     if (!localDuplicateConflict) {
@@ -1055,7 +1033,7 @@ export function IntakeInboxPage({
           completionDisabled={completionDisabled}
           completionError={completionError}
           completionLoading={completionLoading}
-          completionText={completionText}
+          requiredActions={requiredActions}
           disabled={
             completionLoading ||
             specifiedLtrPreviewActive ||
@@ -1230,21 +1208,6 @@ function assignText(payload: Record<string, string>, key: string, value: string)
   if (text) {
     payload[key] = text;
   }
-}
-
-function buildRequiredState(
-  projectFields: unknown[],
-  sourceFields: unknown[],
-  values: Record<string, string>,
-  sampleRows: PrecheckSampleRow[],
-  requestedTestingRows: PrecheckRequestedTestingRow[]
-): ReturnType<typeof buildNewProjectRequiredState> {
-  const build = buildNewProjectRequiredState as unknown as (
-    ...args: unknown[]
-  ) => ReturnType<typeof buildNewProjectRequiredState>;
-  return buildNewProjectRequiredState.length >= 5
-    ? build(projectFields, sourceFields, values, sampleRows, requestedTestingRows)
-    : build(sourceFields, values, sampleRows, requestedTestingRows);
 }
 
 function applicationEditorCompatibilityProps(

@@ -1,6 +1,7 @@
 import { useState, useLayoutEffect, useRef, type ReactElement } from "react";
 import { UiIcon } from "../../components/common/UiIcon";
 import {
+  PRECHECK_CONSENT_LABELS,
   PRECHECK_REQUESTED_TESTING_COLUMNS,
   type PrecheckRequestedTestingRow
 } from "./precheckFieldConfig";
@@ -44,16 +45,16 @@ export function PrecheckLowerPanels({
     <div className="precheck-lower-grid">
       <section className="precheck-consent-row">
         <RadioLine
-        disabled={disabled}
-        missing={missingRequiredKeys?.has("confidential")}
-        label="Confidential test or samples?"
+          disabled={disabled}
+          field="confidential"
+          missing={missingRequiredKeys?.has("confidential")}
           value={confidential}
           onChange={onConfidentialChange}
         />
         <RadioLine
-        disabled={disabled}
-        missing={missingRequiredKeys?.has("subcontract")}
-        label="Can testing be subcontracted?"
+          disabled={disabled}
+          field="subcontract"
+          missing={missingRequiredKeys?.has("subcontract")}
           value={subcontract}
           onChange={onSubcontractChange}
         />
@@ -80,22 +81,23 @@ export function PrecheckLowerPanels({
 
 function RadioLine({
   disabled,
-  label,
+  field,
   missing,
   value,
   onChange
 }: {
   disabled?: boolean;
-  label: string;
+  field: keyof typeof PRECHECK_CONSENT_LABELS;
   missing?: boolean;
   value: string;
   onChange: (value: string) => void;
 }): ReactElement {
+  const label = PRECHECK_CONSENT_LABELS[field];
   const normalized = value.trim().toLowerCase();
   const yes = ["yes", "y", "true", "1", "是"].includes(normalized);
   const no = value ? ["no", "n", "false", "0", "否"].includes(normalized) : false;
   return (
-    <div className={missing ? "radio-line radio-line-required-missing" : "radio-line"}>
+    <div aria-label={label} className={missing ? "radio-line radio-line-required-missing" : "radio-line"} role="radiogroup">
       <strong>
         {label}<b>*</b>
       </strong>
@@ -103,6 +105,7 @@ function RadioLine({
         <input
           checked={yes}
           disabled={disabled}
+          id={`intake-application-${field}`}
           name={label}
           type="radio"
           onChange={() => onChange("Yes")}
@@ -204,7 +207,9 @@ function RequestedTestingPanel({
               {PRECHECK_REQUESTED_TESTING_COLUMNS.map((column) => (
                 <td key={column.key}>
                   <AutoGrowTextarea
+                    ariaLabel={`${column.label} row ${rowIndex + 1}`}
                     disabled={disabled}
+                    id={rowIndex === 0 && column.key === "test_to_be_performed" ? "intake-application-requested_testing" : undefined}
                     value={(row as Record<string, string>)[column.key] ?? ""}
                     onChange={(event) => onChange(rowIndex, column.key, event.target.value)}
                   />
@@ -279,11 +284,15 @@ function AutoGrowPanelTextarea({
 }
 
 function AutoGrowTextarea({
+  ariaLabel,
   disabled,
+  id,
   value,
   onChange
 }: {
+  ariaLabel: string;
   disabled?: boolean;
+  id?: string;
   value: string;
   onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
 }): ReactElement {
@@ -301,8 +310,10 @@ function AutoGrowTextarea({
   return (
     <textarea
       ref={ref}
+      aria-label={ariaLabel}
       className="requested-testing-cell-input"
       disabled={disabled}
+      id={id}
       rows={1}
       value={value}
       onChange={onChange}
