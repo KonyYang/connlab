@@ -872,11 +872,11 @@
   "tasks": {
     "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
       "branch": "codex/customer-report-one-click-20261128",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "11b7d44094deec413d5f606bc45e9751b8fc8baa",
       "task": {
         "task_id": "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128",
         "summary": "Generate independent customer Word reports in one click with source-bound exceptions",
@@ -896,9 +896,113 @@
         "risk_reasons": [],
         "activation_head": "5fdc1c92bf0bd71f0be3e4fb395c39bf64b79bc1",
         "started_at": "2026-11-28T01:01:32.730755Z",
-        "updated_at": "2026-11-28T01:20:50.168321Z",
+        "updated_at": "2026-11-28T01:35:53.887020Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128",
+          "subject": "406a4a6cfa7900d62b5cb460aae7f7d04ae11cbd",
+          "summary": "Work from the current Word and chapter, resolve LLCR missing cells inline, generate a customer Word with reviewed sample/maxima choices, explicitly review and save a formal pair.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/api/main.py",
+            "backend/api/report_authoring_schemas.py",
+            "backend/api/routes_customer_download.py",
+            "backend/api/routes_report_authoring.py",
+            "backend/api/routes_tools.py",
+            "backend/application/customer_download_inputs.py",
+            "backend/application/report_authoring/service.py",
+            "backend/application/tools_customer_report_job_service.py",
+            "backend/application/tools_service.py",
+            "backend/infrastructure/files/customer_report_choices.py",
+            "backend/infrastructure/office/customer_content_charts.py",
+            "backend/infrastructure/office/customer_content_review.py",
+            "backend/infrastructure/office/customer_content_temperature.py",
+            "backend/infrastructure/office/customer_report_document_gateway.py",
+            "backend/infrastructure/office/customer_report_notices.py",
+            "backend/infrastructure/office/customer_report_subprocess_child.py",
+            "backend/infrastructure/office/customer_report_subprocess_runner.py",
+            "backend/infrastructure/office/llcr_result_workbook_gateway.py",
+            "backend/infrastructure/office/report_authoring/customer_copy.py",
+            "backend/infrastructure/office/report_authoring/customer_measurements.py",
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/api/client.ts",
+            "frontend/src/api/customerContent.ts",
+            "frontend/src/api/reportAuthoring.ts",
+            "frontend/src/features/report-workspace/CustomerContentDialog.test.tsx",
+            "frontend/src/features/report-workspace/CustomerContentDialog.tsx",
+            "frontend/src/features/report-workspace/CustomerReportDownload.test.tsx",
+            "frontend/src/features/report-workspace/CustomerReportDownload.tsx",
+            "frontend/src/features/report-workspace/CustomerReportRegenerationDialog.tsx",
+            "frontend/src/features/report-workspace/CustomerReportSourceDialog.tsx",
+            "frontend/src/features/report-workspace/LlcrImportPreviewDialog.tsx",
+            "frontend/src/features/report-workspace/LlcrReadings.tsx",
+            "frontend/src/features/report-workspace/LlcrWorkingPreview.test.tsx",
+            "frontend/src/features/report-workspace/ReportContentEditor.tsx",
+            "frontend/src/features/report-workspace/ReportCustomerCopy.test.tsx",
+            "frontend/src/features/report-workspace/ReportCustomerCopy.tsx",
+            "frontend/src/features/report-workspace/ReportWorkingCopy.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+            "frontend/src/features/report-workspace/customerContentDialog.css",
+            "frontend/src/features/report-workspace/reportContentEditor.css",
+            "frontend/src/features/report-workspace/useUploadedCustomerReportJob.test.tsx",
+            "frontend/src/features/report-workspace/useUploadedCustomerReportJob.ts",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/pages/ToolsPage.tsx",
+            "tests/integration/test_customer_download_content_api.py",
+            "tests/integration/test_report_authoring_api.py",
+            "tests/integration/test_report_batch_llcr_api.py",
+            "tests/integration/test_report_delivery_api.py",
+            "tests/unit/report_authoring/test_customer_copy.py",
+            "tests/unit/report_authoring/test_linked_region.py",
+            "tests/unit/test_customer_content_review.py",
+            "tests/unit/test_customer_download_inputs.py",
+            "tests/unit/test_customer_report_document_gateway.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "summary": "Related pytest suite 252 passed. Frontend 1342 passed and production web build passed."
+            },
+            {
+              "status": "passed",
+              "summary": "946/531 px browser: empty/adopted/official report entry, workbook replacement from SIG!E11, separate confirm/write, returning section, customer selection and auto-download."
+            },
+            {
+              "status": "passed",
+              "summary": "Three historical Word copies: registered 031 and Tools 021/082 reopened in Microsoft Word. Selected sample rows, materials, measured maxima, source lineage and embedded Excel sheets checked."
+            },
+            {
+              "status": "passed",
+              "summary": "Isolated project: previewed both formal paths, cancelled without writes, saved the exact reviewed pair and verified both history hashes."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "summary": "Integrated file-first entry, inline LLCR, one-click customer projection and formal delivery."
+            },
+            "reviewer": {
+              "status": "passed",
+              "summary": "Independent cross-review of frontend and document/server changes; corrected formal save routing, temperature summary disclosures, chart association and retry handling."
+            },
+            "qa": {
+              "status": "passed",
+              "summary": "Verified in isolated browsers, Excel and Microsoft Word; native and formal results stored under D:\\PythonProject\\connlab\\retained_archives\\customer-report-one-click-1795827855871"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "406a4a6cfa7900d62b5cb460aae7f7d04ae11cbd",
+            "primary_before": "3b2e29f1ef312f6df51d65cb48c23b0a559a107d",
+            "integrated_head": "11b7d44094deec413d5f606bc45e9751b8fc8baa",
+            "recovered": false
+          }
+        }
       }
     }
   }
