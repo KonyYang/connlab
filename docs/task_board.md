@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128",
+    "task_id": "TASK_INTAKE_EMAIL_FORM_20261128",
     "tier": "standard",
-    "subject": "6aa9dc80d44c509f0c2866a25b94dfd786a4a389",
-    "summary": "Generate independent customer Word reports in one click with source-bound exceptions",
+    "subject": "937ea4e8fd249fd3cb21f7db5f330600017d4ac1",
+    "summary": "Recognize the first laboratory request in an email and compare its form revision with the configured E-3718 template",
     "disposition": "completed",
-    "decision_ref": "User explicitly authorized local close and retention of the report work, then registration of the intake fix. Local only.",
-    "closed_at": "2026-11-28T02:42:33.296005Z"
+    "decision_ref": "User explicitly authorized local closure of the email request auto-detection and E-3718 template revision task. Retain implementation and isolated verification, no publication.",
+    "closed_at": "2026-11-28T03:08:13.034812Z"
   },
   "retained_history": [
     {
@@ -876,109 +876,18 @@
       "disposition": "completed",
       "decision_ref": "User accepted the report workspace optimization for local closure only. Preserve implementation, isolated Word and Excel samples, screenshots and acceptance records. No push, release or packaging.",
       "closed_at": "2026-11-28T00:05:56.281043Z"
+    },
+    {
+      "task_id": "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128",
+      "tier": "standard",
+      "subject": "6aa9dc80d44c509f0c2866a25b94dfd786a4a389",
+      "summary": "Generate independent customer Word reports in one click with source-bound exceptions",
+      "disposition": "completed",
+      "decision_ref": "User explicitly authorized local close and retention of the report work, then registration of the intake fix. Local only.",
+      "closed_at": "2026-11-28T02:42:33.296005Z"
     }
   ],
-  "tasks": {
-    "TASK_INTAKE_EMAIL_FORM_20261128": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
-      "branch": "codex/intake-email-form-20261128",
-      "resources": [],
-      "integrated_head": "7c574d572da80d192485b612c100f76a30e59146",
-      "task": {
-        "task_id": "TASK_INTAKE_EMAIL_FORM_20261128",
-        "summary": "Recognize the first laboratory request in an email and compare its form revision with the configured E-3718 template",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Sequential email Word attachment discovery, request revision review, regression coverage and isolated acceptance",
-        "scope_paths": [
-          "frontend/src",
-          "backend/application",
-          "backend/api",
-          "backend/infrastructure",
-          "backend/modules",
-          "tests/unit",
-          "tests/integration"
-        ],
-        "risk_reasons": [],
-        "activation_head": "07681672544ecd718524953ba2f635e0fe902121",
-        "started_at": "2026-11-28T02:43:03.697003Z",
-        "updated_at": "2026-11-28T03:05:28.223174Z",
-        "checkpoint": null,
-        "report": {
-          "validation": [
-            {
-              "summary": "154 backend tests and 64 frontend tests passed, TypeScript check and git diff --check passed.",
-              "status": "passed"
-            },
-            {
-              "summary": "Seven isolated browser results with the copied original Outlook mail, template revision change, no match, multiple candidates, supplemental upload, duplicate and stale choices. Hashes, JSON records and screenshots in retained_archives/intake-email-form-20261128.",
-              "status": "passed"
-            }
-          ],
-          "task_id": "TASK_INTAKE_EMAIL_FORM_20261128",
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/routes_intake.py",
-            "backend/application/email_package_application_form_service.py",
-            "backend/application/intake_case_review_service.py",
-            "backend/application/intake_form_selection_service.py",
-            "backend/application/intake_precheck_service.py",
-            "backend/application/intake_section1_precheck.py",
-            "backend/application/intake_template_revision.py",
-            "backend/application/msg_package_intake_service.py",
-            "backend/infrastructure/storage/repositories/intake_package.py",
-            "backend/modules/intake/application_form_parser.py",
-            "backend/modules/precheck/precheck_engine.py",
-            "backend/modules/precheck/rules.py",
-            "frontend/src/api/client.ts",
-            "frontend/src/features/intake/AttachmentList.tsx",
-            "frontend/src/features/intake/IntakeSourcePanel.tsx",
-            "frontend/src/features/intake/intakeSelectors.ts",
-            "frontend/src/features/new-project/NewProjectApplicationEditor.tsx",
-            "frontend/src/features/precheck/PrecheckSourceCheck.tsx",
-            "frontend/src/pages/IntakeInboxPage.test.tsx",
-            "frontend/src/pages/IntakeInboxPage.tsx",
-            "tests/integration/test_intake_precheck_api.py",
-            "tests/integration/test_manual_intake_api.py",
-            "tests/integration/test_msg_package_intake_api.py",
-            "tests/unit/test_intake_form_selection_service.py",
-            "tests/unit/test_intake_section1_precheck.py",
-            "tests/unit/test_msg_package_intake_service.py",
-            "tests/unit/test_precheck_engine.py"
-          ],
-          "version": 1,
-          "subject": "937ea4e8fd249fd3cb21f7db5f330600017d4ac1",
-          "schema": "connlab.sol-task-report",
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "937ea4e8fd249fd3cb21f7db5f330600017d4ac1",
-            "primary_before": "c333cd72508853b692a4d3d1e4f2b31e5d879782",
-            "integrated_head": "7c574d572da80d192485b612c100f76a30e59146",
-            "recovered": false
-          },
-          "scope_ok": true,
-          "roles": {
-            "reviewer": {
-              "summary": "Independent review verified selection, template authority and rollback. Addressed discarded supplemental records, same-package rebinding and stale duplicate decisions.",
-              "status": "passed"
-            },
-            "developer": {
-              "summary": "Reproduced the first spec blocking the real mail. Fixed sorted mail order, quiet eligibility scanning, template revision check and duplicate recovery; focused red/green tests.",
-              "status": "passed"
-            },
-            "qa": {
-              "summary": "Independent isolated browser checks and final affected suites. Verified original mail and current H template, J warning, original hashes and stale draft recovery.",
-              "status": "passed"
-            }
-          },
-          "summary": "Use the first recognized Word request in source mail order, compare the received form to the E-3718 template in Settings, and recover missing forms with draft identity preserved."
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
