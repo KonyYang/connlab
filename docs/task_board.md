@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_BROWSER_TEMPLATE_BUNDLE_20261128",
-    "tier": "micro",
-    "subject": "c007b72217cb21a0d2307dead6d24ac2779d496e",
-    "summary": "Stage the six approved generation templates and empty project layout for portable browser packaging",
+    "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
+    "tier": "standard",
+    "subject": "84f67fa360aedc01e18a8661f851d2a9a84f9439",
+    "summary": "Simplify report entry, section editing and direct customer copies",
     "disposition": "completed",
-    "decision_ref": "User accepted template packaging and authorized local close only. Keep report task. No publication.",
-    "closed_at": "2026-11-27T23:27:52.300754Z"
+    "decision_ref": "User accepted the report workspace optimization for local closure only. Preserve implementation, isolated Word and Excel samples, screenshots and acceptance records. No push, release or packaging.",
+    "closed_at": "2026-11-28T00:05:56.281043Z"
   },
   "retained_history": [
     {
@@ -858,178 +858,18 @@
       "disposition": "completed",
       "decision_ref": "User accepted and requested local closure only. Preserve commits and validation records. No push or release.",
       "closed_at": "2026-11-27T22:16:14.333822Z"
+    },
+    {
+      "task_id": "TASK_BROWSER_TEMPLATE_BUNDLE_20261128",
+      "tier": "micro",
+      "subject": "c007b72217cb21a0d2307dead6d24ac2779d496e",
+      "summary": "Stage the six approved generation templates and empty project layout for portable browser packaging",
+      "disposition": "completed",
+      "decision_ref": "User accepted template packaging and authorized local close only. Keep report task. No publication.",
+      "closed_at": "2026-11-27T23:27:52.300754Z"
     }
   ],
-  "tasks": {
-    "TASK_REPORT_CONTENT_ENTRY_20261127": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
-      "branch": "codex/report-content-entry-20261127",
-      "resources": [],
-      "integrated_head": "c50d1a98759020de144a6f8181c99ff9ad5bb4b9",
-      "task": {
-        "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
-        "summary": "Simplify report entry, section editing and direct customer copies",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Frontend report workspace flow and responsive navigation; preserve existing Word and delivery safeguards.",
-        "scope_paths": [
-          "backend/api/dependencies.py",
-          "backend/api/routes_report_workspace.py",
-          "backend/application/internal_report_generation_service.py",
-          "backend/application/llcr_result_dataset_service.py",
-          "backend/application/report_authoring/delivery.py",
-          "backend/application/report_authoring/llcr_projection.py",
-          "backend/domain/result_dataset_models.py",
-          "backend/infrastructure/files/report_publication_gateway.py",
-          "backend/infrastructure/office/customer_report_document_gateway.py",
-          "backend/infrastructure/office/llcr_result_workbook_gateway.py",
-          "backend/infrastructure/office/test_report_document_gateway.py",
-          "backend/infrastructure/official_workspace_manifest.py",
-          "backend/infrastructure/storage/repositories/result_dataset.py",
-          "frontend/src/App.tsx",
-          "frontend/src/api/client.ts",
-          "frontend/src/api/reportAuthoring.ts",
-          "frontend/src/api/reportAuthoringDelivery.ts",
-          "frontend/src/features/report-workspace",
-          "frontend/src/pages/ProjectReportWorkspacePage.tsx",
-          "frontend/src/workbench.css",
-          "tests/integration/test_internal_report_generation_api.py",
-          "tests/integration/test_report_delivery_api.py",
-          "tests/integration/test_report_workspace_api.py",
-          "tests/unit/test_customer_report_document_gateway.py",
-          "tests/unit/test_llcr_result_dataset_service.py",
-          "tests/unit/test_llcr_result_workbook_gateway.py",
-          "tests/unit/test_result_dataset_repository.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "be690526769016a1bc03f2fd85bf145b633a3ec7",
-        "started_at": "2026-11-26T22:40:05.457358Z",
-        "updated_at": "2026-11-28T00:02:32.216551Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
-          "stage": "revision",
-          "status": "running",
-          "summary": "Approved report daily workflow completion and customer copy acceptance. Local only.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
-          "subject": "84f67fa360aedc01e18a8661f851d2a9a84f9439",
-          "summary": "Daily report sections, traceable LLCR sample readings, actionable customer copy review and save stages.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/routes_report_workspace.py",
-            "backend/application/llcr_result_dataset_service.py",
-            "backend/application/report_authoring/delivery.py",
-            "backend/application/report_authoring/llcr_projection.py",
-            "backend/domain/result_dataset_models.py",
-            "backend/infrastructure/office/customer_report_document_gateway.py",
-            "backend/infrastructure/office/llcr_result_workbook_gateway.py",
-            "backend/infrastructure/office/test_report_document_gateway.py",
-            "backend/infrastructure/storage/repositories/result_dataset.py",
-            "frontend/src/api/client.ts",
-            "frontend/src/api/reportAuthoring.ts",
-            "frontend/src/api/reportAuthoringDelivery.ts",
-            "frontend/src/features/report-workspace/CustomerDisclosureReview.tsx",
-            "frontend/src/features/report-workspace/LlcrImportPreviewDialog.tsx",
-            "frontend/src/features/report-workspace/LlcrReadings.tsx",
-            "frontend/src/features/report-workspace/LlcrSection.tsx",
-            "frontend/src/features/report-workspace/ReportAuthoringFeatures.test.tsx",
-            "frontend/src/features/report-workspace/ReportContentEditor.tsx",
-            "frontend/src/features/report-workspace/ReportCustomerCopy.test.tsx",
-            "frontend/src/features/report-workspace/ReportCustomerCopy.tsx",
-            "frontend/src/features/report-workspace/ReportDelivery.test.tsx",
-            "frontend/src/features/report-workspace/ReportDelivery.tsx",
-            "frontend/src/features/report-workspace/ReportIssueActions.tsx",
-            "frontend/src/features/report-workspace/ReportPhotoSlots.tsx",
-            "frontend/src/features/report-workspace/ReportWorkingCopy.test.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-            "frontend/src/features/report-workspace/llcrReadings.css",
-            "frontend/src/features/report-workspace/reportContentEditor.css",
-            "frontend/src/features/report-workspace/reportCustomerCopy.css",
-            "tests/integration/test_report_delivery_api.py",
-            "tests/integration/test_report_workspace_api.py",
-            "tests/unit/test_customer_report_document_gateway.py",
-            "tests/unit/test_llcr_result_workbook_gateway.py",
-            "tests/unit/test_result_dataset_repository.py"
-          ],
-          "validation": [
-            {
-              "name": "Report workspace frontend tests",
-              "status": "passed",
-              "summary": "163 tests passed.",
-              "evidence": "D:\\PythonProject\\connlab\\retained_archives\\report-workspace-daily-acceptance-20261128\\verification\\frontend-final.log"
-            },
-            {
-              "name": "Report and Office backend tests",
-              "status": "passed",
-              "summary": "196 tests passed.",
-              "evidence": "D:\\PythonProject\\connlab\\retained_archives\\report-workspace-daily-acceptance-20261128\\verification\\backend-verified.log"
-            },
-            {
-              "name": "Customer conversion regression",
-              "status": "passed",
-              "summary": "111 tests passed across the converter, authoring, review and delivery paths.",
-              "evidence": "D:\\PythonProject\\connlab\\retained_archives\\report-workspace-daily-acceptance-20261128\\verification\\customer-gateway-final.log"
-            },
-            {
-              "name": "265-character cache path in Word",
-              "status": "passed",
-              "summary": "Reran original isolated failure with same bytes and 265 characters: Word conversion, review, save and recovery passed.",
-              "evidence": "D:\\PythonProject\\connlab\\retained_archives\\report-workspace-daily-acceptance-20261128\\long-path\\result.json"
-            },
-            {
-              "name": "Frontend build",
-              "status": "passed",
-              "summary": "Build from final source passed.",
-              "evidence": "D:\\PythonProject\\connlab\\retained_archives\\report-workspace-daily-acceptance-20261128\\verification\\build-final.log"
-            },
-            {
-              "name": "Isolated Excel and Word in Edge",
-              "status": "passed",
-              "summary": "Wide/narrow real browser: missing and complete LLCR, Word readback and two customer-copy routes.",
-              "evidence": "D:\\PythonProject\\connlab\\retained_archives\\report-workspace-daily-acceptance-20261128\\verification\\browser.log"
-            },
-            {
-              "name": "Word delivery and resume",
-              "status": "passed",
-              "summary": "Verified reviewed bytes, backups, rendering and retry with isolated inputs.",
-              "evidence": "D:\\PythonProject\\connlab\\retained_archives\\report-workspace-daily-acceptance-20261128\\delivery\\recovery-result.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Implemented daily report content and customer workflows with legacy compatibility."
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Independent code review and follow-up addressed stale review decisions and historical reading provenance."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Isolated tests, real browser and real Excel/Word samples verified."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "84f67fa360aedc01e18a8661f851d2a9a84f9439",
-            "primary_before": "08942ecf688d8252e4bea7555b8574759eeaa365",
-            "integrated_head": "c50d1a98759020de144a6f8181c99ff9ad5bb4b9",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
