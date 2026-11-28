@@ -6,7 +6,7 @@ from backend.domain import ExternalResourceType
 
 
 @pytest.mark.parametrize(("environment", "root", "library", "temporary"), [
-    ("development", Path("D:/ConnLabDev"), "Library", "TemporaryProjects"),
+    ("development", Path("D:/ConnLabDevFiles"), "Library", "TemporaryProjects"),
     ("release", Path("D:/ConnLab"), "Materials", "TemporaryMaterials"),
 ])
 def test_explicit_environment_defaults_are_lazy_and_keep_internal_storage(

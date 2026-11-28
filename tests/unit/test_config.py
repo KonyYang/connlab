@@ -31,7 +31,7 @@ def test_settings_load_defaults_and_create_directories() -> None:
         settings = Settings.load(base_dir=workspace_tmp)
 
         assert settings.data_dir == workspace_tmp / "data"
-        assert settings.projects_dir == Path("D:/ConnLabDev/Projects")
+        assert settings.projects_dir == Path("D:/ConnLabDevFiles/Projects")
         assert settings.templates_dir == workspace_tmp / "templates"
         assert settings.log_level == DEFAULT_LOG_LEVEL
         assert settings.contact_measurement_plan_authority_enabled is True
