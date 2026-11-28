@@ -10,7 +10,19 @@ def dataset_sha256(dataset):
         if isinstance(value, Decimal):
             return str(value)
         raise TypeError(f'Unsupported dataset value: {type(value).__name__}')
-    return sha256(json.dumps(asdict(dataset), sort_keys=True, separators=(',', ':'),
+    snapshot = asdict(dataset)
+    # Applied report evidence predates raw lineage: older readers substituted the
+    # calculated result in these three fingerprint fields. Keep that wire identity
+    # here, while leaving absent raw readings unavailable in the workspace.
+    for entry in snapshot['payload']['entries']:
+        for measurement in entry['measurements']:
+            if measurement['raw_value'] is None:
+                measurement['raw_value'] = measurement['value']
+            if not measurement['raw_unit']:
+                measurement['raw_unit'] = measurement['unit']
+            if not measurement['raw_source_cell']:
+                measurement['raw_source_cell'] = measurement['source_cell']
+    return sha256(json.dumps(snapshot, sort_keys=True, separators=(',', ':'),
         ensure_ascii=False, allow_nan=False, default=decimal).encode('utf-8')).hexdigest()
 
 

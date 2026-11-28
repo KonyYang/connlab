@@ -626,7 +626,6 @@ describe("ReportWorkspace", () => {
   });
 
   it("keeps LLCR inspection independent of initial report generation without inventing a missing folder", async () => {
-    const user = userEvent.setup();
     vi.mocked(api.fetchCurrentReport).mockResolvedValue({
       ...currentReport, status: "missing", mode: null, file_name: null, file_sha256: null,
       folder_path: null, download_url: null,
@@ -639,14 +638,41 @@ describe("ReportWorkspace", () => {
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await screen.findByRole("region", { name: "Update Internal Report" });
     expect(screen.queryByText("Browser download (no official project folder)")).toBeNull();
-    expect(screen.getByRole("button", { name: "Update LLCR Results" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Update LLCR Results" })).toBeNull();
     fireEvent.change(screen.getByLabelText("LLCR result workbook"), {
       target: { files: [new File(["xlsx"], "LLCR.xlsx")] },
     });
-    await user.click(screen.getByRole("button", { name: "Inspect LLCR Workbook" }));
     expect(await screen.findByRole("dialog", { name: "LLCR import preview" })).toBeTruthy();
     expect(api.inspectLlcrResultWorkbook).toHaveBeenCalledOnce();
     expect(api.generateInitialReportRevision).not.toHaveBeenCalled();
+  });
+
+  it("shows the workbook readings and locates a missing stage before confirmation", async () => {
+    const point = {
+      group_label: "A", sample_index: 2, position: "P1", raw_unit: "mΩ", unit: "mΩ", source_sheet: "P",
+    };
+    vi.mocked(api.inspectLlcrResultWorkbook).mockResolvedValue({
+      ...preview, can_confirm: false, entries: [],
+      readings: [
+        { ...point, step_token: "2", stage_label: "Initial", stage: "initial",
+          raw_source_cell: "D12", raw_value: "2.10", source_cell: "M12", value: "0.20" },
+        { ...point, step_token: "5", stage_label: "Final", stage: "delta",
+          raw_source_cell: "D20", raw_value: null, source_cell: "M20", value: null },
+      ],
+      diagnostics: [{code:"missing", severity:"blocked", group_label:"A", step_token:"5",
+        message:"Group A, Final, sample 2, P1: fill in P!D20."}],
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    fireEvent.change(await screen.findByLabelText("LLCR result workbook"), {
+      target: { files: [new File(["xlsx"], "LLCR.xlsx")] },
+    });
+    const dialog = await screen.findByRole("dialog", { name: "LLCR import preview" });
+    const table = within(dialog).getByRole("table", { name: /Group A/ });
+    expect(within(table).getByRole("columnheader", { name: /Final/ })).toBeTruthy();
+    expect(within(table).getByRole("cell", { name: /2.10 mΩ/ })).toBeTruthy();
+    expect(within(table).getByRole("cell", { name: /Missing.*P!D20/ })).toBeTruthy();
+    expect(within(dialog).getByText(/fill in P!D20/)).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Confirm LLCR Dataset" })).toHaveProperty("disabled", true);
   });
 
   it("exposes the current report, LLCR import preview, and confirmation", async () => {
@@ -666,8 +692,6 @@ describe("ReportWorkspace", () => {
     fireEvent.change(fileInput, {
       target: { files: [new File(["xlsx"], "LLCR.xlsx")] },
     });
-    await user.click(screen.getByRole("button", { name: "Inspect LLCR Workbook" }));
-
     expect(await screen.findByRole("dialog", { name: "LLCR import preview" })).toBeTruthy();
     expect(screen.getByText("Group 1 / Step 2")).toBeTruthy();
     expect(screen.getByText("0.031 / 0.082 / 0.0565 mΩ")).toBeTruthy();
@@ -733,7 +757,6 @@ describe("ReportWorkspace", () => {
     fireEvent.change(screen.getByLabelText("LLCR result workbook"), {
       target: { files: [new File(["xlsx"], "LLCR.xlsx")] },
     });
-    await user.click(screen.getByRole("button", { name: "Inspect LLCR Workbook" }));
     await user.selectOptions(await screen.findByLabelText("Final outcome for Group 1 / Step 2"), "fail");
 
     expect(screen.getByRole("button", { name: "Confirm LLCR Dataset" })).toHaveProperty("disabled", true);
@@ -749,7 +772,6 @@ describe("ReportWorkspace", () => {
     fireEvent.change(screen.getByLabelText("LLCR result workbook"), {
       target: { files: [new File(["xlsx"], "LLCR.xlsx")] },
     });
-    await user.click(screen.getByRole("button", { name: "Inspect LLCR Workbook" }));
     await user.click(await screen.findByRole("button", { name: /^Cancel$/ }));
 
     await waitFor(() => expect(api.cancelLlcrResultPreview).toHaveBeenCalledWith(

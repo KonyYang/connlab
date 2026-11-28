@@ -135,6 +135,9 @@ def test_exact_reviewed_pair_saves_bytes_with_history_and_replay_never_regenerat
     preview = response.json()
     assert preview['can_save'], preview['issues']
     request = save_request(state, preview)
+    destinations = {item['role']: item['destination'] for item in preview['workspace']['files']}
+    assert destinations['internal'] == str(old)
+    assert destinations['customer'] == str(old.parent / 'DL-2026-05-001-CR Customer Report.docx')
     response = lab['client'].post(BASE+'/delivery/save', json=request)
     assert response.status_code == 200, response.text
     final = response.json()

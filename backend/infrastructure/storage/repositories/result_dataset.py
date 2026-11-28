@@ -132,12 +132,9 @@ def _dataset_domain(row: ResultDatasetRevisionModel) -> ResultDatasetRevision:
                 unit=measurement["unit"],
                 source_sheet=measurement["source_sheet"],
                 source_cell=measurement["source_cell"],
-                raw_value=Decimal(measurement.get("raw_value", measurement["value"])),
-                raw_unit=measurement.get("raw_unit", measurement["unit"]),
-                raw_source_cell=measurement.get(
-                    "raw_source_cell",
-                    measurement["source_cell"],
-                ),
+                raw_value=Decimal(measurement["raw_value"]) if measurement.get("raw_value") is not None else None,
+                raw_unit=measurement.get("raw_unit", ""),
+                raw_source_cell=measurement.get("raw_source_cell", ""),
             )
             for measurement in item["measurements"]
         )

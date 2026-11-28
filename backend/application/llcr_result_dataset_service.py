@@ -147,6 +147,7 @@ class LlcrResultDatasetService:
                 entries=inspection.entries,
                 summary_rows=inspection.summary_rows,
                 diagnostics=inspection.diagnostics,
+                partial_readings=inspection.partial_readings,
             )
             self._previews.put(
                 PendingLlcrImport(

@@ -7,6 +7,7 @@ import json
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from backend.application.report_authoring.llcr_projection import dataset_sha256
 from backend.domain.result_dataset_models import (
     LlcrDatasetPayload,
     LlcrMeasurement,
@@ -22,6 +23,7 @@ from backend.infrastructure.storage.database import (
     init_db,
 )
 from backend.infrastructure.storage.models_result_dataset import ResultDatasetRevisionModel
+from backend.infrastructure.office.test_report_document_gateway import llcr_dataset_sha256
 from backend.infrastructure.storage.repositories.result_dataset import (
     ResultDatasetRepository,
 )
@@ -72,6 +74,9 @@ def test_repository_reads_legacy_llcr_payload_without_summary_rows(tmp_path) -> 
         row = session.get(ResultDatasetRevisionModel, "legacy-dataset")
         payload = json.loads(row.payload_json)
         payload.pop("summary_rows")
+        measurement = payload["entries"][0]["measurements"][0]
+        for key in ("raw_value", "raw_unit", "raw_source_cell"):
+            measurement.pop(key)
         row.payload_json = json.dumps(payload)
 
     with sessions() as session:
@@ -80,6 +85,17 @@ def test_repository_reads_legacy_llcr_payload_without_summary_rows(tmp_path) -> 
     assert stored is not None
     assert stored.payload.summary_rows == ()
     assert len(stored.payload.entries) == 1
+    legacy = stored.payload.entries[0].measurements[0]
+    assert legacy.value == Decimal("0.198")
+    assert legacy.raw_value is None
+    assert legacy.raw_source_cell == ""
+    # Fingerprint recorded by both report assembly and Word updates before raw readings were exposed.
+    applied_sha256 = "e8452da19289b097c7e36f2f5cb23ad216c59db694786f4e40c53e6d4a2e3b10"
+    assert dataset_sha256(stored) == llcr_dataset_sha256(stored) == applied_sha256
+    entry = stored.payload.entries[0]
+    for changed in (replace(legacy, value=Decimal("0.199")), replace(legacy, raw_value=Decimal("0.249"))):
+        revised = replace(stored, payload=replace(stored.payload, entries=(replace(entry, measurements=(changed,)),)))
+        assert dataset_sha256(revised) == llcr_dataset_sha256(revised) != applied_sha256
 
 
 def _dataset(dataset_id: str, revision: int) -> ResultDatasetRevision:

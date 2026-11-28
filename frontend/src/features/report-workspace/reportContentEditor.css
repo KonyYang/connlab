@@ -8,6 +8,9 @@
 .report-editor-columns { display: grid; grid-template-columns: minmax(130px, 175px) minmax(0, 1fr); }
 .report-editor-list { border-right: 1px solid var(--color-border); display: flex; flex-direction: column; padding: 8px; }
 .report-editor-list button[aria-current=true] { background: #e7f0fb; border-radius: 5px; color: #164aa3; }
+.report-editor-list details { margin-top: 8px; border-top: 1px solid var(--color-border); }
+.report-editor-list summary { padding: 10px 12px; cursor: pointer; }
+.report-editor-list details button { width: 100%; }
 .report-editor-detail { min-width: 0; overflow-wrap: anywhere; padding: 14px; }
 .report-editor-detail > :first-child { margin-top: 0; }
 .report-editor-detail details { margin-block: 10px; }

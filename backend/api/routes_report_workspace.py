@@ -73,6 +73,7 @@ from backend.application.test_report_template_resource import (
 from backend.domain.result_dataset_models import (
     LlcrConfirmationDecision,
     LlcrImportPreview,
+    LlcrStageReading,
     ReportDraftRevision,
     ResultDatasetRevision,
 )
@@ -275,7 +276,10 @@ def get_report_workspace(
             if state.latest_report_revision is not None
             else None
         ),
-        "datasets": [_dataset_response(item) for item in state.datasets],
+        "datasets": [
+            _dataset_response(item, include_readings=index == len(state.datasets) - 1)
+            for index, item in enumerate(state.datasets)
+        ],
         "report_revisions": [_report_response(item) for item in state.report_revisions],
     }
 
@@ -757,6 +761,7 @@ def generate_customer_report(
 
 
 def _preview_response(preview: LlcrImportPreview) -> dict:
+    readings = preview.partial_readings or _entry_readings(preview.entries)
     return {
         "preview_id": preview.preview_id,
         "project_id": preview.project_id,
@@ -770,16 +775,9 @@ def _preview_response(preview: LlcrImportPreview) -> dict:
         "parser_profile_version": preview.parser_profile_version,
         "detected_sheets": list(preview.detected_sheets),
         "can_confirm": preview.can_confirm,
-        "sample_count": len({
-            (entry.confirmed_group_id, measurement.sample_index)
-            for entry in preview.entries
-            for measurement in entry.measurements
-        }),
-        "test_point_count": len({
-            (entry.confirmed_group_id, measurement.position)
-            for entry in preview.entries
-            for measurement in entry.measurements
-        }),
+        "sample_count": len({(r.group_label, r.measurement.sample_index) for r in readings}),
+        "test_point_count": len({(r.group_label, r.measurement.position) for r in readings}),
+        "readings": [_reading_response(reading) for reading in readings],
         "result_count": len(preview.entries),
         "entries": [_entry_response(item) for item in preview.entries],
         "diagnostics": [
@@ -816,8 +814,37 @@ def _entry_response(item) -> dict:
     }
 
 
-def _dataset_response(item: ResultDatasetRevision) -> dict:
+def _entry_readings(entries):
+    return tuple(
+        LlcrStageReading(entry.group_label, entry.matrix_step_token, entry.stage,
+                         entry.stage_label, measurement,
+                         "unavailable" if measurement.raw_value is None else "present")
+        for entry in entries for measurement in entry.measurements
+    )
+
+
+def _reading_response(reading: LlcrStageReading) -> dict:
+    measurement = reading.measurement
     return {
+        "group_label": reading.group_label,
+        "step_token": reading.step_token,
+        "stage": reading.stage,
+        "stage_label": reading.stage_label,
+        "sample_index": measurement.sample_index,
+        "position": measurement.position,
+        "raw_status": reading.raw_status,
+        "raw_value": str(measurement.raw_value) if measurement.raw_value is not None else None,
+        "raw_unit": measurement.raw_unit,
+        "raw_source_cell": measurement.raw_source_cell,
+        "source_sheet": measurement.source_sheet,
+        "source_cell": measurement.source_cell,
+        "value": str(measurement.value) if measurement.value is not None else None,
+        "unit": measurement.unit,
+    }
+
+
+def _dataset_response(item: ResultDatasetRevision, *, include_readings: bool = True) -> dict:
+    result = {
         "dataset_id": item.dataset_id,
         "dataset_type": item.dataset_type,
         "revision": item.revision,
@@ -832,6 +859,9 @@ def _dataset_response(item: ResultDatasetRevision) -> dict:
         "confirmed_by": item.confirmed_by,
         "entries": [_entry_response(entry) for entry in item.payload.entries],
     }
+    if include_readings:
+        result["readings"] = [_reading_response(reading) for reading in _entry_readings(item.payload.entries)]
+    return result
 
 
 def _report_response(item: ReportDraftRevision) -> dict:

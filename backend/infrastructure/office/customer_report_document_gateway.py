@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import gc
 from hashlib import sha256
@@ -10,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import tempfile
 import time
 from typing import Callable, Iterable, TypeVar
 from uuid import uuid4
@@ -24,6 +26,7 @@ from docx.oxml.ns import qn
 from docx.table import Table
 from backend.application.test_report_template_resource import discover_test_report_template, TestReportTemplateResourceError
 from backend.application.customer_report_projection_service import CustomerReportReadError
+from backend.infrastructure.files.project_folder_required_forms_gateway import _move_without_replace
 
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 from backend.infrastructure.office.office_protected_document_gateway import (
@@ -257,38 +260,13 @@ class CustomerReportDocumentGateway:
             f".customer-report.{uuid4().hex}.tmp{output.suffix}"
         )
         try:
-            _emit_progress(progress, "preparing_template")
-            protection_state = self._protected_package_gateway.stage_editable_copy(
-                template,
-                temporary,
-            )
-            customer_titles = _template_headings(temporary)
-            if progress is None:
-                generated = _generate_with_word(source, temporary)
-            else:
-                generated = _generate_with_word(source, temporary, progress=progress)
-            notices, observed = generated or ([], {})
-            internal_titles = {}
-            if observed and any(n not in customer_titles or n == 7 for n in observed):
-                try:
-                    reference = discover_test_report_template(template.parent)
-                    with self._protected_package_gateway.readable_copy(reference) as readable:
-                        internal_titles = _template_headings(readable)
-                except (TestReportTemplateResourceError, OfficeProtectedDocumentError, OSError, BadZipFile, PackageNotFoundError,
-                        KeyError, ValueError, SyntaxError) as exc:
-                    _LOGGER.info("Internal heading reference unavailable: %s", type(exc).__name__)
-            differences = _heading_differences(observed, customer_titles, internal_titles)
-            _emit_progress(progress, "verifying_output")
-            self._after_word_file_operation(
-                lambda: _write_source_report_sha256(temporary, source_hash),
-                operation="record source fingerprint",
-                path=temporary,
-            )
-            self._after_word_file_operation(
-                lambda: _audit_customer_report(temporary, notices, differences),
-                operation="audit generated report",
-                path=temporary,
-            )
+            with _word_generation_paths(source, temporary, source_hash) as (word_source, working):
+                self._build_customer_document(word_source, template, working, source_hash, progress)
+                if working != temporary:
+                    self._after_word_file_operation(
+                        lambda: shutil.copyfile(working, temporary),
+                        operation="stage completed report beside destination", path=working,
+                    )
             current_source_hash = self._after_word_file_operation(
                 lambda: _file_hash(source),
                 operation="verify source fingerprint",
@@ -296,17 +274,8 @@ class CustomerReportDocumentGateway:
             )
             if current_source_hash != source_hash:
                 raise ValueError("The internal report source changed during customer generation.")
-            _emit_progress(progress, "protecting_output")
             self._after_word_file_operation(
-                lambda: self._protected_package_gateway.restore_password_protection(
-                    temporary,
-                    protection_state,
-                ),
-                operation="restore report protection",
-                path=temporary,
-            )
-            self._after_word_file_operation(
-                lambda: os.replace(temporary, output),
+                lambda: _move_without_replace(temporary, output),
                 operation="publish generated report",
                 path=temporary,
             )
@@ -321,6 +290,40 @@ class CustomerReportDocumentGateway:
                     temporary.name,
                 )
         return output
+
+    def _build_customer_document(self, source, template, working, source_hash, progress):
+        _emit_progress(progress, "preparing_template")
+        protection_state = self._protected_package_gateway.stage_editable_copy(template, working)
+        customer_titles = _template_headings(working)
+        if progress is None:
+            generated = _generate_with_word(source, working)
+        else:
+            generated = _generate_with_word(source, working, progress=progress)
+        notices, observed = generated or ([], {})
+        internal_titles = {}
+        if observed and any(n not in customer_titles or n == 7 for n in observed):
+            try:
+                reference = discover_test_report_template(template.parent)
+                with self._protected_package_gateway.readable_copy(reference) as readable:
+                    internal_titles = _template_headings(readable)
+            except (TestReportTemplateResourceError, OfficeProtectedDocumentError, OSError, BadZipFile, PackageNotFoundError,
+                    KeyError, ValueError, SyntaxError) as exc:
+                _LOGGER.info("Internal heading reference unavailable: %s", type(exc).__name__)
+        differences = _heading_differences(observed, customer_titles, internal_titles)
+        _emit_progress(progress, "verifying_output")
+        self._after_word_file_operation(
+            lambda: _write_source_report_sha256(working, source_hash),
+            operation="record source fingerprint", path=working,
+        )
+        self._after_word_file_operation(
+            lambda: _audit_customer_report(working, notices, differences),
+            operation="audit generated report", path=working,
+        )
+        _emit_progress(progress, "protecting_output")
+        self._after_word_file_operation(
+            lambda: self._protected_package_gateway.restore_password_protection(working, protection_state),
+            operation="restore report protection", path=working,
+        )
 
     def _after_word_file_operation(
         self,
@@ -413,6 +416,34 @@ def _validate_paths(source: Path, template: Path, output: Path) -> None:
         raise FileExistsError("Customer report output already exists and will not be replaced.")
 
 
+def _word_paths_fit(source: Path, target: Path) -> bool:
+    # Reserve space for Word's reference and protected working files in the same folder.
+    paths = (source, target, target.with_suffix(".ref.docx"),
+             target.with_name(f".connlab-protected-{'0' * 32}.docx"))
+    return all(len(str(path.resolve()).encode("utf-16-le")) // 2 < 240 for path in paths)
+
+
+@contextmanager
+def _word_generation_paths(source: Path, sibling: Path, source_hash: str):
+    if _word_paths_fit(source, sibling):
+        yield source, sibling
+        return
+    root = Path(tempfile.gettempdir()).resolve()
+    if root.anchor.startswith("\\\\") or not _word_paths_fit(
+        root / "clcr-xxxxxxxx" / "in.docx", root / "clcr-xxxxxxxx" / "out.docx",
+    ):
+        raise ValueError(
+            "Word needs a short local working folder for this report. "
+            f"Set Windows TEMP to a shorter local folder and restart ConnLab. Current TEMP: {root}"
+        )
+    with tempfile.TemporaryDirectory(prefix="clcr-", dir=root) as directory:
+        staged_source = Path(directory) / "in.docx"
+        shutil.copyfile(source, staged_source)
+        if _file_hash(staged_source) != source_hash:
+            raise ValueError("The internal report source changed during customer generation.")
+        yield staged_source, Path(directory) / "out.docx"
+
+
 def _generate_with_word(
     source_path: Path,
     target_path: Path,
@@ -433,9 +464,7 @@ def _generate_with_word(
     target = None
     template_reference = None
     update_links_at_open = None
-    reference_path = target_path.with_name(
-        f".customer-template.{uuid4().hex}.reference{target_path.suffix}"
-    )
+    reference_path = target_path.with_suffix(".ref.docx")
     try:
         shutil.copy2(target_path, reference_path)
         _emit_progress(progress, "opening_word")

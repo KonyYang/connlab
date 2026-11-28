@@ -22,7 +22,9 @@ from backend.application.confirmed_matrix_llcr_cr_record_projection import (
 from backend.domain.result_dataset_models import (
     LlcrImportDiagnostic,
     LlcrMeasurement,
+    LlcrObservedMeasurement,
     LlcrResultEntry,
+    LlcrStageReading,
     LlcrSummaryRow,
 )
 
@@ -44,6 +46,7 @@ class LlcrWorkbookInspection:
     entries: tuple[LlcrResultEntry, ...]
     diagnostics: tuple[LlcrImportDiagnostic, ...]
     summary_rows: tuple[LlcrSummaryRow, ...] = ()
+    partial_readings: tuple[LlcrStageReading, ...] = ()
 
 
 class LlcrResultWorkbookGateway:
@@ -94,13 +97,20 @@ class LlcrResultWorkbookGateway:
                     (),
                     tuple(authority_diagnostics + diagnostics),
                 )
-            entries, parse_diagnostics = _extract_entries(workbook, projection)
+            entries, readings, parse_diagnostics = _extract_entries(workbook, projection)
             if parse_diagnostics:
+                if readings:
+                    stages = {(r.group_label, r.step_token, r.stage_label): r for r in readings}
+                    _, layout_diagnostics = _match_summary_rows(workbook["Summary"], stages.values())
+                    if layout_diagnostics:
+                        readings = []
+                        parse_diagnostics = layout_diagnostics + parse_diagnostics
                 return LlcrWorkbookInspection(
                     PARSER_PROFILE_VERSION,
                     tuple(workbook.sheetnames),
                     (),
                     tuple(authority_diagnostics + parse_diagnostics),
+                    partial_readings=tuple(readings),
                 )
             summary_rows, summary_diagnostics = _extract_summary_rows(
                 workbook["Summary"],
@@ -216,6 +226,8 @@ def _extract_entries(workbook, projection: LlcrCrRecordProjection):
 
     accumulators: dict[tuple[str, str, str], dict] = {}
     diagnostics: list[LlcrImportDiagnostic] = []
+    reading_diagnostics: list[LlcrImportDiagnostic] = []
+    readings: list[LlcrStageReading] = []
     used_sheet_names = {"Summary"}
     for sections in grouped_sections.values():
         sheet_name = _sheet_name(
@@ -245,13 +257,12 @@ def _extract_entries(workbook, projection: LlcrCrRecordProjection):
         delta_start = corrected_start + max_samples if projection.delta_r_enabled else None
         bulk = _bulk_average(sheet)
         if bulk is None:
-            diagnostics.append(
+            reading_diagnostics.append(
                 _diagnostic(
                     "bulk_resistance_missing",
                     f"Sheet {sheet_name} requires bulk resistance values in B2:B4.",
                 )
             )
-            continue
         current_row = 10
         for section in sections:
             points = _section_points(section)
@@ -318,53 +329,44 @@ def _extract_entries(workbook, projection: LlcrCrRecordProjection):
                             )
                         )
                         break
+                    # The workbook includes shaded, unused positions so all stages align.
+                    if stage.point_ids is not None and point not in stage.point_ids:
+                        continue
                     for sample_index in range(1, section.sample_count + 1):
                         raw_cell = sheet.cell(row, 3 + sample_index)
-                        raw = _decimal(raw_cell.value)
-                        if raw is None:
-                            diagnostics.append(
-                                _diagnostic(
-                                    "required_measurement_missing",
-                                    f"Missing LLCR measurement at {sheet_name}!{raw_cell.coordinate}.",
-                                    section.group_label,
-                                    stage.source_step,
-                                )
-                            )
-                            break
-                        corrected = raw - bulk
-                        initial_key = (sample_index, point)
-                        if stage_index == 0:
-                            initial_values[initial_key] = corrected
-                            value = corrected
-                        else:
-                            initial = initial_values.get(initial_key)
-                            if initial is None:
-                                diagnostics.append(
-                                    _diagnostic(
-                                        "initial_measurement_missing",
-                                        f"Initial value for {point} sample {sample_index} is missing.",
-                                        section.group_label,
-                                        stage.source_step,
-                                    )
-                                )
-                                break
-                            value = corrected - initial
                         output_cell = sheet.cell(row, output_column_start + sample_index - 1)
-                        measurements.append(
-                            LlcrMeasurement(
-                                sample_index=sample_index,
-                                position=point,
-                                value=value,
-                                unit="mΩ",
-                                source_sheet=sheet_name,
-                                source_cell=output_cell.coordinate,
-                                raw_value=raw,
-                                raw_unit="mΩ",
-                                raw_source_cell=raw_cell.coordinate,
-                            )
+                        measurement = _read_measurement(
+                            raw_cell, output_cell, sample_index, point, bulk,
+                            initial_values, initial_stage=stage_index == 0,
                         )
+                        raw_status = "present"
+                        if measurement.raw_value is None:
+                            raw_status = "invalid" if _text(raw_cell.value) else "missing"
+                        readings.append(LlcrStageReading(
+                            section.group_label, stage.source_step,
+                            "initial" if stage_index == 0 else "delta",
+                            expected_stage_label, measurement, raw_status,
+                        ))
+                        if isinstance(measurement, LlcrMeasurement):
+                            measurements.append(measurement)
+                        elif raw_status != "present" or bulk is not None:
+                            code, issue = {
+                                "missing": ("required_measurement_missing", "Missing reading"),
+                                "invalid": ("invalid_measurement", "A numeric reading is required"),
+                                "present": ("initial_measurement_missing", "Missing initial reading for the ΔR calculation"),
+                            }[raw_status]
+                            reading_diagnostics.append(_diagnostic(
+                                code,
+                                f"{issue} at {sheet_name}!{raw_cell.coordinate} "
+                                f"(Group {section.group_label}, Step {stage.source_step}, "
+                                f"{expected_stage_label}, sample {sample_index}, {point}).",
+                                section.group_label, stage.source_step,
+                            ))
                 if diagnostics:
                     break
+                current_row += len(points)
+                if not measurements:
+                    continue
                 key = (section.confirmed_group_id, stage.confirmed_row_id, stage.source_step.strip())
                 accumulator = accumulators.setdefault(
                     key,
@@ -391,19 +393,39 @@ def _extract_entries(workbook, projection: LlcrCrRecordProjection):
                 start = measurements[0].source_cell
                 end = measurements[-1].source_cell
                 accumulator["ranges"].append(f"{sheet_name}!{start}:{end}")
-                current_row += len(points)
             if diagnostics:
                 break
         if diagnostics:
             break
 
     if diagnostics:
-        return [], diagnostics
+        return [], [], diagnostics
+    if reading_diagnostics:
+        return [], readings, reading_diagnostics
     entries = [_entry_from_accumulator(key, value) for key, value in accumulators.items()]
     entries.sort(key=lambda item: (_group_sort(item.group_label), item.matrix_step_sequence, item.matrix_step_token))
     if not entries:
         diagnostics.append(_diagnostic("no_llcr_results", "No LLCR result rows were found."))
-    return entries, diagnostics
+    return entries, readings, diagnostics
+
+
+def _read_measurement(raw_cell, output_cell, sample_index, point, bulk, initial_values, *, initial_stage):
+    raw = _decimal(raw_cell.value)
+    value = None
+    if raw is not None and bulk is not None:
+        corrected = raw - bulk
+        key = (sample_index, point)
+        if initial_stage:
+            initial_values[key] = corrected
+            value = corrected
+        elif key in initial_values:
+            value = corrected - initial_values[key]
+    measurement_type = LlcrMeasurement if value is not None else LlcrObservedMeasurement
+    return measurement_type(
+        sample_index=sample_index, position=point, value=value, unit="mΩ",
+        source_sheet=raw_cell.parent.title, source_cell=output_cell.coordinate,
+        raw_value=raw, raw_unit="mΩ", raw_source_cell=raw_cell.coordinate,
+    )
 
 
 def _entry_from_accumulator(key, value) -> LlcrResultEntry:
@@ -439,8 +461,8 @@ def _entry_from_accumulator(key, value) -> LlcrResultEntry:
     )
 
 
-def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_summary):
-    available: dict[tuple[str, str], list[LlcrResultEntry]] = {}
+def _match_summary_rows(summary, entries):
+    available: dict[tuple[str, str], list] = {}
     for entry in entries:
         key = (
             _normalized_group(entry.group_label),
@@ -448,7 +470,7 @@ def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_sum
         )
         available.setdefault(key, []).append(entry)
 
-    rows: list[LlcrSummaryRow] = []
+    matched = []
     diagnostics: list[LlcrImportDiagnostic] = []
     current_group = ""
     for source_row in range(3, summary.max_row + 1):
@@ -472,7 +494,19 @@ def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_sum
                 )
             )
             continue
-        entry = candidates.pop(0)
+        matched.append((source_row, _normalized_group(current_group), stage_label, candidates.pop(0)))
+    if any(available.values()):
+        diagnostics.append(_diagnostic(
+            "summary_mapping_conflict",
+            "One or more LLCR results are missing from the Summary sheet.",
+        ))
+    return matched, diagnostics
+
+
+def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_summary):
+    matched, diagnostics = _match_summary_rows(summary, entries)
+    rows: list[LlcrSummaryRow] = []
+    for source_row, group_label, stage_label, entry in matched:
         values = [measurement.value for measurement in entry.measurements]
         displayed_statistics = tuple(
             _decimal(values_summary.cell(source_row, column).value)
@@ -487,7 +521,7 @@ def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_sum
                         f"Summary row {source_row} has missing statistics and its quantity differs "
                         "from the computed result. Recalculate and verify the Summary in a copy; "
                         "absolute resistance and ΔR cannot substitute for each other.",
-                        _normalized_group(current_group),
+                        group_label,
                     )
                 )
                 continue
@@ -500,7 +534,7 @@ def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_sum
         summary_min, summary_max, summary_average, summary_stdev = displayed_statistics
         rows.append(
             LlcrSummaryRow(
-                group_label=_normalized_group(current_group),
+                group_label=group_label,
                 stage_label=stage_label or entry.stage_label,
                 summary_min=summary_min,
                 summary_max=summary_max,
@@ -508,13 +542,6 @@ def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_sum
                 summary_stdev=summary_stdev,
                 source_row=source_row,
                 fill_color=_summary_fill_color(summary.cell(source_row, 3)),
-            )
-        )
-    if any(candidates for candidates in available.values()):
-        diagnostics.append(
-            _diagnostic(
-                "summary_mapping_conflict",
-                "One or more LLCR results are missing from the Summary sheet.",
             )
         )
     return rows, diagnostics
@@ -596,7 +623,8 @@ def _decimal(value) -> Decimal | None:
     if isinstance(value, str) and value.startswith("="):
         return None
     try:
-        return Decimal(str(value))
+        number = Decimal(str(value))
+        return number if number.is_finite() else None
     except (InvalidOperation, ValueError):
         return None
 

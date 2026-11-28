@@ -86,11 +86,12 @@ it('requires photo comparison and carries explicit crop and transform choices', 
 });
 
 it('does not silently approve unknown customer images or disclosure scope', async () => {
-  const customer = { ...output, output_id: 'customer1', audit: { passed: false, sensitive_terms: [], forbidden_project_ids: [], reviewed_parts: {}, disclosure_scope_confirmed: false,
+  const customer = { ...output, output_id: 'customer1', parent_output_id: output.output_id, audit: { passed: false, sensitive_terms: [], forbidden_project_ids: [], reviewed_parts: {}, disclosure_scope_confirmed: false,
     issues: [{ code: 'visual_review_required', location: 'word/media/image1.png', message: 'Review image pixels', sha256: 'd'.repeat(64) }] } };
   vi.mocked(api.checkCustomerReviewCopy).mockResolvedValue({ ...initial, revision: 3, customer_outputs: [customer] });
   render(<ReportCustomerCopy projectId="P1" state={{ ...initial, customer_outputs: [customer] }} disabled={false} onChanged={vi.fn()} />);
-  fireEvent.click(screen.getByText('Check saved customer package'));
+  expect(screen.getByLabelText('I reviewed this exact image/object and approve its disclosure')).toHaveProperty('checked', false);
+  fireEvent.click(screen.getByRole('button', { name: 'Check customer copy' }));
   await waitFor(() => expect(api.checkCustomerReviewCopy).toHaveBeenCalledWith('P1', expect.objectContaining({
     reviewed_parts: {}, disclosure_scope_confirmed: false })));
   expect(screen.queryByText('Package disclosure checks passed; not release approval')).toBeNull();

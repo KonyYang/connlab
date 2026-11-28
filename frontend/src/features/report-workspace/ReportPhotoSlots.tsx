@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { applyReportPhotos, getReportPhotoSlots, getReportPhotoImage, downloadReportArtifact,
   type ReportAuthoringState, type ReportPhotoSlot } from '../../api/reportAuthoring';
 
-export function ReportPhotoSlots({ projectId, state, disabled, onChanged, beginOperation }: {
+export function ReportPhotoSlots({ projectId, state, disabled, onChanged, beginOperation, onChooseSources }: {
   projectId: string; state: ReportAuthoringState; disabled: boolean; onChanged: (state: ReportAuthoringState) => void;
   beginOperation?: () => (() => void) | null;
+  onChooseSources?: () => void;
 }) {
   const [slots, setSlots] = useState<{ output_sha256: string; slots: ReportPhotoSlot[] } | null>(null);
   const [slotId, setSlotId] = useState('');
@@ -53,6 +54,9 @@ export function ReportPhotoSlots({ projectId, state, disabled, onChanged, beginO
   return <section aria-label="Approved report photo slots"><h4>Replace photos in approved slots</h4>
     <fieldset disabled={busy || disabled}><button type="button" onClick={() => void inspect()}>Inspect photo slots</button>
       {slots && <>
+        {slots.slots.length === 0 && <p>This working copy has no approved photo slots.</p>}
+        {slots.slots.length > 0 && !state.sources.some(item => item.role === 'photo') && onChooseSources &&
+          <button type="button" onClick={onChooseSources}>Add a replacement photo in Sources and decisions</button>}
         <label>Approved photo slot <select value={slotId} onChange={event => { setSlotId(event.target.value); setImages([]); setConfirmed(false); setTransform(false); }}>
           <option value="">Choose slot</option>{slots.slots.map((item, index) => <option key={item.slot_id} value={item.slot_id} disabled={!item.supported}>
             {index + 1}: {item.caption || 'Uncaptioned photo'}{!item.supported ? ` — ${item.reason}` : ''}</option>)}

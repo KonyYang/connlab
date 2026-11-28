@@ -27,7 +27,10 @@ export type ReportAuthoringOutput = {
   parent_output_id?: string;
   photo_plan?: { plan_id: string; output_sha256: string; matrix_id: string; confirmed_by: string; assignments: ConfirmedPhotoAssignment[] };
   visual_preview?: ReportVisualPreviewRecord;
-  evidence?: { result_id?: string; statistics?: Extract<EquipmentListOneClickResult, { status: "completed" }>["statistics"] };
+  evidence?: {
+    result_id?: string; equipment_source_id?: string | null; references_text?: string | null; selection_sha256?: string | null;
+    statistics?: Extract<EquipmentListOneClickResult, { status: "completed" }>["statistics"];
+  };
 };
 export type ReportMatrixStep = { group_id: string; row_id: string; group_label: string; test_item: string; step_token: string };
 export type ReportAuthoringState = {

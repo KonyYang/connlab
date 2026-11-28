@@ -145,10 +145,11 @@ class ReportDelivery:
                     self.receipts.item(project_id, prior['operation_id'], item['role']).verify_saved(self.files)
             except (LookupError, ValueError, OSError, RuntimeError):
                 operation_matches = False
-        return {'can_save': not issues and not active and not pending_projection, 'issues': issues, 'output_id': output['output_id'],
+        can_save = not issues and not active and not pending_projection
+        return {'can_save': can_save, 'issues': issues, 'output_id': output['output_id'],
             'output_sha256': output['artifact']['sha256'], 'customer_output_id': selected,
             'preview_sha256': preview_hash, 'review_sha256': review['review_sha256'],
-            'context_sha256': context_hash, 'workspace': self._public_workspace(workspace),
+            'context_sha256': context_hash, 'workspace': self._public_workspace(workspace, show_destinations=can_save),
             'operation': operation, 'operation_matches_current': operation_matches,
             'expected_revision': state.revision, '_workspace': workspace}
 
@@ -157,10 +158,11 @@ class ReportDelivery:
         return {key: value for key, value in projection.items() if key != 'approved_intent'} if projection else None
 
     @staticmethod
-    def _public_workspace(snapshot):
+    def _public_workspace(snapshot, *, show_destinations):
         if snapshot is None:
             return None
         return {'files': [{'role': item['role'], 'file_name': Path(item['target']).name,
+            **({'destination': item['target']} if show_destinations else {}),
             'replaces_existing': bool(item['current']), 'archive_required': bool(item['current'])}
             for item in snapshot['items']], 'notice': 'Existing reports are retained in History/Report. This is not formal release.'}
 

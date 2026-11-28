@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import * as api from '../../api/client';
 import * as authoring from '../../api/reportAuthoring';
@@ -100,7 +100,7 @@ it('reopens the last content section of this project and working base', async ()
   view.unmount();
   render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
   expect(await screen.findByRole('button', {name:'Update Equipment List'})).toBeTruthy();
-  expect(screen.queryByRole('button', {name:'Inspect LLCR Workbook'})).toBeNull();
+  expect(screen.queryByLabelText('LLCR result workbook')).toBeNull();
 });
 
 it('restores the selected working copy and keeps section updates away from the official report', async () => {
@@ -108,7 +108,7 @@ it('restores the selected working copy and keeps section updates away from the o
   expect(await screen.findByText('Reviewed Working.docx')).toBeTruthy();
   expect(screen.queryByText('Official.docx')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Regenerate internal report…' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Update LLCR Results' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Update LLCR in working copy' }));
   await waitFor(() => expect(authoring.updateWorkingCopyLlcr).toHaveBeenCalledWith('P1', {
     expected_revision: 4, expected_sha256: 'w'.repeat(64), dataset_revision_id: 'D1',
   }));
@@ -122,6 +122,33 @@ it('restores the selected working copy and keeps section updates away from the o
   expect(api.updateCurrentReportLlcr).not.toHaveBeenCalled();
   expect(api.updateEquipmentListOneClick).not.toHaveBeenCalled();
   expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+});
+
+it('resumes confirmed sample readings across groups, sheets and stages without inventing a baseline', async () => {
+  const workspace = await api.fetchReportWorkspace('P1');
+  const final = {
+    group_label: 'A', step_token: '7', stage: 'initial' as const, stage_label: 'Final LLCR',
+    sample_index: 1, position: '1', source_sheet: 'Power', raw_source_cell: 'D12', raw_value: '2.31',
+    raw_status: 'present' as const, raw_unit: 'mΩ', source_cell: 'M12', value: '2.01', unit: 'mΩ',
+  };
+  vi.mocked(api.fetchReportWorkspace).mockResolvedValue({ ...workspace, datasets: [{
+    ...workspace.datasets[0], readings: [
+      final, { ...final, source_sheet: 'Sense', raw_value: '1.10', value: '0.80' },
+      { ...final, sample_index: 2, raw_source_cell: '', raw_status: 'unavailable', raw_value: null, value: '0.95' },
+      { ...final, group_label: 'B', stage_label: 'After aging', step_token: '14', stage: 'delta', raw_value: '2.32', value: '0.01' },
+    ],
+  }] });
+  render(<ReportWorkspace projectId="P1" onBack={vi.fn()} />);
+  const table = await screen.findByRole('table', {name:'Group A sample readings'});
+  expect(within(table).queryByRole('columnheader', {name: /initial/i})).toBeNull();
+  expect(within(table).getByRole('cell', {name:'2.31 mΩ'})).toBeTruthy();
+  expect(within(table).getByRole('cell', {name:'1.10 mΩ'})).toBeTruthy();
+  expect(within(table).getByRole('cell', {name:'Not recorded'})).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('Group'), {target:{value:'B'}});
+  fireEvent.change(screen.getByLabelText('Values'), {target:{value:'report'}});
+  const groupB = screen.getByRole('table', {name:'Group B sample readings'});
+  expect(within(groupB).getByRole('columnheader', {name:/After aging.*14.*ΔR/})).toBeTruthy();
+  expect(within(groupB).getByRole('cell', {name:'0.01 mΩ'})).toBeTruthy();
 });
 
 it('does not fall back to official writes when the saved working-copy state cannot be read', async () => {
@@ -167,7 +194,7 @@ it('keeps missing equipment-source selection on the working-copy path', async ()
   fireEvent.click(screen.getByRole('button', { name: 'Update Equipment List' }));
   const input = await screen.findByLabelText('Equipment IDs');
   fireEvent.change(input, { target: { value: 'DG-Q-0033' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save And Update' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Update working copy' }));
   await waitFor(() => expect(authoring.updateWorkingCopyEquipment).toHaveBeenLastCalledWith('P1', {
     expected_revision: 4, expected_sha256: 'w'.repeat(64),
   }, { referencesText: 'DG-Q-0033' }));

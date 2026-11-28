@@ -5079,6 +5079,23 @@ export type LlcrResultEntry = {
   report_target: string;
 };
 
+export type LlcrSampleReading = {
+  group_label: string;
+  step_token: string;
+  stage: "initial" | "delta";
+  stage_label: string;
+  sample_index: number;
+  position: string;
+  source_sheet: string;
+  raw_source_cell: string;
+  raw_value: string | null;
+  raw_status?: "present" | "missing" | "invalid" | "unavailable";
+  raw_unit: string;
+  source_cell: string;
+  value: string | null;
+  unit: string;
+};
+
 export type LlcrImportPreview = {
   preview_id: string;
   project_id: string;
@@ -5091,6 +5108,7 @@ export type LlcrImportPreview = {
   sample_count: number;
   test_point_count: number;
   result_count: number;
+  readings?: LlcrSampleReading[];
   entries: LlcrResultEntry[];
   diagnostics: Array<{
     code: string;
@@ -5114,6 +5132,7 @@ export type ResultDatasetRevision = {
   validation_status: string;
   confirmed_at: string;
   confirmed_by: string;
+  readings?: LlcrSampleReading[];
   entries: LlcrResultEntry[];
 };
 
