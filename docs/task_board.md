@@ -884,18 +884,19 @@
         "route": "sol_build_review_qa",
         "scope": "Download-only conversion, sample disclosure, material and maximum temperature tables, single exception dialog, existing workflow and isolated acceptance.",
         "scope_paths": [
-          "backend/application",
-          "backend/infrastructure/office",
           "backend/api",
+          "backend/application",
+          "backend/infrastructure/files/customer_report_choices.py",
+          "backend/infrastructure/office",
+          "docs/PROJECT_CONTEXT.md",
           "frontend/src",
-          "tests/unit",
           "tests/integration",
-          "docs/PROJECT_CONTEXT.md"
+          "tests/unit"
         ],
         "risk_reasons": [],
         "activation_head": "5fdc1c92bf0bd71f0be3e4fb395c39bf64b79bc1",
         "started_at": "2026-11-28T01:01:32.730755Z",
-        "updated_at": "2026-11-28T01:01:32.730755Z",
+        "updated_at": "2026-11-28T01:20:50.168321Z",
         "checkpoint": null,
         "report": null
       }
