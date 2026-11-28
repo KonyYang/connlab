@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
+    "task_id": "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128",
     "tier": "standard",
-    "subject": "84f67fa360aedc01e18a8661f851d2a9a84f9439",
-    "summary": "Simplify report entry, section editing and direct customer copies",
+    "subject": "6aa9dc80d44c509f0c2866a25b94dfd786a4a389",
+    "summary": "Generate independent customer Word reports in one click with source-bound exceptions",
     "disposition": "completed",
-    "decision_ref": "User accepted the report workspace optimization for local closure only. Preserve implementation, isolated Word and Excel samples, screenshots and acceptance records. No push, release or packaging.",
-    "closed_at": "2026-11-28T00:05:56.281043Z"
+    "decision_ref": "User explicitly authorized local close and retention of the report work, then registration of the intake fix. Local only.",
+    "closed_at": "2026-11-28T02:42:33.296005Z"
   },
   "retained_history": [
     {
@@ -867,104 +867,18 @@
       "disposition": "completed",
       "decision_ref": "User accepted template packaging and authorized local close only. Keep report task. No publication.",
       "closed_at": "2026-11-27T23:27:52.300754Z"
+    },
+    {
+      "task_id": "TASK_REPORT_CONTENT_ENTRY_20261127",
+      "tier": "standard",
+      "subject": "84f67fa360aedc01e18a8661f851d2a9a84f9439",
+      "summary": "Simplify report entry, section editing and direct customer copies",
+      "disposition": "completed",
+      "decision_ref": "User accepted the report workspace optimization for local closure only. Preserve implementation, isolated Word and Excel samples, screenshots and acceptance records. No push, release or packaging.",
+      "closed_at": "2026-11-28T00:05:56.281043Z"
     }
   ],
-  "tasks": {
-    "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\project-folder-foreground\\connlab",
-      "branch": "codex/customer-report-one-click-20261128",
-      "resources": [],
-      "integrated_head": "c9abce69c8cd62ac20bcbda82de6d35247a7b3ad",
-      "task": {
-        "task_id": "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128",
-        "summary": "Generate independent customer Word reports in one click with source-bound exceptions",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Download-only conversion, sample disclosure, material and maximum temperature tables, single exception dialog, existing workflow and isolated acceptance.",
-        "scope_paths": [
-          "backend/api",
-          "backend/application",
-          "backend/desktop/managed_development_launcher.py",
-          "backend/infrastructure/files/customer_report_choices.py",
-          "backend/infrastructure/office",
-          "docs/PROJECT_CONTEXT.md",
-          "frontend/src",
-          "scripts/run_backend.ps1",
-          "scripts/run_mvp_dev.ps1",
-          "tests/integration",
-          "tests/unit"
-        ],
-        "risk_reasons": [],
-        "activation_head": "5fdc1c92bf0bd71f0be3e4fb395c39bf64b79bc1",
-        "started_at": "2026-11-28T01:01:32.730755Z",
-        "updated_at": "2026-11-28T02:30:46.688424Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User reported the project workbench is blocked after the report update. Fix connection misclassification and verify local access.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_CUSTOMER_REPORT_ONE_CLICK_20261128",
-          "subject": "6aa9dc80d44c509f0c2866a25b94dfd786a4a389",
-          "summary": "Report workspace with one-click customer documents, trustworthy request error handling and single-owner development startup.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/desktop/managed_development_launcher.py",
-            "frontend/src/api/runtime.ts",
-            "frontend/src/runtimeEnvironment.test.ts",
-            "scripts/run_backend.ps1",
-            "scripts/run_mvp_dev.ps1",
-            "tests/unit/test_development_backend_launcher.py",
-            "tests/unit/test_managed_development_launcher.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "summary": "345 frontend checks passed; TypeScript and Vite build passed."
-            },
-            {
-              "status": "passed",
-              "summary": "24 isolated backend report and instance tests passed. Original dev project and coverage now return HTTP 200 and the existing user tab displays the original project and report evidence, bound to the same physical database."
-            },
-            {
-              "status": "passed",
-              "summary": "18 development startup and related checks passed. Both launch orders and occupied ports checked. Isolated real Uvicorn reload verified with temporary application and ports."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "summary": "Reproduced project coverage 500 on localhost. Regression tests first failed in five cases. Rejected unverified responses without invalidating the current binding; delayed old responses cannot disconnect a new session. Both supported Windows development startup scripts now share single-owner startup and watch backend sources."
-            },
-            "reviewer": {
-              "status": "passed",
-              "summary": "Independent review of the exact two-file patch confirmed legitimate binding guards and rejection of unidentified successful responses. Independent launcher review identified the desktop entry and verified both supported entries now share the guard."
-            },
-            "qa": {
-              "status": "passed",
-              "summary": "Independent offline Vitest and Python API tests and web build. Revision evidence under D:\\PythonProject\\connlab\\retained_archives\\customer-report-one-click-1795827855871"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "6aa9dc80d44c509f0c2866a25b94dfd786a4a389",
-            "primary_before": "deffe27a0b581fcb919dc66210d7a89899684063",
-            "integrated_head": "c9abce69c8cd62ac20bcbda82de6d35247a7b3ad",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
