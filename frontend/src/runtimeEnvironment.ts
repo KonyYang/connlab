@@ -1,4 +1,13 @@
-export type RuntimeEnvironment = {schema_version:1;environment:"development"|"release";instance_id:string;default_output_paths:Record<string,string>};
+export type StoragePurpose = "Projects" | "Library" | "TemporaryProjects" | "Template";
+export type RuntimeEnvironment = {
+  schema_version: 1;
+  environment: "development" | "release";
+  instance_id: string;
+  default_output_paths: Record<string, string>;
+  storage_locations?: Record<StoragePurpose, string>;
+  storage_root?: string | null;
+  storage_warnings?: string[];
+};
 let current: RuntimeEnvironment | null = null;
 export function getRuntimeEnvironment(): RuntimeEnvironment | null {return current;}
 export function requireRuntimeEnvironment():RuntimeEnvironment {if(!current)throw new Error("Connect to the data instance before continuing.");return current;}

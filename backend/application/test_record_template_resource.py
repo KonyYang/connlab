@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from backend.application.generation_template_names import matching_generation_templates
+
 from backend.domain import ExternalResource, ExternalResourceType
 
 
@@ -50,14 +52,7 @@ def discover_test_record_template(template_folder: Path) -> Path:
         raise TestRecordTemplateResourceError(
             f"Template folder does not exist: {folder}"
         )
-    matches = sorted(
-        path
-        for path in folder.iterdir()
-        if path.is_file()
-        and path.suffix.lower() == ".docx"
-        and "FDQF-E-036" in path.name.upper()
-        and "TEST RECORD" in path.name.upper()
-    )
+    matches = matching_generation_templates(folder, "test_record")
     if not matches:
         raise TestRecordTemplateResourceError(
             "Test Record template not found in Template folder."

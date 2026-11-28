@@ -20,6 +20,7 @@ def _file_identity(path):
 class RuntimeBinding:
     def __init__(self, settings):
         self.settings = settings
+        self.browser_storage = None
         self.database = settings.database_path.resolve()
         self.file_identity = _file_identity(self.database)
         value = [settings.environment, os.path.normcase(str(self.database)), self.file_identity]
@@ -28,8 +29,17 @@ class RuntimeBinding:
     def metadata(self):
         if _file_identity(self.database) != self.file_identity:
             raise RuntimeChanged("The data instance changed while ConnLab was running. Restart ConnLab before continuing.")
-        return {"schema_version": 1, "environment": self.settings.environment, "instance_id": self.instance_id,
+        metadata = {"schema_version": 1, "environment": self.settings.environment, "instance_id": self.instance_id,
                 "default_output_paths": {purpose: str(self.settings.projects_dir if purpose == "Projects" else self.settings.output_path(purpose)) for purpose in ("Projects", "Materials", "TemporaryMaterials")}}
+
+        if self.browser_storage is not None:
+            metadata.update(self.browser_storage.metadata())
+            locations = self.browser_storage.locations
+            metadata["default_output_paths"] = {
+                "Projects": str(locations["Projects"]), "Materials": str(locations["Library"]),
+                "TemporaryMaterials": str(locations["TemporaryProjects"]),
+            }
+        return metadata
 
     @property
     def cookie_suffix(self):
@@ -74,3 +84,32 @@ def initialize_runtime_binding(app):
         get_engine()
         app.state.runtime_binding = RuntimeBinding(get_settings())
     return app.state.runtime_binding
+
+
+def install_browser_storage_open(app):
+    """The browser release may only open a directory this instance registered."""
+    from fastapi import HTTPException, Request
+    from backend.infrastructure.files.local_folder_open_gateway import LocalFolderOpenGateway
+    from backend.infrastructure.project_library.files import checked_path
+
+    @app.post("/api/runtime-storage/open/{purpose}", include_in_schema=False)
+    def open_registered_folder(purpose: str, request: Request):
+        binding = app.state.runtime_binding
+        if (not request.client or request.client.host not in {"127.0.0.1", "::1"}
+                or request.url.hostname not in {"localhost", "127.0.0.1", "::1"}
+                or request.headers.get("origin", str(request.base_url).rstrip("/")) != str(request.base_url).rstrip("/")):
+            raise HTTPException(403, "Open the folder on the computer running ConnLab.")
+        if request.headers.get("X-ConnLab-Instance") != binding.instance_id:
+            raise HTTPException(409, "Reload ConnLab before opening a folder.")
+        storage = binding.browser_storage
+        path = storage.common_root if purpose == "Root" else storage.locations.get(purpose)
+        if path is None:
+            raise HTTPException(404, "Unknown storage location.")
+        try:
+            checked_path(path)
+            result = LocalFolderOpenGateway().open_directory(path)
+        except (OSError, ValueError) as error:
+            raise HTTPException(409, f"Cannot open {path}. Restore access to the registered folder.") from error
+        if result.status != "opened":
+            raise HTTPException(409, f"Cannot open {path}: {result.message}")
+        return {"opened": True}

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from backend.application.generation_template_names import matching_generation_templates
+
 
 FEE_EVALUATION_TEMPLATE_TOKEN = "FDQF-E-176"
 
@@ -22,14 +24,7 @@ def discover_fee_evaluation_template(template_folder: Path) -> Path:
         raise FeeEvaluationTemplateDiscoveryError(
             f"Template folder does not exist or is not a folder: {template_folder}"
         )
-    matches = sorted(
-        path
-        for path in template_folder.iterdir()
-        if path.is_file()
-        and path.suffix.lower() == ".xlsx"
-        and not path.name.startswith("~$")
-        and FEE_EVALUATION_TEMPLATE_TOKEN.lower() in path.name.lower()
-    )
+    matches = matching_generation_templates(template_folder, "fee_evaluation")
     if not matches:
         raise FeeEvaluationTemplateDiscoveryError(
             "Fee Evaluation template was not found in Template folder. "

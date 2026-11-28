@@ -51,6 +51,9 @@ if (-not $ReleaseFolder) {
 }
 
 $resolvedRelease = (Resolve-Path $ReleaseFolder).Path
+if (Test-Path -LiteralPath (Join-Path $resolvedRelease "ConnLab\ConnLab_Server.exe")) {
+    $resolvedRelease = Join-Path $resolvedRelease "ConnLab"
+}
 $serverExe = Join-Path $resolvedRelease "ConnLab_Server.exe"
 $startScript = Join-Path $resolvedRelease "Start_ConnLab.bat"
 $operatorReadme = Join-Path $resolvedRelease "README_FOR_OPERATOR.md"

@@ -27,6 +27,11 @@ class MaterialReceiptService:
         from backend.application.project_library.material_copy import MaterialCopyService
         return MaterialCopyService(self.store, self.files, self.catalog, self.contexts).confirm(plan_id, fingerprint, context)
 
+    def prepare_default_root(self, path, *, create):
+        """Check the same ownership and filesystem boundaries for first-use and packaged startup."""
+        self._check_receive_ownership(str(Path(path).resolve()))
+        return self.files.root(path, create=create)
+
     def _ensure_library_settings(self):
         config = self.store.settings()
         if config["root_path"]:
@@ -36,8 +41,7 @@ class MaterialReceiptService:
             config = self.store.settings()
             if not config["root_path"]:
                 root = self.files.default_root()
-                self._check_receive_ownership(str(root))
-                root = self.files.root(root, create=True)
+                root = self.prepare_default_root(root, create=True)
                 config = self.store.configure(str(root))
             return config
 

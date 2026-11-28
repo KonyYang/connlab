@@ -17,7 +17,9 @@ import "../settings.css";
 import { useSettingsResources } from "../features/settings/useSettingsResources";
 
 export function SettingsPage(): ReactElement {
-  const showDefaultLocations = getRuntimeEnvironment()?.environment === "release";
+  const runtime = getRuntimeEnvironment();
+  const storageWarnings = runtime?.storage_warnings ?? [];
+  const showDefaultLocations = runtime?.environment === "release" && !runtime.storage_locations;
   const {resources, loading, error, setError, savingType, pathValidationMessages, handleSave, handlePathChange} = useSettingsResources(showDefaultLocations);
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [diagnosticsMessage, setDiagnosticsMessage] = useState<string | null>(null);
@@ -59,6 +61,12 @@ export function SettingsPage(): ReactElement {
         </div>
       </div>
 
+      {storageWarnings.length > 0 && (
+        <div className="settings-panel settings-storage" role="alert">
+          <strong>Storage needs attention</strong>
+          <ul>{storageWarnings.map(warning => <li key={warning}>{warning}</li>)}</ul>
+        </div>
+      )}
       {loading && <LoadingState label="Loading settings" />}
       {error && <ErrorMessage message={error} />}
 

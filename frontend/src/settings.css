@@ -182,3 +182,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.settings-storage { gap: 8px; }
+.settings-storage li { overflow-wrap: anywhere; }
+.settings-storage ul { margin-block: 4px; }

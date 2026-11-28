@@ -81,7 +81,15 @@ $ProjectVersion = Read-ProjectVersion
 $ReleaseName = "ConnLab_Web_${ReleaseDate}_v${ProjectVersion}${VersionSuffix}"
 $ExeName = "ConnLab_Server"
 $releaseRoot = Join-Path $repoRoot "dist_release"
-$releaseFolder = Join-Path $releaseRoot $ReleaseName
+$buildFolder = Join-Path $releaseRoot $ReleaseName
+$releaseFolder = Join-Path $buildFolder "ConnLab"
+$releaseArchive = Join-Path $releaseRoot "$ReleaseName.zip"
+if ($ReleaseName -ne [System.IO.Path]::GetFileName($ReleaseName)) {
+    throw "Use a release name without directory separators."
+}
+if ((Test-Path -LiteralPath $buildFolder) -or (Test-Path -LiteralPath $releaseArchive)) {
+    throw "This build already exists. Choose another ReleaseDate or VersionSuffix."
+}
 $pyinstallerDist = Join-Path $repoRoot "dist"
 $pyinstallerBuild = Join-Path $repoRoot "build"
 $pyinstallerOutput = Join-Path $pyinstallerDist $ExeName
@@ -186,15 +194,13 @@ Invoke-TimedStep "[4/5] Running PyInstaller" {
 
 Invoke-TimedStep "[5/5] Preparing release folder" {
     Write-Host "[5/5] Preparing release folder"
-    # Validate approved inputs before replacing an existing build folder.
+    # Validate the approved inputs before assembling the distribution folder.
     py scripts/stage_browser_templates.py $TemplateSource (Join-Path $pyinstallerOutput "_internal\browser_templates.zip")
     if ($LASTEXITCODE -ne 0) { throw "Failed to stage approved browser release templates." }
     if (-not (Test-Path $releaseRoot)) {
         New-Item -ItemType Directory -Path $releaseRoot | Out-Null
     }
-    if (Test-Path $releaseFolder) {
-        Remove-Item -LiteralPath $releaseFolder -Recurse -Force
-    }
+    New-Item -ItemType Directory -Path $buildFolder -ErrorAction Stop | Out-Null
     Move-Item -LiteralPath $pyinstallerOutput -Destination $releaseFolder
     $releaseConfig = Join-Path $releaseFolder "config"
     New-Item -ItemType Directory -Path $releaseConfig | Out-Null
@@ -241,6 +247,11 @@ Invoke-TimedStep "[5/5] Preparing release folder" {
 }
 
 Write-Host ""
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[System.IO.Compression.ZipFile]::CreateFromDirectory(
+    $releaseFolder, $releaseArchive, [System.IO.Compression.CompressionLevel]::Optimal, $true
+)
+Write-Host "[OK] ConnLab browser archive: $releaseArchive"
 Write-Host "[OK] ConnLab browser release folder is ready:"
 Write-Host $releaseFolder
 Write-Host ""

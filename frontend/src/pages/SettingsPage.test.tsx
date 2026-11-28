@@ -39,6 +39,28 @@ describe("SettingsPage", () => {
     });
   });
 
+  it.each([null, "Q:/ConnLabFiles"])("hides managed paths, keeps warnings and allows public folder edits (root %s)", async storage_root => {
+    bindRuntime({
+      schema_version: 1, environment: "release", instance_id: "portable", default_output_paths: {},
+      storage_root, storage_locations: {Projects: "P:/work", TemporaryProjects: "T:/incoming", Library: "L:/archives", Template: "F:/forms"},
+      storage_warnings: ["Multiple fee templates in F:/forms: fee-A.xlsx, fee-B.xlsx."]
+    });
+    render(<SettingsPage />);
+    expect(await screen.findByLabelText("Public Project locations path")).toBeTruthy();
+    expect(screen.getByText("Multiple fee templates in F:/forms: fee-A.xlsx, fee-B.xlsx.")).toBeTruthy();
+    expect(screen.queryByText("Business files")).toBeNull();
+    expect(screen.queryByText("View folder locations")).toBeNull();
+    for (const path of ["Q:/ConnLabFiles", "P:/work", "T:/incoming", "L:/archives", "F:/forms"]) {
+      expect(screen.queryByText(path, {exact: false, selector: "span"})).toBeNull();
+    }
+    expect(screen.queryByRole("button", {name: /^Open folder:/})).toBeNull();
+    expect(await screen.findByLabelText("LTR registration workbook path")).toBeTruthy();
+    for (const label of ["Template folder", "Project default save location", "Materials library folder", "Temporary materials folder"]) {
+      expect(screen.queryByLabelText(label + " path")).toBeNull();
+    }
+    expect(receipts.getReceiptRuntime).not.toHaveBeenCalled();
+  });
+
   it("loads only non-secret external resource settings", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
@@ -79,8 +101,15 @@ describe("SettingsPage", () => {
     clickDownload.mockRestore();
   });
 
-  it("saves and reloads a changed public project directory in development", async () => {
-    useTestRuntime("development");
+  it.each(["development", "portable"] as const)("saves and reloads a changed public project directory in %s", async mode => {
+    if (mode === "portable") {
+      bindRuntime({
+        schema_version: 1, environment: "release", instance_id: "portable", default_output_paths: {},
+        storage_locations: {Projects: "Q:/Projects", Library: "Q:/Library", TemporaryProjects: "Q:/TemporaryProjects", Template: "Q:/Template"}
+      });
+    } else {
+      useTestRuntime("development");
+    }
     let saved = locationResource({
       resource_type: "official_public_drive_root", path: "D:/Debug/PublicA",
       validation_status: "valid", validation_failure_reason: null
