@@ -5,24 +5,38 @@ import { NewProjectCompletionDock } from "./NewProjectCompletionDock";
 import type { NewProjectSetupConfirmationValues } from "./NewProjectSetupConfirmationPanel";
 
 describe("NewProjectCompletionDock Apply LTR busy state", () => {
-  it("shows an actionable required-information reason while Apply LTR is blocked", () => {
+  it("lists each missing field and moves keyboard focus to the chosen field", async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
     render(
-      <NewProjectCompletionDock
-        completionDisabled={true}
-        completionLoading={false}
-        completionText="3 required fields remaining"
-        disabled={false}
-        missingKeys={new Set()}
-        values={values}
-        onChange={vi.fn()}
-        onComplete={vi.fn()}
-        onSaveMaterials={vi.fn()}
-      />
+      <>
+        <input id="business" aria-label="Business Unit" />
+        <input id="quantity" aria-label="Quantity in sample 2" />
+        <NewProjectCompletionDock
+          completionDisabled={true}
+          completionLoading={false}
+          requiredActions={[
+            { targetId: "business", label: "Select Business Unit" },
+            { targetId: "quantity", label: "Sample 2 · Enter Quantity" }
+          ]}
+          disabled={false}
+          missingKeys={new Set()}
+          values={values}
+          onChange={vi.fn()}
+          onComplete={onComplete}
+          onSaveMaterials={vi.fn()}
+        />
+      </>
     );
 
     const reason = screen.getByRole("status");
-    expect(reason.textContent).toContain("3 required fields remaining");
-    expect(reason.textContent).toContain("Complete the highlighted fields above");
+    expect(reason.textContent).toContain("2 fields");
+    await user.click(screen.getByRole("button", { name: "Select Business Unit" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Business Unit"));
+    screen.getByRole("button", { name: "Sample 2 · Enter Quantity" }).focus();
+    await user.keyboard("{Enter}");
+    expect(document.activeElement).toBe(screen.getByLabelText("Quantity in sample 2"));
+    expect(onComplete).not.toHaveBeenCalled();
     expect(
       screen.getByRole("button", { name: /Apply LTR Number/ })
     ).toHaveProperty("disabled", true);
@@ -33,7 +47,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
       <NewProjectCompletionDock
         completionDisabled={false}
         completionLoading={false}
-        completionText="Required project information complete"
+        requiredActions={[]}
         disabled={false}
         missingKeys={new Set()}
         values={values}
@@ -52,7 +66,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
         completionDisabled={false}
         completionError="Intake case not found: case-1"
         completionLoading={false}
-        completionText="Required project information complete"
+        requiredActions={[]}
         disabled={false}
         missingKeys={new Set()}
         values={values}
@@ -75,7 +89,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
       <NewProjectCompletionDock
         completionDisabled={true}
         completionLoading={true}
-        completionText="Required project information complete"
+        requiredActions={[{ targetId: "business", label: "Select Business Unit" }]}
         disabled={true}
         missingKeys={new Set()}
         values={values}
@@ -86,6 +100,7 @@ describe("NewProjectCompletionDock Apply LTR busy state", () => {
     );
 
     const status = screen.getByRole("status");
+    expect(screen.queryByRole("button", { name: "Select Business Unit" })).toBeNull();
     expect(status.textContent).toContain("Applying LTR number");
     expect(status.textContent).toContain(
       "ConnLab may open and update the LTR workbook. Keep this page open."

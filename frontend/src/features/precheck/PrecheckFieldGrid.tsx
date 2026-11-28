@@ -69,11 +69,12 @@ function ReviewField({
     ? ""
     : value;
   const selectOptions = selectValue ? options : ["", ...options.filter(Boolean)];
+  const inputId = `intake-application-${field.key}`;
   return (
     <label className={fieldClassName(issueLevel)}>
       <span>{field.label}{field.required ? <b>*</b> : null}</span>
       {field.kind === "select" ? (
-        <select disabled={disabled} value={selectValue} onChange={(event) => onChange(event.target.value)}>
+        <select id={inputId} disabled={disabled} value={selectValue} onChange={(event) => onChange(event.target.value)}>
           {selectOptions.map((option) => (
             <option key={option || "__blank"} value={option}>
               {option || "Select..."}
@@ -83,6 +84,7 @@ function ReviewField({
       ) : recipientsMultiline ? (
         <AutoGrowFieldTextarea
           disabled={disabled}
+          id={inputId}
           value={value}
           onChange={onChange}
         />
@@ -90,6 +92,7 @@ function ReviewField({
         <input
           className="draft-field-input"
           disabled={disabled}
+          id={inputId}
           type={field.kind === "date" ? "date" : "text"}
           value={inputValue}
           onChange={(event) => onChange(event.target.value)}
@@ -101,10 +104,12 @@ function ReviewField({
 
 function AutoGrowFieldTextarea({
   disabled,
+  id,
   value,
   onChange
 }: {
   disabled: boolean;
+  id: string;
   value: string;
   onChange: (value: string) => void;
 }): ReactElement {
@@ -124,6 +129,7 @@ function AutoGrowFieldTextarea({
       ref={ref}
       className="draft-field-input draft-field-textarea"
       disabled={disabled}
+      id={id}
       rows={1}
       value={value}
       onChange={(event) => onChange(event.target.value)}

@@ -125,6 +125,7 @@
   grid-template-columns: 1fr;
   justify-items: stretch;
   gap: 8px;
+  background: var(--color-canvas);
 }
 
 .new-project-dock-summary {
@@ -176,6 +177,33 @@
   font-size: 13px;
   font-weight: 800;
   overflow-wrap: anywhere;
+}
+
+.new-project-required-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+  max-height: min(16vh, 8rem);
+  margin: 3px 0 0;
+  padding: 2px;
+  overflow: auto;
+  list-style: none;
+}
+
+.new-project-completion-dock .new-project-required-link {
+  display: block;
+  width: auto;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary-strong);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .specified-ltr-preview-modal {

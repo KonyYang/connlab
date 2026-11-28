@@ -3,6 +3,7 @@ import type { IntakePrecheckLookupOptions } from "../../api/client";
 export type PrecheckFieldSpec = {
   key: string;
   label: string;
+  requiredActionLabel?: string;
   required?: boolean;
   kind?: "input" | "select" | "date";
   lookupGroup?: keyof IntakePrecheckLookupOptions;
@@ -26,6 +27,11 @@ export const PRECHECK_REQUESTED_TESTING_COLUMNS = [
   { key: "applicable_specification", label: "Applicable Specifications" }
 ] as const;
 
+export const PRECHECK_CONSENT_LABELS = {
+  confidential: "Confidential test or samples?",
+  subcontract: "Can testing be subcontracted?"
+} as const;
+
 export const PRECHECK_SAMPLE_COLUMNS: PrecheckSampleColumn[] = [
   { key: "product_name", label: "Product Name" },
   { key: "part_number", label: "Part Number / Revision" },
@@ -38,7 +44,7 @@ export const PRECHECK_SAMPLE_COLUMNS: PrecheckSampleColumn[] = [
 ];
 
 export const PRECHECK_PROJECT_FIELDS: PrecheckFieldSpec[] = [
-  { key: "requester", label: "Requested By", required: true },
+  { key: "requester", label: "Requested By", required: true, requiredActionLabel: "Enter requester name" },
   { key: "phone", label: "Phone #", required: true },
   { key: "request_date", label: "Date", required: true, kind: "date" },
   { key: "email", label: "Email", required: true },
@@ -93,7 +99,7 @@ export const PRECHECK_PROJECT_FIELDS: PrecheckFieldSpec[] = [
     kind: "select",
     lookupGroup: "post_testing_disposition"
   },
-  { key: "send_copies_recipients", label: "Send copies of test results/reports to", required: true }
+  { key: "send_copies_recipients", label: "Send copies of test results/reports to", required: true, requiredActionLabel: "Enter report recipients" }
 ];
 
 export function emptyPrecheckSampleRow(): PrecheckSampleRow {
